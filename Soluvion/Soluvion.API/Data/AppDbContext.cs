@@ -10,5 +10,6 @@ namespace Soluvion.API.Data
         }
 
         public DbSet<Company> Companies{ get; set; }
+        public DbSet<Service> Services{ get; set; }
     }
 }
