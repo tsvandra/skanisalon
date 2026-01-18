@@ -1,24 +1,32 @@
 <script setup>
-  // Ide jön majd a logika (pl. adatbetöltés)
+  import { RouterLink, RouterView } from 'vue-router'
+  import AppHeader from './components/Appheader.vue'
 </script>
 
 <template>
-  <div class="container">
-    <header>
-      <h1>Skani Szalon</h1>
-      <p>Professzionális hajápolás és stílus</p>
-    </header>
+  <header>
+    <AppHeader />
+    <!--<nav style="padding: 1rem; background-color: #f4f4f4; margin-bottom: 20px;">
+      <RouterLink to="/" style="margin-right: 15px;">Kezdolap</RouterLink>
+      <RouterLink to="/szolgaltatasok">Arlista</RouterLink>
+    </nav>--> 
+  </header>
 
-    <main>
-      <h2>Üdvözlünk!</h2>
-      <p>Hamarosan itt jelennek meg a szolgáltatásaink és áraink...</p>
-    </main>
+  <main>
+    <RouterView />
+  </main>
 
-    <footer>
-      <p>Skani Szalon &copy; 2026</p>
-    </footer>
-  </div>
+  <footer style="text-align:center; padding: 20px; background: #f4f4f4; margin-top: 50px;">
+    <p>&copy; 2026 Skani Salon. Minden jog fentartva.</p>
+  </footer>
 </template>
+
+<style>
+  body {
+      margin: 0;
+      font-family: var(--font-family);
+  }
+</style>
 
 <style scoped>
   .container {
