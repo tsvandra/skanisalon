@@ -6,10 +6,6 @@
 <template>
   <header>
     <AppHeader />
-    <!--<nav style="padding: 1rem; background-color: #f4f4f4; margin-bottom: 20px;">
-      <RouterLink to="/" style="margin-right: 15px;">Kezdolap</RouterLink>
-      <RouterLink to="/szolgaltatasok">Arlista</RouterLink>
-    </nav>--> 
   </header>
 
   <main>
