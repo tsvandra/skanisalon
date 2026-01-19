@@ -9,7 +9,7 @@
     {
       label: 'Kezdolap',
       icon: 'pi pi-home',
-      command: () => { router.push(''); }
+      command: () => { router.push('/'); }
     },
     {
       label: 'Arlista',
@@ -27,15 +27,21 @@
       command: () => { router.push('/kapcsolat'); }
     }
   ]);
+
+  const goHome = () => {
+    router.push('/');
+  }
 </script>
 
 <template>
   <div class="card">
     <Menubar :model="items">
       <template #start>
-        <span style="font-weight: bold; font-size: 1.2rem; margin-right: 1rem;">
-          SKANI SALON
-        </span>
+        <div @click="goHome"
+             style="font-weight:bold; font-size: 1.2rem; margin-right: 1rem; cursor: pointer; display: flex; align-items: center;">
+          <i class="pi pi-sparkles" style="margin-right: 8px; color: var(--p-primary-color);"></i>
+          <span>SKANI SALON</span>
+        </div>
       </template>
     </Menubar>
   </div>
