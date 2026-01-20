@@ -11,5 +11,8 @@ namespace Soluvion.API.Data
 
         public DbSet<Company> Companies{ get; set; }
         public DbSet<Service> Services{ get; set; }
+        public DbSet<GalleryCategory> GalleryCategories{ get; set; }
+        public DbSet<GalleryImage> GalleryImages{ get; set; }
+        
     }
 }
