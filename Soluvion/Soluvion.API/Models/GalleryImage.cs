@@ -6,6 +6,7 @@ namespace Soluvion.API.Models
     public class GalleryImage
     {
         public int Id { get; set; }
+        public int CategoryId { get; set; }
         public GalleryCategory? Category { get; set; }
 
         [MaxLength(100)]

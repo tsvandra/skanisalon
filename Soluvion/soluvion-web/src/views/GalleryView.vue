@@ -1,108 +1,303 @@
 <script setup>
-import { ref } from "vue";
-import Image from 'primevue/image';
+  import { ref, onMounted } from "vue";
+  import Image from 'primevue/image';
+  import Button from 'primevue/button';
+  import Dialog from 'primevue/dialog';
+  import InputText from 'primevue/inputtext';
+  // A FileUpload komponenst kivettük, mert lassú volt
+  // import FileUpload from 'primevue/fileupload';
 
-// Ideiglenes képek listája (ezeket később kicseréljük a sajátjaidra)
-const photos = ref([
-    {
-        src: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-        alt: 'Hajvágás folyamatban'
-    },
-    {
-        src: 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-        alt: 'Modern szalon belső'
-    },
-    {
-        src: 'https://images.unsplash.com/photo-1522337660859-02fbefca4702?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-        alt: 'Festés és styling'
-    },
-    {
-        src: 'https://images.unsplash.com/photo-1605497788044-5a32c7078486?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-        alt: 'Elegáns frizura'
-    },
-    {
-        src: 'https://images.unsplash.com/photo-1582095133179-bfd08d2fc6b2?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-        alt: 'Fodrász eszközök'
-    },
-    {
-        src: 'https://images.unsplash.com/photo-1519699047748-40ba5266f226?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-        alt: 'Hosszú haj hátulról'
+  const categories = ref([]);
+  const selectedCategory = ref(null);
+  const images = ref([]);
+  const loading = ref(false);
+
+  // Feltöltés ablak változói
+  const uploadDialogVisible = ref(false);
+  const newImageTitle = ref("");
+  const selectedFile = ref(null);
+  const uploadStatus = ref("");
+  const fileInput = ref(null); // Ez a hivatkozás a rejtett fájlválasztóra
+
+  const API_URL = "https://localhost:7113";
+
+  // --- 1. KATEGÓRIÁK ---
+  onMounted(async () => {
+    await loadCategories();
+  });
+
+  const loadCategories = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/Gallery/categories?companyId=1`);
+      if (response.ok) {
+        categories.value = await response.json();
+        if (categories.value.length > 0) {
+          selectedCategory.value = categories.value[0];
+          loadImages(categories.value[0].id);
+        }
+      }
+    } catch (error) {
+      console.error("Hiba a kategóriák betöltésekor:", error);
     }
-]);
+  };
+
+  // --- 2. KÉPEK ---
+  const loadImages = async (categoryId) => {
+    if (!categoryId) return;
+    loading.value = true;
+    images.value = [];
+    try {
+      const response = await fetch(`${API_URL}/api/Gallery/images?categoryId=${categoryId}`);
+      if (response.ok) {
+        images.value = await response.json();
+      }
+    } catch (error) {
+      console.error("Hiba a képek betöltésekor:", error);
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const onCategoryChange = (category) => {
+    selectedCategory.value = category;
+    loadImages(category.id);
+  };
+
+  // --- 3. KÉP VÁLASZTÁS ÉS FELTÖLTÉS ---
+
+  // Ez a függvény nyitja meg a rejtett fájlválasztót
+  const triggerFileInput = () => {
+    fileInput.value.click();
+  };
+
+  // Ez fut le, amikor a felhasználó kiválasztotta a fájlt a Windows ablakban
+  const onFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      selectedFile.value = file;
+      uploadStatus.value = "";
+    }
+  };
+
+  const uploadImage = async () => {
+    if (!selectedFile.value) {
+      uploadStatus.value = "Kérlek válassz ki egy képet!";
+      return;
+    }
+    if (!selectedCategory.value) {
+      uploadStatus.value = "Nincs kiválasztva kategória!";
+      return;
+    }
+
+    // Ha nincs cím, a fájlnév lesz (kiterjesztés nélkül)
+    let titleToSend = newImageTitle.value;
+    if (!titleToSend || titleToSend.trim() === "") {
+      titleToSend = selectedFile.value.name.split('.')[0];
+    }
+
+    const formData = new FormData();
+    formData.append("file", selectedFile.value);
+    formData.append("title", titleToSend);
+    formData.append("categoryId", selectedCategory.value.id);
+
+    try {
+      const response = await fetch(`${API_URL}/api/Gallery/upload`, {
+        method: "POST",
+        body: formData
+      });
+
+      if (response.ok) {
+        uploadDialogVisible.value = false;
+
+        // Tiszta lappal indulunk legközelebb
+        newImageTitle.value = "";
+        selectedFile.value = null;
+        uploadStatus.value = "";
+        if (fileInput.value) fileInput.value.value = ""; // Input ürítése
+
+        loadImages(selectedCategory.value.id);
+      } else {
+        uploadStatus.value = "Hiba történt a feltöltéskor.";
+      }
+    } catch (error) {
+      console.error("Feltöltési hiba:", error);
+      uploadStatus.value = "Szerver hiba.";
+    }
+  };
+
+  const deleteImage = async (id) => {
+    if (!confirm("Biztosan törölni szeretnéd ezt a képet?")) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/Gallery/images/${id}`, {
+        method: "DELETE"
+      });
+
+      if (response.ok) {
+        images.value = images.value.filter(img => img.id !== id);
+      }
+    } catch (error) {
+      console.error("Törlési hiba:", error);
+    }
+  };
+
+  const getImageUrl = (imagePath) => {
+    return `${API_URL}${imagePath}`;
+  }
 </script>
 
 <template>
   <div class="gallery-container">
-    <h1 class="gallery-title">Munkáink</h1>
-    <p class="gallery-subtitle">Betekintés a mindennapjainkba és legszebb alkotásainkba.</p>
+    <div class="header-actions">
+      <h1>Galéria</h1>
+      <Button label="Új Kép Feltöltése" icon="pi pi-plus" @click="uploadDialogVisible = true" />
+    </div>
 
-    <div class="photo-grid">
-      <div v-for="(photo, index) in photos" :key="index" class="photo-item">
-        <Image :src="photo.src" :alt="photo.alt" preview width="100%" />
+    <div class="category-tabs" v-if="categories.length > 0">
+      <Button v-for="cat in categories"
+              :key="cat.id"
+              :label="cat.name"
+              :class="{'p-button-outlined': selectedCategory?.id !== cat.id}"
+              class="category-btn"
+              @click="onCategoryChange(cat)" />
+    </div>
+    <div v-else class="no-data">
+      <p>Még nincsenek kategóriák.</p>
+    </div>
+
+    <hr class="divider" />
+
+    <div v-if="loading">Betöltés...</div>
+
+    <div class="photo-grid" v-else>
+      <div v-for="img in images" :key="img.id" class="photo-item-wrapper">
+        <div class="photo-item">
+          <Image :src="getImageUrl(img.imagePath)" :alt="img.title" preview />
+        </div>
+        <div class="photo-info">
+          <span>{{ img.title }}</span>
+          <Button icon="pi pi-trash" class="p-button-danger p-button-text p-button-sm" @click="deleteImage(img.id)" />
+        </div>
       </div>
     </div>
+
+    <div v-if="!loading && images.length === 0 && selectedCategory" class="no-data">
+      <p>Ebben a kategóriában még nincsenek képek.</p>
+    </div>
+
+    <Dialog v-model:visible="uploadDialogVisible" modal header="Új kép feltöltése" :style="{ width: '450px' }">
+      <div class="upload-form">
+
+        <div style="background-color: #f0f8ff; color: #333; padding: 10px; border-radius: 5px; margin-bottom: 15px; border-left: 4px solid #007ad9;">
+          <i class="pi pi-folder-open" style="margin-right: 5px;"></i>
+          Cél mappa: <strong>{{ selectedCategory ? selectedCategory.name : 'Nincs kiválasztva' }}</strong>
+        </div>
+
+        <label style="display:block; margin-bottom: 5px;">Kép címe (Opcionális)</label>
+        <InputText v-model="newImageTitle" placeholder="Kép címe" style="width: 100%; margin-bottom: 20px;" />
+
+        <label style="display:block; margin-bottom: 5px;">Kép kiválasztása</label>
+
+        <input type="file"
+               ref="fileInput"
+               @change="onFileChange"
+               accept="image/*"
+               style="display: none;" />
+
+        <Button label="Kép tallózása..."
+                icon="pi pi-images"
+                class="p-button-secondary p-button-outlined"
+                style="width: 100%"
+                @click="triggerFileInput" />
+
+        <div v-if="selectedFile" style="margin-top: 15px; color: #007ad9; font-weight: bold; text-align: center;">
+          <i class="pi pi-file"></i> {{ selectedFile.name }}
+        </div>
+
+        <div v-if="uploadStatus" style="color: red; margin-top: 10px;">{{ uploadStatus }}</div>
+      </div>
+
+      <template #footer>
+        <Button label="Mégse" icon="pi pi-times" @click="uploadDialogVisible = false" class="p-button-text" />
+        <Button label="Feltöltés" icon="pi pi-check" @click="uploadImage" :disabled="!selectedFile" autofocus />
+      </template>
+    </Dialog>
+
   </div>
 </template>
 
 <style scoped>
   .gallery-container {
-    max-width: 1200px; /* Kicsit szélesebb, hogy jobban elférjenek */
+    max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
-    text-align: center;
   }
 
-  .gallery-title {
-    font-size: 2.5rem;
-    color: #333;
-    margin-bottom: 10px;
+  .header-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
   }
 
-  .gallery-subtitle {
-    color: #666;
-    margin-bottom: 40px;
+  .category-tabs {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
   }
 
-  /* RÁCS ELRENDEZÉS */
+  .category-btn {
+    border-radius: 20px;
+  }
+
   .photo-grid {
     display: grid;
-    /* Reszponzív: Minimum 300px széles legyen egy kép, de ha van hely, nyúljon */
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 24px; /* Nagyobb térköz */
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+  }
+
+  .photo-item-wrapper {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   .photo-item {
-    border-radius: 12px;
-    overflow: hidden; /* Ez vágja le a kép sarkait */
-    box-shadow: 0 8px 15px rgba(0,0,0,0.1); /* Erősebb árnyék */
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    background: white; /* Ha a kép kisebb, legyen fehér háttere */
+    height: 200px;
+    overflow: hidden;
   }
 
-    .photo-item:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 12px 20px rgba(0,0,0,0.15);
-    }
-
-  /* --- A TRÜKKÖS RÉSZ: PRIME VUE IMAGE JAVÍTÁS --- */
-
-  /* A PrimeVue "span" keretét kényszerítjük, hogy töltse ki a dobozt */
-  :deep(.p-image) {
+  :deep(.p-image), :deep(.p-image img) {
     width: 100%;
     height: 100%;
-    display: block; /* Fontos, hogy ne inline elem legyen */
-  }
-
-  /* Magát a képet is formázzuk */
-  :deep(.p-image img) {
-    width: 100%;
-    height: 250px; /* Fix magasság, hogy minden kép egyforma magas legyen! */
-    object-fit: cover; /* Ha a kép aránya más, levágja a szélét, de nem torzít */
+    object-fit: cover;
     display: block;
   }
 
-  /* A "preview" (szem) ikon stílusa, ha esetleg nem látszana jól */
-  :deep(.p-image-preview-indicator) {
-    background-color: rgba(0, 0, 0, 0.5); /* Sötétebb áttetsző réteg */
+  .photo-info {
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: #555;
+  }
+
+  .no-data {
+    text-align: center;
+    color: #999;
+    padding: 40px;
+  }
+
+  .divider {
+    border: 0;
+    height: 1px;
+    background: #eee;
+    margin-bottom: 30px;
   }
 </style>
