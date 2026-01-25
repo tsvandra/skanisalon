@@ -13,6 +13,6 @@ namespace Soluvion.API.Data
         public DbSet<Service> Services{ get; set; }
         public DbSet<GalleryCategory> GalleryCategories{ get; set; }
         public DbSet<GalleryImage> GalleryImages{ get; set; }
-        
+        public DbSet<User> Users{ get; set; }
     }
 }
