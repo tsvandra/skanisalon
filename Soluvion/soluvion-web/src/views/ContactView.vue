@@ -134,7 +134,7 @@ const sendMessage = () => {
         </Card>
 
         <div class="map-container">
-          <iframe src="https://maps.google.com/maps?q=48.03571820467702,17.498286445088155&t=&z=15&ie=UTF8&iwloc=&output=embed"
+          <iframe src="https://maps.google.com/maps?q=48.03571820467702,17.498286445088155&t=&z=16&ie=UTF8&iwloc=&output=embed"
                   width="100%"
                   height="300"
                   style="border:0; border-radius: 12px;"
