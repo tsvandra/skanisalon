@@ -1,38 +1,60 @@
-PROJEKT: Soluvion (Skani Salon) - SaaS Fodr·szat Kezelı Rendszer
+ÔªøPROJEKT: Soluvion (Skani Salon) - SaaS Fodr√°szat Kezel≈ë Rendszer
 
-C…L:
-Egy .NET backend alap˙, Vue.js frontenddel rendelkezı webalkalmaz·s fejlesztÈse.
-Jelenlegi f·zis: Egyedi bemutatkozÛ oldal + Admin funkciÛk egy adott szalonnak.
-Jˆvıbeli cÈl: Multi-tenant (SaaS) rendszer, ahol tˆbb szalon is haszn·lhatja az appot.
+C√âL:
+Egy .NET backend alap√∫, Vue.js frontenddel rendelkez≈ë webalkalmaz√°s fejleszt√©se.
+Jelenlegi f√°zis: Egyedi bemutatkoz√≥ oldal + Admin funkci√≥k (CMS) egy adott szalonnak.
+J√∂v≈ëbeli c√©l: Multi-tenant (SaaS) rendszer, ahol t√∂bb szalon is haszn√°lhatja az appot saj√°t adatb√°zis adatokkal.
 
-TECHNOL”GIAI STACK:
-- Backend: .NET 8 Web API, Entity Framework Core, SQL Server.
+TECHNOL√ìGIAI STACK:
+- Backend: .NET 10 Web API, Entity Framework Core, SQL Server. (Ma 2026.01.27.-e van, szoval letezik a .NET10, nem hazudok)
 - Frontend: Vue 3 (Composition API), Vite, PrimeVue komponensek.
-- Autentik·ciÛ: JWT Token (Bearer auth).
+- Autentik√°ci√≥: JWT Token (Bearer auth).
 
-ARCHITEKT⁄RA SZAB¡LYOK (SaaS ElıkÈszÌtÈs):
-1. Adatb·zis: Minden ¸zleti entit·s (Service, Gallery, User) rendelkezik 'CompanyId'-vel.
-2. Frontend: Nem drÛtozunk be fix cÈgneveket/logÛkat, API-bÛl vagy configbÛl jˆnnek.
-3. Biztons·g: M˚veleteknÈl a 'CompanyId'-t a User Token-bıl (Claims) olvassuk ki.
+ARCHITEKT√öRA SZAB√ÅLYOK (SaaS El≈ëk√©sz√≠t√©s):
+1. Adatb√°zis: Minden √ºzleti entit√°s (Service, Gallery, User, GalleryCategory) rendelkezik 'CompanyId'-vel.
+2. Frontend: Nem dr√≥tozunk be fix c√©gneveket/log√≥kat/sz√≠neket/el√©rhet≈ës√©get. Minden adatot API-b√≥l k√©r√ºnk le indul√°skor (`App.vue` -> `fetchCompanyData`).
+3. Biztons√°g: M≈±veletekn√©l (POST, PUT, DELETE) a 'CompanyId'-t a User Token-b≈ël (Claims) olvassuk ki a Backend oldalon.
 
-EDDIG ELK…SZ‹LT FUNKCI”K:
-1. Publikus: Home, Services (¡rlista), Gallery, Contact.
-2. Admin: Login (JWT), GalÈria feltˆltÈs/tˆrlÈs, ¡rlista szerkesztÈs/tˆrlÈs.
-3. Backend vÈdelem: [Authorize] attrib˙tumok Ès CompanyId ellenırzÈs a Controllerekben.
+EDDIG ELK√âSZ√úLT FUNKCI√ìK:
+1. Publikus Oldalak:
+   - Home: Bemutatkoz√°s, √Årlista gomb (Dinamikus sz√≠nekkel), Id≈ëpontfoglal√°s gomb a kapcsolat oldara iranyitva.
+   - Services (√Årlista): Adatb√°zisb√≥l t√∂lt√∂tt √°rak.
+   - Gallery: Kateg√≥ri√°kra sz≈±rt k√©pek.
+   - Contact: Teljesen dinamikus. A c√≠m, telefon, email, nyitvatart√°s sz√∂vegek, 1x social link (bovitesre v√°r) √©s Google Maps embed az SQL-b≈ël j√∂n.
 
-DESIGN SYSTEM (Szigor˙an tartandÛ!):
-- AlapszÌnek (UI Keret):
-  - Fekete/SˆtÈtsz¸rke (#1a1a1a): H·ttÈr, FejlÈc.
-  - Arany (#d4af37): KiemelÈsek, Gombok, Keretek.
-  - FehÈr (#ffffff): Szˆveg, K·rty·k.
-- Brand SzÌn (LogÛ):
-  - KÈk ¡tmenet: rgb(24, 160, 198) -> rgb(17, 108, 135).
-  - HASZN¡LAT: Csak a LogÛban Ès kiemelt m·rkajelzÈseknÈl! Ne keverj¸k a UI elemekkel (gombokkal), azok maradjanak aranyak.
-- StÌlus:
-  - Eleg·ns, minimalista. Font: 'Playfair Display' (cÌmek).
-  - Gombok: LekerekÌtett (4-6px), Arany h·ttÈr.
+2. Admin Funkci√≥k (Csak bejelentkezve):
+   - Login: JWT token alap√∫, biztons√°gos bel√©p√©s.
+   - Gal√©ria Kezel√©s:
+     - K√©p felt√∂lt√©se.
+     - √öj kateg√≥ria l√©trehoz√°sa ("+ √öj kateg√≥ria..." opci√≥).
+     - K√©p t√∂rl√©se (saj√°t c√©ghez k√∂tve).
+   - √Årlista Kezel√©s: √öj szolg√°ltat√°s felv√©tele, t√∂rl√©se.
+   - C√©gbe√°ll√≠t√°sok (Settings):
+     - K√ºl√∂n Admin oldal (`/beallitasok`).
+     - Szerkeszthet≈ë: Alapadatok: Cegnev, Emailcim, telefonszam, C√≠m, Nyitvatart√°s sz√∂vegek (HTML t√°mogat√°ssal)(4x textbox), Social linkek.
+     - Szerkeszthet≈ë Diz√°jn: Primary/Secondary sz√≠nek val√≥s idej≈± m√≥dos√≠t√°sa.
 
-FILE STRUKT⁄RA:
-- GyˆkÈr: Soluvion mappa.
+3. Backend API V√©gpontok:
+   - Auth (Login/Register).
+   - Company (GetById, Update - PUT, CreateCompany).
+   - Gallery (Get, GetCategories, Upload, Delete).
+   - Service (Get, Post, Delete).
+
+DESIGN SYSTEM (Szigor√∫an tartand√≥!):
+- Technikai Megval√≥s√≠t√°s: CSS V√°ltoz√≥kat (Variables) haszn√°lunk (`var(--primary-color)`, `var(--secondary-color)`), amiket az `App.vue` √°ll√≠t be az adatb√°zis alapj√°n.
+- Alapsz√≠nek (Jelenlegi Skani be√°ll√≠t√°s):
+  - M√°sodlagos (H√°tt√©r/Sz√∂veg): #1a1a1a (Fekete/S√∂t√©tsz√ºrke).
+  - Els≈ëdleges (Akci√≥/Kiemel√©s): #d4af37 (Arany).
+  - Sz√∂veg kontraszt: S√∂t√©t h√°tt√©ren vil√°gos sz√∂veg.
+- Brand Sz√≠n (Log√≥):
+  - K√©k √Åtmenet: rgb(24, 160, 198) -> rgb(17, 108, 135).
+  - HASZN√ÅLAT: Csak a Log√≥ban! A UI elemek (gombok, ikonok) maradjanak az Els≈ëdleges sz√≠nn√©l (Arany).
+- St√≠lus:
+  - Eleg√°ns, minimalista. Font: 'Playfair Display'.
+  - Gombok: Arany h√°tt√©r, Fekete sz√∂veg, Keret n√©lk√ºl.
+  - Inputok: F√≥kuszban Arany keret.
+
+FILE STRUKT√öRA:
+- Gy√∂k√©r: Soluvion mappa.
 - Backend: Soluvion.API
 - Frontend: soluvion-web

@@ -111,8 +111,8 @@
 
 <template>
   <div class="gallery-container">
-    <h1>Munkáink</h1>
-    <p class="intro">Tekintse meg legújabb frizuráinkat és stílusainkat.</p>
+    <h1>Munkáim</h1>
+    <p class="intro">Tekintsd meg a legújabb frizuráimat és stílusaimat.</p>
 
     <div class="upload-section" v-if="isLoggedIn">
       <h3>Új kép feltöltése</h3>

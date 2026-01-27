@@ -31,7 +31,7 @@
   <div class="contact-container">
     <div class="header-section">
       <h1>Kapcsolat</h1>
-      <p>Kérdése van? Időpontot foglalna? Keressen minket bizalommal!</p>
+      <p>Kérdésed van? Időpontot foglalnál? Keress fel bizalommal!</p>
     </div>
 
     <div class="grid-layout">
@@ -40,7 +40,7 @@
 
         <Card style="margin-bottom: 20px;" class="custom-card">
           <template #title>
-            Elérhetőségeink
+            Elérhetőségeim
           </template>
           <template #content>
             <ul class="contact-list">
@@ -119,15 +119,15 @@
 
         <Card style="margin-bottom: 20px;" class="custom-card">
           <template #title>
-            Írjon nekünk!
+            Írj bátran!
           </template>
           <template #content>
             <div v-if="submitted" style="margin-bottom: 15px;">
-              <Message severity="success" :closable="false">Köszönjük! Üzenetét megkaptuk.</Message>
+              <Message severity="success" :closable="false">Köszönöm! Üzenetedet megkaptam.</Message>
             </div>
             <div class="form-group">
               <label>Név</label>
-              <InputText v-model="name" placeholder="Az Ön neve" style="width: 100%" class="custom-input" />
+              <InputText v-model="name" placeholder="Ide jön a neved" style="width: 100%" class="custom-input" />
             </div>
             <div class="form-group">
               <label>Email cím</label>

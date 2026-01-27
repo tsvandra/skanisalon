@@ -19,11 +19,11 @@
 
     <div class="hero-section">
       <div class="hero-content">
-        <h1 class="main-title">SKANI SALON</h1>
+        <h1 class="main-title">SZKÁNI SZALON</h1>
         <p class="subtitle">Stílus. Elegancia. Szépség.</p>
 
         <div class="hero-buttons">
-          <Button label="Árlista megtekintése" icon="pi pi-list" class="p-button-raised p-button-warning" @click="goToServices" style="margin-right: 15px;" />
+          <Button label="Árlista megtekintése" icon="pi pi-list" class="p-button-raised p-button-warning" @click="goToServices" style="margin-right: 15px; background: var(--primary-color); border:none" />
           <Button label="Időpontfoglalás" icon="pi pi-calendar" class="p-button-outlined p-button-secondary" style="background: white; color: #333" @click="goToContact" />
         </div>
       </div>
@@ -32,16 +32,16 @@
     <div class="content-section">
       <Card style="width: 100%; margin-bottom: 2rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
         <template #title>
-          Üdvözöljük Szalonunkban!
+          Üdvözöllek szalonomban!
         </template>
         <template #content>
           <p class="intro-text">
-            Sok szeretettel várunk minden kedves régi és új vendéget a Skani Salonban!
-            Célunk, hogy a nálunk töltött idő ne csak egy szolgáltatás legyen, hanem igazi feltöltődés.
-            Professzionális anyagaink és szakértelmünk garancia a minőségre.
+            Sok szeretettel várok minden kedves régi és új vendéget a Szkáni Szalonban!
+            Célom, hogy a nálunk töltött idő ne csak egy szolgáltatás legyen, hanem igazi feltöltődés.
+            Professzionális anyagaim és szakértelmem garancia a minőségre.
           </p>
           <p>
-            Tekintse meg folyamatosan bővülő szolgáltatásainkat és galériánkat.
+            Tekintsd meg folyamatosan bővülő szolgáltatásaimat és galériámat.
           </p>
         </template>
       </Card>
@@ -124,7 +124,7 @@
   .intro-text {
     line-height: 1.6;
     font-size: 1.1rem;
-    color: #444;
+    color: #888;
   }
 
   /* Mobilon kisebb betűk */
