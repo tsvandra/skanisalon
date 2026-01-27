@@ -1,33 +1,30 @@
 <script setup>
-import { ref } from 'vue';
-import Card from 'primevue/card';
-import InputText from 'primevue/inputtext';
-import Textarea from 'primevue/textarea';
-import Button from 'primevue/button';
-import Message from 'primevue/message';
+  import { ref, inject } from 'vue'; // inject kell a cégadatokhoz!
+  import Card from 'primevue/card';
+  import InputText from 'primevue/inputtext';
+  import Textarea from 'primevue/textarea';
+  import Button from 'primevue/button';
+  import Message from 'primevue/message';
 
-const name = ref('');
-const email = ref('');
-const messageText = ref('');
-const submitted = ref(false);
+  // 1. BEHÚZZUK A CÉGADATOKAT
+  const company = inject('company');
 
-const sendMessage = () => {
-    // Itt később beköthetjük a valódi email küldést az API-n keresztül
+  const name = ref('');
+  const email = ref('');
+  const messageText = ref('');
+  const submitted = ref(false);
+
+  const sendMessage = () => {
     if (name.value && email.value && messageText.value) {
-        submitted.value = true;
-        // Űrlap törlése
-        name.value = '';
-        email.value = '';
-        messageText.value = '';
-
-        // 3 másodperc múlva eltűnik a sikerüzenet
-        setTimeout(() => {
-            submitted.value = false;
-        }, 3000);
+      submitted.value = true;
+      name.value = '';
+      email.value = '';
+      messageText.value = '';
+      setTimeout(() => { submitted.value = false; }, 3000);
     } else {
-        alert("Kérlek tölts ki minden mezőt!");
+      alert("Kérlek tölts ki minden mezőt!");
     }
-}
+  }
 </script>
 
 <template>
@@ -41,65 +38,77 @@ const sendMessage = () => {
 
       <div class="info-column">
 
-        <Card style="margin-bottom: 20px;">
+        <Card style="margin-bottom: 20px;" class="custom-card">
           <template #title>
             Elérhetőségeink
           </template>
           <template #content>
             <ul class="contact-list">
-              <li>
+              <li v-if="company?.city">
                 <i class="pi pi-map-marker icon"></i>
                 <div>
                   <strong>Cím:</strong><br>
-                  930 36 Horná Potôň<br>
-                  Záhradnícka 593.
+                  {{ company.postalCode }} {{ company.city }}<br>
+                  {{ company.streetName }} {{ company.houseNumber }}.
                 </div>
               </li>
-              <li>
+              <li v-if="company?.phone">
                 <i class="pi pi-phone icon"></i>
                 <div>
                   <strong>Telefon:</strong><br>
-                  <a href="tel:+421905105691">+421 905 105 691</a>
+                  <a :href="`tel:${company.phone}`">{{ company.phone }}</a>
                 </div>
               </li>
-              <li>
+              <li v-if="company?.email">
                 <i class="pi pi-envelope icon"></i>
                 <div>
                   <strong>Email:</strong><br>
-                  <a href="mailto:szkaniszalon@gmail.com">szkaniszalon@gmail.com</a>
+                  <a :href="`mailto:${company.email}`">{{ company.email }}</a>
                 </div>
               </li>
             </ul>
           </template>
         </Card>
 
-        <Card>
+        <Card class="custom-card">
           <template #title>
             Nyitvatartás
           </template>
           <template #content>
             <div class="opening-info">
+
               <div style="margin-bottom: 20px;">
-                <i class="pi pi-calendar-clock" style="font-size: 2rem; color: var(--p-primary-color); margin-bottom: 10px;"></i>
-                <h3 style="margin: 0; color: #888;">Bejelentkezés alapján</h3>
+                <i class="pi pi-calendar-clock" style="font-size: 2rem; color: var(--primary-color); margin-bottom: 10px;"></i>
+                <h3 style="margin: 0; color: #888;">{{ company?.openingHoursTitle || 'Nyitvatartás' }}</h3>
               </div>
 
-              <p style="line-height: 1.6; color: #888;">
-                Jelenleg kizárólag előre egyeztetett időpontban fogadok vendégeket.
+              <p v-if="company?.openingHoursDescription" style="line-height: 1.6; color: #888;">
+                {{ company.openingHoursDescription }}
               </p>
 
-              <div style="background: #f9f9f9; color: #555; padding: 15px; border-radius: 8px; border-left: 4px solid var(--p-primary-color); margin: 15px 0;">
-                <strong>Főként elérhető időpontok:</strong><br>
-                Hétköznap: 16:00 - 18:00
+              <div v-if="company?.openingTimeSlots"
+                   style="background: #f9f9f9; color: #555; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary-color); margin: 15px 0;"
+                   v-html="company.openingTimeSlots">
               </div>
 
-              <p style="font-size: 0.9rem; margin-top: 20px;">
-                A hirtelen felszabaduló időpontokat Facebook oldalunkon tesszük közzé:
+              <p v-if="company?.openingExtraInfo" style="font-size: 0.9rem; margin-top: 20px;">
+                {{ company.openingExtraInfo }}
               </p>
 
-              <a href="https://www.facebook.com/profile.php?id=100089712034134&sk=about" target="_blank" style="text-decoration: none;">
-                <Button label="Facebook oldalunk" icon="pi pi-facebook" class="p-button-outlined" style="width: 100%;" />
-              </a>
+              <div class="social-buttons" style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+
+                <a v-if="company?.facebookUrl" :href="company.facebookUrl" target="_blank" style="text-decoration: none; flex: 1;">
+                  <Button label="Facebook" icon="pi pi-facebook" class="p-button-outlined custom-btn-outline" style="width: 100%;" />
+                </a>
+
+                <a v-if="company?.instagramUrl" :href="company.instagramUrl" target="_blank" style="text-decoration: none; flex: 1;">
+                  <Button label="Instagram" icon="pi pi-instagram" class="p-button-outlined custom-btn-outline" style="width: 100%;" />
+                </a>
+
+                <a v-if="company?.tikTokUrl" :href="company.tikTokUrl" target="_blank" style="text-decoration: none; flex: 1;">
+                  <Button label="TikTok" icon="pi pi-video" class="p-button-outlined custom-btn-outline" style="width: 100%;" />
+                </a>
+              </div>
             </div>
           </template>
         </Card>
@@ -108,7 +117,7 @@ const sendMessage = () => {
 
       <div class="form-column">
 
-        <Card style="margin-bottom: 20px;">
+        <Card style="margin-bottom: 20px;" class="custom-card">
           <template #title>
             Írjon nekünk!
           </template>
@@ -116,25 +125,24 @@ const sendMessage = () => {
             <div v-if="submitted" style="margin-bottom: 15px;">
               <Message severity="success" :closable="false">Köszönjük! Üzenetét megkaptuk.</Message>
             </div>
-
             <div class="form-group">
               <label>Név</label>
-              <InputText v-model="name" placeholder="Az Ön neve" style="width: 100%" />
+              <InputText v-model="name" placeholder="Az Ön neve" style="width: 100%" class="custom-input" />
             </div>
             <div class="form-group">
               <label>Email cím</label>
-              <InputText v-model="email" placeholder="pelda@email.com" style="width: 100%" />
+              <InputText v-model="email" placeholder="pelda@email.com" style="width: 100%" class="custom-input" />
             </div>
             <div class="form-group">
               <label>Üzenet</label>
-              <Textarea v-model="messageText" rows="4" placeholder="Miben segíthetek?" style="width: 100%" />
+              <Textarea v-model="messageText" rows="4" placeholder="Miben segíthetek?" style="width: 100%" class="custom-input" />
             </div>
-            <Button label="Üzenet küldése" icon="pi pi-send" @click="sendMessage" />
+            <Button label="Üzenet küldése" icon="pi pi-send" @click="sendMessage" class="custom-btn" />
           </template>
         </Card>
 
-        <div class="map-container">
-          <iframe src="https://maps.google.com/maps?q=48.03571820467702,17.498286445088155&t=&z=16&ie=UTF8&iwloc=&output=embed"
+        <div class="map-container" v-if="company?.mapEmbedUrl">
+          <iframe :src="company.mapEmbedUrl"
                   width="100%"
                   height="300"
                   style="border:0; border-radius: 12px;"
@@ -162,20 +170,24 @@ const sendMessage = () => {
 
     .header-section h1 {
       font-size: 2.5rem;
-      color: #999;
+      color: var(--primary-color);
       margin-bottom: 10px;
     }
+
+    .header-section p {
+      color: #ccc;
+    }
+
   .opening-info {
-      text-align: center;
+    text-align: center;
   }
-  /* Kétoszlopos elrendezés (Grid) */
+
   .grid-layout {
     display: grid;
-    grid-template-columns: 1fr 1.5fr; /* A jobb oldal kicsit szélesebb */
+    grid-template-columns: 1fr 1.5fr;
     gap: 30px;
   }
 
-  /* Mobilon egymás alá kerüljenek */
   @media (max-width: 768px) {
     .grid-layout {
       grid-template-columns: 1fr;
@@ -197,7 +209,7 @@ const sendMessage = () => {
 
     .contact-list .icon {
       font-size: 1.5rem;
-      color: var(--p-primary-color);
+      color: var(--primary-color);
       margin-right: 15px;
       margin-top: 3px;
     }
@@ -209,30 +221,8 @@ const sendMessage = () => {
     }
 
       .contact-list a:hover {
-        color: var(--p-primary-color);
+        color: var(--primary-color);
       }
-
-  /* Nyitvatartás táblázat stílus */
-  .hours-table {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .hour-row {
-    display: flex;
-    justify-content: space-between;
-    padding-bottom: 8px;
-    border-bottom: 1px dashed #ddd;
-  }
-
-    .hour-row:last-child {
-      border-bottom: none;
-    }
-
-    .hour-row.closed {
-      color: #999;
-    }
 
   .form-group {
     margin-bottom: 20px;
@@ -248,5 +238,35 @@ const sendMessage = () => {
   .map-container {
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     border-radius: 12px;
+    overflow: hidden;
+  }
+
+  /* Gombok felülírása */
+  :deep(.custom-btn) {
+    background: var(--primary-color) !important;
+    border: 1px solid var(--primary-color) !important;
+    color: var(--secondary-color) !important;
+    font-weight: bold;
+  }
+
+  :deep(.custom-btn:hover) {
+    background: #b5952f !important;
+    border-color: #b5952f !important;
+  }
+
+  /* Outlined gomb */
+  :deep(.custom-btn-outline) {
+    color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+  }
+
+  :deep(.custom-btn-outline:hover) {
+    background: rgba(212, 175, 55, 0.1) !important;
+  }
+
+  /* Input mezők fókuszban */
+  :deep(.custom-input:focus) {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 1px var(--primary-color) !important;
   }
 </style>

@@ -1,97 +1,111 @@
 <script setup>
-  import { ref, onMounted } from 'vue';
+  import { ref, onMounted, computed } from 'vue';
 
   const images = ref([]);
+  const categories = ref([]); // Itt tároljuk a betöltött kategóriákat
   const selectedFile = ref(null);
-  const category = ref('Hajvágás');
   const isLoading = ref(false);
-  const isLoggedIn = ref(false); // ÚJ: Itt tároljuk, hogy be vagy-e lépve
+  const isLoggedIn = ref(false);
 
-  // Képek betöltése
-  const fetchImages = async () => {
+  // Kategória kezelés
+  const selectedCategory = ref(''); // Amit a listából választott
+  const customCategory = ref(''); // Amit kézzel írt be
+  const isNewCategoryMode = computed(() => selectedCategory.value === 'NEW');
+
+  // Backend URL
+  const API_URL = 'https://localhost:7113/api/Gallery'; // Ellenőrizd a portot!
+
+  // Adatok betöltése
+  const fetchData = async () => {
     try {
-      const res = await fetch('https://localhost:7113/api/Gallery'); // Ellenőrizd a portot!
-      if (res.ok) {
-        images.value = await res.json();
+      // 1. Képek lekérése
+      const resImages = await fetch(API_URL);
+      if (resImages.ok) images.value = await resImages.json();
+
+      // 2. Kategóriák lekérése
+      const resCats = await fetch(`${API_URL}/categories`);
+      if (resCats.ok) {
+        categories.value = await resCats.json();
+        // Alapértelmezett választás: az első kategória, vagy ha nincs, akkor üres
+        if (categories.value.length > 0) {
+          selectedCategory.value = categories.value[0];
+        } else {
+          selectedCategory.value = 'NEW'; // Ha nincs semmi, akkor rögtön új hozzáadása
+        }
       }
     } catch (error) {
-      console.error("Hiba a képek betöltésekor:", error);
+      console.error("Hiba az adatok betöltésekor:", error);
     }
   };
 
-  // Fájl kiválasztása
   const handleFileChange = (event) => {
     selectedFile.value = event.target.files[0];
   };
 
-  // Kép feltöltése (Csak ha be vagy lépve)
   const uploadImage = async () => {
     if (!selectedFile.value) return;
-    isLoading.value = true;
 
+    // Melyik kategórianevet küldjük?
+    let categoryToSend = selectedCategory.value;
+    if (isNewCategoryMode.value) {
+      categoryToSend = customCategory.value.trim();
+      if (!categoryToSend) {
+        alert("Kérlek add meg az új kategória nevét!");
+        return;
+      }
+    }
+
+    isLoading.value = true;
     const formData = new FormData();
     formData.append('file', selectedFile.value);
-    formData.append('category', category.value);
-    // Itt a jövőben majd elküldjük a CompanyId-t is automatikusan a Token segítségével
+    formData.append('category', categoryToSend);
 
     try {
-      // A token csatolása a kéréshez (hogy a backend tudja, ki vagy)
       const token = localStorage.getItem('salon_token');
-
-      const res = await fetch('https://localhost:7113/api/Gallery', { // Ellenőrizd a portot!
+      const res = await fetch(API_URL, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}` // "Itt a belépőkártyám!"
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
         body: formData
       });
 
       if (res.ok) {
+        // Siker!
         selectedFile.value = null;
-        // Input mező törlése
+        customCategory.value = ''; // Töröljük a beírt szöveget
         document.getElementById('fileInput').value = "";
-        await fetchImages(); // Lista frissítése
+
+        // Újratöltjük az egészet (így az új kategória bekerül a listába is!)
+        await fetchData();
+
+        // Visszaállunk az imént feltöltött kategóriára a listában
+        selectedCategory.value = categoryToSend;
+
       } else {
-        alert("Hiba a feltöltésnél! (Lehet, hogy lejárt a belépésed?)");
+        alert("Hiba a feltöltésnél!");
       }
     } catch (error) {
-      console.error("Hiba:", error);
-      alert("Nem sikerült csatlakozni a szerverhez.");
+      console.error(error);
     } finally {
       isLoading.value = false;
     }
   };
 
-  // Kép törlése (Csak ha be vagy lépve)
   const deleteImage = async (id) => {
-    if (!confirm("Biztosan törölni szeretnéd ezt a képet?")) return;
-
+    if (!confirm("Biztosan törölni szeretnéd?")) return;
     try {
       const token = localStorage.getItem('salon_token');
-
-      const res = await fetch(`https://localhost:7113/api/Gallery/${id}`, { // Ellenőrizd a portot!
+      const res = await fetch(`${API_URL}/${id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}` // "Itt a belépőkártyám, jogom van törölni!"
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-
-      if (res.ok) {
-        await fetchImages();
-      } else {
-        alert("Hiba a törlésnél!");
-      }
-    } catch (error) {
-      console.error("Hiba:", error);
-    }
+      if (res.ok) await fetchData();
+    } catch (error) { console.error(error); }
   };
 
   onMounted(() => {
-    // 1. Megnézzük, van-e token a "zsebben"
     const token = localStorage.getItem('salon_token');
-    isLoggedIn.value = !!token; // Ha van szöveg, akkor true, ha nincs, akkor false
-
-    fetchImages();
+    isLoggedIn.value = !!token;
+    fetchData();
   });
 </script>
 
@@ -101,15 +115,25 @@
     <p class="intro">Tekintse meg legújabb frizuráinkat és stílusainkat.</p>
 
     <div class="upload-section" v-if="isLoggedIn">
-      <h3>Új kép feltöltése (Admin)</h3>
+      <h3>Új kép feltöltése</h3>
       <div class="upload-controls">
-        <input type="file" @change="handleFileChange" id="fileInput" accept="image/*" />
-        <select v-model="category">
-          <option>Hajvágás</option>
-          <option>Festés</option>
-          <option>Esküvői frizura</option>
-        </select>
-        <button @click="uploadImage" :disabled="isLoading || !selectedFile">
+
+        <input type="file" @change="handleFileChange" id="fileInput" accept="image/*" class="file-input" />
+
+        <div class="category-wrapper">
+          <select v-model="selectedCategory" class="cat-select">
+            <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+            <option value="NEW" style="font-weight: bold; color: var(--primary-color);">+ Új kategória...</option>
+          </select>
+
+          <input v-if="isNewCategoryMode"
+                 v-model="customCategory"
+                 type="text"
+                 placeholder="Írd be az új nevet..."
+                 class="custom-cat-input" />
+        </div>
+
+        <button @click="uploadImage" :disabled="isLoading || !selectedFile" class="upload-btn">
           {{ isLoading ? 'Feltöltés...' : 'Feltöltés' }}
         </button>
       </div>
@@ -119,10 +143,16 @@
       <div v-for="image in images" :key="image.id" class="gallery-item">
         <img :src="image.imageUrl" :alt="image.category" loading="lazy" />
         <div class="overlay">
-          <span>{{ image.category }}</span>
-          <button v-if="isLoggedIn" @click="deleteImage(image.id)" class="delete-btn">Törlés</button>
+          <span class="cat-badge">{{ image.category }}</span>
+          <button v-if="isLoggedIn" @click="deleteImage(image.id)" class="delete-btn" title="Törlés">
+            <i class="pi pi-trash"></i>
+          </button>
         </div>
       </div>
+    </div>
+
+    <div v-if="images.length === 0" class="empty-state">
+      Még nincsenek feltöltött képek.
     </div>
   </div>
 </template>
@@ -137,21 +167,21 @@
 
   h1 {
     font-size: 2.5rem;
-    color: #333;
+    color: var(--primary-color);
     margin-bottom: 1rem;
   }
 
   .intro {
-    color: #666;
+    color: #888;
     margin-bottom: 2rem;
   }
 
-  /* Feltöltő doboz stílusa */
+  /* Feltöltő doboz */
   .upload-section {
     background: #f8f9fa;
     padding: 1.5rem;
     border-radius: 8px;
-    border: 1px dashed #d4af37;
+    border: 1px dashed var(--primary-color);
     margin-bottom: 2rem;
     display: inline-block;
     min-width: 300px;
@@ -159,30 +189,51 @@
 
     .upload-section h3 {
       margin-top: 0;
-      color: #d4af37;
+      color: var(--primary-color);
     }
 
   .upload-controls {
     display: flex;
-    gap: 10px;
+    gap: 15px;
     justify-content: center;
     align-items: center;
     flex-wrap: wrap;
   }
 
-    .upload-controls button {
-      background-color: #d4af37;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 4px;
-      cursor: pointer;
-    }
+  .category-wrapper {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+  }
 
-      .upload-controls button:disabled {
-        background-color: #ccc;
-        cursor: not-allowed;
-      }
+  .cat-select {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    min-width: 150px;
+  }
+
+  .custom-cat-input {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid var(--primary-color);
+    outline: none;
+  }
+
+  .upload-btn {
+    background-color: var(--primary-color);
+    color: var(--secondary-color);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+    .upload-btn:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
 
   /* Galéria rács */
   .gallery-grid {
@@ -195,20 +246,19 @@
     position: relative;
     overflow: hidden;
     border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     aspect-ratio: 1;
-    group: hover;
+    background: #2c2c2c;
   }
 
     .gallery-item img {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 0.3s ease;
+      transition: transform 0.5s ease;
     }
 
     .gallery-item:hover img {
-      transform: scale(1.05);
+      transform: scale(1.1);
     }
 
   .overlay {
@@ -216,9 +266,8 @@
     bottom: 0;
     left: 0;
     right: 0;
-    background: rgba(0, 0, 0, 0.6);
-    color: white;
-    padding: 10px;
+    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+    padding: 15px;
     transform: translateY(100%);
     transition: transform 0.3s ease;
     display: flex;
@@ -230,17 +279,31 @@
     transform: translateY(0);
   }
 
+  .cat-badge {
+    background-color: var(--primary-color);
+    color: var(--secondary-color);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+  }
+
   .delete-btn {
     background-color: #ff4444;
     color: white;
     border: none;
-    padding: 4px 8px;
+    padding: 6px 10px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 0.8rem;
   }
 
     .delete-btn:hover {
       background-color: #cc0000;
     }
+
+  .empty-state {
+    margin-top: 3rem;
+    color: #666;
+    font-style: italic;
+  }
 </style>

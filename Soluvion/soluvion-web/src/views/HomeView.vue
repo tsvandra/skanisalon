@@ -74,6 +74,13 @@
     margin-bottom: 40px;
   }
 
+  h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    /* Már nem kell fix szín, mert az App.vue globálisan kezeli, de felülírhatjuk */
+    color: var(--primary-color);
+  }
+
   .main-title {
     font-size: 3.5rem;
     font-weight: bold;
@@ -86,8 +93,27 @@
     font-size: 1.5rem;
     margin-top: 10px;
     margin-bottom: 30px;
+    color: #fff; /* Fehér szöveg fekete alapon */
     font-style: italic;
   }
+
+  .cta-button {
+    display: inline-block;
+    /* JAVÍTÁS: Itt volt a zöld, most Arany (primary) */
+    background-color: var(--primary-color);
+    color: var(--secondary-color); /* A szöveg rajta legyen fekete a kontraszt miatt */
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: transform 0.2s, background-color 0.2s;
+  }
+
+    .cta-button:hover {
+      transform: scale(1.05);
+      /* Hoverre kicsit világosítunk rajta, vagy sötétítünk */
+      filter: brightness(1.1);
+    }
 
   .content-section {
     max-width: 900px;

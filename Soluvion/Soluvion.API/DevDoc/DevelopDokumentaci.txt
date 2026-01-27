@@ -1,0 +1,38 @@
+PROJEKT: Soluvion (Skani Salon) - SaaS Fodrászat Kezelõ Rendszer
+
+CÉL:
+Egy .NET backend alapú, Vue.js frontenddel rendelkezõ webalkalmazás fejlesztése.
+Jelenlegi fázis: Egyedi bemutatkozó oldal + Admin funkciók egy adott szalonnak.
+Jövõbeli cél: Multi-tenant (SaaS) rendszer, ahol több szalon is használhatja az appot.
+
+TECHNOLÓGIAI STACK:
+- Backend: .NET 8 Web API, Entity Framework Core, SQL Server.
+- Frontend: Vue 3 (Composition API), Vite, PrimeVue komponensek.
+- Autentikáció: JWT Token (Bearer auth).
+
+ARCHITEKTÚRA SZABÁLYOK (SaaS Elõkészítés):
+1. Adatbázis: Minden üzleti entitás (Service, Gallery, User) rendelkezik 'CompanyId'-vel.
+2. Frontend: Nem drótozunk be fix cégneveket/logókat, API-ból vagy configból jönnek.
+3. Biztonság: Mûveleteknél a 'CompanyId'-t a User Token-bõl (Claims) olvassuk ki.
+
+EDDIG ELKÉSZÜLT FUNKCIÓK:
+1. Publikus: Home, Services (Árlista), Gallery, Contact.
+2. Admin: Login (JWT), Galéria feltöltés/törlés, Árlista szerkesztés/törlés.
+3. Backend védelem: [Authorize] attribútumok és CompanyId ellenõrzés a Controllerekben.
+
+DESIGN SYSTEM (Szigorúan tartandó!):
+- Alapszínek (UI Keret):
+  - Fekete/Sötétszürke (#1a1a1a): Háttér, Fejléc.
+  - Arany (#d4af37): Kiemelések, Gombok, Keretek.
+  - Fehér (#ffffff): Szöveg, Kártyák.
+- Brand Szín (Logó):
+  - Kék Átmenet: rgb(24, 160, 198) -> rgb(17, 108, 135).
+  - HASZNÁLAT: Csak a Logóban és kiemelt márkajelzéseknél! Ne keverjük a UI elemekkel (gombokkal), azok maradjanak aranyak.
+- Stílus:
+  - Elegáns, minimalista. Font: 'Playfair Display' (címek).
+  - Gombok: Lekerekített (4-6px), Arany háttér.
+
+FILE STRUKTÚRA:
+- Gyökér: Soluvion mappa.
+- Backend: Soluvion.API
+- Frontend: soluvion-web

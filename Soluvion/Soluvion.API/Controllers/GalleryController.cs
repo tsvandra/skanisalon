@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
 using Soluvion.API.Models;
-using System.Security.Claims; // Ez kell a User adatok olvasásához
+using System.Security.Claims;
 
 namespace Soluvion.API.Controllers
 {
@@ -22,17 +22,16 @@ namespace Soluvion.API.Controllers
 
         // GET: api/Gallery
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<object>>> GetImages()
+        public async Task<ActionResult<IEnumerable<object>>> GetImages([FromQuery] int companyId = 1)
         {
-            // Itt "lefordítjuk" az adatbázis szerkezetét a Frontend nyelvére
-            // Hogy a Frontend továbbra is 'imageUrl'-t és 'category' szöveget kapjon
             var images = await _context.GalleryImages
-                .Include(i => i.Category) // Betöltjük a kapcsolódó kategóriát
+                .Include(i => i.Category)
+                .Where(i => i.Category.CompanyId == companyId)
                 .Select(i => new
                 {
                     id = i.Id,
-                    imageUrl = i.ImagePath, // Adatbázisban ImagePath, Frontendnek imageUrl
-                    category = i.Category != null ? i.Category.Name : "Egyéb", // Kategória név kinyerése
+                    imageUrl = i.ImagePath,
+                    category = i.Category != null ? i.Category.Name : "Egyéb",
                     title = i.Title
                 })
                 .ToListAsync();
@@ -40,15 +39,26 @@ namespace Soluvion.API.Controllers
             return Ok(images);
         }
 
+        // --- ÚJ VÉGPONT: Kategóriák lekérése ---
+        [HttpGet("categories")]
+        public async Task<ActionResult<IEnumerable<string>>> GetCategories([FromQuery] int companyId = 1)
+        {
+            var categories = await _context.GalleryCategories
+                .Where(c => c.CompanyId == companyId)
+                .Select(c => c.Name)
+                .Distinct() // Hogy ne legyen duplikáció
+                .ToListAsync();
+
+            return Ok(categories);
+        }
+
         // POST: api/Gallery
         [HttpPost]
         [Authorize]
         public async Task<ActionResult<object>> UploadImage(IFormFile file, [FromForm] string category)
         {
-            if (file == null || file.Length == 0)
-                return BadRequest("Nem választottál ki képet!");
+            if (file == null || file.Length == 0) return BadRequest("Nem választottál ki képet!");
 
-            // 1. Kép mentése fájlrendszerbe
             string uploadsFolder = Path.Combine(_environment.WebRootPath, "images");
             if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
 
@@ -60,24 +70,19 @@ namespace Soluvion.API.Controllers
                 await file.CopyToAsync(fileStream);
             }
 
-            // URL generálás
             var baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
             var fullImageUrl = $"{baseUrl}/images/{uniqueFileName}";
 
-            // 2. Kategória kezelése (A Hiba Megoldása)
-            // Kinyerjük a Tokenből, hogy melyik Céghez (CompanyId) tartozik a felhasználó
-            // Ha valamiért nincs benne, alapértelmezetten 1-esnek vesszük (biztonsági háló)
             int companyId = 1;
             var companyClaim = User.FindFirst("CompanyId");
             if (companyClaim != null) int.TryParse(companyClaim.Value, out companyId);
 
-            string categoryName = category ?? "Egyéb";
+            string categoryName = category?.Trim() ?? "Egyéb"; // Trim, hogy a szóközök ne zavarjanak
 
-            // Megkeressük, létezik-e már ez a kategória ennél a cégnél
+            // Kategória keresése vagy létrehozása
             var galleryCategory = await _context.GalleryCategories
                 .FirstOrDefaultAsync(c => c.Name == categoryName && c.CompanyId == companyId);
 
-            // Ha nem létezik, létrehozzuk
             if (galleryCategory == null)
             {
                 galleryCategory = new GalleryCategory
@@ -86,14 +91,13 @@ namespace Soluvion.API.Controllers
                     CompanyId = companyId
                 };
                 _context.GalleryCategories.Add(galleryCategory);
-                await _context.SaveChangesAsync(); // Mentés, hogy kapjon ID-t
+                await _context.SaveChangesAsync();
             }
 
-            // 3. Kép mentése adatbázisba a megszerzett Kategória ID-val
             var galleryImage = new GalleryImage
             {
                 ImagePath = fullImageUrl,
-                CategoryId = galleryCategory.Id, // Itt kötjük össze!
+                CategoryId = galleryCategory.Id,
                 Title = file.FileName,
                 UploadDate = DateTime.UtcNow
             };
@@ -101,13 +105,7 @@ namespace Soluvion.API.Controllers
             _context.GalleryImages.Add(galleryImage);
             await _context.SaveChangesAsync();
 
-            // Visszaküldjük a Frontend által várt formátumban
-            return Ok(new
-            {
-                id = galleryImage.Id,
-                imageUrl = galleryImage.ImagePath,
-                category = galleryCategory.Name
-            });
+            return Ok(new { id = galleryImage.Id, imageUrl = galleryImage.ImagePath, category = galleryCategory.Name });
         }
 
         // DELETE: api/Gallery/5
@@ -115,8 +113,20 @@ namespace Soluvion.API.Controllers
         [Authorize]
         public async Task<IActionResult> DeleteImage(int id)
         {
-            var image = await _context.GalleryImages.FindAsync(id);
+            int companyId = 1;
+            var companyClaim = User.FindFirst("CompanyId");
+            if (companyClaim != null) int.TryParse(companyClaim.Value, out companyId);
+
+            var image = await _context.GalleryImages
+                .Include(i => i.Category)
+                .FirstOrDefaultAsync(i => i.Id == id);
+
             if (image == null) return NotFound();
+
+            if (image.Category != null && image.Category.CompanyId != companyId)
+            {
+                return Forbid();
+            }
 
             _context.GalleryImages.Remove(image);
             await _context.SaveChangesAsync();

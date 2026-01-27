@@ -1,54 +1,111 @@
 <script setup>
-  import { RouterLink, RouterView } from 'vue-router'
-  import AppHeader from './components/Appheader.vue'
+  import { ref, onMounted, provide } from 'vue';
+  import { RouterView } from 'vue-router';
+  import AppHeader from './components/AppHeader.vue';
+
+  // Itt tároljuk a cég adatait
+  const company = ref(null);
+  const isLoading = ref(true);
+
+  // Lekérjük a cég adatait (Jelenleg fixen ID=1, később dinamikus lesz domain alapján)
+  const fetchCompanyData = async () => {
+    try {
+      // Portszámot ellenőrizd! (pl. 7113)
+      const res = await fetch('https://localhost:7113/api/Company/1');
+      if (res.ok) {
+        const data = await res.json();
+        company.value = data;
+
+        // --- A VARÁZSLAT: CSS Változók beállítása ---
+        // Ez "festi át" az egész weboldalt a cég színeire
+        document.documentElement.style.setProperty('--primary-color', data.primaryColor || '#d4af37');
+        document.documentElement.style.setProperty('--secondary-color', data.secondaryColor || '#1a1a1a');
+        document.documentElement.style.setProperty('--font-family', "'Playfair Display', serif");
+      }
+    } catch (error) {
+      console.error("Hiba a cégadatok betöltésekor:", error);
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  // "Provide": Ezzel elérhetővé tesszük a cég adatait minden komponens számára (pl. Header, Footer)
+  provide('company', company);
+
+  onMounted(() => {
+    fetchCompanyData();
+  });
 </script>
 
 <template>
-  <header>
-    <AppHeader />
-  </header>
+  <div v-if="!isLoading" class="app-wrapper">
+    <header>
+      <AppHeader />
+    </header>
 
-  <main>
-    <RouterView />
-  </main>
+    <main>
+      <RouterView />
+    </main>
 
-  <footer style="text-align:center; padding: 20px; background: #f4f4f4; margin-top: 50px;">
-    <p>&copy; 2026 Skani Salon. Minden jog fentartva.</p>
-  </footer>
+    <footer class="app-footer">
+      <p>&copy; {{ new Date().getFullYear() }} {{ company?.name || 'Szalon' }}. Minden jog fenntartva.</p>
+    </footer>
+  </div>
+
+  <div v-else class="loading-screen">
+    Betöltés...
+  </div>
 </template>
 
 <style>
-  body {
-      margin: 0;
-      font-family: var(--font-family);
+  /* GLOBÁLIS STÍLUSOK (CSS Változók alapértelmezése) */
+  :root {
+    --primary-color: #d4af37; /* Arany */
+    --secondary-color: #1a1a1a; /* Fekete */
+    --font-family: 'Playfair Display', serif;
   }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--secondary-color);
+    color: #ffffff;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-family); /* Minden címsor használja a beállított betűtípust */
+    color: var(--primary-color); /* A címsorok legyenek Aranyak */
+  }
+
+  a {
+    text-decoration: none;
+    color: var(--primary-color); /* A linkek is Aranyak */
+  }
+
 </style>
 
 <style scoped>
-  .container {
-    font-family: Arial, sans-serif;
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 20px;
-  }
-
-  header {
-    background-color: #ff98a6;
-    color: white;
-    padding: 20px;
+  /* App specifikus stílusok */
+  .app-footer {
     text-align: center;
-    border-radius: 8px;
-    margin-bottom: 20px;
+    padding: 2rem;
+    background-color: #2c2c2c;
+    margin-top: auto; /* Hogy mindig alul legyen */
+    color: #ccc;
   }
 
-  h1 {
-    margin: 0;
+  .app-wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
   }
 
-  footer {
-    margin-top: 50px;
-    text-align: center;
-    font-size: 0.8em;
-    color: #666;
+  .loading-screen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-size: 1.5rem;
+    color: var(--primary-color);
   }
 </style>
