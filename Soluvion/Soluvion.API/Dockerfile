@@ -15,7 +15,7 @@ WORKDIR /app
 COPY --from=build /app/out .
 
 # Railway általában a PORT környezeti változót használja
-ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 EXPOSE 8080
 
 ENTRYPOINT ["dotnet", "Soluvion.API.dll"]
