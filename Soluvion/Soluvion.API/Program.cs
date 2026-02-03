@@ -43,17 +43,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
-    });
-});
-
 var app = builder.Build();
+
+app.UseCors("AllowAll");
 
 using (var scope = app.Services.CreateScope())
 {
@@ -83,8 +75,6 @@ app.MapOpenApi();
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
-
-app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();
