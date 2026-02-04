@@ -10,7 +10,7 @@
   const loading = ref(true);
 
   // Környezeti változóból vesszük, melyik szalon adata kell (alapból 1)
-  const companyId = import.meta.env.VITE_COMPANY_ID || 7;
+  const companyId = import.meta.env.VITE_COMPANY_ID || 1;
 
   // Amikor az oldal betöltődik (onMounted), elindul az adatlekérés
   onMounted(async () => {
