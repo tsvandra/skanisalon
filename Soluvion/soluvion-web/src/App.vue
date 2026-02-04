@@ -8,7 +8,7 @@
   const company = ref(null);
   const isLoading = ref(true);
 
-  const companyId = import.meta.env.VITE_COMPANY_ID || 1;
+  const companyId = import.meta.env.VITE_COMPANY_ID || 7;
 
   // Lekérjük a cég adatait (Jelenleg fixen ID=1, később dinamikus lesz domain alapján)
   const fetchCompanyData = async () => {
