@@ -39,7 +39,7 @@
       <div class="logo">
         <router-link to="/">
           <img v-if="company?.logoUrl" :src="getLogoUrl(company.logoUrl)" :alt="company?.name" class="logo-img" />
-          <span v-else>{{ company?.name || 'Salon' }}</span>
+          <span v-else>{{ company?.name || 'Syxyalon' }}</span>
         </router-link>
       </div>
 
