@@ -1,9 +1,29 @@
 <script setup>
+  import { ref, onMounted } from 'vue';
   import Button from 'primevue/button';
   import Card from 'primevue/card';
   import { useRouter } from 'vue-router';
+  import api from '@/services/api'
 
   const router = useRouter();
+  const company = ref(null);
+  const loading = ref(true);
+
+  // Környezeti változóból vesszük, melyik szalon adata kell (alapból 1)
+  const companyId = import.meta.env.VITE_COMPANY_ID || 1;
+
+  // Amikor az oldal betöltődik (onMounted), elindul az adatlekérés
+  onMounted(async () => {
+    try {
+      const response = await api.getCompanyDetails(companyId);
+      company.value = response.data;
+      console.log("Sikeres adatbetöltés:", company.value); // Segít a hibakeresésben
+    } catch (error) {
+      console.error("Hiba az adatok betöltésekor:", error);
+    } finally {
+      loading.value = false;
+    }
+  });
 
   const goToServices = () => {
     router.push('/szolgaltatasok');
@@ -19,7 +39,11 @@
 
     <div class="hero-section">
       <div class="hero-content">
-        <h1 class="main-title">SZKÁNI SZALON</h1>
+
+        <h1 v-if="loading" class="main-title">Betöltés...</h1>
+        <h1 v-else-if="company" class="main-title">{{ company.name }}</h1>
+        <h1 v-else class="main-title">SZKÁNI SZALON</h1>
+
         <p class="subtitle">Stílus. Elegancia. Szépség.</p>
 
         <div class="hero-buttons">
@@ -32,7 +56,7 @@
     <div class="content-section">
       <Card style="width: 100%; margin-bottom: 2rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
         <template #title>
-          Üdvözöllek szalonomban!
+          Üdvözöllek a {{ company.name }}-ban!
         </template>
         <template #content>
           <p class="intro-text">
