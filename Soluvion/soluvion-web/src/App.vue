@@ -11,7 +11,7 @@
   const fetchCompanyData = async () => {
     try {
       // Portszámot ellenőrizd! (pl. 7113)
-      const res = await fetch('https://localhost:7113/api/Company/1');
+      const res = await fetch('https://localhost:7113/api/Company/7');
       if (res.ok) {
         const data = await res.json();
         company.value = data;
