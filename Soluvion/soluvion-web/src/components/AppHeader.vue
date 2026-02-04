@@ -25,8 +25,7 @@
     if (!path) return null;
     if (path.startsWith('http')) return path;
 
-    const apiUrl = import.meta.env.VITE_API_URL;
-    const baseUrl = apiUrl ? apiUrl.replace(/\/api$/, '') : '';
+    const baseUrl = import.meta.env.VITE_API_URL;
 
     return `${baseUrl}${path}`;
   };

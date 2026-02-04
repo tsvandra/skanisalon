@@ -1,6 +1,7 @@
 <script setup>
   import { ref } from 'vue';
   import { useRouter } from 'vue-router';
+  import api from '@/api';
 
   const router = useRouter();
   const username = ref('');
@@ -13,28 +14,31 @@
     isLoading.value = true;
 
     try {
-      const url = new URL('https://localhost:7113/api/Auth/login');
-      url.searchParams.append('username', username.value);
-      url.searchParams.append('password', password.value);
-
-      const res = await fetch(url, {
-        method: 'POST'
+      // Az API controller Query paramétereket vár (url?username=...&password=...)
+      // Az axios ezt a 'params' objektummal kezeli elegánsan
+      const res = await api.post('/api/Auth/login', null, {
+        params: {
+          username: username.value,
+          password: password.value
+        }
       });
-
-      if (!res.ok) {
-        throw new Error('Hibás felhasználónév vagy jelszó!');
-      }
-
-      const token = await res.text();
+      // A backend sima szövegként (string) adja vissza a tokent, 
+      // az axios ezt is a .data-ba teszi
+      const token = res.data;
 
       localStorage.setItem('salon_token', token);
 
       router.push('/');
-
       setTimeout(() => window.location.reload(), 100);
 
     } catch (err) {
-      errorMsg.value = err.message;
+      // Az axios hibaobjektum kicsit más, mint a fetch-é
+      if (err.response && err.response.status === 400) {
+        errorMsg.value = 'Hibás felhasználónév vagy jelszó!';
+      } else {
+        errorMsg.value = 'Szerver hiba történt. Próbáld később!';
+        console.error(err);
+      }
     } finally {
       isLoading.value = false;
     }

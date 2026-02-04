@@ -1,5 +1,6 @@
 <script setup>
   import { ref, onMounted, computed } from 'vue';
+  import api from '@/api';
 
   const images = ref([]);
   const categories = ref([]); // Itt tároljuk a betöltött kategóriákat
@@ -12,26 +13,21 @@
   const customCategory = ref(''); // Amit kézzel írt be
   const isNewCategoryMode = computed(() => selectedCategory.value === 'NEW');
 
-  // Backend URL
-  const API_URL = 'https://localhost:7113/api/Gallery'; // Ellenőrizd a portot!
-
   // Adatok betöltése
   const fetchData = async () => {
     try {
       // 1. Képek lekérése
-      const resImages = await fetch(API_URL);
-      if (resImages.ok) images.value = await resImages.json();
+      const resImages = await api.get('/api/Gallery');
+      images.value = resImages.data;
 
       // 2. Kategóriák lekérése
-      const resCats = await fetch(`${API_URL}/categories`);
-      if (resCats.ok) {
-        categories.value = await resCats.json();
-        // Alapértelmezett választás: az első kategória, vagy ha nincs, akkor üres
-        if (categories.value.length > 0) {
-          selectedCategory.value = categories.value[0];
-        } else {
-          selectedCategory.value = 'NEW'; // Ha nincs semmi, akkor rögtön új hozzáadása
-        }
+      const resCats = await api.get('/api/Gallery/categories');
+      categories.value = resCats.data;
+
+      if (categories.value.length > 0) {
+        selectedCategory.value = categories.value[0];
+      } else {
+        selectedCategory.value = 'NEW';
       }
     } catch (error) {
       console.error("Hiba az adatok betöltésekor:", error);
@@ -61,30 +57,21 @@
     formData.append('category', categoryToSend);
 
     try {
-      const token = localStorage.getItem('salon_token');
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-      });
+      // FONTOS: A headerben a Content-Type-ot az axios automatikusan beállítja 
+      // multipart/form-data-ra, ha FormData-t kap, és a tokent is hozzáadja az api.js miatt!
+      await api.post('/api/Gallery', formData);
 
-      if (res.ok) {
-        // Siker!
-        selectedFile.value = null;
-        customCategory.value = ''; // Töröljük a beírt szöveget
-        document.getElementById('fileInput').value = "";
+      // Siker esetén takarítás
+      selectedFile.value = null;
+      customCategory.value = '';
+      document.getElementById('fileInput').value = "";
 
-        // Újratöltjük az egészet (így az új kategória bekerül a listába is!)
-        await fetchData();
+      await fetchData();
+      selectedCategory.value = categoryToSend;
 
-        // Visszaállunk az imént feltöltött kategóriára a listában
-        selectedCategory.value = categoryToSend;
-
-      } else {
-        alert("Hiba a feltöltésnél!");
-      }
     } catch (error) {
       console.error(error);
+      alert("Hiba a feltöltésnél!");
     } finally {
       isLoading.value = false;
     }
@@ -93,12 +80,8 @@
   const deleteImage = async (id) => {
     if (!confirm("Biztosan törölni szeretnéd?")) return;
     try {
-      const token = localStorage.getItem('salon_token');
-      const res = await fetch(`${API_URL}/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) await fetchData();
+      await api.delete(`/api/Gallery/${id}`);
+      await fetchData();
     } catch (error) { console.error(error); }
   };
 

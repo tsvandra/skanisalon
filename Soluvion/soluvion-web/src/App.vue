@@ -2,19 +2,17 @@
   import { ref, onMounted, provide } from 'vue';
   import { RouterView } from 'vue-router';
   import AppHeader from './components/AppHeader.vue';
-  import api from '@/services/api';
+  import api from '@/api';
 
   // Itt tároljuk a cég adatait
   const company = ref(null);
   const isLoading = ref(true);
 
-  const companyId = import.meta.env.VITE_COMPANY_ID || 7;
-
   // Lekérjük a cég adatait (Jelenleg fixen ID=1, később dinamikus lesz domain alapján)
   const fetchCompanyData = async () => {
     try {
       // Portszámot ellenőrizd! (pl. 7113)
-      const res = await api.getCompanyDetails(companyId);
+      const res = await api.get('/api/Company/7');
       const data = response.data;
       company.value = data;
 
