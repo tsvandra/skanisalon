@@ -9,9 +9,13 @@ const apiClient = axios.create({
   },
 });
 
-export default {
-  // Ez a függvény kéri el a cég adatait az ID alapján
-  getCompanyDetails(id) {
-    return apiClient.get(`/Company/${id}`);
+// Kérés elfogó (Interceptor): Minden kéréshez automatikusan hozzáadjuk a tokent, ha van
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('salon_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-};
+  return config;
+});
+
+export default apiClient;

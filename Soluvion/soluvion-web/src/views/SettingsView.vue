@@ -18,52 +18,36 @@ const errorMsg = ref('');
 const token = localStorage.getItem('salon_token');
 
 // Betöltés (A már meglévő API-ból, de most a sajátunkat kérjük)
-const loadSettings = async () => {
-  // Mivel a CompanyController GetById-t használ, és most még fixen 1-esek vagyunk a kliens oldalon,
-  // ideiglenesen lekérjük az 1-est. (Később a /api/Company/me végpont lenne a szép).
-  // De a PUT már a tokenből dolgozik!
-  try {
-    const res = await fetch('https://localhost:7113/api/Company/1'); // Portszámot ellenőrizd!
-    if (res.ok) {
-      companyData.value = await res.json();
+  const loadSettings = async () => {
+    try {
+      // ID javítása 7-re
+      const res = await api.get('/api/Company/7');
+      companyData.value = res.data;
+    } catch (err) {
+      console.error(err);
+    } finally {
+      isLoading.value = false;
     }
-  } catch (err) {
-    console.error(err);
-  } finally {
-    isLoading.value = false;
-  }
-};
+  };
 
 // Mentés
-const saveSettings = async () => {
-  successMsg.value = '';
-  errorMsg.value = '';
+  const saveSettings = async () => {
+    successMsg.value = '';
+    errorMsg.value = '';
 
-  try {
-    const res = await fetch('https://localhost:7113/api/Company', { // PUT hívás
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}` // KÖTELEZŐ: Ez azonosítja a céget
-      },
-      body: JSON.stringify(companyData.value)
-    });
+    try {
+      // A PUT kérés, token automatikusan megy
+      await api.put('/api/Company', companyData.value);
 
-    if (res.ok) {
       successMsg.value = 'A beállítások sikeresen mentve!';
-      // Frissítjük a CSS változókat azonnal, hogy lássa az eredményt
       document.documentElement.style.setProperty('--primary-color', companyData.value.primaryColor);
       document.documentElement.style.setProperty('--secondary-color', companyData.value.secondaryColor);
-
-      // 3 mp múlva eltüntetjük az üzenetet
       setTimeout(() => successMsg.value = '', 3000);
-    } else {
-      errorMsg.value = 'Hiba a mentés során. Lehet, hogy lejárt a belépésed?';
+
+    } catch (err) {
+      errorMsg.value = 'Hiba a mentés során.';
     }
-  } catch (err) {
-    errorMsg.value = 'Hálózati hiba történt.';
-  }
-};
+  };
 
 onMounted(() => {
   loadSettings();

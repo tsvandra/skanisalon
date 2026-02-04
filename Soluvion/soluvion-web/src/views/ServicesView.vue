@@ -13,15 +13,13 @@
     defaultPrice: 0
   });
 
-  const API_URL = 'https://localhost:7113/api/Service'; // Ellenőrizd a portot!
-
   // Betöltés
   const fetchServices = async () => {
     loading.value = true;
     try {
       // Itt fixen az 1-es cég árait kérjük le (később ez dinamikus lesz a domain alapján)
-      const response = await fetch(`${API_URL}?companyId=1`);
-      services.value = await response.json();
+      const response = await api.get('/api/Service?companyId=7');
+      services.value = response.data;
     } catch (error) {
       console.error('Hiba:', error);
     } finally {
@@ -37,25 +35,14 @@
     }
 
     try {
-      const token = localStorage.getItem('salon_token');
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // Küldjük a kulcsot
-        },
-        body: JSON.stringify(newService.value)
-      });
+      // Nem kell header és token manuálisan, az api.js intézi!
+      await api.post('/api/Service', newService.value);
 
-      if (res.ok) {
-        // Siker! Ürítjük az űrlapot és frissítünk
-        newService.value = { name: '', defaultPrice: 0 };
-        await fetchServices();
-      } else {
-        alert("Hiba a mentésnél!");
-      }
+      newService.value = { name: '', defaultPrice: 0 };
+      await fetchServices();
     } catch (err) {
       console.error(err);
+      alert("Hiba a mentésnél!");
     }
   };
 
@@ -64,17 +51,8 @@
     if (!confirm("Biztosan törölni akarod?")) return;
 
     try {
-      const token = localStorage.getItem('salon_token');
-      const res = await fetch(`${API_URL}/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (res.ok) {
-        await fetchServices();
-      }
+      await api.delete(`/api/Service/${id}`);
+      await fetchServices();
     } catch (err) {
       console.error(err);
     }
