@@ -24,7 +24,7 @@
       loading.value = false;
     }
   });
-
+  //test
   const goToServices = () => {
     router.push('/szolgaltatasok');
   }
