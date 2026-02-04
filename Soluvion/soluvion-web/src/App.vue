@@ -2,19 +2,21 @@
   import { ref, onMounted, provide } from 'vue';
   import { RouterView } from 'vue-router';
   import AppHeader from './components/AppHeader.vue';
+  import api from '@/services/api';
 
   // Itt tároljuk a cég adatait
   const company = ref(null);
   const isLoading = ref(true);
 
+  const companyId = import.meta.env.VITE_COMPANY_ID || 1;
+
   // Lekérjük a cég adatait (Jelenleg fixen ID=1, később dinamikus lesz domain alapján)
   const fetchCompanyData = async () => {
     try {
       // Portszámot ellenőrizd! (pl. 7113)
-      const res = await fetch('https://localhost:7113/api/Company/1');
-      if (res.ok) {
-        const data = await res.json();
-        company.value = data;
+      const res = await api.getCompanyDetails(companyId);
+      const data = response.data;
+      company.value = data;
 
         // --- A VARÁZSLAT: CSS Változók beállítása ---
         // Ez "festi át" az egész weboldalt a cég színeire
