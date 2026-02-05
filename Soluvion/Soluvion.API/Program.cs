@@ -56,6 +56,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 var app = builder.Build();
 
+
+app.UseCors("AllowAll");
+
 AppContext.SetSwitch("Npqsql.EnableLegacyTimestampBehavior", true);
 
 // Scalar Dokumentáció (Fejlesztői módban, vagy mindig)
@@ -69,7 +72,6 @@ if (app.Environment.IsDevelopment() || true)
 }
 
 
-app.UseCors("AllowAll");
 
 using (var scope = app.Services.CreateScope())
 {
