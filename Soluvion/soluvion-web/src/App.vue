@@ -2,7 +2,7 @@
   import { ref, onMounted, provide } from 'vue';
   import { RouterView } from 'vue-router';
   import AppHeader from './components/AppHeader.vue';
-  import api from '@/api';
+  import api from '@/services/api';
 
   // Itt tároljuk a cég adatait
   const company = ref(null);

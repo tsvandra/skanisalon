@@ -1,6 +1,6 @@
 <script setup>
   import { ref, onMounted, computed } from 'vue';
-  import api from '@/api';
+  import api from '@/services/api';
 
   const images = ref([]);
   const categories = ref([]); // Itt tároljuk a betöltött kategóriákat
