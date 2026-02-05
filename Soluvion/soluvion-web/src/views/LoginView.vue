@@ -13,6 +13,8 @@
     errorMsg.value = '';
     isLoading.value = true;
 
+    console.log("Bejelentkezés megkezdése...", username.value); // Debug log
+
     try {
       // Az API controller Query paramétereket vár (url?username=...&password=...)
       // Az axios ezt a 'params' objektummal kezeli elegánsan
@@ -24,6 +26,7 @@
       });
       // A backend sima szövegként (string) adja vissza a tokent, 
       // az axios ezt is a .data-ba teszi
+      console.log("Sikeres válasz:", res.data);
       const token = res.data;
 
       localStorage.setItem('salon_token', token);
@@ -32,13 +35,8 @@
       setTimeout(() => window.location.reload(), 100);
 
     } catch (err) {
-      // Az axios hibaobjektum kicsit más, mint a fetch-é
-      if (err.response && err.response.status === 400) {
-        errorMsg.value = 'Hibás felhasználónév vagy jelszó!';
-      } else {
-        errorMsg.value = 'Szerver hiba történt. Próbáld később!';
-        console.error(err);
-      }
+      console.error("Hiba történt:", err);
+      errorMsg.value = err.response?.data || 'Hibás felhasználónév vagy jelszó!';
     } finally {
       isLoading.value = false;
     }
@@ -53,13 +51,23 @@
 
       <form @submit.prevent="handleLogin">
         <div class="form-group">
-          <label>Felhasználónév</label>
-          <input type="text" v-model="username" required placeholder="Írd be a neved..." />
+          <label for="username">Felhasználónév</label>
+          <input id="username"
+                 name="username"
+                 type="text"
+                 v-model="username"
+                 required
+                 placeholder="Írd be a neved..." />
         </div>
 
-        <div class="from-group">
-             <label>Jelszó</label>
-             <input type="password" v-model="password" required placeholder="••••••••" />
+        <div class="form-group">
+          <label for="password">Jelszó</label>
+          <input id="password"
+                 name="password"
+                 type="password"
+                 v-model="password"
+                 required
+                 placeholder="••••••••" />
         </div>
 
         <p v-if="errorMsg" class="error">{{ errorMsg }}</p>
