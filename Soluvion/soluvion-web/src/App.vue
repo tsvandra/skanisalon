@@ -21,7 +21,7 @@
         document.documentElement.style.setProperty('--primary-color', data.primaryColor || '#d4af37');
         document.documentElement.style.setProperty('--secondary-color', data.secondaryColor || '#1a1a1a');
         document.documentElement.style.setProperty('--font-family', "'Playfair Display', serif");
-      }
+      
     } catch (error) {
       console.error("Hiba a cégadatok betöltésekor:", error);
     } finally {
