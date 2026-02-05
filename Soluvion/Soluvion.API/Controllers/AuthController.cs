@@ -51,14 +51,14 @@ namespace Soluvion.API.Controllers
         [HttpPost("login")]
         public async Task<ActionResult<String>> Login([FromBody] LoginDto request)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.username);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
             if (user == null)
             {
                 return BadRequest("Hibás felhasználónév vagy jelszó.");
             }
 
             // MÓDOSÍTÁS: Az új ellenőrző metódust hívjuk
-            if (!VerifyPasswordHash(request.password, user.PasswordHash))
+            if (!VerifyPasswordHash(request.Password, user.PasswordHash))
             {
                 return BadRequest("Hibás felhasználónév vagy jelszó.");
             }
