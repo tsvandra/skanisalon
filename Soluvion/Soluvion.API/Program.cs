@@ -1,34 +1,44 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Soluvion.API.Data;
-using Scalar.AspNetCore;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+using Scalar.AspNetCore;
+using Soluvion.API.Data;
+using Swashbuckle.AspNetCore.Filters;
 using System.Text;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
-AppContext.SetSwitch("Npqsql.EnableLegacyTimestampBehavior", true);
-
-// Add services to the container.
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(connectionString));
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
         policy =>
         {
-            policy.AllowAnyOrigin()
-                  .AllowAnyMethod()
-                  .AllowAnyHeader();
+            policy.AllowAnyOrigin()  // Bárhonnan jöhet kérés (Netlify, localhost)
+                  .AllowAnyMethod()  // GET, POST, PUT, DELETE, OPTIONS
+                  .AllowAnyHeader(); // Bármilyen fejléc mehet
         });
 });
 
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        sqlOptions => sqlOptions.EnableRetryOnFailure()));
+// 3. OpenAPI Generálás (Ez gyártja le a doksit a Scalarnak)
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
+    {
+        In = ParameterLocation.Header,
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey
+    });
+    options.OperationFilter<SecurityRequirementsOperationFilter>();
+});
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -43,7 +53,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+
 var app = builder.Build();
+
+AppContext.SetSwitch("Npqsql.EnableLegacyTimestampBehavior", true);
+
+// Scalar Dokumentáció (Fejlesztői módban, vagy mindig)
+if (app.Environment.IsDevelopment() || true)
+{
+    app.UseSwagger(options =>
+    {
+        options.RouteTemplate = "openapi/{documentName}.json";
+    });
+    app.MapScalarApiReference();
+}
+
 
 app.UseCors("AllowAll");
 
@@ -65,17 +89,9 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Configure the HTTP request pipeline.
-//if (app.Environment.IsDevelopment())
-//{
-app.MapOpenApi();
-    app.MapScalarApiReference();
-//}
-
-//app.UseHttpsRedirection();
-
 app.UseStaticFiles();
 
+// Hitelesítés
 app.UseAuthentication();
 app.UseAuthorization();
 
