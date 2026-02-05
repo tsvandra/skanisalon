@@ -18,11 +18,9 @@
     try {
       // Az API controller Query paramétereket vár (url?username=...&password=...)
       // Az axios ezt a 'params' objektummal kezeli elegánsan
-      const res = await api.post('/api/Auth/login', null, {
-        params: {
+      const res = await api.post('/api/Auth/login', {
           username: username.value,
           password: password.value
-        }
       });
       // A backend sima szövegként (string) adja vissza a tokent, 
       // az axios ezt is a .data-ba teszi
