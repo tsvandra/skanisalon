@@ -5,7 +5,6 @@ using Soluvion.API.Data;
 using Soluvion.API.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace Soluvion.API.Controllers
@@ -31,13 +30,14 @@ namespace Soluvion.API.Controllers
                 return BadRequest("Ez a felhasználónév már foglalt!");
             }
 
-            CreatePasswordHash(password, out string passwordHash);
+            // MÓDOSÍTÁS: Itt már a BCrypt-et hívjuk, egyszerűsödött a kód
+            string passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
 
             var user = new User
             {
                 Username = username,
                 PasswordHash = passwordHash,
-                CompanyId = 1, // Később itt választjuk ki, melyik szalonhoz tartozik a user
+                CompanyId = 7, // Ezt majd később javítjuk a logikában
                 Role = "Admin"
             };
 
@@ -57,6 +57,7 @@ namespace Soluvion.API.Controllers
                 return BadRequest("Hibás felhasználónév vagy jelszó.");
             }
 
+            // MÓDOSÍTÁS: Az új ellenőrző metódust hívjuk
             if (!VerifyPasswordHash(password, user.PasswordHash))
             {
                 return BadRequest("Hibás felhasználónév vagy jelszó.");
@@ -93,25 +94,7 @@ namespace Soluvion.API.Controllers
 
         private bool VerifyPasswordHash(string password, string storedHash)
         {
-            string secretKey = _configuration.GetSection("AppSettings:Token").Value!;
-            using (var hmac = new HMACSHA512(Encoding.UTF8.GetBytes(secretKey)))
-            {
-                var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
-                return storedHash == Convert.ToBase64String(computedHash);
-            }
-        }
-
-        private void CreatePasswordHash(string password, out string passwordHash)
-        {
-            string secretKey = _configuration.GetSection("AppSettings:Token").Value!;
-
-            if (string.IsNullOrEmpty(secretKey)) throw new Exception("Nincs beállítva a titkos kulcs!");
-
-            using (var hmac = new HMACSHA512(Encoding.UTF8.GetBytes(secretKey)))
-            {
-                var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
-                passwordHash = Convert.ToBase64String(hashBytes);
-            }
+            return BCrypt.Net.BCrypt.Verify(password, storedHash);
         }
     }
 }
