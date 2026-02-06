@@ -11,19 +11,37 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString));
+
+//builder.Services.AddDbContext<AppDbContext>(options =>
+//    options.UseNpgsql(connectionString));
+
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("AllowAll",
+//        policy =>
+//        {
+//            policy.AllowAnyOrigin()  // Bárhonnan jöhet kérés (Netlify, localhost)
+//                  .AllowAnyMethod()  // GET, POST, PUT, DELETE, OPTIONS
+//                  .AllowAnyHeader(); // Bármilyen fejléc mehet
+//        });
+//});
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll",
+    options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.AllowAnyOrigin()  // Bárhonnan jöhet kérés (Netlify, localhost)
-                  .AllowAnyMethod()  // GET, POST, PUT, DELETE, OPTIONS
-                  .AllowAnyHeader(); // Bármilyen fejléc mehet
+            policy.WithOrigins(
+                    "https://soluvion.netlify.app", // A te frontend címed
+                    "http://localhost:5173",        // Helyi fejlesztés
+                    "http://localhost:3000"
+                  )
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials(); // Ez fontos lehet, ha cookie-t vagy auth headert küldesz!
         });
 });
+
 
 builder.Services.AddControllers();
 
@@ -40,6 +58,7 @@ builder.Services.AddSwaggerGen(options =>
     options.OperationFilter<SecurityRequirementsOperationFilter>();
 });
 
+//Auth
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -56,10 +75,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 var app = builder.Build();
 
+AppContext.SetSwitch("Npqsql.EnableLegacyTimestampBehavior", true);
 
 app.UseCors("AllowAll");
-
-AppContext.SetSwitch("Npqsql.EnableLegacyTimestampBehavior", true);
+app.MapGet("/api/ping", () => "PONG! A szerver el es mukodik.");
 
 // Scalar Dokumentáció (Fejlesztői módban, vagy mindig)
 if (app.Environment.IsDevelopment() || true)
@@ -73,23 +92,23 @@ if (app.Environment.IsDevelopment() || true)
 
 
 
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    try
-    {
-        var context = services.GetRequiredService<AppDbContext>();
-        if (context.Database.GetPendingMigrations().Any())
-        {
-            context.Database.Migrate();
-        }
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Hiba történt az adatbázis migráció során.");
-    }
-}
+//using (var scope = app.Services.CreateScope())
+//{
+//    var services = scope.ServiceProvider;
+//    try
+//    {
+//        var context = services.GetRequiredService<AppDbContext>();
+//        if (context.Database.GetPendingMigrations().Any())
+//        {
+//            context.Database.Migrate();
+//        }
+//    }
+//    catch (Exception ex)
+//    {
+//        var logger = services.GetRequiredService<ILogger<Program>>();
+//        logger.LogError(ex, "Hiba történt az adatbázis migráció során.");
+//    }
+//}
 
 app.UseStaticFiles();
 
