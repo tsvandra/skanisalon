@@ -2,9 +2,9 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Másoljuk a projektfájlt és visszaállítjuk a függõségeket
-COPY ["Soluvion.API/Soluvion.API.csproj", "Soluvion.API/"]
+COPY ["Soluvion.API.csproj", "Soluvion.API/"]
 
-RUN dotnet restore "Soluvion.API/Soluvion.API.csproj"
+RUN dotnet restore "Soluvion.API.csproj"
 
 # Másoljuk az összes többi fájlt és buildeljük az appot
 COPY . .
