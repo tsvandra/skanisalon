@@ -34,15 +34,20 @@ namespace Soluvion.API.Controllers
 
         // PUT: api/Company
         // MÓDOSÍTÁS - CSAK BEJELENTKEZVE!
-        [HttpPut]
+        [HttpPut("{id}")]
         [Authorize]
-        public async Task<IActionResult> UpdateCompany(Company updatedCompany)
+        public async Task<IActionResult> UpdateCompany(int id, [FromBody] Company updatedCompany)
         {
             // 1. Biztonság: Kinek a nevében vagyunk itt?
             var companyClaim = User.FindFirst("CompanyId");
             if (companyClaim == null) return Unauthorized("Nincs cég hozzárendelve a felhasználóhoz.");
 
             int userCompanyId = int.Parse(companyClaim.Value);
+
+            if (id != userCompanyId)
+            {
+                return Forbid("Nincs jogosultsága más cég adatait módosítani!");
+            }
 
             // 2. Megkeressük a céget az adatbázisban
             var existingCompany = await _context.Companies.FindAsync(userCompanyId);
