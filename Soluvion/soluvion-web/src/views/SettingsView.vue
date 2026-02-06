@@ -1,23 +1,71 @@
 <script setup>
-import { ref, onMounted, inject } from 'vue';
-import Card from 'primevue/card';
-import InputText from 'primevue/inputtext';
-import Textarea from 'primevue/textarea';
-import Button from 'primevue/button';
-import Message from 'primevue/message';
-import TabView from 'primevue/tabview';
-import TabPanel from 'primevue/tabpanel';
-import ColorPicker from 'primevue/colorpicker'; // Ha van PrimeVue ColorPicker
+  import { ref, onMounted, inject } from 'vue';
+  import Card from 'primevue/card';
+  import InputText from 'primevue/inputtext';
+  import Textarea from 'primevue/textarea';
+  import Button from 'primevue/button';
+  import Message from 'primevue/message';
+  import TabView from 'primevue/tabview';
+  import TabPanel from 'primevue/tabpanel';
+  import ColorPicker from 'primevue/colorpicker'; // Ha van PrimeVue ColorPicker
+  import api from '@/services/api';
 
-const companyData = ref({});
-const isLoading = ref(true);
-const successMsg = ref('');
-const errorMsg = ref('');
+  const companyData = ref({});
+  const isLoading = ref(true);
+  const successMsg = ref('');
+  const errorMsg = ref('');
 
-// Token a mentéshez
-const token = localStorage.getItem('salon_token');
+  // Az űrlap adatai (ezeket fogjuk szerkeszteni)
+  const form = ref({
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    primaryColor: '#d4af37',
+    secondaryColor: '#1a1a1a',
+    logoUrl: ''
+  });
 
-// Betöltés (A már meglévő API-ból, de most a sajátunkat kérjük)
+  // Token a mentéshez
+  const token = localStorage.getItem('salon_token');
+
+  // Segédfüggvény: Token dekódolása (ugyanaz, mint az App.vue-ban)
+  const getCompanyIdFromToken = () => {
+    try {
+      const token = localStorage.getItem('salon_token');
+      if (!token) return null;
+      const decoded = JSON.parse(atob(token.split('.')[1]));
+      return decoded?.CompanyId || decoded?.companyId;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  // 1. Adatok betöltése
+  const loadCompanyData = async () => {
+    const companyId = getCompanyIdFromToken();
+    if (!companyId) {
+      errorMsg.value = "Nem található cégazonosító. Kérjük, jelentkezz be újra!";
+      return;
+    }
+
+    isLoading.value = true;
+    try {
+      // JAVÍTÁS: Nem 'getCompanyDetails'-t hívunk, hanem sima api.get-et!
+      const res = await api.get(`/api/Company/${companyId}`);
+
+      // Feltöltjük az űrlapot a kapott adatokkal
+      form.value = { ...res.data };
+
+    } catch (err) {
+      console.error("Hiba a betöltéskor:", err);
+      errorMsg.value = "Nem sikerült betölteni a cég adatait.";
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  // Betöltés (A már meglévő API-ból, de most a sajátunkat kérjük)
   const loadSettings = async () => {
     try {
       // ID javítása 7-re
@@ -30,28 +78,58 @@ const token = localStorage.getItem('salon_token');
     }
   };
 
-// Mentés
+  //// Mentés
+  //const saveSettings = async () => {
+  //  successMsg.value = '';
+  //  errorMsg.value = '';
+
+  //  try {
+  //    // A PUT kérés, token automatikusan megy
+  //    await api.put('/api/Company', companyData.value);
+
+  //    successMsg.value = 'A beállítások sikeresen mentve!';
+  //    document.documentElement.style.setProperty('--primary-color', companyData.value.primaryColor);
+  //    document.documentElement.style.setProperty('--secondary-color', companyData.value.secondaryColor);
+  //    setTimeout(() => successMsg.value = '', 3000);
+
+  //  } catch (err) {
+  //    errorMsg.value = 'Hiba a mentés során.';
+  //  }
+  //};
+
+  // 2. Mentés (PUT kérés)
   const saveSettings = async () => {
-    successMsg.value = '';
+    const companyId = getCompanyIdFromToken();
+    if (!companyId) return;
+
+    isSaving.value = true;
+    message.value = '';
     errorMsg.value = '';
 
     try {
-      // A PUT kérés, token automatikusan megy
-      await api.put('/api/Company', companyData.value);
+      // JAVÍTÁS: A módosított adatokat (form.value) küldjük vissza
+      await api.put(`/api/Company/${companyId}`, form.value);
 
-      successMsg.value = 'A beállítások sikeresen mentve!';
-      document.documentElement.style.setProperty('--primary-color', companyData.value.primaryColor);
-      document.documentElement.style.setProperty('--secondary-color', companyData.value.secondaryColor);
-      setTimeout(() => successMsg.value = '', 3000);
+      message.value = "A változtatások sikeresen mentve!";
+
+      // Frissítjük a CSS változókat azonnal, hogy lásd a színváltozást
+      document.documentElement.style.setProperty('--primary-color', form.value.primaryColor);
+      document.documentElement.style.setProperty('--secondary-color', form.value.secondaryColor);
+
+      // Opcionális: Újratöltjük az oldalt kis késleltetéssel, hogy a Header is frissüljön
+      setTimeout(() => window.location.reload(), 1500);
 
     } catch (err) {
-      errorMsg.value = 'Hiba a mentés során.';
+      console.error("Mentési hiba:", err);
+      errorMsg.value = err.response?.data || "Hiba történt a mentés során.";
+    } finally {
+      isSaving.value = false;
     }
   };
 
-onMounted(() => {
-  loadSettings();
-});
+  onMounted(() => {
+    loadSettings();
+  });
 </script>
 
 <template>
