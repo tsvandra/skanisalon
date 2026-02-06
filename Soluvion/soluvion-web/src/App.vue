@@ -32,7 +32,8 @@
     const companyId = decoded?.CompanyId || decoded?.companyId;
 
     if (!companyId) {
-      console.error("Hiba: A tokenben nincs CompanyId!");
+      console.warn("Hiba: A tokenben nincs CompanyId!");
+      localStorage.removeItem('salon_token');
       return;
     }
 
@@ -56,6 +57,7 @@
       if (error.response?.status === 401) {
         localStorage.removeItem('salon_token');
         window.location.href = '/login'; // Vissza a belépéshez
+        window.location.reload();
       }
 
     } finally {
