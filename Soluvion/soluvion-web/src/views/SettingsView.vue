@@ -11,7 +11,8 @@
   import api from '@/services/api';
 
   const companyData = ref({});
-  const isLoading = ref(true);
+  const isLoading = ref(false);
+  const isSaving = ref(false);
   const successMsg = ref('');
   const errorMsg = ref('');
 
