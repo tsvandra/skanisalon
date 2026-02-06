@@ -1,60 +1,189 @@
-﻿PROJEKT: Soluvion (Skani Salon) - SaaS Fodrászat Kezelő Rendszer
+﻿================================================================================
+PROJEKT DOKUMENTÁCIÓ: SOLUVION (SKANI SALON)
+================================================================================
+Dátum:   2026.02.06.
+Státusz: MVP (Minimum Viable Product) fejlesztés / Stabilizálás alatt
 
-CÉL:
+[ CÉL ]
 Egy .NET backend alapú, Vue.js frontenddel rendelkező webalkalmazás fejlesztése.
-Jelenlegi fázis: Egyedi bemutatkozó oldal + Admin funkciók (CMS) egy adott szalonnak.
-Jövőbeli cél: Multi-tenant (SaaS) rendszer, ahol több szalon is használhatja az appot saját adatbázis adatokkal.
 
-TECHNOLÓGIAI STACK:
-- Backend: .NET 10 Web API, Entity Framework Core, SQL Server. (Ma 2026.01.27.-e van, szoval letezik a .NET10, nem hazudok)
-- Frontend: Vue 3 (Composition API), Vite, PrimeVue komponensek.
-- Autentikáció: JWT Token (Bearer auth).
+- Jelenlegi fázis: Egyedi bemutatkozó oldal + Admin funkciók (CMS) egy adott 
+  szalonnak. Éles környezetben (Railway + Netlify) fut.
+- Jövőbeli cél: Multi-tenant (SaaS) rendszer, ahol több szalon is használhatja 
+  az appot saját adatbázis adatokkal, egyetlen kódbázissal.
 
-ARCHITEKTÚRA SZABÁLYOK (SaaS Előkészítés):
-1. Adatbázis: Minden üzleti entitás (Service, Gallery, User, GalleryCategory) rendelkezik 'CompanyId'-vel.
-2. Frontend: Nem drótozunk be fix cégneveket/logókat/színeket/elérhetőséget. Minden adatot API-ból kérünk le induláskor (`App.vue` -> `fetchCompanyData`).
-3. Biztonság: Műveleteknél (POST, PUT, DELETE) a 'CompanyId'-t a User Token-ből (Claims) olvassuk ki a Backend oldalon.
+--------------------------------------------------------------------------------
 
-EDDIG ELKÉSZÜLT FUNKCIÓK:
-1. Publikus Oldalak:
-   - Home: Bemutatkozás, Árlista gomb (Dinamikus színekkel), Időpontfoglalás gomb a kapcsolat oldara iranyitva.
-   - Services (Árlista): Adatbázisból töltött árak.
-   - Gallery: Kategóriákra szűrt képek.
-   - Contact: Teljesen dinamikus. A cím, telefon, email, nyitvatartás szövegek, 1x social link (bovitesre vár) és Google Maps embed az SQL-ből jön.
+[ TECHNOLÓGIAI STACK ]
 
-2. Admin Funkciók (Csak bejelentkezve):
-   - Login: JWT token alapú, biztonságos belépés.
-   - Galéria Kezelés:
-     - Kép feltöltése.
-     - Új kategória létrehozása ("+ Új kategória..." opció).
-     - Kép törlése (saját céghez kötve).
-   - Árlista Kezelés: Új szolgáltatás felvétele, törlése.
-   - Cégbeállítások (Settings):
-     - Külön Admin oldal (`/beallitasok`).
-     - Szerkeszthető: Alapadatok: Cegnev, Emailcim, telefonszam, Cím, Nyitvatartás szövegek (HTML támogatással)(4x textbox), Social linkek.
-     - Szerkeszthető Dizájn: Primary/Secondary színek valós idejű módosítása.
+- Backend:      .NET 10 Web API, Entity Framework Core
+- Adatbázis:    PostgreSQL (Railway hostolt)
+- Frontend:     Vue 3 (Composition API), Vite, PrimeVue komponensek
+- Autentikáció: JWT Token (Bearer auth) + Claims (CompanyId tárolása)
+- Hosting:
+    > Backend:  Railway (Docker alapú konténer)
+    > Frontend: Netlify (Static site hosting SPA konfigurációval)
 
-3. Backend API Végpontok:
-   - Auth (Login/Register).
-   - Company (GetById, Update - PUT, CreateCompany).
-   - Gallery (Get, GetCategories, Upload, Delete).
-   - Service (Get, Post, Delete).
+--------------------------------------------------------------------------------
 
-DESIGN SYSTEM (Szigorúan tartandó!):
-- Technikai Megvalósítás: CSS Változókat (Variables) használunk (`var(--primary-color)`, `var(--secondary-color)`), amiket az `App.vue` állít be az adatbázis alapján.
-- Alapszínek (Jelenlegi Skani beállítás):
-  - Másodlagos (Háttér/Szöveg): #1a1a1a (Fekete/Sötétszürke).
-  - Elsődleges (Akció/Kiemelés): #d4af37 (Arany).
-  - Szöveg kontraszt: Sötét háttéren világos szöveg.
-- Brand Szín (Logó):
-  - Kék Átmenet: rgb(24, 160, 198) -> rgb(17, 108, 135).
-  - HASZNÁLAT: Csak a Logóban! A UI elemek (gombok, ikonok) maradjanak az Elsődleges színnél (Arany).
-- Stílus:
-  - Elegáns, minimalista. Font: 'Playfair Display'.
-  - Gombok: Arany háttér, Fekete szöveg, Keret nélkül.
-  - Inputok: Fókuszban Arany keret.
+[ PROJEKT MENEDZSMENT ÉS MUNKAIDŐ KÖVETÉS ]
 
-FILE STRUKTÚRA:
-- Gyökér: Soluvion mappa.
-- Backend: Soluvion.API
-- Frontend: soluvion-web
+A fejlesztés során a GitHub beépített eszközeit használjuk "ERP"-ként, 
+hogy elkerüljük a külső szoftverek használatát (Company Policy miatt).
+
+1. Feladatkezelés (GitHub Projects):
+   - Kanban tábla nézet (Board):
+     [Backlog] -> [Todo] -> [In Progress] -> [Done]
+   - Minden fejlesztési feladat külön Issue-ként kerül rögzítésre.
+
+2. Munkaidő Adminisztráció:
+   - A GitHub Project nézetben létrehoztunk egy egyedi "Munkaora" (Number) mezőt.
+   - Folyamat:
+     A. Feladat elvégzése után a fejlesztő beírja az eltöltött órát (pl. 2.5).
+     B. A rendszer automatikusan összegzi (Sum) a projekt teljes ráfordítását.
+   - Előny: Transzparens, egy helyen van a kóddal, könnyen exportálható.
+
+--------------------------------------------------------------------------------
+
+[ GIT BRANCHING STRATÉGIA (Feature Branch Workflow) ]
+
+A kód stabilitásának megőrzése érdekében szigorú elágaztatási modellt követünk.
+
+1. Ágak (Branches):
+   - main:    (PRODUCTION) Csak a stabil, éles verziót tartalmazza. Ritkán frissül.
+   - develop: (STAGING) A központi fejlesztői ág. A CI/CD rendszerek ezt figyelik.
+   - feature: (LOCAL) Ideiglenes ágak egy-egy konkrét feladathoz.
+
+2. Névkonvenció (Összekötés az Issue-kkal):
+   A feature ágak neve tartalmazza a GitHub Issue számát a visszakövethetőségért.
+   
+   Formátum: feature/{issue-id}-{rovid-leiras}
+   Példa:    feature/12-arlista-backend
+
+3. Munkafolyamat Lépései:
+   A. Kiindulás a develop ágból:
+      $ git checkout develop
+      $ git pull origin develop
+
+   B. Új funkció ág létrehozása (pl. Issue #12):
+      $ git checkout -b feature/12-arlista-backend
+
+   C. Fejlesztés & Commit (Lokálisan):
+      $ git add .
+      $ git commit -m "Backend modell kesz"
+
+   D. Befejezés & Merge:
+      $ git checkout develop
+      $ git merge feature/12-arlista-backend
+      $ git branch -d feature/12-arlista-backend
+
+   E. Publikálás (Deploy):
+      $ git push origin develop  --> Ekkor indul a Netlify/Railway build!
+
+--------------------------------------------------------------------------------
+
+[ ARCHITEKTÚRA ÉS SZABÁLYOK (SaaS Előkészítés) ]
+
+1. Adatbázis & Multi-tenancy
+   - Minden üzleti entitás (Service, Gallery, User, Company) kötelezően 
+     rendelkezik 'CompanyId'-vel.
+   - Jelenleg a rendszer a 7-es ID-t (Skani Salon) kezeli teszteléshez.
+
+2. Frontend (Dinamikus Működés)
+   - Zéró Hardcode: Nem drótozunk be cégnevet, logót vagy színeket.
+   - Initialization (App.vue):
+     A. Ellenőrzi a localStorage-ban a tokent ('salon_token').
+     B. Ha van token -> Dekódolja és lekéri a cégadatokat (/api/Company/{id}).
+     C. Ha nincs token -> Látogatói módban indul (publikus adatokkal).
+   - Style Injection: A lekért adatok alapján az app valós időben átállítja 
+     a CSS változókat (--primary-color, --secondary-color).
+
+3. Biztonság & API
+   - CORS: A Backend engedélyezi a Netlify és Localhost kéréseket.
+   - Token Validáció: Minden módosító műveletnél ellenőrzi a CompanyId-t.
+   - Routing: A Controller explicit várja az ID-t az URL-ben (pl. PUT {id}), 
+     így elkerülhető a 405-ös hiba.
+
+--------------------------------------------------------------------------------
+
+[ EDDIG ELKÉSZÜLT FUNKCIÓK ]
+
+1. Publikus Oldalak (Látogatói nézet)
+   - SPA Routing: Megoldva a 'netlify.toml' fájllal (nincs 404 hiba).
+   - Home: Dinamikus bemutatkozás.
+   - Contact: SQL-ből töltött cím, telefon, nyitvatartás és Google Maps.
+
+2. Admin Funkciók (Védett útvonalak)
+   - Login: JWT token kezelés, automatikus kijelentkeztetés hiba esetén.
+   - Cégbeállítások (/beallitasok):
+     > PrimeVue TabView felület.
+     > Elérhetőségek: Cégnév, Email, Telefon, Cím szerkesztése.
+     > Nyitvatartás: HTML alapú szövegdobozok (<br> támogatással).
+     > Social & Map: Facebook, Insta, TikTok, Maps URL kezelés.
+     > Megjelenés: Color Picker a színekhez (azonnali vizuális frissítés).
+
+3. Backend API Végpontok
+   - POST /api/Auth/login
+   - GET  /api/Company/{id}
+   - PUT  /api/Company/{id}  (Védett)
+   - (Implementálás alatt: Gallery és Services végpontok)
+
+--------------------------------------------------------------------------------
+
+[ DESIGN SYSTEM (Szigorúan tartandó!) ]
+
+Technikai Megvalósítás:
+CSS Változókat (Variables) használunk, melyeket az adatbázis vezérel.
+
+Színpaletta (Skani Default):
+   - Elsődleges (Arany):         #d4af37
+     (Használat: Gombok, Ikonok, Linkek, Kiemelések)
+   
+   - Másodlagos (Fekete/Szürke): #1a1a1a
+     (Használat: Háttérszínek, Footer, Header)
+   
+   - Logo Brand Szín (KIVÉTEL):  Kék átmenet
+     (Használat: KIZÁRÓLAG a logóban!)
+
+UI Irányelvek:
+   - Inputok: Teljes szélesség (w-full), fókuszban primary color keret.
+   - Gombok: Keret nélkül, primary háttérrel (PrimeVue).
+
+--------------------------------------------------------------------------------
+
+[ FILE STRUKTÚRA ÁTTEKINTÉS ]
+
+Soluvion/ (Gyökér)
+  +-- Soluvion.API/              (Backend - C#)
+  |     +-- Controllers/
+  |     +-- Models/
+  |     +-- Program.cs
+  |
+  +-- soluvion-web/              (Frontend - Vue)
+        +-- src/
+        |     +-- views/         (Home, Settings, Login)
+        |     +-- components/    (Header, Footer)
+        |     +-- services/      (api.js)
+        |     +-- App.vue
+        |
+        +-- netlify.toml         (SPA Redirect Config - FONTOS!)
+        +-- vite-env.d.ts
+
+--------------------------------------------------------------------------------
+
+[ FEJLESZTÉSI WORKFLOW (Best Practice) ]
+
+A Netlify kredit spórolása és a gyors hibajavítás érdekében:
+
+1. Helyi Fejlesztés (Localhost - AJÁNLOTT):
+   - Frontend parancs: "npm run dev" (saját gépen).
+   - Backend kapcsolat: A .env fájlban az ÉLES Railway URL legyen beállítva.
+     (VITE_API_URL=https://skanisalon-production...)
+   - Előny: Valós adatbázis, de azonnali frissítés, nincs build idő.
+
+2. Deploy (Netlify):
+   - Csak akkor tolunk "git push"-t, ha lokálisan minden működik.
+   - Ha csak mentünk, de nem akarunk buildet: "[skip ci]" a commit üzenetben.
+
+--------------------------------------------------------------------------------
+================================================================================

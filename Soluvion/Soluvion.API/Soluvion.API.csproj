@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="DevDoc\TechnologicalStack.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.2" />
@@ -22,7 +26,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="DevDoc\" />
     <Folder Include="wwwroot\uploads\" />
   </ItemGroup>
 
