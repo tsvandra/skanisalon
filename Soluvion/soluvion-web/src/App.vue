@@ -23,6 +23,7 @@
 
     if (!token) {
       console.log("Nincs bejelentkezve felhasználó, nem töltünk cégadatot.");
+      isLoading.value = false;
       return; // Ha nincs token, megállunk, nem hívjuk a szervert feleslegesen
     }
 
