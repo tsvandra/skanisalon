@@ -1,5 +1,12 @@
 <Solution>
-  <Folder Name="/Solution Items/" />
+  <Folder Name="/Solution Items/">
+    <File Path=".dockerignore" />
+    <File Path="Soluvion.API/Dockerfile" />
+  </Folder>
+  <Folder Name="/Solution Items/DevDoc/">
+    <File Path="DevelopDocumentation.txt" />
+    <File Path="TechnologicalStack.txt" />
+  </Folder>
   <Project Path="soluvion-web/" Type="Website" DisplayName="soluvion-web">
     <BuildType Project="Debug" />
     <Properties Name="WebsiteProperties">

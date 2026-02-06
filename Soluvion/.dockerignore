@@ -1,0 +1,10 @@
+.git
+.vscode
+bin/
+obj/
+*.md
+*.txt
+DevDoc/
+TIMESHEET.md
+Soluvion.API/bin/
+Soluvion.API/obj/
