@@ -1,30 +1,38 @@
 <script setup>
-  import { ref, onMounted } from 'vue';
+  //import { ref, onMounted } from 'vue';
+  import { inject } from 'vue';
   import Button from 'primevue/button';
   import Card from 'primevue/card';
   import { useRouter } from 'vue-router';
-  import api from '@/services/api'
+  //import api from '@/services/api'
 
   const router = useRouter();
-  const company = ref(null);
-  const loading = ref(true);
 
-  // Környezeti változóból vesszük, melyik szalon adata kell (alapból 1)
-  const companyId = import.meta.env.VITE_COMPANY_ID || 7;
+  const company = inject('company');
 
-  // Amikor az oldal betöltődik (onMounted), elindul az adatlekérés
-  onMounted(async () => {
-    try {
-      const response = await api.getCompanyDetails(companyId);
-      company.value = response.data;
-      console.log("Sikeres adatbetöltés:", company.value); // Segít a hibakeresésben
-    } catch (error) {
-      console.error("Hiba az adatok betöltésekor:", error);
-    } finally {
-      loading.value = false;
-    }
-  });
-  //test
+
+  //const company = ref(null);
+  //const loading = ref(true);
+
+  //// Környezeti változóból vesszük, melyik szalon adata kell (alapból 7)
+  //const companyId = import.meta.env.VITE_COMPANY_ID || 7;
+
+  //// Amikor az oldal betöltődik (onMounted), elindul az adatlekérés
+  //onMounted(async () => {
+  //  try {
+  //    const response = await api.getCompanyDetails(companyId);
+  //    company.value = response.data;
+  //    console.log("Sikeres adatbetöltés:", company.value); // Segít a hibakeresésben
+  //  } catch (error) {
+  //    console.error("Hiba az adatok betöltésekor:", error);
+  //  } finally {
+  //    loading.value = false;
+  //  }
+  //});
+  ////test
+
+
+
   const goToServices = () => {
     router.push('/szolgaltatasok');
   }
@@ -40,9 +48,7 @@
     <div class="hero-section">
       <div class="hero-content">
 
-        <h1 v-if="loading" class="main-title">Betöltés...</h1>
-        <h1 v-else-if="company" class="main-title">{{ company.name }}</h1>
-        <h1 v-else class="main-title">SZKÁNI SZALON</h1>
+        <h1 class="main-title">{{ company?.name || 'SZKÁNI SZALON!' }}</h1>
 
         <p class="subtitle">Stílus. Elegancia. Szépség.</p>
 

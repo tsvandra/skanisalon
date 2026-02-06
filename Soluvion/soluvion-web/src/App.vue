@@ -3,8 +3,8 @@
   import { RouterView } from 'vue-router';
   import AppHeader from '@/components/AppHeader.vue';
   import api from '@/services/api';
+  import { DEFAULT_COMPANY_ID } from '@/config';
 
-  // Itt tároljuk a cég adatait
   const company = ref(null);
   const isLoading = ref(true);
 
@@ -16,56 +16,49 @@
     }
   };
 
-  // Lekérjük a cég adatait (Jelenleg fixen ID=1, később dinamikus lesz domain alapján)
   const fetchCompanyData = async () => {
+    isLoading.value = true;
+    let targetId = DEFAULT_COMPANY_ID; // Ezt a változót használjuk végig!
 
     const token = localStorage.getItem('salon_token');
 
-    if (!token) {
-      console.log("Nincs bejelentkezve felhasználó, nem töltünk cégadatot.");
-      isLoading.value = false;
-      return; // Ha nincs token, megállunk, nem hívjuk a szervert feleslegesen
+    if (token) {
+      const decoded = parseJwt(token);
+      // Ellenőrizzük kis és nagybetűvel is, biztos ami biztos
+      const tokenCompanyId = decoded?.CompanyId || decoded?.companyId;
+
+      if (tokenCompanyId) {
+        console.log("Admin bejelentkezve, ID:", tokenCompanyId);
+        targetId = tokenCompanyId;
+      } else {
+        localStorage.removeItem('salon_token');
+      }
+    } else {
+      console.log("Látogató mód. Alapértelmezett cég betöltése ID:", targetId);
     }
-
-    const decoded = parseJwt(token);
-
-    const companyId = decoded?.CompanyId || decoded?.companyId;
-
-    if (!companyId) {
-      console.warn("Hiba: A tokenben nincs CompanyId!");
-      localStorage.removeItem('salon_token');
-      return;
-    }
-
-    isLoading.value = true;
 
     try {
-      // Portszámot ellenőrizd! (pl. 7113)
-      const res = await api.get(`/api/Company/${companyId}`);
+      // Itt a 'targetId'-t használjuk, ami biztosan létezik
+      const res = await api.get(`/api/Company/${targetId}`);
       const data = res.data;
       company.value = data;
 
-        // --- A VARÁZSLAT: CSS Változók beállítása ---
-        // Ez "festi át" az egész weboldalt a cég színeire
-        document.documentElement.style.setProperty('--primary-color', data.primaryColor || '#d4af37');
-        document.documentElement.style.setProperty('--secondary-color', data.secondaryColor || '#1a1a1a');
-        document.documentElement.style.setProperty('--font-family', "'Playfair Display', serif");
-      
+      // CSS Változók beállítása
+      document.documentElement.style.setProperty('--primary-color', data.primaryColor || '#d4af37');
+      document.documentElement.style.setProperty('--secondary-color', data.secondaryColor || '#1a1a1a');
+      document.documentElement.style.setProperty('--font-family', "'Playfair Display', serif");
+
     } catch (error) {
-      console.error("Hiba a cégadatok betöltésekor:", error.response?.data || error.message);
-      // Ha 401 (Unauthorized) hibát kapunk, lehet lejárt a token -> Dobjuk ki a usert
-      if (error.response?.status === 401) {
+      console.error("KRITIKUS HIBA: Nem sikerült betölteni a cégadatokat.", error);
+      if (token && error.response?.status === 401) {
         localStorage.removeItem('salon_token');
-        window.location.href = '/login'; // Vissza a belépéshez
         window.location.reload();
       }
-
     } finally {
       isLoading.value = false;
     }
   };
 
-  // "Provide": Ezzel elérhetővé tesszük a cég adatait minden komponens számára (pl. Header, Footer)
   provide('company', company);
 
   onMounted(() => {
@@ -78,26 +71,24 @@
     <header>
       <AppHeader />
     </header>
-
     <main>
       <RouterView />
     </main>
-
     <footer class="app-footer">
       <p>&copy; {{ new Date().getFullYear() }} {{ company?.name || 'Szalon' }}. Minden jog fenntartva.</p>
     </footer>
   </div>
 
   <div v-else class="loading-screen">
+    <i class="pi pi-spin pi-spinner" style="font-size: 2rem; margin-right: 10px;"></i>
     Betöltés...
   </div>
 </template>
 
 <style>
-  /* GLOBÁLIS STÍLUSOK (CSS Változók alapértelmezése) */
   :root {
-    --primary-color: #d4af37; /* Arany */
-    --secondary-color: #1a1a1a; /* Fekete */
+    --primary-color: #d4af37;
+    --secondary-color: #1a1a1a;
     --font-family: 'Playfair Display', serif;
   }
 
@@ -108,25 +99,18 @@
     color: #ffffff;
   }
 
-  h1, h2, h3 {
-    font-family: var(--font-family); /* Minden címsor használja a beállított betűtípust */
-    color: var(--primary-color); /* A címsorok legyenek Aranyak */
+  h1, h2, h3, a {
+    font-family: var(--font-family);
+    color: var(--primary-color);
   }
-
-  a {
-    text-decoration: none;
-    color: var(--primary-color); /* A linkek is Aranyak */
-  }
-
 </style>
 
 <style scoped>
-  /* App specifikus stílusok */
   .app-footer {
     text-align: center;
     padding: 2rem;
     background-color: #2c2c2c;
-    margin-top: auto; /* Hogy mindig alul legyen */
+    margin-top: auto;
     color: #ccc;
   }
 
@@ -141,7 +125,7 @@
     justify-content: center;
     align-items: center;
     height: 100vh;
-    font-size: 1.5rem;
-    color: var(--primary-color);
+    background-color: #1a1a1a;
+    color: #d4af37;
   }
 </style>
