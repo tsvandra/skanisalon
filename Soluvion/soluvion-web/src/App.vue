@@ -1,19 +1,46 @@
 <script setup>
   import { ref, onMounted, provide } from 'vue';
   import { RouterView } from 'vue-router';
-  import AppHeader from './components/AppHeader.vue';
+  import AppHeader from '@/components/AppHeader.vue';
   import api from '@/services/api';
 
   // Itt tároljuk a cég adatait
   const company = ref(null);
   const isLoading = ref(true);
 
+  const parseJwt = (token) => {
+    try {
+      return JSON.parse(atob(token.split('.')[1]));
+    } catch (e) {
+      return null;
+    }
+  };
+
   // Lekérjük a cég adatait (Jelenleg fixen ID=1, később dinamikus lesz domain alapján)
   const fetchCompanyData = async () => {
+
+    const token = localStorage.getItem('salon_token');
+
+    if (!token) {
+      console.log("Nincs bejelentkezve felhasználó, nem töltünk cégadatot.");
+      return; // Ha nincs token, megállunk, nem hívjuk a szervert feleslegesen
+    }
+
+    const decoded = parseJwt(token);
+
+    const companyId = decoded?.CompanyId || decoded?.companyId;
+
+    if (!companyId) {
+      console.error("Hiba: A tokenben nincs CompanyId!");
+      return;
+    }
+
+    isLoading.value = true;
+
     try {
       // Portszámot ellenőrizd! (pl. 7113)
-      const res = await api.get('/api/Company/7');
-      const data = response.data;
+      const res = await api.get(`/api/Company/${companyId}`);
+      const data = res.data;
       company.value = data;
 
         // --- A VARÁZSLAT: CSS Változók beállítása ---
@@ -23,7 +50,13 @@
         document.documentElement.style.setProperty('--font-family', "'Playfair Display', serif");
       
     } catch (error) {
-      console.error("Hiba a cégadatok betöltésekor:", error);
+      console.error("Hiba a cégadatok betöltésekor:", error.response?.data || error.message);
+      // Ha 401 (Unauthorized) hibát kapunk, lehet lejárt a token -> Dobjuk ki a usert
+      if (error.response?.status === 401) {
+        localStorage.removeItem('salon_token');
+        window.location.href = '/login'; // Vissza a belépéshez
+      }
+
     } finally {
       isLoading.value = false;
     }
