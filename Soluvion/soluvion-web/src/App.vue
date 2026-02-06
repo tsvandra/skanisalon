@@ -18,7 +18,32 @@
 
   const fetchCompanyData = async () => {
     isLoading.value = true;
-    let targetId = DEFAULT_COMPANY_ID; // Ezt a változót használjuk végig!
+    let targetId = DEFAULT_COMPANY_ID; // Alap: 7
+
+    // --- 🛠️ ROBUSTUS DEMO MÓD (Javított verzió) ---
+
+    // http://localhost:5173/#/ - skani
+    // http://localhost:5173/#/?id=8 - barber
+    // http://localhost:5173/#/?id=9 - pink lady
+
+    // 1. Megnézzük a "sima" URL paramétereket
+    let demoId = new URLSearchParams(window.location.search).get('id');
+
+    // 2. HA NINCS, megnézzük a Hash (#) utáni részt is! (Ez hiányzott eddig)
+    if (!demoId && window.location.hash.includes('?')) {
+      const hashPart = window.location.hash.split('?')[1]; // A kérdőjel utáni rész
+      demoId = new URLSearchParams(hashPart).get('id');
+    }
+
+    // DEBUG: Ezt látnod kell a konzolban (F12)!
+    console.log("🔍 URL Elemzés -> Talált ID:", demoId, "| Eredeti URL:", window.location.href);
+
+    if (demoId) {
+      console.log("✅ DEMO MÓD SIKERES! Átállás erre az ID-re:", demoId);
+      targetId = Number(demoId);
+    } else {
+      console.log("⚠️ Nem találtam ID-t az URL-ben, marad a Default:", targetId);
+    }
 
     const token = localStorage.getItem('salon_token');
 
