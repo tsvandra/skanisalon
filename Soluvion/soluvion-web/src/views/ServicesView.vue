@@ -247,8 +247,11 @@
 
   .variant-label {
     width: 120px;
-    text-align: center;
+    text-align: center !important;
+    justify-content: center;
     padding: 0 5px;
+    display: flex;
+    align-items: center;
   }
 
   .header-input {
@@ -259,12 +262,15 @@
     font-weight: bold;
     color: #666;
     cursor: pointer;
+    text-align: center !important;
   }
 
     .header-input:focus {
       outline: 1px solid #d4af37;
       background: #fff;
     }
+
+    .header-input.left-align { text-align: left !important; }
 
   /* Data Row Stílusok */
   .data-row {
@@ -340,6 +346,58 @@
     justify-content: center;
     position: relative;
   }
+  /* --- TREE VIEW (FA NÉZET) --- */
+  .tree-view-container {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    background: #fdfdfd;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+  }
+
+  .tree-header {
+    margin-bottom: 10px;
+    border-bottom: 2px solid #d4af37;
+    padding-bottom: 5px;
+  }
+
+  .large-text {
+    font-size: 1.1rem;
+    font-weight: bold;
+  }
+
+  .full-width {
+    width: 100%;
+  }
+
+  .tree-items {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .tree-item-row {
+    display: flex;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px dashed #eee;
+  }
+
+  .tree-label {
+    width: 200px;
+    font-weight: 500;
+    color: #555;
+    text-align: left; /* Név balra */
+  }
+
+  .tree-price {
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+
 
   /* Gombok és Interakciók */
   .icon-btn {
@@ -388,12 +446,23 @@
   }
 
     .price-input :deep(input) {
-      text-align: center;
       border: 1px solid transparent;
       background: transparent;
       font-family: inherit;
       font-size: 1rem;
+      color: #333;
     }
+
+  /* GRID-ben középre */
+  .center-input :deep(input) {
+    text-align: center !important;
+  }
+
+  /* TREE-ben balra */
+  .left-input :deep(input) {
+    text-align: left !important;
+    padding-left: 0;
+  }
 
       .price-input :deep(input):focus {
         border-color: #d4af37;
