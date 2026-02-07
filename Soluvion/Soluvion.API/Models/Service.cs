@@ -13,12 +13,19 @@ namespace Soluvion.API.Models
         [MaxLength(50)]
         public string Name { get; set; } = string.Empty;
 
-        public int DefaultDuration { get; set; }
+        public int OrderIndex { get; set; }
+
+        [MaxLength(50)]
+        public string? Category { get; set; }
+
+        public int DefaultDuration { get; set; }  //"Display" célra, ha nincs variáció.
 
         [Column(TypeName = "decimal(10, 2)")]
         public decimal DefaultPrice { get; set; }
 
         [MaxLength(255)]
         public string PictogramLink { get; set; } = string.Empty;
+
+        public List<ServiceVariant> Variants { get; set; } = new List<ServiceVariant>();
     }
 }

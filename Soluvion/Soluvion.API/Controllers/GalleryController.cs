@@ -22,7 +22,7 @@ namespace Soluvion.API.Controllers
 
         // GET: api/Gallery
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<object>>> GetImages([FromQuery] int companyId = 1)
+        public async Task<ActionResult<IEnumerable<object>>> GetImages([FromQuery] int companyId = 7)
         {
             var images = await _context.GalleryImages
                 .Include(i => i.Category)

@@ -7,6 +7,7 @@
   import TabView from 'primevue/tabview';
   import TabPanel from 'primevue/tabpanel';
   import api from '@/services/api';
+  import { getCompanyIdFromToken } from '../utils/jwt';
 
   // Ezt használja a felület (egyesítettük a form-al)
   const companyData = ref({
@@ -34,18 +35,6 @@
   const isSaving = ref(false);
   const successMsg = ref('');
   const errorMsg = ref('');
-
-  // 1. Token dekódolása (Hogy tudjuk, melyik céget kell szerkeszteni)
-  const getCompanyIdFromToken = () => {
-    try {
-      const token = localStorage.getItem('salon_token');
-      if (!token) return null;
-      const decoded = JSON.parse(atob(token.split('.')[1]));
-      return decoded?.CompanyId || decoded?.companyId;
-    } catch (e) {
-      return null;
-    }
-  };
 
   // 2. Adatok betöltése
   const loadCompanyData = async () => {

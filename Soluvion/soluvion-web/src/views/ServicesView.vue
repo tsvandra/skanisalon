@@ -1,68 +1,132 @@
 <script setup>
-  import { ref, onMounted } from 'vue';
-  import DataTable from 'primevue/datatable';
-  import Column from 'primevue/column';
+  import { ref, onMounted, computed } from 'vue';
+  import InputNumber from 'primevue/inputnumber';
+  import apiClient from '@/services/api';
+  import { getCompanyIdFromToken } from '../utils/jwt';
+ 
+  //import DataTable from 'primevue/datatable';
+  //import Column from 'primevue/column';
+  //import Dialog from 'primevue/dialog';
+  //import InputText from 'primevue/inputtext';
 
   const services = ref([]);
   const loading = ref(true);
   const isLoggedIn = ref(false); // Admin státusz
 
-  // Új szolgáltatás adatai (űrlaphoz)
-  const newService = ref({
-    name: '',
-    defaultPrice: 0
-  });
-
-  // Betöltés
   const fetchServices = async () => {
     loading.value = true;
+
+    const targetCompanyId = getCompanyIdFromToken() || 7;
+
     try {
-      // Itt fixen az 1-es cég árait kérjük le (később ez dinamikus lesz a domain alapján)
-      const response = await api.get('/api/Service?companyId=7');
+      const response = await apiClient.get('/api/Service', {
+        params: { companyId: targetCompanyId }
+      });
       services.value = response.data;
     } catch (error) {
-      console.error('Hiba:', error);
+      console.error('Hiba a betolteskor:', error);
     } finally {
       loading.value = false;
     }
   };
 
-  // Új szolgáltatás mentése
-  const addService = async () => {
-    if (!newService.value.name || newService.value.defaultPrice <= 0) {
-      alert("Kérlek adj meg nevet és árat!");
-      return;
+
+  const areVariantSignaturesEqual = (variantsA, variantsB) => {
+    if (!variantsA || !variantsB) return false;
+    if (variantsA.length !== variantsB.length) return false;
+
+    for (let i = 0; i < variantsA.length; i++) {
+      if (variantsA[i].variantName !== variantsB[i].variantName) return false;
     }
 
-    try {
-      // Nem kell header és token manuálisan, az api.js intézi!
-      await api.post('/api/Service', newService.value);
+    return true;
+  }
 
-      newService.value = { name: '', defaultPrice: 0 };
+  const displayList = computed(() => {
+    return services.value.map((service, index) => {
+      let showHeader = false;
+
+      if (index === 0) {
+        showHeader = service.variants && service.variants.length > 0;
+      }
+      else {
+        const prevService = services.value[index - 1];
+        if (!areVariantSignaturesEqual(service.variants, prevService.variants)) {
+          showHeader = service.variants && service.variants.length > 0;
+        }
+      }
+
+      return {
+        ...service,
+        showHeader: showHeader
+      };
+    });
+  });
+
+
+  const insertNewService = async () => {
+    if (!isLoggedIn.value) return;
+
+    const prevService = services.value[services.value.length - 1];
+    let newVariants = [];
+
+    if (prevService && prevService.variants) {
+      newVariants = prevService.variants.map(v => ({
+        variantName: v.variantName,
+        price: 0,
+        duration: v.duration
+      }));
+    }
+
+    const newService = {
+      name: "Uj szolgaltatas",
+      defaultPrice: 0,
+      orderIndex: (prevService?.orderIndex || 0) + 10,
+      variants: newVariants
+    };
+
+    try {
+      await apiClient.post('/api/Service', newService);
       await fetchServices();
     } catch (err) {
-      console.error(err);
-      alert("Hiba a mentésnél!");
+      console.error("Hiba a letrehozasnal:", err);
     }
   };
 
-  // Törlés
+  const removeVariant = async (service, varinatIndex) => {
+    service.variants.splice(variantIndex, 1);
+    await saveService(service);
+  };
+
+  const addVariantToService = async (service) => {
+    service.variants.push({
+      id: 0,
+      variantName: "Uj tipus",
+      price: 0,
+      duration: 30
+    });
+    await saveService(service);
+  };
+
+  const saveService = async (service) => {
+    try {
+      await apiClient.put(`/api/Service/${service.id}`, service);
+    } catch (err) {
+      console.error("Hiba a mentesnel:", err);
+    }
+  };
+
   const deleteService = async (id) => {
-    if (!confirm("Biztosan törölni akarod?")) return;
-
+    if (!confirm("Biztosan torolni akarod ezt a szolgaltatast?")) return;
     try {
-      await api.delete(`/api/Service/${id}`);
+      await apiClient.delete(`/api/Service/${id}`);
       await fetchServices();
     } catch (err) {
-      console.error(err);
+      console.error("Hiba a torlesnel:", err);
     }
   };
 
-  // Pénznem formázó
-  const formatCurrency = (value) => {
-    if (value === undefined || value === null) return '0,00';
-    return value.toLocaleString('hu-HU', { style: 'currency', currency: 'EUR' });
-  };
+  const formatCurrency = (val) => val ? val.toLocaleString('hu-HU', { style: 'currency:', currency: 'EUR', maximumFractionDigits: 0 }) : '-';
 
   onMounted(() => {
     // Megnézzük, be van-e lépve
@@ -74,108 +138,244 @@
 </script>
 
 <template>
-  <div class="card service-container">
-    <h2 class="title">Szolgáltatásaink</h2>
-
-    <div v-if="isLoggedIn" class="admin-panel">
-      <h3>Új szolgáltatás hozzáadása</h3>
-      <div class="form-row">
-        <input v-model="newService.name" placeholder="Szolgáltatás neve (pl. Női vágás)" />
-        <input v-model.number="newService.defaultPrice" type="number" placeholder="Ár (€)" />
-        <button @click="addService">Hozzáadás</button>
-      </div>
+  <div class="smart-container">
+    <div class="header-actions">
+      <h2>Árlista Szerkesztő</h2>
+      <button v-if="isLoggedIn" @click="insertNewService" class="add-btn">
+        <i class="pi pi-plus"></i> Új sor hozzáadása
+      </button>
     </div>
 
-    <DataTable :value="services" :loading="loading" showGridlines stripedRows tableStyle="min-width: 50rem">
-      <template #empty>
-        Nincsenek elérhető szolgáltatások.
-      </template>
+    <div v-if="loading">Betöltés...</div>
 
-      <Column field="name" header="Megnevezés" sortable></Column>
+    <div v-else class="grid-layout">
 
-      <Column field="defaultPrice" header="Ár" sortable style="font-weight: bold; width: 150px;">
-        <template #body="slotProps">
-          {{ formatCurrency(slotProps.data.defaultPrice) }}
-        </template>
-      </Column>
+      <div v-for="(service) in displayList" :key="service.id" class="service-block">
 
-      <Column v-if="isLoggedIn" header="Művelet" style="width: 100px; text-align: center;">
-        <template #body="slotProps">
-          <button class="delete-btn" @click="deleteService(slotProps.data.id)">Törlés</button>
-        </template>
-      </Column>
+        <div v-if="service.showHeader" class="variant-header-row">
+          <div class="spacer-cell"></div> <div v-for="(v, vIndex) in service.variants" :key="vIndex" class="variant-label">
+            <input v-if="isLoggedIn" v-model="v.variantName" @change="saveService(service)" class="header-input" />
+            <span v-else>{{ v.variantName }}</span>
+          </div>
+        </div>
 
-    </DataTable>
+        <div class="data-row">
+          <div class="name-cell">
+            <input v-if="isLoggedIn" v-model="service.name" @change="saveService(service)" class="name-input" />
+            <span v-else class="name-text">{{ service.name }}</span>
+
+            <div v-if="isLoggedIn" class="row-tools">
+              <button @click="addVariantToService(service)" title="Variáció hozzáadása (+)" class="icon-btn">+</button>
+              <button @click="deleteService(service.id)" title="Sor törlése" class="icon-btn trash">🗑</button>
+            </div>
+          </div>
+
+          <div class="variants-container">
+            <div v-for="(variant, vIndex) in service.variants" :key="vIndex" class="variant-cell">
+
+              <div class="price-wrapper">
+                <InputNumber v-if="isLoggedIn"
+                             v-model="variant.price"
+                             mode="currency" currency="EUR" locale="hu-HU" :minFractionDigits="0"
+                             class="price-input"
+                             @blur="saveService(service)" />
+                <span v-else class="price-display">
+                  {{ formatCurrency(variant.price) }}
+                </span>
+              </div>
+
+              <button v-if="isLoggedIn" @click="removeVariant(service, vIndex)" class="variant-remove-btn" title="Variáció törlése">×</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
   </div>
 </template>
 
 <style scoped>
-  .service-container {
+  .smart-container {
     max-width: 900px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: 20px;
   }
 
-  .title {
-    margin-bottom: 2rem;
-    color: #333;
-    text-align: center;
-  }
-
-  /* Admin panel stílusa */
-  .admin-panel {
-    background-color: #f8f9fa;
-    border: 1px dashed #d4af37;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    border-radius: 8px;
-  }
-
-    .admin-panel h3 {
-      margin-top: 0;
-      color: #d4af37;
-      font-size: 1.1rem;
-    }
-
-  .form-row {
+  .grid-layout {
     display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 5px;
   }
 
-    .form-row input {
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      flex: 1;
+  /* Header Row Stílusok */
+  .variant-header-row {
+    display: flex;
+    margin-top: 25px; /* Nagyobb térköz az új csoportnál */
+    padding-bottom: 5px;
+    border-bottom: 2px solid #f0f0f0;
+    color: #888;
+    font-size: 0.9rem;
+    font-weight: bold;
+  }
+
+  .spacer-cell {
+    width: 250px;
+    flex-shrink: 0;
+  }
+
+  .variant-label {
+    width: 120px;
+    text-align: center;
+    padding: 0 5px;
+  }
+
+  .header-input {
+    width: 100%;
+    text-align: center;
+    border: none;
+    background: transparent;
+    font-weight: bold;
+    color: #666;
+    cursor: pointer;
+  }
+
+    .header-input:focus {
+      outline: 1px solid #d4af37;
+      background: #fff;
     }
 
-    .form-row button {
-      background-color: #d4af37;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: bold;
+  /* Data Row Stílusok */
+  .data-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px dashed #f0f0f0;
+  }
+
+    .data-row:hover {
+      background-color: #fafafa;
     }
 
-      .form-row button:hover {
-        background-color: #b5952f;
+  .name-cell {
+    width: 250px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-right: 15px;
+  }
+
+  .name-input {
+    width: 100%;
+    border: none;
+    font-size: 1rem;
+    background: transparent;
+    font-weight: 500;
+  }
+
+    .name-input:focus {
+      outline: none;
+      border-bottom: 1px solid #d4af37;
+    }
+
+  .name-text {
+    font-weight: 500;
+  }
+
+  .variants-container {
+    display: flex;
+    flex-wrap: wrap; /* Ha nagyon sok variáció lenne, törjön a sor */
+  }
+
+  .variant-cell {
+    width: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  /* Gombok és Interakciók */
+  .icon-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    opacity: 0; /* Csak hoverre látszik */
+    transition: opacity 0.2s;
+    font-size: 1.2rem;
+    padding: 0 5px;
+    color: #aaa;
+  }
+
+  .name-cell:hover .icon-btn {
+    opacity: 1;
+  }
+
+  .icon-btn:hover {
+    color: #333;
+  }
+
+  .icon-btn.trash:hover {
+    color: red;
+  }
+
+  .variant-remove-btn {
+    position: absolute;
+    top: -8px;
+    right: 5px;
+    background: none;
+    border: none;
+    color: #ff4444;
+    cursor: pointer;
+    font-size: 1.2rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .variant-cell:hover .variant-remove-btn {
+    opacity: 1;
+  }
+
+  /* PrimeVue InputNumber felüldefiniálása */
+  .price-input {
+    width: 90px !important;
+  }
+
+    .price-input :deep(input) {
+      text-align: center;
+      border: 1px solid transparent;
+      background: transparent;
+      font-family: inherit;
+      font-size: 1rem;
+    }
+
+      .price-input :deep(input):focus {
+        border-color: #d4af37;
+        background: white;
+        box-shadow: none;
       }
 
-  /* Törlés gomb */
-  .delete-btn {
-    background-color: #ff4444;
+  .add-btn {
+    background-color: #d4af37;
     color: white;
     border: none;
-    padding: 5px 10px;
-    border-radius: 4px;
+    padding: 10px 20px;
+    border-radius: 5px;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-weight: bold;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
 
-    .delete-btn:hover {
-      background-color: #cc0000;
+    .add-btn:hover {
+      background-color: #b5952f;
     }
+
+  .header-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
 </style>
