@@ -93,7 +93,7 @@
     }
   };
 
-  const removeVariant = async (service, varinatIndex) => {
+  const removeVariant = async (service, variantIndex) => {
     service.variants.splice(variantIndex, 1);
     await saveService(service);
   };
