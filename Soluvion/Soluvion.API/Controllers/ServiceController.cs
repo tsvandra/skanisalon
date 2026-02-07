@@ -77,7 +77,7 @@ namespace Soluvion.API.Controllers
             return CreatedAtAction(nameof(GetServices), new { companyId = service.CompanyId }, service);
         }
 
-        [HttpPost("{id}")]
+        [HttpPut("{id}")]
         [Authorize]
         public async Task<IActionResult> PutService(int id, Service service)
         {

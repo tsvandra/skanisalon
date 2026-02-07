@@ -261,9 +261,21 @@
       color: #333 !important;
     }
 
-    .data-row:hover input {
+      .data-row:hover input
+      .data-row:hover span,
+      .data-row:hover .price-display {
         color: #333 !important;
-    }
+      }
+
+      /* Az ikonok is legyenek sötétek hoverkor */
+      .data-row:hover .icon-btn {
+        opacity: 1;
+        color: #666;
+      }
+
+      .data-row:hover .icon-btn:hover {
+        color: #000;
+      }
 
   .name-cell {
     width: 250px;
