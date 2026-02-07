@@ -99,6 +99,10 @@
   };
 
   const addVariantToService = async (service) => {
+    if (!service.variants) {
+      service.variants = [];
+    }
+
     service.variants.push({
       id: 0,
       variantName: "Uj tipus",
@@ -254,6 +258,11 @@
 
     .data-row:hover {
       background-color: #fafafa;
+      color: #333 !important;
+    }
+
+    .data-row:hover input {
+        color: #333 !important;
     }
 
   .name-cell {
