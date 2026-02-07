@@ -117,7 +117,7 @@
 
       const response = await apiClient.put(`/api/Service/${service.id}`, service);
 
-      if (response.status === 200 && response.data {
+      if (response.status === 200 && response.data) {
         const index = services.value.findIndex(s => s.id === service.id);
         if (index !== -1) {
           const showHeader = services.value[index].showHeader;
