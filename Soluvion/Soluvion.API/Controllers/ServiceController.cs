@@ -86,6 +86,8 @@ namespace Soluvion.API.Controllers
             int userCompanyId = GetCurrentCompanyId();
             if (userCompanyId == 0) return Unauthorized();
 
+            if (service.Variants == null) service.Variants = new List<ServiceVariant>();
+
             var existingService = await _context.Services
                 .Include(s => s.Variants)
                 .FirstOrDefaultAsync(s => s.Id == id);
@@ -101,6 +103,7 @@ namespace Soluvion.API.Controllers
             existingService.DefaultPrice = service.DefaultPrice;
             existingService.DefaultDuration = service.DefaultDuration;
             existingService.PictogramLink = service.PictogramLink;
+            existingService.OrderIndex = service.OrderIndex;
 
             foreach (var incomingVariant in service.Variants)
             {
@@ -136,14 +139,12 @@ namespace Soluvion.API.Controllers
             try
             {
                 await _context.SaveChangesAsync();
+                return Ok(existingService);
             }
-            catch (DbUpdateConcurrencyException)
+            catch (Exception ex)
             {
-                if (!_context.Services.Any(e => e.Id == id)) return NotFound();
-                else throw;
+                return StatusCode(500, $"Belso hiba: {ex.Message} {ex.InnerException?.Message}");
             }
-
-            return NoContent();
         }
         // DELETE: api/Service/5
         // Csak Admin törölhet!

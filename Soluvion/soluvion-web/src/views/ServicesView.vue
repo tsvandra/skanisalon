@@ -114,9 +114,20 @@
 
   const saveService = async (service) => {
     try {
-      await apiClient.put(`/api/Service/${service.id}`, service);
+
+      const response = await apiClient.put(`/api/Service/${service.id}`, service);
+
+      if (response.status === 200 && response.data {
+        const index = services.value.findIndex(s => s.id === service.id);
+        if (index !== -1) {
+          const showHeader = services.value[index].showHeader;
+        }
+      }
     } catch (err) {
       console.error("Hiba a mentesnel:", err);
+      if (err.response && err.response.data) {
+        console.error("Szerver uzenet:", err.response.data);
+      }
     }
   };
 
