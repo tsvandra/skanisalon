@@ -44,21 +44,28 @@
 
   const displayList = computed(() => {
     return services.value.map((service, index) => {
-      let showHeader = false;
 
-      if (index === 0) {
-        showHeader = service.variants && service.variants.length > 0;
-      }
-      else {
-        const prevService = services.value[index - 1];
-        if (!areVariantSignaturesEqual(service.variants, prevService.variants)) {
+      const isTreeMode = service.variants && service.variants.length >= 4;
+
+      let showHeader = false;
+      if (!isTreeMode) {
+        if (index === 0) {
           showHeader = service.variants && service.variants.length > 0;
+        } else {
+          const prevService = services.value[index - 1];
+
+          const prevWasTree = prevService.variants && prevService.variants.length >= 4;
+
+          if (prevWasTree || !areVariantSignaturesEqual(service.variants, prevService.variants)) {
+            showHeader = service.variants && service.variants.length > 0;
+          }
         }
       }
 
       return {
         ...service,
-        showHeader: showHeader
+        showHeader: showHeader,
+        isTreeMode: isTreeMode
       };
     });
   });
@@ -70,7 +77,7 @@
     const prevService = services.value[services.value.length - 1];
     let newVariants = [];
 
-    if (prevService && prevService.variants) {
+    if (prevService && prevService.variants && prevService.variants.length < 4) {
       newVariants = prevService.variants.map(v => ({
         variantName: v.variantName,
         price: 0,
@@ -120,7 +127,7 @@
       if (response.status === 200 && response.data) {
         const index = services.value.findIndex(s => s.id === service.id);
         if (index !== -1) {
-          const showHeader = services.value[index].showHeader;
+          service.value[index] = { ...service.value[index], ...response.data };
         }
       }
     } catch (err) {
@@ -265,6 +272,7 @@
     align-items: center;
     padding: 8px 0;
     border-bottom: 1px dashed #f0f0f0;
+    transition: background-color 0.2s;
   }
 
     .data-row:hover {
@@ -272,9 +280,15 @@
       color: #333 !important;
     }
 
-      .data-row:hover input
+      .data-row:hover input,
+      .data-row:hover .name-text,
+      .data-row:hover .header-input,
       .data-row:hover span,
       .data-row:hover .price-display {
+        color: #333 !important;
+      }
+      /* PrimeVue inputok belsejét is színezzük */
+      .data-row:hover .price-input :deep(input) {
         color: #333 !important;
       }
 
