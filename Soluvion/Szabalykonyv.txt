@@ -1,0 +1,101 @@
+﻿================================================================================
+PROJEKT STATUS & SZABÁLYKÖNYV: SOLUVION (SKANI SALON)
+================================================================================
+Dátum:    2026.02.08.
+Státusz:  MVP Stabilizálás (SaaS Transition Phase)
+
+[ CÉL ]
+Ez a dokumentum rögzíti az elért eredményeket, a követendő kódolási szabályokat 
+és a megoldott technikai akadályokat. Minden jövőbeli fejlesztésnek ehhez 
+kell igazodnia ("Single Source of Truth").
+
+--------------------------------------------------------------------------------
+
+[ 1. ARCHITEKTÚRÁLIS ALAPELVEK (A "TÖRVÉNYEK") ]
+
+1. SaaS & Multi-tenant (Többcéges) Működés
+   - Frontend: SOHA nem égetünk be fix ID-t (pl. 7).
+     > Látogatók: URL paraméter (?id=8) vagy App.vue default inject.
+     > Admin: A JWT Tokenben lévő 'CompanyId' az irányadó.
+   
+   - Backend: SOHA nem bízunk a kliens által küldött ID-ban írási műveleteknél.
+     > Kötelező: User.FindFirst("CompanyId") claim használata.
+     > Tenant Isolation: Minden lekérdezést szűrni kell: 
+       .Where(x => x.CompanyId == currentCompanyId)
+
+2. API Kommunikáció
+   - Frontend: TILOS a 'fetch' használata manuális header építéssel!
+     > Megoldás: Kizárólag a 'src/services/api.js' Axios példány használható.
+     > Ok: Automatikusan kezeli a BaseURL-t és a Bearer tokent.
+     > Kivétel: Képfeltöltés (FormData) -> { headers: { 'Content-Type': undefined } }
+
+3. Környezeti Változók (.env)
+   - A backend URL sosem lehet hardcoded.
+   - Helyes formátum: VITE_API_URL=https://...
+   - Hivatkozás: import.meta.env.VITE_API_URL
+
+--------------------------------------------------------------------------------
+
+[ 2. ELKÉSZÜLT MODULOK ÉS MEGOLDOTT PROBLÉMÁK ]
+
+1. Autentikáció (Auth Module)
+   - Eredmény: Biztonságos regisztráció, Login, JWT + BCrypt.
+   - Refaktor: Logika kiszervezve a Controllerből a 'Services/AuthService.cs'-be.
+   - Tanulság: "Thin Controller" elv alkalmazása.
+
+2. Cégbeállítások (Company Module)
+   - Eredmény: Dinamikus stílusok (CSS változók) és adatok.
+   - Megoldás:
+     > Frontend: 'provide/inject' minta az adatok leosztására.
+     > Backend: DTO-k (UpdateCompanyDto) a Mass Assignment elkerülésére.
+
+3. Árlista és Szolgáltatások (Services Module)
+   - Eredmény: Többszintű szerkesztő (Szülő + Variációk).
+   - Megoldott Probléma: Entity Framework Parent-Child frissítés.
+     > Logika: Új variáció -> Add, Meglévő -> Update, Hiányzó -> Delete.
+   - Frontend Fix: 'watch' használata a reaktivitás biztosítására váltáskor.
+
+4. Galéria és Fájlkezelés (Gallery Module)
+   - Eredmény: Képfeltöltés, Kategóriák, Fizikai törlés.
+   - Megoldott Hiba (Backend 500): Hiányzó 'AddHttpContextAccessor' pótolva.
+   - Megoldott Hiba (Frontend 415): Axios Content-Type felülbírálása.
+   - SaaS Isolation: Képek mentése ID szerinti almappákba (images/{id}/).
+
+--------------------------------------------------------------------------------
+
+[ 3. INFRASTRUKTÚRA ÉS KONFIGURÁCIÓ ]
+
+1. Backend (Program.cs Sorrend - KRITIKUS)
+   A Middleware-ek sorrendje, ami jelenleg működik:
+   1. Hibakezelés (app.Use...)
+   2. app.UseCors("AllowAll")
+   3. app.UseStaticFiles()        <-- Képekhez elengedhetetlen!
+   4. app.UseAuthentication()
+   5. app.UseAuthorization()
+   6. app.MapControllers()
+
+2. Frontend (Vue 3 Composition API)
+   - Szintaxis: <script setup> mindenhol.
+   - State: ref, computed, watch.
+   - Global: provide (App.vue) -> inject (gyerek komponensek).
+
+--------------------------------------------------------------------------------
+
+[ 4. KÖVETKEZŐ LÉPÉSEK (ROADMAP) ]
+
+A "Front Office" (Látogatói oldal) teljes dinamizálása a cél:
+
+1. HomeView.vue:
+   - Fix "Lorem Ipsum" és címek cseréje adatbázisból jövő mezőkre.
+   - (Description, OpeningHoursTitle)
+
+2. ContactView.vue:
+   - Térkép (MapEmbedUrl), Cím, Telefon, Email dinamizálása.
+   - Nyitvatartás táblázat renderelése az adatbázisból.
+
+3. Deploy:
+   - A módosítások élesítése Railway (Backend) és Netlify (Frontend) oldalon.
+
+--------------------------------------------------------------------------------
+
+================================================================================

@@ -5,6 +5,7 @@
   </Folder>
   <Folder Name="/Solution Items/DevDoc/">
     <File Path="DevelopDocumentation.txt" />
+    <File Path="Szabalykonyv.txt" />
     <File Path="TechnologicalStack.txt" />
   </Folder>
   <Project Path="soluvion-web/" Type="Website" DisplayName="soluvion-web">
