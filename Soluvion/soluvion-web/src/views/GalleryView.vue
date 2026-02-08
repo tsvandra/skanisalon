@@ -88,8 +88,11 @@
 
     try {
       // A backend a tokenből szedi ki a CompanyId-t, nem kell külön küldeni
-      await api.post('/api/Gallery', formData);
-
+      await api.post('/api/Gallery', formData, {
+        headers: {
+          'Content-Type': undefined
+        }
+      });
       // Siker esetén takarítás
       selectedFile.value = null;
       customCategory.value = '';

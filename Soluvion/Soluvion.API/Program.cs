@@ -35,6 +35,8 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddControllers();
 
+builder.Services.AddHttpContextAccessor();
+
 // 3. OpenAPI Generálás (Ez gyártja le a doksit a Scalarnak)
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
