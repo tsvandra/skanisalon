@@ -7,6 +7,8 @@ using Soluvion.API.Data;
 using Swashbuckle.AspNetCore.Filters;
 using System.Text;
 using System.Net;
+using Soluvion.API.Services;
+using Microsoft.AspNetCore.Authentication;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,6 +17,9 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 builder.Services.AddDbContext<AppDbContext>(options =>
    options.UseNpgsql(connectionString));
+
+
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 builder.Services.AddCors(options =>
 {
@@ -26,22 +31,6 @@ builder.Services.AddCors(options =>
                   .AllowAnyHeader(); // Bármilyen fejléc mehet
         });
 });
-
-//builder.Services.AddCors(options =>
-//{
-//    options.AddPolicy("AllowFrontend",
-//        policy =>
-//        {
-//            policy.WithOrigins(
-//                    "https://soluvion.netlify.app", // A te frontend címed
-//                    "http://localhost:5173",        // Helyi fejlesztés
-//                    "http://localhost:3000"
-//                  )
-//                  .AllowAnyMethod()
-//                  .AllowAnyHeader()
-//                  .AllowCredentials(); // Ez fontos lehet, ha cookie-t vagy auth headert küldesz!
-//        });
-//});
 
 
 builder.Services.AddControllers();
@@ -126,26 +115,6 @@ if (app.Environment.IsDevelopment() || true)
     });
     app.MapScalarApiReference();
 }
-
-
-
-//using (var scope = app.Services.CreateScope())
-//{
-//    var services = scope.ServiceProvider;
-//    try
-//    {
-//        var context = services.GetRequiredService<AppDbContext>();
-//        if (context.Database.GetPendingMigrations().Any())
-//        {
-//            context.Database.Migrate();
-//        }
-//    }
-//    catch (Exception ex)
-//    {
-//        var logger = services.GetRequiredService<ILogger<Program>>();
-//        logger.LogError(ex, "Hiba történt az adatbázis migráció során.");
-//    }
-//}
 
 app.UseStaticFiles();
 
