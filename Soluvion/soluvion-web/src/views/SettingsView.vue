@@ -10,26 +10,26 @@
   import { getCompanyIdFromToken } from '../utils/jwt';
 
   // Ezt használja a felület (egyesítettük a form-al)
-  const companyData = ref({
-    name: '',
-    email: '',
-    phone: '',
-    postalCode: '',
-    city: '',
-    streetName: '',
-    houseNumber: '',
-    openingHoursTitle: '',
-    openingHoursDescription: '',
-    openingTimeSlots: '',
-    openingExtraInfo: '',
-    facebookUrl: '',
-    instagramUrl: '',
-    tikTokUrl: '',
-    mapEmbedUrl: '',
-    primaryColor: '#d4af37',
-    secondaryColor: '#1a1a1a',
-    logoUrl: ''
-  });
+  
+  const companyData = ref({}); 
+    //name: '',
+    //email: '',
+    //phone: '',
+    //postalCode: '',
+    //city: '',
+    //streetName: '',
+    //houseNumber: '',
+    //openingHoursTitle: '',
+    //openingHoursDescription: '',
+    //openingTimeSlots: '',
+    //openingExtraInfo: '',
+    //facebookUrl: '',
+    //instagramUrl: '',
+    //tikTokUrl: '',
+    //mapEmbedUrl: '',
+    //primaryColor: '#d4af37',
+    //secondaryColor: '#1a1a1a',
+    //logoUrl: ''
 
   const isLoading = ref(false);
   const isSaving = ref(false);

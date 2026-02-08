@@ -16,6 +16,24 @@ apiClient.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
-});
+},
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Válasz interceptor: (Opcionális, de hasznos)
+// Itt lehetne globálisan kezelni, ha lejár a token (401 hiba)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // Ha lejárt a token, kiléptethetjük a felhasználót vagy törölhetjük a tokent
+      // localStorage.removeItem('salon_token');
+      // window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default apiClient;

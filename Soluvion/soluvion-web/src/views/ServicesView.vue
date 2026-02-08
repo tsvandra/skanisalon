@@ -1,22 +1,21 @@
 <script setup>
-  import { ref, onMounted, computed } from 'vue';
+  import { ref, onMounted, computed, inject, watch } from 'vue';
   import InputNumber from 'primevue/inputnumber';
   import apiClient from '@/services/api';
-  import { getCompanyIdFromToken } from '../utils/jwt';
+  import { getCompanyIdFromToken } from '@/utils/jwt';
+  import { DEFAULT_COMPANY_ID } from '@/config';
  
-  //import DataTable from 'primevue/datatable';
-  //import Column from 'primevue/column';
-  //import Dialog from 'primevue/dialog';
-  //import InputText from 'primevue/inputtext';
-
   const services = ref([]);
   const loading = ref(true);
   const isLoggedIn = ref(false); // Admin státusz
 
-  const fetchServices = async () => {
-    loading.value = true;
+  const company = inject('company', ref(null));
 
-    const targetCompanyId = getCompanyIdFromToken() || 7;
+  const fetchServices = async () => {
+
+    const targetCompanyId = company?.value?.id || DEFAULT_COMPANY_ID;
+
+    loading.value = true;
 
     try {
       const response = await apiClient.get('/api/Service', {
@@ -29,6 +28,16 @@
       loading.value = false;
     }
   };
+
+  watch(
+    () => company?.value?.id,
+    (newId) => {
+      if (newId) {
+        fetchServices();
+      }
+    },
+    { immediate: true }
+  );
 
 
   const areVariantSignaturesEqual = (variantsA, variantsB) => {
@@ -43,8 +52,9 @@
   }
 
   const displayList = computed(() => {
-    return services.value.map((service, index) => {
+    if (!services.value) return [];
 
+    return services.value.map((service, index) => {
       const isTreeMode = service.variants && service.variants.length >= 4;
 
       let showHeader = false;
@@ -54,9 +64,9 @@
         } else {
           const prevService = services.value[index - 1];
 
-          const prevWasTree = prevService.variants && prevService.variants.length >= 4;
+          const prevWasTree = prevService?.variants && prevService.variants.length >= 4;
 
-          if (prevWasTree || !areVariantSignaturesEqual(service.variants, prevService.variants)) {
+          if (prevWasTree || !areVariantSignaturesEqual(service.variants, prevService?.variants)) {
             showHeader = service.variants && service.variants.length > 0;
           }
         }
@@ -119,22 +129,19 @@
     await saveService(service);
   };
 
-  const saveService = async (service) => {
+  const saveService = async (serviceItem) => {
     try {
 
-      const response = await apiClient.put(`/api/Service/${service.id}`, service);
+      const response = await apiClient.put(`/api/Service/${serviceItem.id}`, serviceItem);
 
       if (response.status === 200 && response.data) {
-        const index = services.value.findIndex(s => s.id === service.id);
+        const index = services.value.findIndex(s => s.id === serviceItem.id);
         if (index !== -1) {
-          service.value[index] = { ...service.value[index], ...response.data };
+          services.value[index] = { ...services.value[index], ...response.data };
         }
       }
     } catch (err) {
       console.error("Hiba a mentesnel:", err);
-      if (err.response && err.response.data) {
-        console.error("Szerver uzenet:", err.response.data);
-      }
     }
   };
 
@@ -154,8 +161,6 @@
     // Megnézzük, be van-e lépve
     const token = localStorage.getItem('salon_token');
     isLoggedIn.value = !!token;
-
-    fetchServices();
   });
 </script>
 

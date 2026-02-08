@@ -20,8 +20,8 @@ namespace Soluvion.API.Controllers
 
         private int GetCurrentCompanyId()
         {
-            var compnayClaim = User.FindFirst("CompanyId");
-            if (compnayClaim != null && int.TryParse(compnayClaim.Value, out int companyId))
+            var companyClaim = User.FindFirst("CompanyId");
+            if (companyClaim != null && int.TryParse(companyClaim.Value, out int companyId))
             {
                 return companyId;
             }

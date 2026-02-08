@@ -4,17 +4,10 @@
   import AppHeader from '@/components/AppHeader.vue';
   import api from '@/services/api';
   import { DEFAULT_COMPANY_ID } from '@/config';
+  import { getCompanyIdFromToken } from '@/utils/jwt';
 
   const company = ref(null);
   const isLoading = ref(true);
-
-  const parseJwt = (token) => {
-    try {
-      return JSON.parse(atob(token.split('.')[1]));
-    } catch (e) {
-      return null;
-    }
-  };
 
   const fetchCompanyData = async () => {
     isLoading.value = true;
@@ -45,21 +38,16 @@
       console.log("⚠️ Nem találtam ID-t az URL-ben, marad a Default:", targetId);
     }
 
-    const token = localStorage.getItem('salon_token');
+    const tokenCompanyId = getCompanyIdFromToken();
 
-    if (token) {
-      const decoded = parseJwt(token);
-      // Ellenőrizzük kis és nagybetűvel is, biztos ami biztos
-      const tokenCompanyId = decoded?.CompanyId || decoded?.companyId;
-
-      if (tokenCompanyId) {
-        console.log("Admin bejelentkezve, ID:", tokenCompanyId);
+    if (tokenCompanyId) {
+        console.log("🔑 Admin bejelentkezve, ID:", tokenCompanyId);
         targetId = tokenCompanyId;
       } else {
-        localStorage.removeItem('salon_token');
-      }
-    } else {
-      console.log("Látogató mód. Alapértelmezett cég betöltése ID:", targetId);
+        // Ha van token, de érvénytelen/nincs benne ID, töröljük a szemetet
+        if (localStorage.getItem('salon_token')) {
+          localStorage.removeItem('salon_token');
+        }
     }
 
     try {
@@ -75,7 +63,7 @@
 
     } catch (error) {
       console.error("KRITIKUS HIBA: Nem sikerült betölteni a cégadatokat.", error);
-      if (token && error.response?.status === 401) {
+      if (tokenCompanyId && error.response?.status === 401) {
         localStorage.removeItem('salon_token');
         window.location.reload();
       }
