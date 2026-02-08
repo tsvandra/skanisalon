@@ -1,29 +1,43 @@
 <script setup>
-  import { ref, onMounted, computed } from 'vue';
+  import { ref, onMounted, computed, inject, watch } from 'vue';
   import api from '@/services/api';
+  import { DEFAULT_COMPANY_ID } from '@/config';
 
   const images = ref([]);
-  const categories = ref([]); // Itt tároljuk a betöltött kategóriákat
+  const categories = ref([]);
   const selectedFile = ref(null);
   const isLoading = ref(false);
+  const isUploading = ref(false); // Külön state a gombnak
   const isLoggedIn = ref(false);
 
+  // INJECT: Az aktuális cég (Admin vagy Demo)
+  const company = inject('company', ref(null));
+
   // Kategória kezelés
-  const selectedCategory = ref(''); // Amit a listából választott
-  const customCategory = ref(''); // Amit kézzel írt be
+  const selectedCategory = ref('');
+  const customCategory = ref('');
   const isNewCategoryMode = computed(() => selectedCategory.value === 'NEW');
 
   // Adatok betöltése
   const fetchData = async () => {
+    // Ha még nincs betöltve a company, használjuk a defaultot
+    const targetCompanyId = company?.value?.id || DEFAULT_COMPANY_ID;
+
+    isLoading.value = true;
     try {
-      // 1. Képek lekérése
-      const resImages = await api.get('/api/Gallery');
+      // 1. Képek lekérése adott céghez
+      const resImages = await api.get('/api/Gallery', {
+        params: { companyId: targetCompanyId }
+      });
       images.value = resImages.data;
 
-      // 2. Kategóriák lekérése
-      const resCats = await api.get('/api/Gallery/categories');
+      // 2. Kategóriák lekérése adott céghez
+      const resCats = await api.get('/api/Gallery/categories', {
+        params: { companyId: targetCompanyId }
+      });
       categories.value = resCats.data;
 
+      // Default select beállítás
       if (categories.value.length > 0) {
         selectedCategory.value = categories.value[0];
       } else {
@@ -31,8 +45,19 @@
       }
     } catch (error) {
       console.error("Hiba az adatok betöltésekor:", error);
+    } finally {
+      isLoading.value = false;
     }
   };
+
+  // WATCHER: Ha változik a cég (pl. URL váltás), újratöltjük
+  watch(
+    () => company?.value?.id,
+    (newId) => {
+      if (newId) fetchData();
+    },
+    { immediate: true }
+  );
 
   const handleFileChange = (event) => {
     selectedFile.value = event.target.files[0];
@@ -41,7 +66,12 @@
   const uploadImage = async () => {
     if (!selectedFile.value) return;
 
-    // Melyik kategórianevet küldjük?
+    // Admin ellenőrzés (kliens oldalon is)
+    if (!isLoggedIn.value) {
+      alert("Nincs jogosultságod feltölteni!");
+      return;
+    }
+
     let categoryToSend = selectedCategory.value;
     if (isNewCategoryMode.value) {
       categoryToSend = customCategory.value.trim();
@@ -51,29 +81,29 @@
       }
     }
 
-    isLoading.value = true;
+    isUploading.value = true;
     const formData = new FormData();
     formData.append('file', selectedFile.value);
     formData.append('category', categoryToSend);
 
     try {
-      // FONTOS: A headerben a Content-Type-ot az axios automatikusan beállítja 
-      // multipart/form-data-ra, ha FormData-t kap, és a tokent is hozzáadja az api.js miatt!
+      // A backend a tokenből szedi ki a CompanyId-t, nem kell külön küldeni
       await api.post('/api/Gallery', formData);
 
       // Siker esetén takarítás
       selectedFile.value = null;
       customCategory.value = '';
-      document.getElementById('fileInput').value = "";
+      const fileInput = document.getElementById('fileInput');
+      if (fileInput) fileInput.value = "";
 
-      await fetchData();
-      selectedCategory.value = categoryToSend;
+      await fetchData(); // Lista frissítése
+      selectedCategory.value = categoryToSend; // Maradjon a kategórián
 
     } catch (error) {
       console.error(error);
-      alert("Hiba a feltöltésnél!");
+      alert("Hiba a feltöltésnél! Ellenőrizd, hogy be vagy-e jelentkezve.");
     } finally {
-      isLoading.value = false;
+      isUploading.value = false;
     }
   };
 
@@ -88,7 +118,6 @@
   onMounted(() => {
     const token = localStorage.getItem('salon_token');
     isLoggedIn.value = !!token;
-    fetchData();
   });
 </script>
 
@@ -116,13 +145,17 @@
                  class="custom-cat-input" />
         </div>
 
-        <button @click="uploadImage" :disabled="isLoading || !selectedFile" class="upload-btn">
-          {{ isLoading ? 'Feltöltés...' : 'Feltöltés' }}
+        <button @click="uploadImage" :disabled="isUploading || !selectedFile" class="upload-btn">
+          {{ isUploading ? 'Feltöltés...' : 'Feltöltés' }}
         </button>
       </div>
     </div>
 
-    <div class="gallery-grid">
+    <div v-if="isLoading && images.length === 0" class="loading-state">
+      <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
+    </div>
+
+    <div class="gallery-grid" v-else>
       <div v-for="image in images" :key="image.id" class="gallery-item">
         <img :src="image.imageUrl" :alt="image.category" loading="lazy" />
         <div class="overlay">
@@ -134,13 +167,14 @@
       </div>
     </div>
 
-    <div v-if="images.length === 0" class="empty-state">
-      Még nincsenek feltöltött képek.
+    <div v-if="!isLoading && images.length === 0" class="empty-state">
+      Még nincsenek feltöltött képek ebben a galériában.
     </div>
   </div>
 </template>
 
 <style scoped>
+  /* A stílusokat megtartottam, mert azok jók voltak */
   .gallery-container {
     padding: 2rem;
     text-align: center;
@@ -168,6 +202,7 @@
     margin-bottom: 2rem;
     display: inline-block;
     min-width: 300px;
+    max-width: 100%;
   }
 
     .upload-section h3 {
@@ -187,6 +222,8 @@
     display: flex;
     gap: 5px;
     align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   .cat-select {
@@ -231,6 +268,7 @@
     border-radius: 8px;
     aspect-ratio: 1;
     background: #2c2c2c;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
   }
 
     .gallery-item img {
@@ -288,5 +326,10 @@
     margin-top: 3rem;
     color: #666;
     font-style: italic;
+  }
+
+  .loading-state {
+    margin-top: 3rem;
+    color: var(--primary-color);
   }
 </style>
