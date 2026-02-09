@@ -1,159 +1,159 @@
+Ôªø================================================================================
+PROJEKT DOKUMENT√ÅCI√ì: SOLUVION (SKANI SALON)
 ================================================================================
-PROJEKT DOKUMENT¡CI”: SOLUVION (SKANI SALON)
-================================================================================
-D·tum:   2026.02.06.
-St·tusz: MVP (Minimum Viable Product) fejlesztÈs / Stabiliz·l·s alatt
+D√°tum:   2026.02.06.
+St√°tusz: MVP (Minimum Viable Product) fejleszt√©s / Stabiliz√°l√°s alatt
 
-[ C…L ]
-Egy .NET backend alap˙, Vue.js frontenddel rendelkezı webalkalmaz·s fejlesztÈse.
+[ C√âL ]
+Egy .NET backend alap√∫, Vue.js frontenddel rendelkez√µ webalkalmaz√°s fejleszt√©se.
 
-- Jelenlegi f·zis: Egyedi bemutatkozÛ oldal + Admin funkciÛk (CMS) egy adott 
-  szalonnak. …les kˆrnyezetben (Railway + Netlify) fut.
-- Jˆvıbeli cÈl: Multi-tenant (SaaS) rendszer, ahol tˆbb szalon is haszn·lhatja 
-  az appot saj·t adatb·zis adatokkal, egyetlen kÛdb·zissal.
+- Jelenlegi f√°zis: Egyedi bemutatkoz√≥ oldal + Admin funkci√≥k (CMS) egy adott 
+  szalonnak. √âles k√∂rnyezetben (Railway + Netlify) fut.
+- J√∂v√µbeli c√©l: Multi-tenant (SaaS) rendszer, ahol t√∂bb szalon is haszn√°lhatja 
+  az appot saj√°t adatb√°zis adatokkal, egyetlen k√≥db√°zissal.
 
 --------------------------------------------------------------------------------
 
-[ TECHNOL”GIAI STACK ]
+[ TECHNOL√ìGIAI STACK ]
 
 - Backend:      .NET 10 Web API, Entity Framework Core
-- Adatb·zis:    PostgreSQL (Railway hostolt)
+- Adatb√°zis:    PostgreSQL (Railway hostolt)
 - Frontend:     Vue 3 (Composition API), Vite, PrimeVue komponensek
-- Autentik·ciÛ: JWT Token (Bearer auth) + Claims (CompanyId t·rol·sa)
+- Autentik√°ci√≥: JWT Token (Bearer auth) + Claims (CompanyId t√°rol√°sa)
 - Hosting:
-    > Backend:  Railway (Docker alap˙ kontÈner)
-    > Frontend: Netlify (Static site hosting SPA konfigur·ciÛval)
+    > Backend:  Railway (Docker alap√∫ kont√©ner)
+    > Frontend: Netlify (Static site hosting SPA konfigur√°ci√≥val)
 
 --------------------------------------------------------------------------------
 
-[ PROJEKT MENEDZSMENT …S MUNKAID’ K÷VET…S ]
+[ PROJEKT MENEDZSMENT √âS MUNKAID√ï K√ñVET√âS ]
 
-A fejlesztÈs sor·n a GitHub beÈpÌtett eszkˆzeit haszn·ljuk "ERP"-kÈnt, 
-hogy elker¸lj¸k a k¸lsı szoftverek haszn·lat·t (Company Policy miatt).
+A fejleszt√©s sor√°n a GitHub be√©p√≠tett eszk√∂zeit haszn√°ljuk "ERP"-k√©nt, 
+hogy elker√ºlj√ºk a k√ºls√µ szoftverek haszn√°lat√°t (Company Policy miatt).
 
-1. FeladatkezelÈs (GitHub Projects):
-   - Kanban t·bla nÈzet (Board):
+1. Feladatkezel√©s (GitHub Projects):
+   - Kanban t√°bla n√©zet (Board):
      [Backlog] -> [Todo] -> [In Progress] -> [Done]
-   - Minden fejlesztÈsi feladat k¸lˆn Issue-kÈnt ker¸l rˆgzÌtÈsre.
+   - Minden fejleszt√©si feladat k√ºl√∂n Issue-k√©nt ker√ºl r√∂gz√≠t√©sre.
 
-2. Munkaidı Adminisztr·ciÛ:
-   - A GitHub Project nÈzetben lÈtrehoztunk egy egyedi "Munkaora" (Number) mezıt.
+2. Munkaid√µ Adminisztr√°ci√≥:
+   - A GitHub Project n√©zetben l√©trehoztunk egy egyedi "Munkaora" (Number) mez√µt.
    - Folyamat:
-     A. Feladat elvÈgzÈse ut·n a fejlesztı beÌrja az eltˆltˆtt Ûr·t (pl. 2.5).
-     B. A rendszer automatikusan ˆsszegzi (Sum) a projekt teljes r·fordÌt·s·t.
-   - Elıny: Transzparens, egy helyen van a kÛddal, kˆnnyen export·lhatÛ.
+     A. Feladat elv√©gz√©se ut√°n a fejleszt√µ be√≠rja az elt√∂lt√∂tt √≥r√°t (pl. 2.5).
+     B. A rendszer automatikusan √∂sszegzi (Sum) a projekt teljes r√°ford√≠t√°s√°t.
+   - El√µny: Transzparens, egy helyen van a k√≥ddal, k√∂nnyen export√°lhat√≥.
 
 --------------------------------------------------------------------------------
 
-[ GIT BRANCHING STRAT…GIA (Feature Branch Workflow) ]
+[ GIT BRANCHING STRAT√âGIA (Feature Branch Workflow) ]
 
-A kÛd stabilit·s·nak megırzÈse ÈrdekÈben szigor˙ el·gaztat·si modellt kˆvet¸nk.
+A k√≥d stabilit√°s√°nak meg√µrz√©se √©rdek√©ben szigor√∫ el√°gaztat√°si modellt k√∂vet√ºnk.
 
-1. ¡gak (Branches):
-   - main:    (PRODUCTION) Csak a stabil, Èles verziÛt tartalmazza. Ritk·n friss¸l.
-   - develop: (STAGING) A kˆzponti fejlesztıi ·g. A CI/CD rendszerek ezt figyelik.
-   - feature: (LOCAL) Ideiglenes ·gak egy-egy konkrÈt feladathoz.
+1. √Ågak (Branches):
+   - main:    (PRODUCTION) Csak a stabil, √©les verzi√≥t tartalmazza. Ritk√°n friss√ºl.
+   - develop: (STAGING) A k√∂zponti fejleszt√µi √°g. A CI/CD rendszerek ezt figyelik.
+   - feature: (LOCAL) Ideiglenes √°gak egy-egy konkr√©t feladathoz.
 
-2. NÈvkonvenciÛ (÷sszekˆtÈs az Issue-kkal):
-   A feature ·gak neve tartalmazza a GitHub Issue sz·m·t a visszakˆvethetısÈgÈrt.
+2. N√©vkonvenci√≥ (√ñsszek√∂t√©s az Issue-kkal):
+   A feature √°gak neve tartalmazza a GitHub Issue sz√°m√°t a visszak√∂vethet√µs√©g√©rt.
    
-   Form·tum: feature/{issue-id}-{rovid-leiras}
-   PÈlda:    feature/12-arlista-backend
+   Form√°tum: feature/{issue-id}-{rovid-leiras}
+   P√©lda:    feature/12-arlista-backend
 
-3. Munkafolyamat LÈpÈsei:
-   A. Kiindul·s a develop ·gbÛl:
+3. Munkafolyamat L√©p√©sei:
+   A. Kiindul√°s a develop √°gb√≥l:
       $ git checkout develop
       $ git pull origin develop
 
-   B. ⁄j funkciÛ ·g lÈtrehoz·sa (pl. Issue #12):
+   B. √öj funkci√≥ √°g l√©trehoz√°sa (pl. Issue #12):
       $ git checkout -b feature/12-arlista-backend
 
-   C. FejlesztÈs & Commit (Lok·lisan):
+   C. Fejleszt√©s & Commit (Lok√°lisan):
       $ git add .
       $ git commit -m "Backend modell kesz"
 
-   D. BefejezÈs & Merge:
+   D. Befejez√©s & Merge:
       $ git checkout develop
       $ git merge feature/12-arlista-backend
       $ git branch -d feature/12-arlista-backend
 
-   E. Publik·l·s (Deploy):
+   E. Publik√°l√°s (Deploy):
       $ git push origin develop  --> Ekkor indul a Netlify/Railway build!
 
 --------------------------------------------------------------------------------
 
-[ ARCHITEKT⁄RA …S SZAB¡LYOK (SaaS ElıkÈszÌtÈs) ]
+[ ARCHITEKT√öRA √âS SZAB√ÅLYOK (SaaS El√µk√©sz√≠t√©s) ]
 
-1. Adatb·zis & Multi-tenancy
-   - Minden ¸zleti entit·s (Service, Gallery, User, Company) kˆtelezıen 
+1. Adatb√°zis & Multi-tenancy
+   - Minden √ºzleti entit√°s (Service, Gallery, User, Company) k√∂telez√µen 
      rendelkezik 'CompanyId'-vel.
-   - Jelenleg a rendszer a 7-es ID-t (Skani Salon) kezeli tesztelÈshez.
+   - Jelenleg a rendszer a 7-es ID-t (Skani Salon) kezeli tesztel√©shez.
 
-2. Frontend (Dinamikus M˚kˆdÈs)
-   - ZÈrÛ Hardcode: Nem drÛtozunk be cÈgnevet, logÛt vagy szÌneket.
+2. Frontend (Dinamikus M√ªk√∂d√©s)
+   - Z√©r√≥ Hardcode: Nem dr√≥tozunk be c√©gnevet, log√≥t vagy sz√≠neket.
    - Initialization (App.vue):
-     A. Ellenırzi a localStorage-ban a tokent ('salon_token').
-     B. Ha van token -> DekÛdolja Ès lekÈri a cÈgadatokat (/api/Company/{id}).
-     C. Ha nincs token -> L·togatÛi mÛdban indul (publikus adatokkal).
-   - Style Injection: A lekÈrt adatok alapj·n az app valÛs idıben ·t·llÌtja 
-     a CSS v·ltozÛkat (--primary-color, --secondary-color).
+     A. Ellen√µrzi a localStorage-ban a tokent ('salon_token').
+     B. Ha van token -> Dek√≥dolja √©s lek√©ri a c√©gadatokat (/api/Company/{id}).
+     C. Ha nincs token -> L√°togat√≥i m√≥dban indul (publikus adatokkal).
+   - Style Injection: A lek√©rt adatok alapj√°n az app val√≥s id√µben √°t√°ll√≠tja 
+     a CSS v√°ltoz√≥kat (--primary-color, --secondary-color).
 
-3. Biztons·g & API
-   - CORS: A Backend engedÈlyezi a Netlify Ès Localhost kÈrÈseket.
-   - Token Valid·ciÛ: Minden mÛdosÌtÛ m˚veletnÈl ellenırzi a CompanyId-t.
-   - Routing: A Controller explicit v·rja az ID-t az URL-ben (pl. PUT {id}), 
-     Ìgy elker¸lhetı a 405-ˆs hiba.
+3. Biztons√°g & API
+   - CORS: A Backend enged√©lyezi a Netlify √©s Localhost k√©r√©seket.
+   - Token Valid√°ci√≥: Minden m√≥dos√≠t√≥ m√ªveletn√©l ellen√µrzi a CompanyId-t.
+   - Routing: A Controller explicit v√°rja az ID-t az URL-ben (pl. PUT {id}), 
+     √≠gy elker√ºlhet√µ a 405-√∂s hiba.
 
 --------------------------------------------------------------------------------
 
-[ EDDIG ELK…SZ‹LT FUNKCI”K ]
+[ EDDIG ELK√âSZ√úLT FUNKCI√ìK ]
 
-1. Publikus Oldalak (L·togatÛi nÈzet)
-   - SPA Routing: Megoldva a 'netlify.toml' f·jllal (nincs 404 hiba).
-   - Home: Dinamikus bemutatkoz·s.
-   - Contact: SQL-bıl tˆltˆtt cÌm, telefon, nyitvatart·s Ès Google Maps.
+1. Publikus Oldalak (L√°togat√≥i n√©zet)
+   - SPA Routing: Megoldva a 'netlify.toml' f√°jllal (nincs 404 hiba).
+   - Home: Dinamikus bemutatkoz√°s.
+   - Contact: SQL-b√µl t√∂lt√∂tt c√≠m, telefon, nyitvatart√°s √©s Google Maps.
 
-2. Admin FunkciÛk (VÈdett ˙tvonalak)
-   - Login: JWT token kezelÈs, automatikus kijelentkeztetÈs hiba esetÈn.
-   - CÈgbe·llÌt·sok (/beallitasok):
-     > PrimeVue TabView fel¸let.
-     > ElÈrhetısÈgek: CÈgnÈv, Email, Telefon, CÌm szerkesztÈse.
-     > Nyitvatart·s: HTML alap˙ szˆvegdobozok (<br> t·mogat·ssal).
-     > Social & Map: Facebook, Insta, TikTok, Maps URL kezelÈs.
-     > MegjelenÈs: Color Picker a szÌnekhez (azonnali vizu·lis frissÌtÈs).
+2. Admin Funkci√≥k (V√©dett √∫tvonalak)
+   - Login: JWT token kezel√©s, automatikus kijelentkeztet√©s hiba eset√©n.
+   - C√©gbe√°ll√≠t√°sok (/beallitasok):
+     > PrimeVue TabView fel√ºlet.
+     > El√©rhet√µs√©gek: C√©gn√©v, Email, Telefon, C√≠m szerkeszt√©se.
+     > Nyitvatart√°s: HTML alap√∫ sz√∂vegdobozok (<br> t√°mogat√°ssal).
+     > Social & Map: Facebook, Insta, TikTok, Maps URL kezel√©s.
+     > Megjelen√©s: Color Picker a sz√≠nekhez (azonnali vizu√°lis friss√≠t√©s).
 
-3. Backend API VÈgpontok
+3. Backend API V√©gpontok
    - POST /api/Auth/login
    - GET  /api/Company/{id}
-   - PUT  /api/Company/{id}  (VÈdett)
-   - (Implement·l·s alatt: Gallery Ès Services vÈgpontok)
+   - PUT  /api/Company/{id}  (V√©dett)
+   - (Implement√°l√°s alatt: Gallery √©s Services v√©gpontok)
 
 --------------------------------------------------------------------------------
 
-[ DESIGN SYSTEM (Szigor˙an tartandÛ!) ]
+[ DESIGN SYSTEM (Szigor√∫an tartand√≥!) ]
 
-Technikai MegvalÛsÌt·s:
-CSS V·ltozÛkat (Variables) haszn·lunk, melyeket az adatb·zis vezÈrel.
+Technikai Megval√≥s√≠t√°s:
+CSS V√°ltoz√≥kat (Variables) haszn√°lunk, melyeket az adatb√°zis vez√©rel.
 
-SzÌnpaletta (Skani Default):
-   - Elsıdleges (Arany):         #d4af37
-     (Haszn·lat: Gombok, Ikonok, Linkek, KiemelÈsek)
+Sz√≠npaletta (Skani Default):
+   - Els√µdleges (Arany):         #d4af37
+     (Haszn√°lat: Gombok, Ikonok, Linkek, Kiemel√©sek)
    
-   - M·sodlagos (Fekete/Sz¸rke): #1a1a1a
-     (Haszn·lat: H·ttÈrszÌnek, Footer, Header)
+   - M√°sodlagos (Fekete/Sz√ºrke): #1a1a1a
+     (Haszn√°lat: H√°tt√©rsz√≠nek, Footer, Header)
    
-   - Logo Brand SzÌn (KIV…TEL):  KÈk ·tmenet
-     (Haszn·lat: KIZ¡R”LAG a logÛban!)
+   - Logo Brand Sz√≠n (KIV√âTEL):  K√©k √°tmenet
+     (Haszn√°lat: KIZ√ÅR√ìLAG a log√≥ban!)
 
-UI Ir·nyelvek:
-   - Inputok: Teljes szÈlessÈg (w-full), fÛkuszban primary color keret.
-   - Gombok: Keret nÈlk¸l, primary h·ttÈrrel (PrimeVue).
+UI Ir√°nyelvek:
+   - Inputok: Teljes sz√©less√©g (w-full), f√≥kuszban primary color keret.
+   - Gombok: Keret n√©lk√ºl, primary h√°tt√©rrel (PrimeVue).
 
 --------------------------------------------------------------------------------
 
-[ FILE STRUKT⁄RA ¡TTEKINT…S ]
+[ FILE STRUKT√öRA √ÅTTEKINT√âS ]
 
-Soluvion/ (GyˆkÈr)
+Soluvion/ (Gy√∂k√©r)
   +-- Soluvion.API/              (Backend - C#)
   |     +-- Controllers/
   |     +-- Models/
@@ -171,31 +171,62 @@ Soluvion/ (GyˆkÈr)
 
 --------------------------------------------------------------------------------
 
-[ FEJLESZT…SI WORKFLOW (Best Practice) ]
+[ FEJLESZT√âSI WORKFLOW (Best Practice) ]
 
-A Netlify kredit spÛrol·sa Ès a gyors hibajavÌt·s ÈrdekÈben:
+A Netlify kredit sp√≥rol√°sa √©s a gyors hibajav√≠t√°s √©rdek√©ben:
 
-1. Helyi FejlesztÈs (Localhost - AJ¡NLOTT):
-   - Frontend parancs: "npm run dev" (saj·t gÈpen).
-   - Backend kapcsolat: A .env f·jlban az …LES Railway URL legyen be·llÌtva.
+1. Helyi Fejleszt√©s (Localhost - AJ√ÅNLOTT):
+   - Frontend parancs: "npm run dev" (saj√°t g√©pen).
+   - Backend kapcsolat: A .env f√°jlban az √âLES Railway URL legyen be√°ll√≠tva.
      (VITE_API_URL=https://skanisalon-production...)
-   - Elıny: ValÛs adatb·zis, de azonnali frissÌtÈs, nincs build idı.
+   - El√µny: Val√≥s adatb√°zis, de azonnali friss√≠t√©s, nincs build id√µ.
 
 2. Deploy (Netlify):
-   - Csak akkor tolunk "git push"-t, ha lok·lisan minden m˚kˆdik.
-   - Ha csak ment¸nk, de nem akarunk buildet: "[skip ci]" a commit ¸zenetben.
+   - Csak akkor tolunk "git push"-t, ha lok√°lisan minden m√ªk√∂dik.
+   - Ha csak ment√ºnk, de nem akarunk buildet: "[skip ci]" a commit √ºzenetben.
 
 --------------------------------------------------------------------------------
 
 [2026-02-09] ServicesView Refactoring & Drag-and-Drop (Front Office)
-- FE: vuedraggable implement·l·sa a szolg·ltat·sok Ès kategÛri·k rendezÈsÈhez.
-- FE: ServicesView ·talakÌt·sa sˆtÈt tÈm·ra (Dark Mode), clean UI elvek alapj·n.
-- FE: Hierarchikus adatkezelÈs (KategÛria -> Service -> Variant).
-- BE: Service modell bıvÌtÈse 'Description' mezıvel (MegjegyzÈsekhez).
-- BE: ServiceController.PutService javÌt·sa (Category Ès Description mentÈs, Null check).
-- UX: 'Race Condition' hiba azonosÌtva a gyors adatbevitelkor (JavÌt·s a kˆvetkezı sprintben: refreshLocal logika).
-- UX HIBAJAVÕT¡S: 'Race Condition' hiba javÌtva "Request Queue" (Promise Chain) bevezetÈsÈvel.
-- UI: VendÈg nÈzetben a kategÛri·k arany szÌn˚ kiemelÈst kaptak.
-- STATUS: Feature #12 Befejezve -> Merge develop ·gra.
+- FE: vuedraggable implement√°l√°sa a szolg√°ltat√°sok √©s kateg√≥ri√°k rendez√©s√©hez.
+- FE: ServicesView √°talak√≠t√°sa s√∂t√©t t√©m√°ra (Dark Mode), clean UI elvek alapj√°n.
+- FE: Hierarchikus adatkezel√©s (Kateg√≥ria -> Service -> Variant).
+- BE: Service modell b√µv√≠t√©se 'Description' mez√µvel (Megjegyz√©sekhez).
+- BE: ServiceController.PutService jav√≠t√°sa (Category √©s Description ment√©s, Null check).
+- UX: 'Race Condition' hiba azonos√≠tva a gyors adatbevitelkor (Jav√≠t√°s a k√∂vetkez√µ sprintben: refreshLocal logika).
+- UX HIBAJAV√çT√ÅS: 'Race Condition' hiba jav√≠tva "Request Queue" (Promise Chain) bevezet√©s√©vel.
+- UI: Vend√©g n√©zetben a kateg√≥ri√°k arany sz√≠n√ª kiemel√©st kaptak.
+- STATUS: Feature #12 Befejezve -> Merge develop √°gra.
+
+--------------------------------------------------------------------------------
+
+*** BEFEJEZVE - FEATURE 13: SMART GALLERY & CLOUDINARY ***
+D√°tum: 2026-02-09
+St√°tusz: K√©sz
+
+Backend V√°ltoztat√°sok:
+- Cloudinary API integr√°l√°sa a sk√°l√°zhat√≥, felh≈ë alap√∫ k√©pt√°rol√°shoz (a helyi f√°jlt√°rol√°s kivezet√©sre ker√ºlt).
+- GalleryCategory modell friss√≠t√©se: 'OrderIndex' mez≈ë hozz√°ad√°sa a kateg√≥ri√°k manu√°lis sorrendez√©s√©hez.
+- GalleryImage modell friss√≠t√©se: 'OrderIndex' √©s 'PublicId' (Cloudinary t√∂rl√©shez) mez≈ëk hozz√°ad√°sa.
+- GalleryController refaktor√°l√°sa: 
+  - √öj "Okos v√©gpontok" a kateg√≥ria kezel√©shez (L√©trehoz√°s, √Åtnevez√©s, Sorrendez√©s, T√∂rl√©s).
+  - V√©delmi logika implement√°l√°sa: Nem √ºres kateg√≥ria nem t√∂r√∂lhet≈ë.
+  - GET lek√©rdez√©sek optimaliz√°l√°sa: Hierarchikus szerkezet visszaad√°sa (Kateg√≥ri√°k + K√©pek).
+
+Frontend V√°ltoztat√°sok (GalleryView.vue):
+- "Nested Drag-and-Drop" implement√°l√°sa:
+  - A felhaszn√°l√≥k sorrendezhetik a kateg√≥ri√°kat (f√ºgg≈ëleges lista).
+  - A felhaszn√°l√≥k sorrendezhetik a k√©peket a kateg√≥ri√°kon bel√ºl.
+  - A k√©pek √°th√∫zhat√≥k egyik kateg√≥ri√°b√≥l a m√°sikba.
+- "Inline" Kateg√≥ria L√©trehoz√°s: Az √∫j gal√©ri√°k azonnal megjelennek a lista tetej√©n, √©s a n√©v mez≈ë automatikusan f√≥kuszt kap.
+- "Kontextu√°lis Felt√∂lt√©s": A felt√∂lt√©s gomb √°tker√ºlt a kateg√≥ria fejl√©cekbe, √≠gy egy√©rtelm≈±, hova t√∂lt√ºnk fel.
+- UI/UX Finomhangol√°s: 
+  - Egys√©ges n√©gyzetes k√©par√°ny (thumbnail).
+  - Lightbox (nagy√≠t√°s) funkci√≥ a k√©pek megtekint√©s√©hez.
+  - T√∂lt√©si √°llapotok √©s optimista UI friss√≠t√©sek.
+
+Refactoring / Clean Code:
+- L√©trehozva: `src/composables/useAutoSaveQueue.js`: A ment√©si sor (queue) logika kiszervez√©se, hogy √∫jrahasznos√≠that√≥ legyen az alkalmaz√°sban (DRY elv).
+- DTO-k kiszervez√©se k√ºl√∂n f√°jlokba a Backend oldalon.
 
 ================================================================================

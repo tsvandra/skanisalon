@@ -2,33 +2,26 @@
   import { ref, onMounted, provide } from 'vue';
   import { RouterView } from 'vue-router';
   import AppHeader from '@/components/AppHeader.vue';
+  import TheFooter from '@/components/TheFooter.vue'; // ÚJ IMPORT
   import api from '@/services/api';
   import { DEFAULT_COMPANY_ID } from '@/config';
   import { getCompanyIdFromToken } from '@/utils/jwt';
 
   const company = ref(null);
   const isLoading = ref(true);
+  const isLoggedIn = ref(false); // Ezt is provide-oljuk, hogy a Footer tudja
 
   const fetchCompanyData = async () => {
     isLoading.value = true;
     let targetId = DEFAULT_COMPANY_ID; // Alap: 7
 
-    // --- 🛠️ ROBUSTUS DEMO MÓD (Javított verzió) ---
-
-    // http://localhost:5173/#/ - skani
-    // http://localhost:5173/#/?id=8 - barber
-    // http://localhost:5173/#/?id=9 - pink lady
-
-    // 1. Megnézzük a "sima" URL paramétereket
+    // --- DEMO MÓD LOGIKA (Változatlan) ---
     let demoId = new URLSearchParams(window.location.search).get('id');
-
-    // 2. HA NINCS, megnézzük a Hash (#) utáni részt is! (Ez hiányzott eddig)
     if (!demoId && window.location.hash.includes('?')) {
-      const hashPart = window.location.hash.split('?')[1]; // A kérdőjel utáni rész
+      const hashPart = window.location.hash.split('?')[1];
       demoId = new URLSearchParams(hashPart).get('id');
     }
 
-    // DEBUG: Ezt látnod kell a konzolban (F12)!
     console.log("🔍 URL Elemzés -> Talált ID:", demoId, "| Eredeti URL:", window.location.href);
 
     if (demoId) {
@@ -41,17 +34,15 @@
     const tokenCompanyId = getCompanyIdFromToken();
 
     if (tokenCompanyId) {
-        console.log("🔑 Admin bejelentkezve, ID:", tokenCompanyId);
-        targetId = tokenCompanyId;
-      } else {
-        // Ha van token, de érvénytelen/nincs benne ID, töröljük a szemetet
-        if (localStorage.getItem('salon_token')) {
-          localStorage.removeItem('salon_token');
-        }
+      console.log("🔑 Admin bejelentkezve, ID:", tokenCompanyId);
+      targetId = tokenCompanyId;
+    } else {
+      if (localStorage.getItem('salon_token')) {
+        localStorage.removeItem('salon_token');
+      }
     }
 
     try {
-      // Itt a 'targetId'-t használjuk, ami biztosan létezik
       const res = await api.get(`/api/Company/${targetId}`);
       const data = res.data;
       company.value = data;
@@ -72,11 +63,14 @@
     }
   };
 
-  provide('company', company);
-
   onMounted(() => {
+    isLoggedIn.value = !!localStorage.getItem('salon_token');
     fetchCompanyData();
   });
+
+  // Provide a komponenseknek
+  provide('company', company);
+  provide('isLoggedIn', isLoggedIn); // Fontos a Footerhez
 </script>
 
 <template>
@@ -87,9 +81,9 @@
     <main>
       <RouterView />
     </main>
-    <footer class="app-footer">
-      <p>&copy; {{ new Date().getFullYear() }} {{ company?.name || 'Szalon' }}. Minden jog fenntartva.</p>
-    </footer>
+
+    <TheFooter />
+
   </div>
 
   <div v-else class="loading-screen">
@@ -119,14 +113,6 @@
 </style>
 
 <style scoped>
-  .app-footer {
-    text-align: center;
-    padding: 2rem;
-    background-color: #2c2c2c;
-    margin-top: auto;
-    color: #ccc;
-  }
-
   .app-wrapper {
     display: flex;
     flex-direction: column;
@@ -140,5 +126,10 @@
     height: 100vh;
     background-color: #1a1a1a;
     color: #d4af37;
+  }
+
+  /* Main content padding, hogy ne lógjon bele a sticky headerbe/footerbe */
+  main {
+    flex: 1;
   }
 </style>

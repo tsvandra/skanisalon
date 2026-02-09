@@ -9,7 +9,7 @@ namespace Soluvion.API.Models
         [Required]
         [MaxLength(200)]
         public string Name { get; set; } = string.Empty;
-       
+
         public int CompanyTypeId { get; set; }
         public CompanyType? CompanyType { get; set; }
         public bool IsDeleted { get; set; } = false; 
@@ -71,8 +71,17 @@ namespace Soluvion.API.Models
 
 
         // Design
-        [MaxLength (500)]
-        public string? LogoUrl { get; set; }
+        [MaxLength(500)]
+        public string? LogoUrl { get; set; } // Logó URL
+
+        [MaxLength(200)]
+        public string? LogoPublicId { get; set; } // Cloudinary ID törléshez
+
+        [MaxLength(500)]
+        public string? FooterImageUrl { get; set; } // Lábléc kép URL
+
+        [MaxLength(200)]
+        public string? FooterImagePublicId { get; set; } // Cloudinary ID
         [MaxLength (20)]
         public string PrimaryColor {  get; set; } = "#d4af37";
         [MaxLength(20)]
