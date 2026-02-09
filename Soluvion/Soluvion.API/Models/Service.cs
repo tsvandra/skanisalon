@@ -18,6 +18,9 @@ namespace Soluvion.API.Models
         [MaxLength(50)]
         public string? Category { get; set; }
 
+        [MaxLength(500)]
+        public string? Description { get; set; }
+
         public int DefaultDuration { get; set; }  //"Display" célra, ha nincs variáció.
 
         [Column(TypeName = "decimal(10, 2)")]

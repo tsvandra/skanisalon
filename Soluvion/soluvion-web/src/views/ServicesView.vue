@@ -13,6 +13,10 @@
 
   const company = inject('company', ref(null));
 
+  // Drag state a megjegyzéshez
+  const draggedNoteContent = ref(null);
+  const draggedFromServiceId = ref(null);
+
   /* --- SEGÉDFÜGGVÉNYEK --- */
 
   const sortVariants = (variants) => {
@@ -30,10 +34,11 @@
     return val.toLocaleString('hu-HU', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
   };
 
-  // Textarea automatikus méretezés
   const autoResize = (event) => {
-    event.target.style.height = 'auto';
-    event.target.style.height = event.target.scrollHeight + 'px';
+    if (event && event.target) {
+      event.target.style.height = 'auto';
+      event.target.style.height = event.target.scrollHeight + 'px';
+    }
   };
 
   /* --- ADATTRANSZFORMÁCIÓ --- */
@@ -56,6 +61,7 @@
         groups.push(group);
       }
 
+      // Fejléc beállítása (az első olyan elemből, aminek van variánsa)
       if (group.headerVariants.length === 0 && service.variants && service.variants.length > 0) {
         group.headerVariants = [...service.variants];
       }
@@ -84,6 +90,8 @@
           service.variants.forEach(v => { if (v.price === 0) v.price = null; });
         }
         if (!service.category) service.category = "Egyéb";
+        // Ha null a description, legyen üres string a könnyebb kezelésért frontend oldalon
+        if (service.description === null) service.description = "";
       });
 
       categories.value = buildNestedStructure(rawServices);
@@ -105,22 +113,21 @@
     try {
       const payload = JSON.parse(JSON.stringify(serviceItem));
 
-      // JAVÍTÁS: Ha a variants null vagy undefined (Megjegyzés sor), legyen üres tömb
-      if (!payload.variants) {
-        payload.variants = [];
-      } else {
+      if (!payload.variants) payload.variants = [];
+      else {
         payload.variants.forEach(v => {
           if (v.price === null || v.price === undefined) v.price = 0;
         });
       }
 
+      // A description mező automatikusan benne van a payloadban
       await apiClient.put(`/api/Service/${serviceItem.id}`, payload);
     } catch (err) {
       console.error("Hiba a mentesnel:", err);
     }
   };
 
-  /* --- DRAG & DROP & UPDATE --- */
+  /* --- KATEGÓRIA / SORREND UPDATE --- */
 
   const onServiceDragChange = async (event, group) => {
     if (event.added) {
@@ -130,14 +137,9 @@
     await reorderAll();
   };
 
-  const onCategoryDragChange = async () => {
-    await reorderAll();
-  };
-
   const reorderAll = async () => {
     let counter = 10;
     const promises = [];
-
     categories.value.forEach(group => {
       group.items.forEach(item => {
         if (item.orderIndex !== counter || item.category !== group.categoryName) {
@@ -148,10 +150,7 @@
         counter += 10;
       });
     });
-
-    if (promises.length > 0) {
-      await Promise.all(promises);
-    }
+    if (promises.length > 0) await Promise.all(promises);
   };
 
   const updateCategoryName = async (group, newName) => {
@@ -174,7 +173,80 @@
     await Promise.all(promises);
   };
 
-  /* --- LÉTREHOZÁS --- */
+  /* --- MEGJEGYZÉS MOZGATÁSA (Custom Drag & Drop) --- */
+
+  const onNoteDragStart = (event, service) => {
+    // Eltároljuk, mit húzunk és honnan
+    draggedNoteContent.value = service.description;
+    draggedFromServiceId.value = service.id;
+    event.dataTransfer.effectAllowed = 'move';
+    // Kis vizuális feedback
+    event.target.style.opacity = '0.5';
+  };
+
+  const onNoteDragEnd = (event) => {
+    event.target.style.opacity = '1';
+    // Reset
+    draggedNoteContent.value = null;
+    draggedFromServiceId.value = null;
+    // Töröljük a highlightokat
+    document.querySelectorAll('.service-drop-zone').forEach(el => el.classList.remove('drag-over'));
+  };
+
+  const onNoteDragOver = (event) => {
+    // Engedélyezzük a dropot
+    event.preventDefault();
+    // Vizuális jelzés (pl. border)
+    const target = event.currentTarget;
+    target.classList.add('drag-over');
+  };
+
+  const onNoteDragLeave = (event) => {
+    const target = event.currentTarget;
+    target.classList.remove('drag-over');
+  };
+
+  const onNoteDrop = async (event, targetService) => {
+    event.preventDefault();
+    event.currentTarget.classList.remove('drag-over');
+
+    if (!draggedNoteContent.value || draggedFromServiceId.value === targetService.id) return;
+
+    // 1. Átmásoljuk a megjegyzést az új helyre
+    // Ha már volt ott valami, hozzáfűzzük vagy felülírjuk?
+    // Jelenleg: Ha volt ott, sortöréssel hozzáfűzzük.
+    if (targetService.description && targetService.description.trim() !== '') {
+      targetService.description += '\n' + draggedNoteContent.value;
+    } else {
+      targetService.description = draggedNoteContent.value;
+    }
+
+    // 2. Töröljük a régi helyről
+    // Ehhez meg kell keresnünk az eredeti service objektumot a struktúrában
+    for (const group of categories.value) {
+      const sourceService = group.items.find(s => s.id === draggedFromServiceId.value);
+      if (sourceService) {
+        sourceService.description = '';
+        await saveService(sourceService);
+        break;
+      }
+    }
+
+    // 3. Mentjük az újat
+    await saveService(targetService);
+  };
+
+  /* --- LÉTREHOZÁS / MŰVELETEK --- */
+
+  const toggleNote = async (service) => {
+    // Ha nincs megjegyzés, inicializáljuk (ez jelzi, hogy szerkeszteni akarjuk)
+    if (!service.description) {
+      service.description = " "; // Space, hogy megjelenjen a textarea
+      // nextTick, hogy fókuszáljunk rá, ha gondoljuk, de most elég ha megjelenik
+    } else {
+      // Ha már van, és újra kattintunk, akár el is rejthetnénk, de inkább hagyjuk szerkeszteni
+    }
+  };
 
   const createNewCategory = async () => {
     if (!isLoggedIn.value) return;
@@ -183,7 +255,8 @@
       category: "ÚJ KATEGÓRIA",
       defaultPrice: 0,
       orderIndex: 99999,
-      variants: [{ variantName: "Normál", price: 0, duration: 30 }]
+      variants: [{ variantName: "Normál", price: 0, duration: 30 }],
+      description: ""
     };
     await postNewService(newService);
   };
@@ -201,29 +274,17 @@
       category: group.categoryName,
       defaultPrice: 0,
       orderIndex: 99999,
-      variants: variants
+      variants: variants,
+      description: ""
     };
     await postNewService(newService);
-  };
-
-  const addNoteToGroupEnd = async (group) => {
-    const newNote = {
-      name: "Új megjegyzés...",
-      category: group.categoryName,
-      defaultPrice: 0,
-      orderIndex: 99999,
-      variants: []
-    };
-    await postNewService(newNote);
   };
 
   const postNewService = async (dto) => {
     try {
       const payload = JSON.parse(JSON.stringify(dto));
-      // Itt is figyelünk az üres tömbre
       if (!payload.variants) payload.variants = [];
       payload.variants.forEach(v => { v.price = 0; });
-
       await apiClient.post('/api/Service', payload);
       await fetchServices();
     } catch (err) { console.error(err); }
@@ -276,7 +337,6 @@
           <div class="category-block">
             <div class="table-row header-row">
               <div v-if="isLoggedIn" class="drag-handle-cat" title="Kategória mozgatása">⋮⋮</div>
-
               <div class="col-name header-title-cell">
                 <input v-if="isLoggedIn"
                        v-model="group.categoryName"
@@ -285,7 +345,6 @@
                        placeholder="Kategória neve" />
                 <span v-else class="category-display">{{ group.categoryName }}</span>
               </div>
-
               <div class="col-variants-group">
                 <div v-for="(v, vIndex) in group.headerVariants" :key="vIndex" class="col-variant-item header-item">
                   <textarea v-if="isLoggedIn"
@@ -305,9 +364,13 @@
                        @change="(e) => onServiceDragChange(e, group)"
                        :disabled="!isLoggedIn">
               <template #item="{ element: service }">
-                <div class="table-row-wrapper">
 
-                  <div v-if="service.variants && service.variants.length > 0" class="table-row data-row">
+                <div class="service-drop-zone"
+                     @dragover="onNoteDragOver"
+                     @dragleave="onNoteDragLeave"
+                     @drop="(e) => onNoteDrop(e, service)">
+
+                  <div class="table-row data-row">
                     <div v-if="isLoggedIn" class="drag-handle-item">⋮⋮</div>
 
                     <div class="col-name">
@@ -320,6 +383,10 @@
                       <span v-else class="name-text">{{ service.name }}</span>
 
                       <div v-if="isLoggedIn" class="row-tools">
+                        <button @click="toggleNote(service)" title="Megjegyzés hozzáadása" class="icon-btn note-toggle">
+                          <i class="pi pi-comment"></i>
+                        </button>
+                        <span class="tool-separator">|</span>
                         <button @click="addVariantToService(service)" title="Oszlop +" class="icon-btn tiny">+</button>
                         <button @click="deleteService(service.id)" title="Törlés" class="icon-btn trash">🗑</button>
                       </div>
@@ -343,22 +410,24 @@
                     </div>
                   </div>
 
-                  <div v-else class="table-row note-row">
-                    <div v-if="isLoggedIn" class="drag-handle-item">⋮⋮</div>
+                  <div v-if="service.description"
+                       class="note-block"
+                       :draggable="isLoggedIn"
+                       @dragstart="(e) => onNoteDragStart(e, service)"
+                       @dragend="onNoteDragEnd">
 
-                    <div class="note-cell">
+                    <div v-if="isLoggedIn" class="note-drag-handle" title="Húzd át másik szolgáltatásra">
+                      <i class="pi pi-arrows-alt"></i>
+                    </div>
+
+                    <div class="note-content">
                       <textarea v-if="isLoggedIn"
-                                v-model="service.name"
+                                v-model="service.description"
                                 @change="saveService(service)"
                                 @input="autoResize"
                                 class="note-input"
-                                rows="1"
                                 placeholder="Megjegyzés..."></textarea>
-                      <span v-else class="note-text">{{ service.name }}</span>
-                    </div>
-
-                    <div v-if="isLoggedIn" class="row-tools note-tools">
-                      <button @click="deleteService(service.id)" class="icon-btn trash">🗑</button>
+                      <span v-else class="note-text">{{ service.description }}</span>
                     </div>
                   </div>
 
@@ -367,11 +436,8 @@
             </draggable>
 
             <div v-if="isLoggedIn" class="group-footer">
-              <button @click="addServiceToGroupEnd(group)" class="add-btn-secondary">
-                + Szolgáltatás
-              </button>
-              <button @click="addNoteToGroupEnd(group)" class="add-btn-secondary note-btn">
-                + Megjegyzés
+              <button @click="addServiceToGroupEnd(group)" class="add-row-btn">
+                + Szolgáltatás hozzáadása
               </button>
             </div>
 
@@ -431,28 +497,24 @@
     padding: 5px 0;
   }
 
-  .add-btn-secondary {
-    flex: 1;
+  .add-row-btn {
     background: none;
     border: 1px dashed #444;
     color: #888;
+    width: 100%;
     padding: 8px;
+    margin-top: 5px;
     cursor: pointer;
     border-radius: 4px;
     font-size: 0.9rem;
     transition: all 0.2s;
   }
 
-    .add-btn-secondary:hover {
+    .add-row-btn:hover {
       background: #111;
       color: #d4af37;
       border-color: #666;
     }
-
-  .note-btn {
-    border-style: dotted;
-    font-style: italic;
-  }
 
   /* KATEGÓRIA */
   .category-block {
@@ -528,6 +590,18 @@
     word-wrap: break-word;
   }
 
+  /* SZOLGÁLTATÁS DOBÓZÓNA */
+  .service-drop-zone {
+    border: 1px solid transparent;
+    border-radius: 4px;
+    transition: border-color 0.2s, background-color 0.2s;
+  }
+
+    .service-drop-zone.drag-over {
+      border-color: #d4af37;
+      background-color: #1a1a1a;
+    }
+
   /* ADATSOROK */
   .data-row {
     display: flex;
@@ -581,42 +655,31 @@
     color: #fff;
   }
 
-  .drag-handle-cat {
-    cursor: grab;
-    font-size: 1.5rem;
-    color: #d4af37;
-    margin-right: 15px;
-  }
-
-  .drag-handle-item {
-    cursor: grab;
-    color: #555;
-    margin-right: 10px;
-    font-size: 1.2rem;
+  /* MEGJEGYZÉS BLOKK */
+  .note-block {
     display: flex;
-    align-items: center;
-    height: 100%;
+    align-items: flex-start;
+    padding: 5px 0 5px 40px; /* Beljebb kezdődik */
+    margin-bottom: 5px;
+    position: relative;
   }
 
-    .drag-handle-item:hover {
-      color: #999;
+  .note-drag-handle {
+    cursor: grab;
+    color: #666;
+    margin-right: 10px;
+    padding-top: 3px;
+    font-size: 0.9rem;
+  }
+
+    .note-drag-handle:hover {
+      color: #d4af37;
     }
 
-  /* MEGJEGYZÉS */
-  .note-row {
-    display: flex;
-    padding: 8px 0;
-    margin-top: 5px;
-    margin-bottom: 5px;
-    align-items: center;
-  }
-
-  .note-cell {
+  .note-content {
     flex-grow: 1;
-    font-style: italic;
-    color: #888;
-    padding-left: 10px;
     border-left: 2px solid #333;
+    padding-left: 10px;
   }
 
   .note-input {
@@ -643,7 +706,31 @@
     white-space: pre-wrap;
     word-break: break-word;
     line-height: 1.4;
+    font-style: italic;
+    color: #888;
   }
+
+  /* DRAG HANDLES */
+  .drag-handle-cat {
+    cursor: grab;
+    font-size: 1.5rem;
+    color: #d4af37;
+    margin-right: 15px;
+  }
+
+  .drag-handle-item {
+    cursor: grab;
+    color: #555;
+    margin-right: 10px;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    height: 100%;
+  }
+
+    .drag-handle-item:hover {
+      color: #999;
+    }
 
   .col-variants-group {
     display: flex;
@@ -668,6 +755,7 @@
     min-height: 40px;
   }
 
+  /* TOOLS */
   .row-tools {
     display: flex;
     align-items: center;
@@ -677,7 +765,7 @@
     transition: opacity 0.2s;
   }
 
-  .note-row:hover .row-tools, .data-row:hover .row-tools {
+  .data-row:hover .row-tools {
     opacity: 1;
   }
 
@@ -696,6 +784,15 @@
     .icon-btn.trash:hover {
       color: #ff4444;
     }
+
+    .icon-btn.note-toggle:hover {
+      color: #d4af37;
+    }
+
+  .tool-separator {
+    color: #333;
+    margin: 0 5px;
+  }
 
   .variant-remove-btn {
     position: absolute;

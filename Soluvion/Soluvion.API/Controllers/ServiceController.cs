@@ -28,7 +28,6 @@ namespace Soluvion.API.Controllers
             return 0;
         }
 
-        // GET: api/Service
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Service>>> GetServices(int companyId)
         {
@@ -41,7 +40,6 @@ namespace Soluvion.API.Controllers
                 .ToListAsync();
         }
 
-        // POST: api/Service
         [HttpPost]
         [Authorize]
         public async Task<ActionResult<Service>> PostService(Service service)
@@ -53,13 +51,14 @@ namespace Soluvion.API.Controllers
 
             if (string.IsNullOrEmpty(service.Category)) service.Category = "Egyéb";
 
+            // A Description mezőt az EF Core automatikusan kezeli a model alapján
+
             _context.Services.Add(service);
             await _context.SaveChangesAsync();
 
             return CreatedAtAction("GetServices", new { id = service.Id }, service);
         }
 
-        // PUT: api/Service/5
         [HttpPut("{id}")]
         [Authorize]
         public async Task<IActionResult> PutService(int id, Service service)
@@ -74,22 +73,20 @@ namespace Soluvion.API.Controllers
             if (existingService == null) return NotFound();
             if (existingService.CompanyId != userCompanyId) return Forbid();
 
-            // --- JAVÍTÁS: ADATOK FRISSÍTÉSE ---
+            // --- ADATOK FRISSÍTÉSE ---
             existingService.Name = service.Name;
             existingService.DefaultPrice = service.DefaultPrice;
             existingService.DefaultDuration = service.DefaultDuration;
             existingService.OrderIndex = service.OrderIndex;
-            existingService.Category = service.Category; // Kategória mentése!
+            existingService.Category = service.Category;
 
-            // --- JAVÍTÁS: NULL CHECK A VARIÁNSOKRA (Megjegyzés sor miatt) ---
-            if (service.Variants == null)
-            {
-                service.Variants = new List<ServiceVariant>();
-            }
+            // ÚJ: Megjegyzés mentése
+            existingService.Description = service.Description;
 
-            // Variánsok szinkronizálása
+            // Variánsok kezelése
+            if (service.Variants == null) service.Variants = new List<ServiceVariant>();
+
             var incomingIds = service.Variants.Select(v => v.Id).ToList();
-
             var variantsToDelete = existingService.Variants
                 .Where(v => v.Id != 0 && !incomingIds.Contains(v.Id))
                 .ToList();
@@ -129,7 +126,6 @@ namespace Soluvion.API.Controllers
             }
         }
 
-        // DELETE: api/Service/5
         [HttpDelete("{id}")]
         [Authorize]
         public async Task<IActionResult> DeleteService(int id)
