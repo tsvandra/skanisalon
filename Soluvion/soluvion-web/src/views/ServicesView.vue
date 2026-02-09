@@ -1,11 +1,13 @@
 <script setup>
-  import { ref, onMounted, computed, inject, watch } from 'vue';
+  import { ref, onMounted, inject, watch } from 'vue';
   import InputNumber from 'primevue/inputnumber';
   import apiClient from '@/services/api';
   import { getCompanyIdFromToken } from '@/utils/jwt';
   import { DEFAULT_COMPANY_ID } from '@/config';
+  import draggable from 'vuedraggable'; // IMPORTÁLJUK A DRAGGABLE-T
 
-  const services = ref([]);
+  const services = ref([]); // Ez tárolja a nyers adatokat
+  const categories = ref([]); // Ez tárolja a DRAGGABLE struktúrát (Nested)
   const loading = ref(true);
   const isLoggedIn = ref(false);
 
@@ -28,7 +30,44 @@
     return val.toLocaleString('hu-HU', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
   };
 
-  /* --- ADATBETÖLTÉS --- */
+  /* --- ADATTRANSZFORMÁCIÓ (Flat <-> Nested) --- */
+
+  // Lapos listából (Backend) -> Ágyazott lista (Frontend Drag & Drop)
+  const buildNestedStructure = (flatServices) => {
+    const groups = [];
+
+    // Először rendezzük OrderIndex szerint
+    flatServices.sort((a, b) => a.orderIndex - b.orderIndex);
+
+    flatServices.forEach(service => {
+      const catName = service.category || "Egyéb";
+
+      // Megkeressük, létezik-e már a kategória a csoportokban
+      let group = groups.find(g => g.categoryName === catName);
+
+      if (!group) {
+        group = {
+          id: 'cat-' + catName, // Egyedi ID a drag-nek
+          categoryName: catName,
+          // Fejléc variánsok kinyerése az első nem-megjegyzés elemből
+          headerVariants: [],
+          items: []
+        };
+        groups.push(group);
+      }
+
+      // Ha még nincs header és ez nem megjegyzés, beállítjuk
+      if (group.headerVariants.length === 0 && service.variants && service.variants.length > 0) {
+        group.headerVariants = [...service.variants];
+      }
+
+      group.items.push(service);
+    });
+
+    return groups;
+  };
+
+  /* --- API MŰVELETEK --- */
 
   const fetchServices = async () => {
     const targetCompanyId = company?.value?.id || DEFAULT_COMPANY_ID;
@@ -40,20 +79,17 @@
 
       const rawServices = response.data;
 
+      // Adattisztítás
       rawServices.forEach(service => {
         if (service.variants) {
           service.variants = sortVariants(service.variants);
-          service.variants.forEach(v => {
-            if (v.price === 0) v.price = null;
-          });
+          service.variants.forEach(v => { if (v.price === 0) v.price = null; });
         }
         if (!service.category) service.category = "Egyéb";
       });
 
-      // Fontos: Itt is rendezzük OrderIndex szerint, bár a backend is megteszi
-      rawServices.sort((a, b) => a.orderIndex - b.orderIndex);
-
-      services.value = rawServices;
+      // Átalakítás nested struktúrává a draggable-hez
+      categories.value = buildNestedStructure(rawServices);
 
     } catch (error) {
       console.error('Hiba a betolteskor:', error);
@@ -64,52 +100,9 @@
 
   watch(
     () => company?.value?.id,
-    (newId) => {
-      if (newId) fetchServices();
-    },
+    (newId) => { if (newId) fetchServices(); },
     { immediate: true }
   );
-
-  /* --- CSOPORTOSÍTÁS LOGIKA --- */
-
-  const groupedServices = computed(() => {
-    if (!services.value) return [];
-
-    const groups = [];
-    let currentGroup = null;
-
-    services.value.forEach(service => {
-      const catName = service.category || "Egyéb";
-
-      // Ha a sor egy MEGJEGYZÉS (nincs variánsa), az nem töri meg a csoport fejléc logikáját,
-      // de a megjelenítésnél külön kezeljük.
-
-      if (!currentGroup || currentGroup.categoryName !== catName) {
-
-        // Keresünk egy olyan elemet a csoportban, ami NEM megjegyzés, hogy abból vegyük a fejlécet
-        // (Ha az első elem megjegyzés, akkor várunk a következőre)
-        let headerSource = service.variants && service.variants.length > 0 ? service : null;
-
-        currentGroup = {
-          categoryName: catName,
-          headerVariants: headerSource ? [...headerSource.variants] : [],
-          items: []
-        };
-        groups.push(currentGroup);
-      }
-
-      // Ha még nincs header beállítva (mert az első elem megjegyzés volt), de ez most egy normál service
-      if (currentGroup.headerVariants.length === 0 && service.variants && service.variants.length > 0) {
-        currentGroup.headerVariants = [...service.variants];
-      }
-
-      currentGroup.items.push(service);
-    });
-
-    return groups;
-  });
-
-  /* --- SZERKESZTÉS & MENTÉS --- */
 
   const saveService = async (serviceItem) => {
     try {
@@ -119,28 +112,81 @@
           if (v.price === null || v.price === undefined) v.price = 0;
         });
       }
-
-      const response = await apiClient.put(`/api/Service/${serviceItem.id}`, payload);
-
-      if (response.status === 200 && response.data) {
-        const index = services.value.findIndex(s => s.id === serviceItem.id);
-        if (index !== -1) {
-          const updated = response.data;
-          if (updated.variants) {
-            updated.variants = sortVariants(updated.variants);
-            updated.variants.forEach(v => { if (v.price === 0) v.price = null; });
-          }
-          if (!updated.category) updated.category = "Egyéb";
-
-          services.value[index] = { ...services.value[index], ...updated };
-        }
-      }
+      // Put hívás... (A válasz feldolgozása itt most egyszerűsített, mert a drag-and-drop miatt a UI a mester)
+      await apiClient.put(`/api/Service/${serviceItem.id}`, payload);
     } catch (err) {
       console.error("Hiba a mentesnel:", err);
     }
   };
 
+  /* --- DRAG & DROP ESEMÉNYKEZELÉS --- */
+
+  // Amikor a szolgáltatásokat mozgatják (Kategórián belül vagy között)
+  const onServiceDragChange = async (event, group) => {
+    // Az esemény lehet 'added', 'removed', vagy 'moved'
+    // Minket az érdekel, ha valami bekerült ('added') vagy helyben mozgott ('moved')
+
+    // 1. Ha új kategóriába került, frissíteni kell a kategória nevét
+    if (event.added) {
+      const item = event.added.element;
+      item.category = group.categoryName;
+      // Ha ez az első elem és volt fejléc, megpróbálhatjuk igazítani, de most hagyjuk egyszerűen
+    }
+
+    // 2. Mindenkinek újraosztjuk az OrderIndex-et ebben a csoportban
+    // (Egyszerűsítés: durván újraindexelünk 10-esével, hogy legyen hely később beszúrni)
+    const updates = [];
+    let baseIndex = group.items[0]?.orderIndex || 0;
+    // Ha nagyon az elejére húztuk, korrigálunk
+    if (baseIndex < 10) baseIndex = 10;
+
+    group.items.forEach((item, index) => {
+      // Az új index: Az előző csoport utolsó indexe + (index * 10) lenne a legprecízebb,
+      // de most egyszerűsítsünk: a csoporton belüli sorrend a döntő.
+      // A backend globális OrderIndexet vár.
+      // TRÜKK: A UI-on lévő sorrend a valóság.
+      // Végigmegyünk az ÖSSZES kategórián, és sorban kiosztjuk az indexeket.
+    });
+
+    await reorderAll();
+  };
+
+  // Kategóriák mozgatása
+  const onCategoryDragChange = async () => {
+    await reorderAll();
+  };
+
+  // Globális újrarendezés és mentés
+  // Ez egy kicsit "költséges", de bombabiztos: végigmegy a teljes listán a képernyőn,
+  // és mindenkinek kioszt egy új sorszámot (10, 20, 30...), majd elküldi a változásokat.
+  const reorderAll = async () => {
+    let counter = 10;
+    const promises = [];
+
+    categories.value.forEach(group => {
+      group.items.forEach(item => {
+        // Csak akkor mentünk, ha változott az index vagy a kategória
+        if (item.orderIndex !== counter || item.category !== group.categoryName) {
+          item.orderIndex = counter;
+          item.category = group.categoryName;
+          promises.push(saveService(item));
+        }
+        counter += 10;
+      });
+    });
+
+    if (promises.length > 0) {
+      await Promise.all(promises);
+      // Opcionális: fetchServices(); // Ha biztosra akarunk menni, újratölthetünk, de akkor villanhat
+    }
+  };
+
+
+  /* --- EGYÉB FUNKCIÓK (Maradtak a régiek) --- */
+
   const updateCategoryName = async (group, newName) => {
+    group.categoryName = newName; // UI frissítés
+    // Minden itemet frissítünk
     const promises = group.items.map(service => {
       service.category = newName;
       return saveService(service);
@@ -148,9 +194,9 @@
     await Promise.all(promises);
   };
 
+  // Fejléc variáns nevek mentése
   const updateGroupVariantName = async (group, variantIndex, newName) => {
     const promises = group.items.map(service => {
-      // Csak azokat frissítjük, amik NEM megjegyzések (van variánsuk)
       if (service.variants && service.variants[variantIndex]) {
         service.variants[variantIndex].variantName = newName;
         return saveService(service);
@@ -160,97 +206,26 @@
     await Promise.all(promises);
   };
 
-  /* --- LÉTREHOZÁS & BESZÚRÁS LOGIKA (ÚJ) --- */
-
-  // Kiszámolja a megfelelő indexet a beszúráshoz
-  const getNextOrderIndex = (currentService, groupItems) => {
-    if (!currentService) return 0;
-
-    const currentIndex = groupItems.findIndex(s => s.id === currentService.id);
-    const nextService = groupItems[currentIndex + 1];
-
-    const currentOrder = currentService.orderIndex;
-
-    if (nextService) {
-      // Ha van következő, akkor a kettő közé
-      const nextOrder = nextService.orderIndex;
-      // Matematikai közép (pl. 10 és 20 között -> 15)
-      const mid = Math.floor((currentOrder + nextOrder) / 2);
-
-      // Ha nincs hely (pl. 10 és 11 között), akkor toljuk el (egyelőre +1, a backend order stabil)
-      if (mid <= currentOrder) return currentOrder + 1;
-      return mid;
-    } else {
-      // Ha ez az utolsó, akkor +10
-      return currentOrder + 10;
-    }
-  };
-
-  // Új sor (vagy megjegyzés) beszúrása egy adott sor ALÁ
-  const insertServiceBelow = async (currentService, group, isNote = false) => {
-    if (!isLoggedIn.value) return;
-
-    const newOrderIndex = getNextOrderIndex(currentService, group.items);
-    let newVariants = [];
-
-    if (isNote) {
-      // Megjegyzésnél üres a variáns lista
-      newVariants = [];
-    } else {
-      // Normál szerviznél másoljuk a struktúrát a csoportból (vagy az aktuálisból)
-      // Ha az aktuális sor is Note volt, akkor a csoport fejlécéből próbáljuk kitalálni a struktúrát
-      const templateVariants = (currentService.variants && currentService.variants.length > 0)
-        ? currentService.variants
-        : (group.headerVariants.length > 0 ? group.headerVariants : []);
-
-      if (templateVariants.length > 0) {
-        newVariants = templateVariants.map(v => ({
-          variantName: v.variantName,
-          price: 0,
-          duration: v.duration
-        }));
-      } else {
-        // Fallback, ha semmi nincs
-        newVariants = [{ variantName: "Normál", price: 0, duration: 30 }];
-      }
-    }
-
-    const newService = {
-      name: isNote ? "Új megjegyzés..." : "Új szolgáltatás",
-      category: group.categoryName,
-      defaultPrice: 0,
-      orderIndex: newOrderIndex,
-      variants: newVariants
-    };
-
-    await postNewService(newService);
-  };
-
-  // Kategória végi hozzáadás (gomb a lista alján)
-  const addServiceToGroupEnd = async (group) => {
-    const lastItem = group.items[group.items.length - 1];
-    await insertServiceBelow(lastItem, group, false); // False = Normál sor
-  };
-
   const createNewCategory = async () => {
     if (!isLoggedIn.value) return;
-    const lastService = services.value[services.value.length - 1];
-    const newOrderIndex = (lastService?.orderIndex || 0) + 100;
-
-    const defaultVariants = [
-      { variantName: "Rövid", price: 0, duration: 30 },
-      { variantName: "Közép", price: 0, duration: 45 },
-      { variantName: "Hosszú", price: 0, duration: 60 }
-    ];
-
     const newService = {
       name: "Új szolgáltatás",
       category: "ÚJ KATEGÓRIA",
       defaultPrice: 0,
-      orderIndex: newOrderIndex,
-      variants: defaultVariants
+      orderIndex: 9999, // A reorderAll majd helyreteszi
+      variants: [{ variantName: "Std", price: 0, duration: 30 }]
     };
+    await postNewService(newService);
+  };
 
+  const addServiceToGroupEnd = async (group) => {
+    const newService = {
+      name: "Új szolgáltatás",
+      category: group.categoryName,
+      defaultPrice: 0,
+      orderIndex: 9999,
+      variants: [{ variantName: "Std", price: 0, duration: 30 }]
+    };
     await postNewService(newService);
   };
 
@@ -259,10 +234,8 @@
       const payload = JSON.parse(JSON.stringify(dto));
       payload.variants.forEach(v => { v.price = 0; });
       await apiClient.post('/api/Service', payload);
-      await fetchServices();
-    } catch (err) {
-      console.error("Letrehozas hiba:", err);
-    }
+      await fetchServices(); // Itt muszáj újratölteni, hogy bekerüljön a struktúrába
+    } catch (err) { console.error(err); }
   };
 
   const deleteService = async (id) => {
@@ -270,16 +243,14 @@
     try {
       await apiClient.delete(`/api/Service/${id}`);
       await fetchServices();
-    } catch (err) {
-      console.error("Torles hiba:", err);
-    }
+    } catch (err) { console.error(err); }
   };
 
+  // Variáns kezelők...
   const removeVariant = async (service, vIndex) => {
     service.variants.splice(vIndex, 1);
     await saveService(service);
   };
-
   const addVariantToService = async (service) => {
     if (!service.variants) service.variants = [];
     service.variants.push({ id: 0, variantName: "Extra", price: 0, duration: 30 });
@@ -296,7 +267,6 @@
   <div class="smart-container">
     <div class="header-actions">
       <h2>{{ isLoggedIn ? 'Árlista Szerkesztő' : 'Árlista' }}</h2>
-
       <button v-if="isLoggedIn" @click="createNewCategory" class="main-add-btn">
         <i class="pi pi-folder-open"></i> Új Kategória
       </button>
@@ -306,89 +276,107 @@
 
     <div v-else class="services-wrapper">
 
-      <div v-for="(group, gIndex) in groupedServices" :key="gIndex" class="category-block">
+      <draggable v-model="categories"
+                 item-key="id"
+                 handle=".drag-handle-cat"
+                 @change="onCategoryDragChange"
+                 :disabled="!isLoggedIn">
+        <template #item="{ element: group }">
 
-        <div class="table-row header-row">
-          <div class="col-name header-title-cell">
-            <input v-if="isLoggedIn"
-                   v-model="group.categoryName"
-                   @change="updateCategoryName(group, group.categoryName)"
-                   class="category-input"
-                   placeholder="Kategória neve" />
-            <span v-else class="category-display">{{ group.categoryName }}</span>
-          </div>
+          <div class="category-block">
+            <div class="table-row header-row">
+              <div v-if="isLoggedIn" class="drag-handle-cat" title="Kategória mozgatása">
+                ⋮⋮
+              </div>
 
-          <div class="col-variants-group">
-            <div v-for="(v, vIndex) in group.headerVariants" :key="vIndex" class="col-variant-item header-item">
-              <textarea v-if="isLoggedIn"
-                        :value="v.variantName"
-                        @change="(e) => updateGroupVariantName(group, vIndex, e.target.value)"
-                        class="header-variant-input"
-                        rows="2"></textarea>
-              <span v-else class="header-label">{{ v.variantName }}</span>
-            </div>
-          </div>
-        </div>
+              <div class="col-name header-title-cell">
+                <input v-if="isLoggedIn"
+                       v-model="group.categoryName"
+                       @change="updateCategoryName(group, group.categoryName)"
+                       class="category-input"
+                       placeholder="Kategória neve" />
+                <span v-else class="category-display">{{ group.categoryName }}</span>
+              </div>
 
-        <div v-for="service in group.items" :key="service.id" class="table-row-wrapper">
-
-          <div v-if="service.variants && service.variants.length > 0" class="table-row data-row">
-
-            <div class="col-name">
-              <input v-if="isLoggedIn" v-model="service.name" @change="saveService(service)" class="name-input" />
-              <span v-else class="name-text">{{ service.name }}</span>
-
-              <div v-if="isLoggedIn" class="row-tools">
-                <div class="insert-tools">
-                  <button @click="insertServiceBelow(service, group, false)" title="Új sor beszúrása ez alá" class="icon-btn add-below">↳ Sor</button>
-                  <button @click="insertServiceBelow(service, group, true)" title="Megjegyzés beszúrása ez alá" class="icon-btn add-note">↳ Note</button>
+              <div class="col-variants-group">
+                <div v-for="(v, vIndex) in group.headerVariants" :key="vIndex" class="col-variant-item header-item">
+                  <textarea v-if="isLoggedIn"
+                            :value="v.variantName"
+                            @change="(e) => updateGroupVariantName(group, vIndex, e.target.value)"
+                            class="header-variant-input"
+                            rows="2"></textarea>
+                  <span v-else class="header-label">{{ v.variantName }}</span>
                 </div>
-                <span class="tool-separator">|</span>
-                <button @click="addVariantToService(service)" title="Oszlop hozzáadása" class="icon-btn tiny">+</button>
-                <button @click="deleteService(service.id)" title="Törlés" class="icon-btn trash">🗑</button>
               </div>
             </div>
 
-            <div class="col-variants-group">
-              <div v-for="(variant, vIndex) in service.variants" :key="variant.id || vIndex" class="col-variant-item">
-                <div class="price-wrapper">
-                  <InputNumber v-if="isLoggedIn"
-                               v-model="variant.price"
-                               mode="currency" currency="EUR" locale="hu-HU" :minFractionDigits="0"
-                               class="price-input"
-                               placeholder=""
-                               @blur="saveService(service)" />
-                  <span v-else class="price-display">
-                    {{ formatCurrency(variant.price) }}
-                  </span>
+            <draggable v-model="group.items"
+                       item-key="id"
+                       group="services"
+                       handle=".drag-handle-item"
+                       @change="(e) => onServiceDragChange(e, group)"
+                       :disabled="!isLoggedIn">
+              <template #item="{ element: service }">
+                <div class="table-row-wrapper">
+
+                  <div v-if="service.variants && service.variants.length > 0" class="table-row data-row">
+
+                    <div v-if="isLoggedIn" class="drag-handle-item">⋮⋮</div>
+
+                    <div class="col-name">
+                      <input v-if="isLoggedIn" v-model="service.name" @change="saveService(service)" class="name-input" />
+                      <span v-else class="name-text">{{ service.name }}</span>
+
+                      <div v-if="isLoggedIn" class="row-tools">
+                        <button @click="addVariantToService(service)" title="Oszlop +" class="icon-btn tiny">+</button>
+                        <button @click="deleteService(service.id)" title="Törlés" class="icon-btn trash">🗑</button>
+                      </div>
+                    </div>
+
+                    <div class="col-variants-group">
+                      <div v-for="(variant, vIndex) in service.variants" :key="variant.id || vIndex" class="col-variant-item">
+                        <div class="price-wrapper">
+                          <InputNumber v-if="isLoggedIn"
+                                       v-model="variant.price"
+                                       mode="currency" currency="EUR" locale="hu-HU" :minFractionDigits="0"
+                                       class="price-input"
+                                       placeholder=""
+                                       @blur="saveService(service)" />
+                          <span v-else class="price-display">
+                            {{ formatCurrency(variant.price) }}
+                          </span>
+                        </div>
+                        <button v-if="isLoggedIn" @click="removeVariant(service, vIndex)" class="variant-remove-btn">×</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div v-else class="table-row note-row">
+                    <div v-if="isLoggedIn" class="drag-handle-item">⋮⋮</div>
+
+                    <div class="note-cell">
+                      <input v-if="isLoggedIn" v-model="service.name" @change="saveService(service)" class="note-input" placeholder="Megjegyzés..." />
+                      <span v-else class="note-text">{{ service.name }}</span>
+                    </div>
+
+                    <div v-if="isLoggedIn" class="row-tools note-tools">
+                      <button @click="deleteService(service.id)" class="icon-btn trash">🗑</button>
+                    </div>
+                  </div>
+
                 </div>
-                <button v-if="isLoggedIn" @click="removeVariant(service, vIndex)" class="variant-remove-btn" title="Törlés">×</button>
-              </div>
+              </template>
+            </draggable>
+
+            <div v-if="isLoggedIn" class="group-footer">
+              <button @click="addServiceToGroupEnd(group)" class="add-row-btn">
+                + Sor hozzáadása
+              </button>
             </div>
+
           </div>
-
-          <div v-else class="table-row note-row">
-            <div class="note-cell">
-              <input v-if="isLoggedIn" v-model="service.name" @change="saveService(service)" class="note-input" placeholder="Megjegyzés..." />
-              <span v-else class="note-text">{{ service.name }}</span>
-            </div>
-
-            <div v-if="isLoggedIn" class="row-tools note-tools">
-              <div class="insert-tools">
-                <button @click="insertServiceBelow(service, group, false)" title="Új sor beszúrása ez alá" class="icon-btn add-below">↳ Sor</button>
-                <button @click="insertServiceBelow(service, group, true)" title="Megjegyzés beszúrása ez alá" class="icon-btn add-note">↳ Note</button>
-              </div>
-              <button @click="deleteService(service.id)" class="icon-btn trash">🗑</button>
-            </div>
-          </div>
-
-        </div> <div v-if="isLoggedIn" class="group-footer">
-          <button @click="addServiceToGroupEnd(group)" class="add-row-btn">
-            + Sor hozzáadása a kategória végére
-          </button>
-        </div>
-
-      </div>
+        </template>
+      </draggable>
 
     </div>
   </div>
@@ -415,6 +403,30 @@
     margin: 0;
   }
 
+  /* DRAG HANDLES */
+  .drag-handle-cat {
+    cursor: grab;
+    font-size: 1.5rem;
+    color: #d4af37;
+    margin-right: 15px;
+    line-height: 1;
+    padding: 5px;
+  }
+
+  .drag-handle-item {
+    cursor: grab;
+    color: #ccc;
+    margin-right: 10px;
+    font-size: 1.2rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+  }
+
+    .drag-handle-item:hover {
+      color: #666;
+    }
+
   /* GOMBOK */
   .main-add-btn {
     background-color: #333;
@@ -427,12 +439,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    transition: background 0.2s;
   }
-
-    .main-add-btn:hover {
-      background-color: #000;
-    }
 
   .add-row-btn {
     background: none;
@@ -452,9 +459,16 @@
       border-color: #bbb;
     }
 
-  /* --- KATEGÓRIA BLOKK --- */
+  /* KATEGÓRIA */
   .category-block {
     margin-bottom: 40px;
+    background: #fff;
+    border-radius: 4px;
+  }
+  /* Ha dragolunk, adjunk neki kis hátteret */
+  .sortable-ghost {
+    opacity: 0.5;
+    background: #f0f0f0;
   }
 
   .header-row {
@@ -518,29 +532,26 @@
     width: 100%;
   }
 
-  /* --- ADATSOROK --- */
-  .table-row-wrapper {
-    /* Csak wrapper */
-  }
-
+  /* ADATSOROK */
   .data-row {
     display: flex;
     align-items: center;
     padding: 8px 0;
     border-bottom: 1px dashed rgba(0,0,0,0.05);
+    background: #fff;
   }
 
     .data-row:hover {
       background-color: #fcfcfc;
     }
 
-  /* MEGJEGYZÉS SOR STÍLUS */
+  /* MEGJEGYZÉS */
   .note-row {
     display: flex;
     padding: 8px 0;
-    border-bottom: 1px solid transparent;
     margin-top: 5px;
     margin-bottom: 5px;
+    align-items: center;
   }
 
   .note-cell {
@@ -548,7 +559,7 @@
     font-style: italic;
     color: #777;
     padding-left: 10px;
-    border-left: 2px solid #eee; /* Kicsit elüt a többitől */
+    border-left: 2px solid #eee;
   }
 
   .note-input {
@@ -622,7 +633,7 @@
     min-height: 40px;
   }
 
-  /* --- TOOLS --- */
+  /* TOOLS */
   .row-tools {
     display: flex;
     align-items: center;
@@ -631,16 +642,9 @@
     opacity: 0;
     transition: opacity 0.2s;
   }
-  /* Megjegyzés sornál is jelenjen meg a tools */
-  .note-row:hover .row-tools,
-  .data-row:hover .row-tools {
-    opacity: 1;
-  }
 
-  .insert-tools {
-    display: flex;
-    gap: 3px;
-    margin-right: 5px;
+  .note-row:hover .row-tools, .data-row:hover .row-tools {
+    opacity: 1;
   }
 
   .icon-btn {
@@ -663,24 +667,6 @@
       font-size: 1.2rem;
       line-height: 1rem;
     }
-
-    .icon-btn.add-below, .icon-btn.add-note {
-      font-size: 0.75rem;
-      background: #f0f0f0;
-      padding: 2px 5px;
-      border-radius: 3px;
-      color: #666;
-    }
-
-      .icon-btn.add-below:hover, .icon-btn.add-note:hover {
-        background: #e0e0e0;
-        color: #000;
-      }
-
-  .tool-separator {
-    color: #eee;
-    margin: 0 5px;
-  }
 
   .variant-remove-btn {
     position: absolute;
@@ -707,7 +693,6 @@
     font-weight: 500;
   }
 
-  /* PrimeVue Override */
   .price-input {
     width: 100px !important;
   }
