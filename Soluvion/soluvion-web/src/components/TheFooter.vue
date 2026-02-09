@@ -7,14 +7,12 @@
   const isUploading = ref(false);
   const footerInputRef = ref(null);
 
-  // Stílus generálása a magasság (slider) alapján
   const footerStyle = computed(() => {
-    // Ha véletlenül 0 vagy null jönne a backendről, akkor 250 legyen az alap
     const height = company.value?.footerHeight || 250;
 
     const baseStyle = {
-      minHeight: `${height}px`, // Itt használjuk a csúszka értékét
-      transition: 'min-height 0.1s ease-out' // Gyorsabb reakció a csúszkára
+      minHeight: `${height}px`,
+      // transition: 'min-height 0.1s ease-out' <-- TÖRÖLVE A SIMASÁGÉRT
     };
 
     if (company.value?.footerImageUrl) {
@@ -29,7 +27,6 @@
     return { ...baseStyle, background: '#2c2c2c' };
   });
 
-  // --- KÉPFELTÖLTÉS ---
   const triggerUpload = () => footerInputRef.value.click();
 
   const onFileSelected = async (event) => {
@@ -53,16 +50,11 @@
     }
   };
 
-  // --- MAGASSÁG MENTÉSE ---
-  // Csak akkor hívjuk meg, ha elengedte a csúszkát (@change)
   const saveHeight = async () => {
     if (!company.value) return;
     try {
-      // Biztonsági ellenőrzés: ha esetleg null lenne az érték, beállítjuk
       if (!company.value.footerHeight) company.value.footerHeight = 250;
-
       await api.put(`/api/Company/${company.value.id}`, company.value);
-      console.log("Magasság mentve:", company.value.footerHeight);
     } catch (err) {
       console.error("Nem sikerült menteni a magasságot", err);
     }
@@ -94,7 +86,7 @@
           <input type="range"
                  v-model="company.footerHeight"
                  min="50"
-                 max="450"
+                 max="600"
                  step="10"
                  @change="saveHeight"
                  title="Lábléc magassága" />
@@ -114,7 +106,6 @@
     color: #fff;
     margin-top: auto;
     background-color: #2c2c2c;
-    /* Fontos: overflow hidden, hogy ha lekicsinyítjük, ne lógjon ki semmi */
     overflow: hidden;
   }
 
@@ -131,10 +122,11 @@
     text-align: center;
     width: 100%;
     padding: 1.5rem;
+    height: 100%; /* Kitölti a rendelkezésre álló magasságot */
     display: flex;
     flex-direction: column;
+    justify-content: flex-end; /* Tartalom alulra */
     align-items: center;
-    gap: 1rem;
   }
 
   .footer-info h3 {
@@ -151,8 +143,11 @@
     margin: 0;
   }
 
-  /* ADMIN PANEL STÍLUS (Kompaktabb lett) */
+  /* --- STABIL POZICIONÁLÁS --- */
   .footer-admin-panel {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -160,8 +155,8 @@
     padding: 5px 12px;
     border-radius: 20px;
     border: 1px solid #555;
-    margin-top: 5px;
     backdrop-filter: blur(4px);
+    z-index: 100;
   }
 
   .separator {
@@ -179,7 +174,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: color 0.2s;
   }
 
     .btn-admin:hover {
@@ -194,25 +188,23 @@
     color: #aaa;
   }
 
-  /* Csúszka stílus testreszabása (hogy szebb legyen sötét módban) */
   input[type=range] {
     -webkit-appearance: none;
-    width: 120px;
+    width: 100px;
     height: 4px;
     background: #555;
     border-radius: 2px;
     outline: none;
+    cursor: pointer;
   }
 
     input[type=range]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      appearance: none;
       width: 14px;
       height: 14px;
       border-radius: 50%;
       background: var(--primary-color, #d4af37);
       cursor: pointer;
-      transition: transform 0.1s;
     }
 
       input[type=range]::-webkit-slider-thumb:hover {

@@ -8,7 +8,6 @@
   const isMenuOpen = ref(false);
   const isLoggedIn = ref(false);
 
-  // Logó feltöltés state
   const isUploadingLogo = ref(false);
   const logoInputRef = ref(null);
 
@@ -26,18 +25,17 @@
     return `${baseUrl}${path}`;
   };
 
-  // --- LOGÓ MÉRETEZÉS (COMPUTED STYLE) ---
+  // --- STABILIZÁLVA: NINCS TRANSITION ---
   const logoStyle = computed(() => {
     const height = company.value?.logoHeight || 50;
     return {
       height: `${height}px`,
-      width: 'auto', // A szélesség alkalmazkodik
+      width: 'auto',
       display: 'block',
-      transition: 'height 0.1s ease-out'
+      // transition: 'height 0.1s ease-out' <-- EZT KIVETTEM, EZ OKOZTA AZ UGRÁLÁST
     };
   });
 
-  // --- LOGÓ FELTÖLTÉS ---
   const triggerLogoUpload = () => logoInputRef.value.click();
 
   const onLogoSelected = async (event) => {
@@ -61,15 +59,11 @@
     }
   };
 
-  // --- LOGÓ MÉRET MENTÉSE (@change) ---
   const saveLogoHeight = async () => {
     if (!company.value) return;
     try {
-      // Ha null lenne, default 50
       if (!company.value.logoHeight) company.value.logoHeight = 50;
-
       await api.put(`/api/Company/${company.value.id}`, company.value);
-      console.log("Logó méret mentve:", company.value.logoHeight);
     } catch (err) {
       console.error("Nem sikerült menteni a logó méretét", err);
     }
@@ -85,7 +79,6 @@
     <div class="container">
 
       <div class="logo-area">
-
         <router-link to="/" class="logo-link">
           <img v-if="company?.logoUrl"
                :src="getLogoUrl(company.logoUrl)"
@@ -95,7 +88,6 @@
         </router-link>
 
         <div v-if="isLoggedIn" class="logo-admin-tools">
-
           <button @click="triggerLogoUpload" class="tool-btn" title="Logó cseréje">
             <i v-if="isUploadingLogo" class="pi pi-spin pi-spinner"></i>
             <i v-else class="pi pi-camera"></i>
@@ -107,10 +99,9 @@
                    v-model="company.logoHeight"
                    min="30"
                    max="150"
-                   step="5"
+                   step="2"
                    @change="saveLogoHeight" />
           </div>
-
         </div>
       </div>
 
@@ -137,7 +128,7 @@
   .app-header {
     background-color: var(--secondary-color);
     color: #fff;
-    padding: 0.5rem 0; /* Kicsit kisebb padding, hogy a logó domináljon */
+    padding: 0.5rem 0;
     position: sticky;
     top: 0;
     z-index: 1000;
@@ -151,19 +142,20 @@
     padding: 0 1rem;
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: center; /* Ez marad center, hogy a menü és logó egy vonalban legyen */
   }
 
-  /* LOGÓ TERÜLET */
   .logo-area {
+    position: relative; /* Fontos a pozicionáláshoz */
     display: flex;
-    align-items: center;
-    gap: 15px;
+    align-items: center; /* A logó függőlegesen középen */
+    min-height: 50px; /* Hogy legyen helye alapból */
   }
 
   .logo-link {
     text-decoration: none;
     display: block;
+    margin-right: 15px; /* Helyet hagyunk a vezérlőnek, ha mellette van */
   }
 
   .text-logo {
@@ -173,27 +165,19 @@
     font-family: var(--font-family);
   }
 
-  /* ADMIN TOOLBAR (ÚJ) */
+  /* --- STABILIZÁLT ADMIN PANEL --- */
   .logo-admin-tools {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.8);
     padding: 4px 8px;
     border-radius: 20px;
-    border: 1px solid #444;
-    /* Animáció megjelenéskor */
-    animation: fadeIn 0.3s ease;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-
-    to {
-      opacity: 1;
-    }
+    border: 1px solid #555;
+    /* Abszolút pozíció helyett maradhat flex, DE: */
+    /* Ha a logó nő, ez is mozogna. Ha zavaró, fixálhatjuk: */
+    /* position: absolute; left: 100%; top: 50%; transform: translateY(-50%); */
+    /* De maradjunk a flexnél, transition nélkül már nem szabadna ugrálnia. */
   }
 
   .tool-btn {
@@ -205,7 +189,6 @@
     align-items: center;
     justify-content: center;
     padding: 4px;
-    transition: color 0.2s;
   }
 
     .tool-btn:hover {
@@ -218,10 +201,9 @@
     align-items: center;
   }
 
-  /* Csúszka stílus - kicsi és kompakt */
   input[type=range] {
     -webkit-appearance: none;
-    width: 60px; /* Rövidebb, mint a footeré, hogy elférjen a fejlécben */
+    width: 80px;
     height: 4px;
     background: #555;
     border-radius: 2px;
@@ -238,13 +220,12 @@
       cursor: pointer;
     }
 
-  /* MENU & NAV */
   nav {
     display: flex;
     gap: 1.5rem;
     align-items: center;
   }
-
+    /* ... A többi stílus változatlan ... */
     nav a {
       color: #fff;
       text-decoration: none;
