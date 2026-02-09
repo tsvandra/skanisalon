@@ -1,11 +1,9 @@
 <script setup>
   import { ref, onMounted, inject } from 'vue';
   import { useRouter } from 'vue-router';
-  import api from '@/services/api'; // Kell az API híváshoz
+  import api from '@/services/api';
 
-  // Injektáljuk a cég adatait (Globális state)
   const company = inject('company');
-
   const router = useRouter();
   const isMenuOpen = ref(false);
   const isLoggedIn = ref(false);
@@ -14,16 +12,13 @@
   const isUploadingLogo = ref(false);
   const logoInputRef = ref(null);
 
-  const toggleMenu = () => {
-    isMenuOpen.value = !isMenuOpen.value;
-  };
+  const toggleMenu = () => isMenuOpen.value = !isMenuOpen.value;
 
   const handleLogout = () => {
     localStorage.removeItem('salon_token');
     window.location.href = '/';
   };
 
-  // Logó URL segéd (Ha relatív útvonal lenne, bár most már teljes URL jön)
   const getLogoUrl = (path) => {
     if (!path) return null;
     if (path.startsWith('http')) return path;
@@ -31,10 +26,7 @@
     return `${baseUrl}${path}`;
   };
 
-  // --- LOGÓ FELTÖLTÉS ---
-  const triggerLogoUpload = () => {
-    logoInputRef.value.click();
-  };
+  const triggerLogoUpload = () => logoInputRef.value.click();
 
   const onLogoSelected = async (event) => {
     const file = event.target.files[0];
@@ -45,16 +37,12 @@
     formData.append('file', file);
 
     try {
-      // POST kérés az új végpontra
       const res = await api.post('/api/Company/upload/logo', formData, {
         headers: { 'Content-Type': undefined }
       });
-      // Azonnali frissítés az UI-on (a globális objektumban)
-      if (company.value) {
-        company.value.logoUrl = res.data.url;
-      }
+      if (company.value) company.value.logoUrl = res.data.url;
     } catch (err) {
-      console.error("Logo upload failed", err);
+      console.error(err);
       alert("Hiba a logó feltöltésekor");
     } finally {
       isUploadingLogo.value = false;
@@ -70,20 +58,19 @@
   <header class="app-header">
     <div class="container">
 
-      <div class="logo">
+      <div class="logo-area">
         <router-link to="/" class="logo-link">
           <img v-if="company?.logoUrl" :src="getLogoUrl(company.logoUrl)" :alt="company?.name" class="logo-img" />
-
-          <span v-else>{{ company?.name || 'Syxyalon' }}</span>
-
-          <div v-if="isLoggedIn" class="logo-edit-wrapper">
-            <button @click.prevent="triggerLogoUpload" class="edit-logo-btn" title="Logó cseréje">
-              <i v-if="isUploadingLogo" class="pi pi-spin pi-spinner"></i>
-              <i v-else class="pi pi-pencil"></i>
-            </button>
-            <input type="file" ref="logoInputRef" @change="onLogoSelected" accept="image/*" hidden />
-          </div>
+          <span v-else>{{ company?.name || 'Szalon' }}</span>
         </router-link>
+
+        <div v-if="isLoggedIn" class="logo-edit-container">
+          <button @click="triggerLogoUpload" class="edit-logo-btn" title="Logó cseréje">
+            <i v-if="isUploadingLogo" class="pi pi-spin pi-spinner"></i>
+            <i v-else class="pi pi-camera"></i>
+          </button>
+          <input type="file" ref="logoInputRef" @change="onLogoSelected" accept="image/*" hidden />
+        </div>
       </div>
 
       <button class="menu-toggle" @click="toggleMenu">☰</button>
@@ -94,22 +81,12 @@
         <router-link to="/galeria" @click="isMenuOpen = false">Galéria</router-link>
         <router-link to="/kapcsolat" @click="isMenuOpen = false">Kapcsolat</router-link>
 
-        <router-link v-if="isLoggedIn"
-                     to="/beallitasok"
-                     @click="isMenuOpen = false"
-                     class="settings-link"
-                     title="Beállítások">
+        <router-link v-if="isLoggedIn" to="/beallitasok" @click="isMenuOpen = false" class="settings-link">
           <i class="pi pi-cog" style="font-size: 1.2rem;"></i>
         </router-link>
 
-        <button v-if="isLoggedIn" @click="handleLogout" class="auth-btn logout">
-          Kilépés
-        </button>
-
-        <router-link v-else to="/login" @click="isMenuOpen = false" class="auth-btn login">
-          Belépés
-        </router-link>
-
+        <button v-if="isLoggedIn" @click="handleLogout" class="auth-btn logout">Kilépés</button>
+        <router-link v-else to="/login" @click="isMenuOpen = false" class="auth-btn login">Belépés</router-link>
       </nav>
     </div>
   </header>
@@ -119,7 +96,7 @@
   .app-header {
     background-color: var(--secondary-color);
     color: #fff;
-    padding: 1rem 0;
+    padding: 0.8rem 0;
     position: sticky;
     top: 0;
     z-index: 1000;
@@ -136,10 +113,12 @@
     align-items: center;
   }
 
-  /* Logó stílus */
-  .logo {
+  /* ÚJ LOGO ELRENDEZÉS */
+  .logo-area {
     display: flex;
     align-items: center;
+    gap: 10px; /* Hely a logó és a gomb között */
+    position: relative;
   }
 
   .logo-link {
@@ -150,7 +129,6 @@
     font-family: var(--font-family);
     display: flex;
     align-items: center;
-    position: relative; /* A szerkesztő gomb pozicionálásához */
   }
 
   .logo-img {
@@ -159,34 +137,28 @@
     display: block;
   }
 
-  /* Szerkesztő gomb (Ceruza) */
-  .logo-edit-wrapper {
-    margin-left: 10px;
-  }
-
+  /* SZERKESZTŐ GOMB STÍLUS */
   .edit-logo-btn {
-    background: rgba(0,0,0,0.5);
-    color: #fff;
-    border: 1px solid #555;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
     border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    font-size: 0.8rem;
+    width: 30px;
+    height: 30px;
+    font-size: 1rem;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0.6;
     transition: all 0.2s;
   }
 
     .edit-logo-btn:hover {
-      opacity: 1;
       background: var(--primary-color);
       color: #000;
+      transform: scale(1.1);
     }
 
-  /* Menü linkek */
   nav {
     display: flex;
     gap: 1.5rem;
@@ -204,10 +176,7 @@
         color: var(--primary-color);
       }
 
-  /* Beállítások ikon specifikus stílus */
   .settings-link {
-    display: flex;
-    align-items: center;
     color: var(--primary-color) !important;
     transition: transform 0.3s !important;
   }
@@ -216,38 +185,22 @@
       transform: rotate(90deg);
     }
 
-  /* Auth gombok */
   .auth-btn {
     text-decoration: none;
     padding: 5px 12px;
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.9rem;
-    transition: all 0.3s;
     border: 1px solid var(--primary-color);
-    background-color: transparent;
+    background: transparent;
+    color: var(--primary-color);
   }
 
-    .auth-btn.logout {
-      color: var(--primary-color);
-    }
-
-      .auth-btn.logout:hover {
-        background-color: var(--primary-color);
-        color: var(--secondary-color);
-      }
-
     .auth-btn.login {
-      background-color: var(--primary-color);
+      background: var(--primary-color);
       color: var(--secondary-color);
       font-weight: bold;
     }
-
-      .auth-btn.login:hover {
-        background-color: #b5952f;
-        color: white;
-      }
-
 
   .menu-toggle {
     display: none;
@@ -258,7 +211,6 @@
     cursor: pointer;
   }
 
-  /* Mobil nézet */
   @media (max-width: 768px) {
     .menu-toggle {
       display: block;

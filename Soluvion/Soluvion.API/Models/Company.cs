@@ -82,6 +82,8 @@ namespace Soluvion.API.Models
 
         [MaxLength(200)]
         public string? FooterImagePublicId { get; set; } // Cloudinary ID
+        public int FooterHeight { get; set; } = 250;
+
         [MaxLength (20)]
         public string PrimaryColor {  get; set; } = "#d4af37";
         [MaxLength(20)]

@@ -71,6 +71,7 @@ namespace Soluvion.API.Controllers
             existingCompany.OpeningExtraInfo = updatedCompany.OpeningExtraInfo;
             existingCompany.PrimaryColor = updatedCompany.PrimaryColor;
             existingCompany.SecondaryColor = updatedCompany.SecondaryColor;
+            existingCompany.FooterHeight = updatedCompany.FooterHeight;
 
             // Megjegyzés: A LogoUrl és FooterImageUrl itt NEM frissül, azokat a külön endpoint kezeli
 
