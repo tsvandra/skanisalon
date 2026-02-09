@@ -34,6 +34,9 @@
       rawServices.forEach(service => {
         if (service.variants) {
           service.variants = sortVariants(service.variants);
+          service.variants.forEach(v => {
+            if (v.price === 0) v.price = null;
+          });
         }
       });
 
@@ -90,7 +93,7 @@
     if (prevService && prevService.variants && prevService.variants.length < 4) {
       newVariants = prevService.variants.map(v => ({
         variantName: v.variantName,
-        price: 0,
+        price: null,
         duration: v.duration
       }));
     }
@@ -101,6 +104,14 @@
       variants: newVariants
     };
     try {
+
+      const payload = JSON.parse(JSON.stringify(newService));
+      if (payload.variants) {
+        payload.variants.forEach(v => {
+          if (!v.price) v.price = 0;
+        });
+      }
+
       await apiClient.post('/api/Service', newService);
       await fetchServices();
     } catch (err) {
@@ -118,7 +129,7 @@
     service.variants.push({
       id: 0,
       variantName: "Uj tipus",
-      price: 0,
+      price: null,
       duration: 30
     });
     await saveService(service);
@@ -126,14 +137,27 @@
 
   const saveService = async (serviceItem) => {
     try {
+
+      const payload = JSON.parse(JSON.stringify(serviceItem));
+      if (payload.variants) {
+        payload.variants.forEach(v => {
+          if (v.price === null || v.price === undefined) {
+            v.price = 0;
+          }
+        });
+      }
+
       const response = await apiClient.put(`/api/Service/${serviceItem.id}`, serviceItem);
       if (response.status === 200 && response.data) {
         const index = services.value.findIndex(s => s.id === serviceItem.id);
         if (index !== -1) {
-
           const updatedService = response.data;
+
           if (updatedService.variants) {
             updatedService.variants = sortVariants(updatedService.variants);
+            updatedService.variants.forEach(v => {
+              if (v.price === 0) v.price = null;
+            });
           }
           services.value[index] = { ...services.value[index], ...response.data };
         }
@@ -154,7 +178,7 @@
   };
 
   const formatCurrency = (val) => {
-    if (!val || val === 0) return '';
+    if (val === null || val === undefined || val === 0) return '';
     return val.toLocaleString('hu-HU', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
   };
 
