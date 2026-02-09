@@ -231,7 +231,7 @@ namespace Soluvion.API.Controllers
         // PUT: api/Gallery/categories/5 (Átnevezés VAGY Sorrendezés)
         [HttpPut("categories/{id}")]
         [Authorize]
-        public async Task<IActionResult> UpdateCategory(int id, [FromBody] CategoryUpdateDto dto)
+        public async Task<IActionResult> UpdateCategory(int id, [FromBody] CategoryDto dto)
         {
             int companyId = GetCurrentCompanyId();
             var cat = await _context.GalleryCategories.FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == companyId);
