@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, onMounted, inject, watch, computed } from 'vue';
+  import { ref, onMounted, inject, watch } from 'vue';
   import api from '@/services/api';
   import { DEFAULT_COMPANY_ID } from '@/config';
   import { useAutoSaveQueue } from '@/composables/useAutoSaveQueue';
@@ -7,13 +7,13 @@
 
   // --- STATE ---
   const images = ref([]);
-  const groupedImages = ref([]); // Kategóriákba rendezett struktúra
+  const categories = ref([]); // Nyers kategória lista a szerverről
+  const groupedImages = ref([]); // Összefésült szerkezet (Kategória + Képek)
   const isLoading = ref(false);
   const isUploading = ref(false);
   const isLoggedIn = ref(false);
-  const uploadProgress = ref(0); // Opcionális: ha később progress bar-t akarunk
 
-  // Preview / Lightbox
+  // Preview / Lightbox state
   const showPreview = ref(false);
   const previewImage = ref(null);
 
@@ -21,14 +21,21 @@
   const company = inject('company', ref(null));
   const { addToQueue } = useAutoSaveQueue();
 
-  // --- ADATLEKÉRÉS ÉS TRANSZFORMÁCIÓ ---
+  // --- ADATLEKÉRÉS ---
 
   const fetchData = async () => {
     const targetCompanyId = company?.value?.id || DEFAULT_COMPANY_ID;
     isLoading.value = true;
     try {
-      const res = await api.get('/api/Gallery', { params: { companyId: targetCompanyId } });
-      images.value = res.data;
+      // Párhuzamosan lekérjük a kategóriákat és a képeket
+      const [resCats, resImages] = await Promise.all([
+        api.get('/api/Gallery/categories', { params: { companyId: targetCompanyId } }),
+        api.get('/api/Gallery', { params: { companyId: targetCompanyId } })
+      ]);
+
+      categories.value = resCats.data;
+      images.value = resImages.data;
+
       buildNestedStructure();
     } catch (error) {
       console.error("Hiba a betöltéskor:", error);
@@ -37,76 +44,127 @@
     }
   };
 
-  // A lapos listát (images) átalakítjuk csoportokká a drag-and-drop-hoz
+  // Struktúra építése: Kategóriák + Hozzájuk tartozó képek
   const buildNestedStructure = () => {
-    const groups = {};
+    // 1. Létrehozunk egy map-et a kategóriákból
+    const groupsMap = new Map();
 
-    // 1. Csoportosítás
+    categories.value.forEach(cat => {
+      groupsMap.set(cat.id, {
+        id: cat.id,
+        name: cat.name,
+        items: []
+      });
+    });
+
+    // 2. Besoroljuk a képeket
+    const uncategorized = { id: -1, name: "Egyéb / Nem kategorizált", items: [] };
+
     images.value.forEach(img => {
-      const cat = img.category || "Egyéb";
-      if (!groups[cat]) {
-        groups[cat] = {
-          name: cat,
-          items: []
-        };
+      // A backend most már categoryId-t is küld
+      if (img.categoryId && groupsMap.has(img.categoryId)) {
+        groupsMap.get(img.categoryId).items.push(img);
+      } else {
+        // Ha olyan kategóriája van ami nincs a listában (pl. stringként jött régen), vagy null
+        // Megpróbáljuk név alapján, vagy berakjuk az egyébhez
+        const catByName = Array.from(groupsMap.values()).find(g => g.name === img.category);
+        if (catByName) {
+          catByName.items.push(img);
+        } else {
+          uncategorized.items.push(img);
+        }
       }
-      groups[cat].items.push(img);
     });
 
-    // 2. Objektumból tömb + Belső rendezés OrderIndex szerint
-    groupedImages.value = Object.values(groups).map(group => {
+    // 3. Listává alakítjuk és rendezzük a képeket OrderIndex szerint
+    let result = Array.from(groupsMap.values());
+
+    result.forEach(group => {
       group.items.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
-      return group;
     });
 
-    // 3. Opcionális: Kategóriák sorrendje (itt most ABC, de lehetne más is)
-    groupedImages.value.sort((a, b) => a.name.localeCompare(b.name));
+    // Ha van nem kategorizált kép, hozzáadjuk a végére
+    if (uncategorized.items.length > 0) {
+      result.push(uncategorized);
+    }
+
+    groupedImages.value = result;
   };
 
   watch(() => company?.value?.id, (newId) => { if (newId) fetchData(); }, { immediate: true });
 
-  // --- DRAG AND DROP & MENTÉS ---
+  // --- KATEGÓRIA KEZELÉS (ÚJ/ÁTNEVEZÉS/TÖRLÉS) ---
 
-  const onDragChange = (event, groupName) => {
-    // Ha változott a sorrend vagy kategóriát váltott egy elem
-    if (event.added || event.moved) {
-      reorderGroup(groupName);
+  const createCategory = async () => {
+    if (!isLoggedIn.value) return;
+    const name = prompt("Add meg az új galéria nevét:");
+    if (!name) return;
+
+    try {
+      await api.post('/api/Gallery/categories', { name });
+      await fetchData(); // Frissítjük a listát
+    } catch (err) {
+      console.error(err);
+      alert("Hiba a létrehozáskor.");
     }
   };
 
-  const reorderGroup = async (groupName) => {
-    const group = groupedImages.value.find(g => g.name === groupName);
-    if (!group) return;
+  const renameCategory = async (group) => {
+    if (!group.id || group.id === -1) return; // "Egyéb" nem átnevezhető
 
-    // Végigiterálunk az új sorrenden
+    // A UI-n a v-model már frissítette a group.name-et, most elküldjük
+    addToQueue(`cat-${group.id}`, async () => {
+      await api.put(`/api/Gallery/categories/${group.id}`, { name: group.name });
+    });
+  };
+
+  const deleteCategory = async (group) => {
+    if (!confirm(`Biztosan törölni szeretnéd a "${group.name}" galériát?`)) return;
+    try {
+      await api.delete(`/api/Gallery/categories/${group.id}`);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert("Nem sikerült törölni. Győződj meg róla, hogy üres a galéria!");
+    }
+  };
+
+  // --- DRAG AND DROP & KÉP MENTÉS ---
+
+  const onDragChange = (event, group) => {
+    if (event.added || event.moved) {
+      reorderGroup(group);
+    }
+  };
+
+  const reorderGroup = async (group) => {
     group.items.forEach((img, index) => {
-      // Csak akkor mentünk, ha változott a sorrend vagy a kategória
-      // (A backend update-hez beállítjuk az új értékeket)
       const newOrder = index + 1;
-      const newCategory = groupName; // Ha át lett húzva máshonnan, ez az új kategória
+      // Ha kategóriát váltott, a group.name az új kategória neve
+      const newCategoryName = group.name;
 
-      if (img.orderIndex !== newOrder || img.category !== newCategory) {
+      if (img.orderIndex !== newOrder || img.category !== newCategoryName) {
         img.orderIndex = newOrder;
-        img.category = newCategory;
+        img.category = newCategoryName;
+        img.categoryId = group.id; // Lokálisan is frissítjük az ID-t
         saveImage(img);
       }
     });
   };
 
   const saveImage = (img) => {
-    // A Composable kezeli a sorbaállítást (ne írják felül egymást a hívások)
     addToQueue(img.id, async () => {
       const payload = {
         id: img.id,
         title: img.title,
-        categoryName: img.category,
+        categoryName: img.category, // Backend név alapján keres/vált
         orderIndex: img.orderIndex
       };
       await api.put(`/api/Gallery/${img.id}`, payload);
     });
   };
 
-  // --- FELTÖLTÉS (BULK) ---
+  // --- FELTÖLTÉS ---
 
   const fileInputRef = ref(null);
 
@@ -117,50 +175,39 @@
   const handleFiles = async (event) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
-    if (!isLoggedIn.value) return alert("Jelentkezz be a feltöltéshez!");
+    if (!isLoggedIn.value) return;
 
     isUploading.value = true;
+    // Az első kategóriába töltjük, vagy ha nincs, akkor a legelsőbe ami létrejön
+    let targetCategoryName = groupedImages.value.length > 0 ? groupedImages.value[0].name : "Új képek";
 
-    // Kiválasztjuk az első kategóriát defaultnak, vagy "Új képek"
-    let targetCategory = groupedImages.value.length > 0 ? groupedImages.value[0].name : "Új képek";
-
-    // Párhuzamos feltöltés helyett sorban (sequential), hogy a szervert ne terheljük túl
-    // és a sorrend megmaradjon.
     for (let i = 0; i < files.length; i++) {
-      const file = files[i];
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('category', targetCategory);
+      formData.append('file', files[i]);
+      formData.append('category', targetCategoryName);
 
       try {
-        const res = await api.post('/api/Gallery', formData, { headers: { 'Content-Type': undefined } });
-        // Azonnal hozzáadjuk a helyi listához, hogy látszódjon
-        const newImg = res.data;
-        images.value.push(newImg);
+        await api.post('/api/Gallery', formData, { headers: { 'Content-Type': undefined } });
       } catch (err) {
-        console.error(`Hiba a ${file.name} feltöltésekor:`, err);
+        console.error(err);
       }
     }
 
-    // Újraépítjük a struktúrát és takarítunk
-    buildNestedStructure();
+    await fetchData(); // Újratöltjük az egészet, hogy a képek a helyükre kerüljenek
     isUploading.value = false;
     if (fileInputRef.value) fileInputRef.value.value = "";
   };
 
-  // --- TÖRLÉS & EGYÉB ---
+  // --- EGYÉB ---
 
   const deleteImage = async (id) => {
-    if (!confirm("Biztosan törölni szeretnéd?")) return;
+    if (!confirm("Törlöd a képet?")) return;
     try {
-      // UI frissítés azonnal (optimista)
       images.value = images.value.filter(i => i.id !== id);
-      buildNestedStructure();
-
+      buildNestedStructure(); // UI frissítés
       await api.delete(`/api/Gallery/${id}`);
     } catch (error) {
-      console.error(error);
-      fetchData(); // Ha hiba volt, töltsük vissza az eredetit
+      fetchData();
     }
   };
 
@@ -180,70 +227,82 @@
     <div class="header-actions">
       <h1>Galéria & Munkáim</h1>
 
-      <div v-if="isLoggedIn" class="upload-wrapper">
+      <div v-if="isLoggedIn" class="action-buttons">
+        <button @click="createCategory" class="btn secondary-btn">
+          <i class="pi pi-folder-plus"></i> Új Galéria
+        </button>
+
         <input type="file" ref="fileInputRef" @change="handleFiles" multiple accept="image/*" style="display: none;" />
-        <button @click="triggerUpload" :disabled="isUploading" class="upload-btn">
-          <i class="pi pi-cloud-upload"></i>
-          {{ isUploading ? 'Feltöltés folyamatban...' : 'Új képek feltöltése' }}
+        <button @click="triggerUpload" :disabled="isUploading" class="btn primary-btn">
+          <i v-if="isUploading" class="pi pi-spin pi-spinner"></i>
+          <i v-else class="pi pi-cloud-upload"></i>
+          {{ isUploading ? 'Feltöltés...' : 'Képek Feltöltése' }}
         </button>
       </div>
     </div>
 
-    <div v-if="isLoading" class="loading"><i class="pi pi-spin pi-spinner"></i> Betöltés...</div>
+    <div v-if="isLoading" class="loading-state">
+      <i class="pi pi-spin pi-spinner"></i> Betöltés...
+    </div>
 
     <div v-else class="groups-container">
+      <div v-for="group in groupedImages" :key="group.id" class="category-section">
 
-      <div v-for="group in groupedImages" :key="group.name" class="category-section">
-        <h3 class="cat-title">{{ group.name }} <span class="count">({{ group.items.length }})</span></h3>
+        <div class="cat-header">
+          <div class="cat-title-wrapper">
+            <input v-if="isLoggedIn && group.id !== -1"
+                   v-model="group.name"
+                   @change="renameCategory(group)"
+                   class="cat-input"
+                   placeholder="Galéria neve" />
+            <h3 v-else class="cat-title">{{ group.name }}</h3>
+            <span class="count">({{ group.items.length }})</span>
+          </div>
+
+          <button v-if="isLoggedIn && group.items.length === 0 && group.id !== -1"
+                  @click="deleteCategory(group)"
+                  class="cat-delete-btn"
+                  title="Üres galéria törlése">
+            <i class="pi pi-trash"></i>
+          </button>
+        </div>
 
         <draggable v-model="group.items"
                    group="gallery-images"
                    item-key="id"
                    class="image-grid"
-                   @change="(e) => onDragChange(e, group.name)"
-                   :disabled="!isLoggedIn">
-
+                   @change="(e) => onDragChange(e, group)"
+                   :disabled="!isLoggedIn"
+                   ghost-class="ghost-card">
           <template #item="{ element: img }">
             <div class="gallery-card">
-
               <div class="img-wrapper" @click="openPreview(img)">
-                <img :src="img.imageUrl" loading="lazy" />
+                <img :src="img.imageUrl" loading="lazy" :alt="img.title" />
                 <div class="overlay"><i class="pi pi-eye"></i></div>
               </div>
 
               <div v-if="isLoggedIn" class="edit-bar">
-                <input v-model="img.title"
-                       @change="saveImage(img)"
-                       placeholder="Képaláírás..."
-                       class="caption-input" />
-
-                <button @click="deleteImage(img.id)" class="del-btn" title="Törlés">
-                  <i class="pi pi-trash"></i>
-                </button>
+                <input v-model="img.title" @change="saveImage(img)" placeholder="Cím..." class="caption-input" />
+                <button @click="deleteImage(img.id)" class="del-btn"><i class="pi pi-trash"></i></button>
               </div>
-
-              <div v-else-if="img.title" class="caption-display">
-                {{ img.title }}
-              </div>
-
+              <div v-else-if="img.title" class="caption-display">{{ img.title }}</div>
             </div>
           </template>
         </draggable>
       </div>
 
-      <div v-if="images.length === 0 && !isLoading" class="empty-state">
-        Még nincsenek feltöltött képek.
+      <div v-if="images.length === 0 && categories.length === 0 && !isLoading" class="empty-state">
+        Még nincsenek galériák létrehozva.
       </div>
     </div>
 
     <div v-if="showPreview" class="lightbox" @click="showPreview = false">
       <div class="lightbox-content" @click.stop>
         <img :src="previewImage?.imageUrl" />
-        <p v-if="previewImage?.title">{{ previewImage.title }}</p>
+        <p v-if="previewImage?.title" class="lightbox-caption">{{ previewImage.title }}</p>
         <button class="close-btn" @click="showPreview = false">×</button>
       </div>
     </div>
-
   </div>
 </template>
 
@@ -262,18 +321,25 @@
     margin-bottom: 2rem;
     flex-wrap: wrap;
     gap: 1rem;
+    border-bottom: 1px solid #333;
+    padding-bottom: 1rem;
   }
 
   h1 {
     color: var(--primary-color, #d4af37);
     margin: 0;
+    font-weight: 300;
+    letter-spacing: 2px;
   }
 
-  .upload-btn {
-    background-color: var(--primary-color, #d4af37);
-    color: #000;
+  .action-buttons {
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn {
     border: none;
-    padding: 10px 20px;
+    padding: 10px 16px;
     border-radius: 4px;
     cursor: pointer;
     font-weight: bold;
@@ -283,65 +349,136 @@
     transition: transform 0.2s;
   }
 
-    .upload-btn:hover {
-      transform: scale(1.05);
-      background-color: #b5952f;
-    }
+  .primary-btn {
+    background-color: var(--primary-color, #d4af37);
+    color: #000;
+  }
 
+  .secondary-btn {
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #555;
+  }
+
+  .btn:hover:not(:disabled) {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+  }
+
+  /* Kategória Header */
   .category-section {
     margin-bottom: 3rem;
   }
 
-  .cat-title {
-    border-bottom: 1px solid #333;
-    padding-bottom: 10px;
+  .cat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 15px;
+    border-left: 3px solid var(--primary-color, #d4af37);
+    padding-left: 10px;
+  }
+
+  .cat-title-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-grow: 1;
+  }
+
+  .cat-title {
     color: #ddd;
     text-transform: uppercase;
     letter-spacing: 1px;
+    font-size: 1.2rem;
+    margin: 0;
   }
 
+  .cat-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #555;
+    color: var(--primary-color, #d4af37);
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 5px 0;
+    width: 100%;
+    max-width: 300px;
+  }
+
+    .cat-input:focus {
+      outline: none;
+      border-bottom-color: var(--primary-color);
+    }
+
   .count {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     color: #666;
   }
 
+  .cat-delete-btn {
+    background: none;
+    border: none;
+    color: #555;
+    cursor: pointer;
+    padding: 5px;
+    font-size: 1rem;
+  }
+
+    .cat-delete-btn:hover {
+      color: #ff4444;
+    }
+
+  /* GRID ÉS THUMBNAILS FIX */
   .image-grid {
     display: grid;
+    /* Reszponzív oszlopok, de minimum 200px szélesek */
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 1.5rem;
-    min-height: 100px; /* Hogy üresen is lehessen bele húzni */
+    min-height: 100px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
   }
 
   .gallery-card {
     background: #1a1a1a;
     border-radius: 8px;
-    overflow: hidden;
-    transition: box-shadow 0.3s;
+    overflow: hidden; /* Ez fontos, hogy ne lógjon ki semmi */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     display: flex;
     flex-direction: column;
   }
 
-    .gallery-card:hover {
-      box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-    }
-
+  /* ITT A KÉP MÉRET FIX */
   .img-wrapper {
+    width: 100%;
+    /* Ez kényszeríti a tökéletes négyzet alakot a szélesség alapján */
+    aspect-ratio: 1 / 1;
     position: relative;
-    aspect-ratio: 1;
     cursor: pointer;
+    overflow: hidden; /* Hogy a zoomolásnál ne lógjon ki */
   }
 
     .img-wrapper img {
       width: 100%;
       height: 100%;
+      /* Ez gondoskodik róla, hogy kitöltse a négyzetet torzítás nélkül */
       object-fit: cover;
+      display: block;
+      transition: transform 0.3s ease;
+    }
+
+    .img-wrapper:hover img {
+      transform: scale(1.1); /* Finom zoom effekt */
     }
 
   .overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0,0,0,0.4);
+    background: rgba(0,0,0,0.5);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -356,44 +493,54 @@
   }
 
   .edit-bar {
-    padding: 10px;
+    padding: 8px;
+    background: #222;
     display: flex;
     gap: 5px;
-    background: #222;
   }
 
   .caption-input {
-    flex-grow: 1;
+    width: 100%;
     background: #333;
-    border: none;
+    border: 1px solid transparent;
     color: #fff;
-    padding: 5px;
+    padding: 4px;
+    font-size: 0.8rem;
     border-radius: 3px;
-    font-size: 0.9rem;
   }
 
   .del-btn {
-    background: #ff4444;
-    color: white;
-    border: none;
-    border-radius: 3px;
+    background: #333;
+    border: 1px solid #ff4444;
+    color: #ff4444;
+    width: 25px;
     cursor: pointer;
-    width: 30px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
+    .del-btn:hover {
+      background: #ff4444;
+      color: #fff;
+    }
+
   .caption-display {
-    padding: 10px;
+    padding: 8px;
     text-align: center;
-    font-size: 0.9rem;
-    color: #aaa;
+    font-size: 0.85rem;
+    color: #bbb;
+    font-style: italic;
+    background: #222;
   }
 
   /* Lightbox */
   .lightbox {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.9);
-    z-index: 1000;
+    background: rgba(0,0,0,0.95);
+    z-index: 9999;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -408,20 +555,21 @@
 
     .lightbox-content img {
       max-width: 100%;
-      max-height: 85vh;
-      box-shadow: 0 0 20px rgba(0,0,0,0.8);
+      max-height: 80vh;
+      box-shadow: 0 0 30px rgba(0,0,0,0.5);
+      border-radius: 4px;
     }
 
-    .lightbox-content p {
-      color: #fff;
-      margin-top: 10px;
-      font-size: 1.2rem;
-    }
+  .lightbox-caption {
+    color: #fff;
+    margin-top: 15px;
+    font-size: 1.2rem;
+  }
 
   .close-btn {
     position: absolute;
     top: -40px;
-    right: -40px;
+    right: -20px;
     background: none;
     border: none;
     color: #fff;
