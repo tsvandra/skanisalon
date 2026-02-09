@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
@@ -12,14 +14,12 @@ namespace Soluvion.API.Controllers
     public class GalleryController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private readonly IWebHostEnvironment _environment;
-        private readonly IHttpContextAccessor _httpContextAccessor; // URL generáláshoz
+        private readonly Cloudinary _cloudinary; // Injektáljuk a Cloudinary-t
 
-        public GalleryController(AppDbContext context, IWebHostEnvironment environment, IHttpContextAccessor httpContextAccessor)
+        public GalleryController(AppDbContext context, Cloudinary cloudinary)
         {
             _context = context;
-            _environment = environment;
-            _httpContextAccessor = httpContextAccessor;
+            _cloudinary = cloudinary;
         }
 
         // Segédfüggvény: CompanyId kinyerése a tokenből
@@ -39,20 +39,19 @@ namespace Soluvion.API.Controllers
         {
             if (companyId <= 0) return BadRequest("CompanyId megadása kötelező!");
 
-            var request = _httpContextAccessor.HttpContext?.Request;
-            var baseUrl = $"{request?.Scheme}://{request?.Host}{request?.PathBase}";
-
+            // Itt már a teljes URL-t kapjuk vissza az adatbázisból, nem kell machinálni a path-szal
             var images = await _context.GalleryImages
                 .Include(i => i.Category)
                 .Where(i => i.Category.CompanyId == companyId)
-                .OrderByDescending(i => i.UploadDate)
+                .OrderBy(i => i.OrderIndex) // Már előkészítve a rendezéshez
+                .ThenByDescending(i => i.UploadDate)
                 .Select(i => new
                 {
                     id = i.Id,
-                    // Ha relatív az út, elé tesszük a domaint, ha abszolút (régi), hagyjuk
-                    imageUrl = i.ImagePath.StartsWith("http") ? i.ImagePath : $"{baseUrl}{i.ImagePath}",
+                    imageUrl = i.ImagePath, // Cloudinary URL
                     category = i.Category != null ? i.Category.Name : "Egyéb",
-                    title = i.Title
+                    title = i.Title,
+                    orderIndex = i.OrderIndex
                 })
                 .ToListAsync();
 
@@ -67,6 +66,7 @@ namespace Soluvion.API.Controllers
 
             var categories = await _context.GalleryCategories
                 .Where(c => c.CompanyId == companyId)
+                // Itt is jöhet majd OrderBy, ha a kategóriákat is sorrendezzük
                 .Select(c => c.Name)
                 .Distinct()
                 .ToListAsync();
@@ -84,25 +84,32 @@ namespace Soluvion.API.Controllers
             int companyId = GetCurrentCompanyId();
             if (companyId == 0) return Unauthorized("Érvénytelen token.");
 
-            string companyFolder = Path.Combine(_environment.WebRootPath, "images", companyId.ToString());
-            if (!Directory.Exists(companyFolder)) Directory.CreateDirectory(companyFolder);
+            // 1. Feltöltés Cloudinary-be
+            var uploadResult = new ImageUploadResult();
 
-            // 2. Egyedi fájlnév
-            string uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
-            string filePath = Path.Combine(companyFolder, uniqueFileName);
-
-            // 3. Mentés lemezre
-            using (var fileStream = new FileStream(filePath, FileMode.Create))
+            if (file.Length > 0)
             {
-                await file.CopyToAsync(fileStream);
+                using (var stream = file.OpenReadStream())
+                {
+                    var uploadParams = new ImageUploadParams()
+                    {
+                        File = new FileDescription(file.FileName, stream),
+                        // Mappastruktúra: soluvion/company_{id}/gallery
+                        Folder = $"soluvion/company_{companyId}/gallery",
+                        // Opcionális: Transzformáció (pl. max szélesség, hogy spóroljunk a hellyel)
+                        Transformation = new Transformation().Width(1920).Crop("limit")
+                    };
+                    uploadResult = await _cloudinary.UploadAsync(uploadParams);
+                }
             }
 
-            // 4. Relatív útvonal mentése (Hogy hordozható legyen az adatbázis)
-            string relativePath = $"/images/{companyId}/{uniqueFileName}";
+            if (uploadResult.Error != null)
+            {
+                return BadRequest($"Hiba a feltöltés során: {uploadResult.Error.Message}");
+            }
 
-            // 5. Kategória kezelés
+            // 2. Kategória kezelés (ez maradt a régi)
             string categoryName = category?.Trim() ?? "Egyéb";
-
             var galleryCategory = await _context.GalleryCategories
                 .FirstOrDefaultAsync(c => c.Name == categoryName && c.CompanyId == companyId);
 
@@ -117,23 +124,27 @@ namespace Soluvion.API.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            // 6. Mentés adatbázisba
+            // 3. Mentés adatbázisba
             var galleryImage = new GalleryImage
             {
-                ImagePath = relativePath, // Csak a relatív utat mentjük!
+                ImagePath = uploadResult.SecureUrl.ToString(), // Teljes HTTPS URL
+                PublicId = uploadResult.PublicId,              // Törléshez kell!
                 CategoryId = galleryCategory.Id,
                 Title = file.FileName,
-                UploadDate = DateTime.UtcNow
+                UploadDate = DateTime.UtcNow,
+                OrderIndex = 9999 // Ideiglenesen a végére, amíg nincs rendezés implementálva
             };
 
             _context.GalleryImages.Add(galleryImage);
             await _context.SaveChangesAsync();
 
-            // Válaszban visszaküldjük a teljes URL-t a frontendnek
-            var request = _httpContextAccessor.HttpContext?.Request;
-            var fullUrl = $"{request?.Scheme}://{request?.Host}{request?.PathBase}{relativePath}";
-
-            return Ok(new { id = galleryImage.Id, imageUrl = fullUrl, category = galleryCategory.Name });
+            return Ok(new
+            {
+                id = galleryImage.Id,
+                imageUrl = galleryImage.ImagePath,
+                category = galleryCategory.Name,
+                orderIndex = galleryImage.OrderIndex
+            });
         }
 
         // DELETE: api/Gallery/5
@@ -150,22 +161,21 @@ namespace Soluvion.API.Controllers
 
             if (image == null) return NotFound();
 
-            // BIZTONSÁG: Csak a saját cég képe törölhető
             if (image.Category != null && image.Category.CompanyId != companyId)
             {
                 return Forbid("Nincs jogod más cég képét törölni!");
             }
 
-            // 1. Fájl törlése a lemezről (Ha relatív útvonal)
-            if (!string.IsNullOrEmpty(image.ImagePath) && !image.ImagePath.StartsWith("http"))
+            // 1. Törlés Cloudinary-ből (Ha van PublicId)
+            if (!string.IsNullOrEmpty(image.PublicId))
             {
-                // A 'Starts with /' levágása, hogy a Path.Combine helyesen működjön
-                string relativePath = image.ImagePath.TrimStart('/', '\\');
-                string physicalPath = Path.Combine(_environment.WebRootPath, relativePath);
+                var deletionParams = new DeletionParams(image.PublicId);
+                var result = await _cloudinary.DestroyAsync(deletionParams);
 
-                if (System.IO.File.Exists(physicalPath))
+                if (result.Result != "ok" && result.Result != "not found")
                 {
-                    System.IO.File.Delete(physicalPath);
+                    // Logolhatnánk, de nem feltétlenül akarjuk megállítani a folyamatot
+                    // return BadRequest("Hiba a Cloudinary kép törlésekor.");
                 }
             }
 

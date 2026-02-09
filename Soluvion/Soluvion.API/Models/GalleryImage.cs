@@ -14,6 +14,9 @@ namespace Soluvion.API.Models
 
         [MaxLength(500)]
         public string ImagePath { get; set; } = string.Empty;
+        [MaxLength(200)]
+        public string? PublicId { get; set; }
+        public int OrderIndex { get; set; } = 0;
         public DateTime UploadDate { get; set; } = DateTime.UtcNow;
     }
 }

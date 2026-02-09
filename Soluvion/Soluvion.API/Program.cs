@@ -9,6 +9,7 @@ using System.Text;
 using System.Net;
 using Soluvion.API.Services;
 using Microsoft.AspNetCore.Authentication;
+using CloudinaryDotNet;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -34,6 +35,16 @@ builder.Services.AddCors(options =>
 
 
 builder.Services.AddControllers();
+
+var cloudinarySettings = builder.Configuration.GetSection("Cloudinary");
+Account account = new Account(
+    cloudinarySettings["CloudName"],
+    cloudinarySettings["ApiKey"],
+    cloudinarySettings["ApiSecret"]
+);
+Cloudinary cloudinary = new Cloudinary(account);
+cloudinary.Api.Secure = true;
+builder.Services.AddSingleton(cloudinary);
 
 builder.Services.AddHttpContextAccessor();
 
