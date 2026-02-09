@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Soluvion.API.Models
 {
@@ -8,6 +9,10 @@ namespace Soluvion.API.Models
 
         [MaxLength(50)]
         public string Name { get; set; } = string.Empty;
+        public int OrderIndex { get; set; } = 0;
         public int CompanyId { get; set; }
+
+        [JsonIgnore]
+        public ICollection<GalleryImage>? Images { get; set; }
     }
 }

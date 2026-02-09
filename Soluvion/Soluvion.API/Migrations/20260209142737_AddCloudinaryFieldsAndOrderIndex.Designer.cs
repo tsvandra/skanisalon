@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Soluvion.API.Data;
@@ -11,9 +12,11 @@ using Soluvion.API.Data;
 namespace Soluvion.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260209142737_AddCloudinaryFieldsAndOrderIndex")]
+    partial class AddCloudinaryFieldsAndOrderIndex
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -189,9 +192,6 @@ namespace Soluvion.API.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<int>("OrderIndex")
-                        .HasColumnType("integer");
-
                     b.HasKey("Id");
 
                     b.ToTable("GalleryCategories");
@@ -352,7 +352,7 @@ namespace Soluvion.API.Migrations
             modelBuilder.Entity("Soluvion.API.Models.GalleryImage", b =>
                 {
                     b.HasOne("Soluvion.API.Models.GalleryCategory", "Category")
-                        .WithMany("Images")
+                        .WithMany()
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -380,11 +380,6 @@ namespace Soluvion.API.Migrations
                         .IsRequired();
 
                     b.Navigation("Service");
-                });
-
-            modelBuilder.Entity("Soluvion.API.Models.GalleryCategory", b =>
-                {
-                    b.Navigation("Images");
                 });
 
             modelBuilder.Entity("Soluvion.API.Models.Service", b =>

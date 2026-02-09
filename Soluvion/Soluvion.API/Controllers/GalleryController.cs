@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
@@ -12,17 +14,14 @@ namespace Soluvion.API.Controllers
     public class GalleryController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private readonly IWebHostEnvironment _environment;
-        private readonly IHttpContextAccessor _httpContextAccessor; // URL generáláshoz
+        private readonly Cloudinary _cloudinary;
 
-        public GalleryController(AppDbContext context, IWebHostEnvironment environment, IHttpContextAccessor httpContextAccessor)
+        public GalleryController(AppDbContext context, Cloudinary cloudinary)
         {
             _context = context;
-            _environment = environment;
-            _httpContextAccessor = httpContextAccessor;
+            _cloudinary = cloudinary;
         }
 
-        // Segédfüggvény: CompanyId kinyerése a tokenből
         private int GetCurrentCompanyId()
         {
             var companyClaim = User.FindFirst("CompanyId");
@@ -33,48 +32,34 @@ namespace Soluvion.API.Controllers
             return 0;
         }
 
+        // --- KÉPEK KEZELÉSE ---
+
         // GET: api/Gallery?companyId=7
         [HttpGet]
         public async Task<ActionResult<IEnumerable<object>>> GetImages([FromQuery] int companyId)
         {
             if (companyId <= 0) return BadRequest("CompanyId megadása kötelező!");
 
-            var request = _httpContextAccessor.HttpContext?.Request;
-            var baseUrl = $"{request?.Scheme}://{request?.Host}{request?.PathBase}";
-
             var images = await _context.GalleryImages
                 .Include(i => i.Category)
                 .Where(i => i.Category.CompanyId == companyId)
-                .OrderByDescending(i => i.UploadDate)
+                .OrderBy(i => i.OrderIndex)
+                .ThenByDescending(i => i.UploadDate)
                 .Select(i => new
                 {
                     id = i.Id,
-                    // Ha relatív az út, elé tesszük a domaint, ha abszolút (régi), hagyjuk
-                    imageUrl = i.ImagePath.StartsWith("http") ? i.ImagePath : $"{baseUrl}{i.ImagePath}",
+                    imageUrl = i.ImagePath,
+                    categoryId = i.CategoryId, // Fontos: ID alapján csoportosítunk
                     category = i.Category != null ? i.Category.Name : "Egyéb",
-                    title = i.Title
+                    title = i.Title,
+                    orderIndex = i.OrderIndex
                 })
                 .ToListAsync();
 
             return Ok(images);
         }
 
-        // GET: api/Gallery/categories?companyId=7
-        [HttpGet("categories")]
-        public async Task<ActionResult<IEnumerable<string>>> GetCategories([FromQuery] int companyId)
-        {
-            if (companyId <= 0) return BadRequest("CompanyId megadása kötelező!");
-
-            var categories = await _context.GalleryCategories
-                .Where(c => c.CompanyId == companyId)
-                .Select(c => c.Name)
-                .Distinct()
-                .ToListAsync();
-
-            return Ok(categories);
-        }
-
-        // POST: api/Gallery
+        // POST: api/Gallery (Kép feltöltés)
         [HttpPost]
         [Authorize]
         public async Task<ActionResult<object>> UploadImage(IFormFile file, [FromForm] string category)
@@ -84,25 +69,27 @@ namespace Soluvion.API.Controllers
             int companyId = GetCurrentCompanyId();
             if (companyId == 0) return Unauthorized("Érvénytelen token.");
 
-            string companyFolder = Path.Combine(_environment.WebRootPath, "images", companyId.ToString());
-            if (!Directory.Exists(companyFolder)) Directory.CreateDirectory(companyFolder);
-
-            // 2. Egyedi fájlnév
-            string uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
-            string filePath = Path.Combine(companyFolder, uniqueFileName);
-
-            // 3. Mentés lemezre
-            using (var fileStream = new FileStream(filePath, FileMode.Create))
+            // 1. Cloudinary feltöltés
+            var uploadResult = new ImageUploadResult();
+            if (file.Length > 0)
             {
-                await file.CopyToAsync(fileStream);
+                using (var stream = file.OpenReadStream())
+                {
+                    var uploadParams = new ImageUploadParams()
+                    {
+                        File = new FileDescription(file.FileName, stream),
+                        Folder = $"soluvion/company_{companyId}/gallery",
+                        Transformation = new Transformation().Width(1920).Crop("limit")
+                    };
+                    uploadResult = await _cloudinary.UploadAsync(uploadParams);
+                }
             }
 
-            // 4. Relatív útvonal mentése (Hogy hordozható legyen az adatbázis)
-            string relativePath = $"/images/{companyId}/{uniqueFileName}";
+            if (uploadResult.Error != null)
+                return BadRequest($"Hiba a feltöltés során: {uploadResult.Error.Message}");
 
-            // 5. Kategória kezelés
+            // 2. Kategória keresése vagy létrehozása
             string categoryName = category?.Trim() ?? "Egyéb";
-
             var galleryCategory = await _context.GalleryCategories
                 .FirstOrDefaultAsync(c => c.Name == categoryName && c.CompanyId == companyId);
 
@@ -117,30 +104,36 @@ namespace Soluvion.API.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            // 6. Mentés adatbázisba
+            // 3. Mentés DB-be
             var galleryImage = new GalleryImage
             {
-                ImagePath = relativePath, // Csak a relatív utat mentjük!
+                ImagePath = uploadResult.SecureUrl.ToString(),
+                PublicId = uploadResult.PublicId,
                 CategoryId = galleryCategory.Id,
                 Title = file.FileName,
-                UploadDate = DateTime.UtcNow
+                UploadDate = DateTime.UtcNow,
+                OrderIndex = 9999
             };
 
             _context.GalleryImages.Add(galleryImage);
             await _context.SaveChangesAsync();
 
-            // Válaszban visszaküldjük a teljes URL-t a frontendnek
-            var request = _httpContextAccessor.HttpContext?.Request;
-            var fullUrl = $"{request?.Scheme}://{request?.Host}{request?.PathBase}{relativePath}";
-
-            return Ok(new { id = galleryImage.Id, imageUrl = fullUrl, category = galleryCategory.Name });
+            return Ok(new
+            {
+                id = galleryImage.Id,
+                imageUrl = galleryImage.ImagePath,
+                categoryId = galleryCategory.Id,
+                category = galleryCategory.Name,
+                orderIndex = galleryImage.OrderIndex
+            });
         }
 
-        // DELETE: api/Gallery/5
-        [HttpDelete("{id}")]
+        // PUT: api/Gallery/5 (Kép szerkesztése)
+        [HttpPut("{id}")]
         [Authorize]
-        public async Task<IActionResult> DeleteImage(int id)
+        public async Task<IActionResult> UpdateImage(int id, [FromBody] GalleryImageUpdateDto dto)
         {
+            if (id != dto.Id) return BadRequest();
             int companyId = GetCurrentCompanyId();
             if (companyId == 0) return Unauthorized();
 
@@ -149,30 +142,131 @@ namespace Soluvion.API.Controllers
                 .FirstOrDefaultAsync(i => i.Id == id);
 
             if (image == null) return NotFound();
+            if (image.Category != null && image.Category.CompanyId != companyId) return Forbid();
 
-            // BIZTONSÁG: Csak a saját cég képe törölhető
-            if (image.Category != null && image.Category.CompanyId != companyId)
+            // Adatok frissítése
+            image.Title = dto.Title ?? "";
+            image.OrderIndex = dto.OrderIndex;
+
+            // Kategória váltás (ha változott)
+            if (!string.IsNullOrEmpty(dto.CategoryName) &&
+                (image.Category == null || image.Category.Name != dto.CategoryName))
             {
-                return Forbid("Nincs jogod más cég képét törölni!");
-            }
+                var newCategory = await _context.GalleryCategories
+                    .FirstOrDefaultAsync(c => c.Name == dto.CategoryName && c.CompanyId == companyId);
 
-            // 1. Fájl törlése a lemezről (Ha relatív útvonal)
-            if (!string.IsNullOrEmpty(image.ImagePath) && !image.ImagePath.StartsWith("http"))
-            {
-                // A 'Starts with /' levágása, hogy a Path.Combine helyesen működjön
-                string relativePath = image.ImagePath.TrimStart('/', '\\');
-                string physicalPath = Path.Combine(_environment.WebRootPath, relativePath);
-
-                if (System.IO.File.Exists(physicalPath))
+                if (newCategory == null)
                 {
-                    System.IO.File.Delete(physicalPath);
+                    newCategory = new GalleryCategory { Name = dto.CategoryName, CompanyId = companyId };
+                    _context.GalleryCategories.Add(newCategory);
                 }
+                image.Category = newCategory;
             }
 
-            // 2. Törlés DB-ből
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Sikeres mentés" });
+        }
+
+        // DELETE: api/Gallery/5 (Kép törlése)
+        [HttpDelete("{id}")]
+        [Authorize]
+        public async Task<IActionResult> DeleteImage(int id)
+        {
+            int companyId = GetCurrentCompanyId();
+            if (companyId == 0) return Unauthorized();
+
+            var image = await _context.GalleryImages.Include(i => i.Category).FirstOrDefaultAsync(i => i.Id == id);
+            if (image == null) return NotFound();
+            if (image.Category != null && image.Category.CompanyId != companyId) return Forbid();
+
+            // Törlés Cloudinary-ből
+            if (!string.IsNullOrEmpty(image.PublicId))
+            {
+                await _cloudinary.DestroyAsync(new DeletionParams(image.PublicId));
+            }
+
             _context.GalleryImages.Remove(image);
             await _context.SaveChangesAsync();
+            return NoContent();
+        }
 
+        // --- KATEGÓRIÁK KEZELÉSE (ÚJ) ---
+
+        // GET: api/Gallery/categories
+        [HttpGet("categories")]
+        public async Task<ActionResult<IEnumerable<GalleryCategory>>> GetCategories([FromQuery] int companyId)
+        {
+            if (companyId <= 0) return BadRequest();
+            return await _context.GalleryCategories
+                .Where(c => c.CompanyId == companyId)
+                .OrderBy(c => c.OrderIndex) // Rendezés OrderIndex szerint!
+                .ToListAsync();
+        }
+
+        // POST: api/Gallery/categories
+        [HttpPost("categories")]
+        [Authorize]
+        public async Task<ActionResult<GalleryCategory>> CreateCategory([FromBody] CategoryDto dto)
+        {
+            int companyId = GetCurrentCompanyId();
+            if (companyId == 0) return Unauthorized();
+
+            // Megkeressük a legkisebb indexet, hogy az új biztosan elé kerüljön (vagy 0)
+            int minIndex = await _context.GalleryCategories
+                .Where(c => c.CompanyId == companyId)
+                .MinAsync(c => (int?)c.OrderIndex) ?? 0;
+
+            var newCat = new GalleryCategory
+            {
+                Name = dto.Name,
+                CompanyId = companyId,
+                OrderIndex = minIndex - 1 // A lista tetejére tesszük
+            };
+            _context.GalleryCategories.Add(newCat);
+            await _context.SaveChangesAsync();
+
+            return Ok(newCat);
+        }
+
+        // PUT: api/Gallery/categories/5 (Átnevezés VAGY Sorrendezés)
+        [HttpPut("categories/{id}")]
+        [Authorize]
+        public async Task<IActionResult> UpdateCategory(int id, [FromBody] CategoryDto dto)
+        {
+            int companyId = GetCurrentCompanyId();
+            var cat = await _context.GalleryCategories.FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == companyId);
+
+            if (cat == null) return NotFound();
+
+            // Ha jött név, frissítjük
+            if (!string.IsNullOrEmpty(dto.Name)) cat.Name = dto.Name;
+
+            // Mindig frissítjük az indexet
+            cat.OrderIndex = dto.OrderIndex;
+
+            await _context.SaveChangesAsync();
+            return Ok();
+        }
+
+        // DELETE: api/Gallery/categories/5
+        [HttpDelete("categories/{id}")]
+        [Authorize]
+        public async Task<IActionResult> DeleteCategory(int id)
+        {
+            int companyId = GetCurrentCompanyId();
+            var cat = await _context.GalleryCategories
+                .Include(c => c.Images)
+                .FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == companyId);
+
+            if (cat == null) return NotFound();
+
+            if (cat.Images != null && cat.Images.Any())
+            {
+                return BadRequest("A kategória nem törölhető, mert képeket tartalmaz! Előbb töröld vagy mozgasd át a képeket.");
+            }
+
+            _context.GalleryCategories.Remove(cat);
+            await _context.SaveChangesAsync();
             return NoContent();
         }
     }
