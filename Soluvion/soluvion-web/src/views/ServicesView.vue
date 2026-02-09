@@ -4,24 +4,40 @@
   import apiClient from '@/services/api';
   import { getCompanyIdFromToken } from '@/utils/jwt';
   import { DEFAULT_COMPANY_ID } from '@/config';
- 
+
   const services = ref([]);
   const loading = ref(true);
   const isLoggedIn = ref(false); // Admin státusz
 
   const company = inject('company', ref(null));
 
+  /* --- Stabil sorrend biztosítása --- */
+  const sortVariants = (variants) => {
+    if (!variants) return [];
+    return variants.sort((a, b) => {
+      if (a.id === 0 && b.id === 0) return 0;
+      if (a.id === 0) return 1;
+      if (b.id === 0) return -1;
+      return a.id - b.id;
+    });
+  };
+
   const fetchServices = async () => {
-
     const targetCompanyId = company?.value?.id || DEFAULT_COMPANY_ID;
-
     loading.value = true;
-
     try {
       const response = await apiClient.get('/api/Service', {
         params: { companyId: targetCompanyId }
       });
-      services.value = response.data;
+
+      const rawServices = response.data;
+      rawServices.forEach(service => {
+        if (service.variants) {
+          service.variants = sortVariants(service.variants);
+        }
+      });
+
+      services.value = rawServices;
     } catch (error) {
       console.error('Hiba a betolteskor:', error);
     } finally {
@@ -32,22 +48,17 @@
   watch(
     () => company?.value?.id,
     (newId) => {
-      if (newId) {
-        fetchServices();
-      }
+      if (newId) fetchServices();
     },
     { immediate: true }
   );
 
-
   const areVariantSignaturesEqual = (variantsA, variantsB) => {
     if (!variantsA || !variantsB) return false;
     if (variantsA.length !== variantsB.length) return false;
-
     for (let i = 0; i < variantsA.length; i++) {
       if (variantsA[i].variantName !== variantsB[i].variantName) return false;
     }
-
     return true;
   }
 
@@ -56,37 +67,26 @@
 
     return services.value.map((service, index) => {
       const isTreeMode = service.variants && service.variants.length >= 4;
-
       let showHeader = false;
       if (!isTreeMode) {
         if (index === 0) {
           showHeader = service.variants && service.variants.length > 0;
         } else {
           const prevService = services.value[index - 1];
-
           const prevWasTree = prevService?.variants && prevService.variants.length >= 4;
-
           if (prevWasTree || !areVariantSignaturesEqual(service.variants, prevService?.variants)) {
             showHeader = service.variants && service.variants.length > 0;
           }
         }
       }
-
-      return {
-        ...service,
-        showHeader: showHeader,
-        isTreeMode: isTreeMode
-      };
+      return { ...service, showHeader, isTreeMode };
     });
   });
 
-
   const insertNewService = async () => {
     if (!isLoggedIn.value) return;
-
     const prevService = services.value[services.value.length - 1];
     let newVariants = [];
-
     if (prevService && prevService.variants && prevService.variants.length < 4) {
       newVariants = prevService.variants.map(v => ({
         variantName: v.variantName,
@@ -94,14 +94,12 @@
         duration: v.duration
       }));
     }
-
     const newService = {
       name: "Uj szolgaltatas",
       defaultPrice: 0,
       orderIndex: (prevService?.orderIndex || 0) + 10,
       variants: newVariants
     };
-
     try {
       await apiClient.post('/api/Service', newService);
       await fetchServices();
@@ -116,10 +114,7 @@
   };
 
   const addVariantToService = async (service) => {
-    if (!service.variants) {
-      service.variants = [];
-    }
-
+    if (!service.variants) service.variants = [];
     service.variants.push({
       id: 0,
       variantName: "Uj tipus",
@@ -131,12 +126,15 @@
 
   const saveService = async (serviceItem) => {
     try {
-
       const response = await apiClient.put(`/api/Service/${serviceItem.id}`, serviceItem);
-
       if (response.status === 200 && response.data) {
         const index = services.value.findIndex(s => s.id === serviceItem.id);
         if (index !== -1) {
+
+          const updatedService = response.data;
+          if (updatedService.variants) {
+            updatedService.variants = sortVariants(updatedService.variants);
+          }
           services.value[index] = { ...services.value[index], ...response.data };
         }
       }
@@ -155,10 +153,12 @@
     }
   };
 
-  const formatCurrency = (val) => val ? val.toLocaleString('hu-HU', { style: 'currency:', currency: 'EUR', maximumFractionDigits: 0 }) : '-';
+  const formatCurrency = (val) => {
+    if (!val || val === 0) return '';
+    return val.toLocaleString('hu-HU', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+  };
 
   onMounted(() => {
-    // Megnézzük, be van-e lépve
     const token = localStorage.getItem('salon_token');
     isLoggedIn.value = !!token;
   });
@@ -175,19 +175,28 @@
 
     <div v-if="loading">Betöltés...</div>
 
-    <div v-else class="grid-layout">
+    <div v-else class="services-wrapper">
 
       <div v-for="(service) in displayList" :key="service.id" class="service-block">
 
-        <div v-if="service.showHeader" class="variant-header-row">
-          <div class="spacer-cell"></div> <div v-for="(v, vIndex) in service.variants" :key="vIndex" class="variant-label">
-            <input v-if="isLoggedIn" v-model="v.variantName" @change="saveService(service)" class="header-input" />
-            <span v-else>{{ v.variantName }}</span>
+        <div v-if="service.showHeader" class="table-row header-row">
+          <div class="col-name spacer"></div>
+          <div class="col-variants-group">
+            <div v-for="(v, vIndex) in service.variants" :key="vIndex" class="col-variant-item header-item">
+
+              <textarea v-if="isLoggedIn"
+                        v-model="v.variantName"
+                        @change="saveService(service)"
+                        class="header-input"
+                        rows="2"></textarea>
+
+              <span v-else class="header-label">{{ v.variantName }}</span>
+            </div>
           </div>
         </div>
 
-        <div class="data-row">
-          <div class="name-cell">
+        <div class="table-row data-row">
+          <div class="col-name">
             <input v-if="isLoggedIn" v-model="service.name" @change="saveService(service)" class="name-input" />
             <span v-else class="name-text">{{ service.name }}</span>
 
@@ -197,9 +206,8 @@
             </div>
           </div>
 
-          <div class="variants-container">
-            <div v-for="(variant, vIndex) in service.variants" :key="vIndex" class="variant-cell">
-
+          <div class="col-variants-group">
+            <div v-for="(variant, vIndex) in service.variants" :key="vIndex" class="col-variant-item">
               <div class="price-wrapper">
                 <InputNumber v-if="isLoggedIn"
                              v-model="variant.price"
@@ -210,11 +218,11 @@
                   {{ formatCurrency(variant.price) }}
                 </span>
               </div>
-
               <button v-if="isLoggedIn" @click="removeVariant(service, vIndex)" class="variant-remove-btn" title="Variáció törlése">×</button>
             </div>
           </div>
         </div>
+
       </div>
 
     </div>
@@ -223,51 +231,94 @@
 
 <style scoped>
   .smart-container {
-    max-width: 900px;
+    max-width: 1100px;
     margin: 0 auto;
     padding: 20px;
+    box-sizing: border-box;
   }
 
-  .grid-layout {
+  .services-wrapper {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    padding-right: 10px;
   }
 
-  /* Header Row Stílusok */
-  .variant-header-row {
+  /* --- STRUKTÚRA --- */
+
+  .table-row {
     display: flex;
-    margin-top: 25px; /* Nagyobb térköz az új csoportnál */
-    padding-bottom: 5px;
-    border-bottom: 2px solid #f0f0f0;
-    color: #888;
-    font-size: 0.9rem;
-    font-weight: bold;
+    align-items: center;
+    padding: 8px 0;
   }
 
-  .spacer-cell {
-    width: 250px;
+  .col-name {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    padding-right: 15px;
+    min-width: 180px;
+    overflow: hidden;
+  }
+
+  .col-variants-group {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
     flex-shrink: 0;
   }
 
-  .variant-label {
-    width: 120px;
-    text-align: center !important;
-    justify-content: center;
-    padding: 0 5px;
+  .col-variant-item {
+    width: 130px; /* Fix szélesség */
     display: flex;
     align-items: center;
+    justify-content: center;
+    position: relative;
+    text-align: center;
   }
 
-  .header-input {
+  .header-item {
+    align-items: flex-end; /* Alulra igazítjuk, hogy az ár felett legyen */
+    padding-bottom: 5px;
+    min-height: 40px; /* Hagyunk helyet a 2 sornak */
+  }
+
+  /* --- STÍLUSOK --- */
+
+  /* Fejléc (Header) */
+  .header-row {
+    margin-top: 30px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 5px;
+  }
+
+  /* TEXTAREA és SPAN stílusok (Tördelés engedélyezése) */
+  .header-input, .header-label {
     width: 100%;
     text-align: center;
     border: none;
     background: transparent;
-    font-weight: bold;
-    color: #666;
-    cursor: pointer;
-    text-align: center !important;
+    font-weight: 600;
+    color: #777;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    /* A kulcs a tördeléshez */
+    white-space: normal;
+    word-wrap: break-word;
+    line-height: 1.2;
+    font-family: inherit;
+  }
+
+  /* Külön stílus a Textarea-nak, hogy ne nézzen ki szövegdoboznak */
+  .header-input {
+    resize: none; /* Ne lehessen átméretezni egérrel */
+    overflow: hidden; /* Gördítősáv elrejtése */
+    height: auto;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
     .header-input:focus {
@@ -275,51 +326,21 @@
       background: #fff;
     }
 
-    .header-input.left-align { text-align: left !important; }
-
-  /* Data Row Stílusok */
+  /* Adat sor (Data Row) */
   .data-row {
-    display: flex;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px dashed #f0f0f0;
+    border-bottom: 1px dashed rgba(0,0,0,0.05);
     transition: background-color 0.2s;
   }
 
     .data-row:hover {
-      background-color: #fafafa;
-      color: #333 !important;
+      background-color: #fcfcfc;
     }
 
-      .data-row:hover input,
-      .data-row:hover .name-text,
-      .data-row:hover .header-input,
-      .data-row:hover span,
-      .data-row:hover .price-display {
-        color: #333 !important;
-      }
-      /* PrimeVue inputok belsejét is színezzük */
-      .data-row:hover .price-input :deep(input) {
-        color: #333 !important;
-      }
-
-      /* Az ikonok is legyenek sötétek hoverkor */
-      .data-row:hover .icon-btn {
-        opacity: 1;
-        color: #666;
-      }
-
-      .data-row:hover .icon-btn:hover {
-        color: #000;
-      }
-
-  .name-cell {
-    width: 250px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-right: 15px;
+  .name-text {
+    font-weight: 400;
+    color: #555;
+    font-size: 1rem;
+    line-height: 1.4;
   }
 
   .name-input {
@@ -327,7 +348,7 @@
     border: none;
     font-size: 1rem;
     background: transparent;
-    font-weight: 500;
+    color: #555;
   }
 
     .name-input:focus {
@@ -335,158 +356,92 @@
       border-bottom: 1px solid #d4af37;
     }
 
-  .name-text {
-    font-weight: 500;
+  .price-display {
+    font-family: inherit;
+    color: #666;
+    font-weight: 400;
+    font-size: 1rem;
   }
 
-  .variants-container {
-    display: flex;
-    flex-wrap: wrap; /* Ha nagyon sok variáció lenne, törjön a sor */
+  .data-row:hover .price-display,
+  .data-row:hover .name-text {
+    color: #333;
   }
 
-  .variant-cell {
-    width: 120px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  /* --- TREE VIEW (FA NÉZET) --- */
-  .tree-view-container {
-    margin-top: 20px;
-    margin-bottom: 20px;
-    background: #fdfdfd;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-  }
-
-  .tree-header {
-    margin-bottom: 10px;
-    border-bottom: 2px solid #d4af37;
-    padding-bottom: 5px;
-  }
-
-  .large-text {
-    font-size: 1.1rem;
-    font-weight: bold;
-  }
-
-  .full-width {
-    width: 100%;
-  }
-
-  .tree-items {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-
-  .tree-item-row {
+  /* Eszközök */
+  .row-tools {
+    margin-left: 10px;
     display: flex;
     align-items: center;
-    padding: 5px 0;
-    border-bottom: 1px dashed #eee;
+    flex-shrink: 0;
   }
 
-  .tree-label {
-    width: 200px;
-    font-weight: 500;
-    color: #555;
-    text-align: left; /* Név balra */
-  }
-
-  .tree-price {
-    display: flex;
-    align-items: center;
-    position: relative;
-  }
-
-
-  /* Gombok és Interakciók */
   .icon-btn {
     background: none;
     border: none;
     cursor: pointer;
-    opacity: 0; /* Csak hoverre látszik */
+    opacity: 0;
     transition: opacity 0.2s;
-    font-size: 1.2rem;
-    padding: 0 5px;
-    color: #aaa;
+    font-size: 1rem;
+    padding: 0 4px;
+    color: #bbb;
   }
 
-  .name-cell:hover .icon-btn {
+  .data-row:hover .icon-btn {
     opacity: 1;
   }
 
   .icon-btn:hover {
-    color: #333;
+    color: #555;
   }
 
   .icon-btn.trash:hover {
-    color: red;
+    color: #d9534f;
   }
 
   .variant-remove-btn {
     position: absolute;
-    top: -8px;
-    right: 5px;
-    background: none;
+    top: -10px;
+    right: 0;
     border: none;
-    color: #ff4444;
+    background: none;
+    color: #d9534f;
     cursor: pointer;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     opacity: 0;
-    transition: opacity 0.2s;
   }
 
-  .variant-cell:hover .variant-remove-btn {
+  .col-variant-item:hover .variant-remove-btn {
     opacity: 1;
   }
 
-  /* PrimeVue InputNumber felüldefiniálása */
+  /* PrimeVue Input */
   .price-input {
-    width: 90px !important;
+    width: 100px !important;
   }
 
     .price-input :deep(input) {
-      border: 1px solid transparent;
+      border: none;
       background: transparent;
+      text-align: center;
+      color: #666;
       font-family: inherit;
-      font-size: 1rem;
-      color: #333;
+      padding: 0;
     }
 
-  /* GRID-ben középre */
-  .center-input :deep(input) {
-    text-align: center !important;
-  }
-
-  /* TREE-ben balra */
-  .left-input :deep(input) {
-    text-align: left !important;
-    padding-left: 0;
-  }
-
       .price-input :deep(input):focus {
-        border-color: #d4af37;
         background: white;
-        box-shadow: none;
+        box-shadow: 0 0 0 1px #d4af37;
       }
 
   .add-btn {
     background-color: #d4af37;
     color: white;
     border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
+    padding: 8px 16px;
+    border-radius: 4px;
     cursor: pointer;
-    font-weight: bold;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    font-weight: 500;
   }
 
     .add-btn:hover {
@@ -497,5 +452,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 20px;
+  }
+
+  h2 {
+    font-weight: 300;
+    color: #444;
   }
 </style>
