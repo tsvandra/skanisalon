@@ -1,7 +1,7 @@
 ﻿================================================================================
 PROJEKT STATUS & SZABÁLYKÖNYV: SOLUVION (SKANI SALON)
 ================================================================================
-Dátum:    2026.02.08.
+Dátum:    2026.02.09.
 Státusz:  MVP Stabilizálás (SaaS Transition Phase)
 
 [ CÉL ]
@@ -21,7 +21,7 @@ kell igazodnia ("Single Source of Truth").
    - Backend: SOHA nem bízunk a kliens által küldött ID-ban írási műveleteknél.
      > Kötelező: User.FindFirst("CompanyId") claim használata.
      > Tenant Isolation: Minden lekérdezést szűrni kell: 
-       .Where(x => x.CompanyId == currentCompanyId)
+        .Where(x => x.CompanyId == currentCompanyId)
 
 2. API Kommunikáció
    - Frontend: TILOS a 'fetch' használata manuális header építéssel!
@@ -34,9 +34,32 @@ kell igazodnia ("Single Source of Truth").
    - Helyes formátum: VITE_API_URL=https://...
    - Hivatkozás: import.meta.env.VITE_API_URL
 
+4. Adatkonzisztencia és UX (Race Conditions)
+   - Gyors adatbevitelű mezőknél (pl. InputNumber, Textarea) a szerver válasza ("Response")
+     NEM írhatja felül automatikusan a Frontend lokális állapotát.
+   - Kivétel: Ha strukturális változás történt (pl. új ID generálása).
+   - Cél: A lassabb hálózat miatti villogás és adatvesztés elkerülése gépelés közben.
+
 --------------------------------------------------------------------------------
 
-[ 2. ELKÉSZÜLT MODULOK ÉS MEGOLDOTT PROBLÉMÁK ]
+[ 2. KÓDOLÁSI ELVEK (CLEAN CODE) ]
+
+1. Clean Code vs. Érthetőség
+   - Törekedj a tiszta, karbantartható kódra (DRY, SOLID, naming conventions).
+   - Soha ne menjen a könnyű értelmezhetőség rovására.
+   - Kerüld a túlzott túlmérnöklést (Over-engineering).
+
+2. Code Review (Önellenőrzés)
+   - Mielőtt egy feladatot késznek jelzünk (git push előtt), mindig ellenőrizd:
+     van-e lehetőség refaktorálásra vagy egyszerűsítésre?
+
+3. Megjegyzések
+   - A kód legyen önmagáért beszélő.
+   - Ahol szükséges, használj kommentezést a "miért" magyarázatára (nem a "mit").
+
+--------------------------------------------------------------------------------
+
+[ 3. ELKÉSZÜLT MODULOK ÉS MEGOLDOTT PROBLÉMÁK ]
 
 1. Autentikáció (Auth Module)
    - Eredmény: Biztonságos regisztráció, Login, JWT + BCrypt.
@@ -49,11 +72,12 @@ kell igazodnia ("Single Source of Truth").
      > Frontend: 'provide/inject' minta az adatok leosztására.
      > Backend: DTO-k (UpdateCompanyDto) a Mass Assignment elkerülésére.
 
-3. Árlista és Szolgáltatások (Services Module)
-   - Eredmény: Többszintű szerkesztő (Szülő + Variációk).
-   - Megoldott Probléma: Entity Framework Parent-Child frissítés.
-     > Logika: Új variáció -> Add, Meglévő -> Update, Hiányzó -> Delete.
-   - Frontend Fix: 'watch' használata a reaktivitás biztosítására váltáskor.
+3. Árlista és Szolgáltatások (Services Module) - REFAKTORÁLVA
+   - Eredmény: Drag-and-Drop rendezés, Kategóriák kezelése, Sötét téma (Dark Mode).
+   - Megoldás:
+     > Frontend: 'vuedraggable' használata, Nested (Hierarchikus) adatstruktúra.
+     > Adatmodell: Kategória alapú csoportosítás, Megjegyzés (Description) mező bevezetése.
+     > Mentés: 'refreshLocal' logika a Race Condition kiküszöbölésére.
 
 4. Galéria és Fájlkezelés (Gallery Module)
    - Eredmény: Képfeltöltés, Kategóriák, Fizikai törlés.
@@ -63,7 +87,7 @@ kell igazodnia ("Single Source of Truth").
 
 --------------------------------------------------------------------------------
 
-[ 3. INFRASTRUKTÚRA ÉS KONFIGURÁCIÓ ]
+[ 4. INFRASTRUKTÚRA ÉS KONFIGURÁCIÓ ]
 
 1. Backend (Program.cs Sorrend - KRITIKUS)
    A Middleware-ek sorrendje, ami jelenleg működik:
@@ -78,12 +102,14 @@ kell igazodnia ("Single Source of Truth").
    - Szintaxis: <script setup> mindenhol.
    - State: ref, computed, watch.
    - Global: provide (App.vue) -> inject (gyerek komponensek).
+   - Libs: vuedraggable (Drag & Drop), PrimeVue.
 
 --------------------------------------------------------------------------------
 
-[ 4. KÖVETKEZŐ LÉPÉSEK (ROADMAP) ]
+[ 5. KÖVETKEZŐ LÉPÉSEK (ROADMAP) ]
 
 A "Front Office" (Látogatói oldal) teljes dinamizálása a cél:
+
 
 1. HomeView.vue:
    - Fix "Lorem Ipsum" és címek cseréje adatbázisból jövő mezőkre.
@@ -97,5 +123,3 @@ A "Front Office" (Látogatói oldal) teljes dinamizálása a cél:
    - A módosítások élesítése Railway (Backend) és Netlify (Frontend) oldalon.
 
 --------------------------------------------------------------------------------
-
-================================================================================

@@ -88,6 +88,7 @@ UI & Design:
   - Komponens Könyvtár: PrimeVue (Button, Input, Dialog, TabView, Card).
   - CSS: Egyedi CSS + CSS Variables (Dinamikus színezéshez).
   - Ikonok: PrimeIcons.
+  - Drag & Drop: vuedraggable (Sortable.js wrapper Vue 3-hoz) - A szolgáltatások és kategóriák rendezéséhez.
 
 Állapotkezelés (State Management):
   - Lokális State: `ref`, `reactive`.
@@ -98,6 +99,7 @@ API Kommunikáció:
   - Kliens: Axios.
   - Konfiguráció: BaseURL beállítása környezeti változókból.
   - Interceptors: (Tervben) A token automatikus csatolása minden kérés fejlécéhez.
+
 
 --------------------------------------------------------------------------------
 

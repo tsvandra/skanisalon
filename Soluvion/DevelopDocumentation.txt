@@ -187,4 +187,13 @@ A Netlify kredit spórolása és a gyors hibajavítás érdekében:
 
 --------------------------------------------------------------------------------
 
+[2026-02-09] ServicesView Refactoring & Drag-and-Drop (Front Office)
+- FE: vuedraggable implementálása a szolgáltatások és kategóriák rendezéséhez.
+- FE: ServicesView átalakítása sötét témára (Dark Mode), clean UI elvek alapján.
+- FE: Hierarchikus adatkezelés (Kategória -> Service -> Variant).
+- BE: Service modell bõvítése 'Description' mezõvel (Megjegyzésekhez).
+- BE: ServiceController.PutService javítása (Category és Description mentés, Null check).
+- UX: 'Race Condition' hiba azonosítva a gyors adatbevitelkor (Javítás a következõ sprintben: refreshLocal logika).
+- Következõ lépés: Adatbázis migráció (AddServiceDescription) és a frontend mentési logikájának stabilizálása.
+
 ================================================================================
