@@ -40,6 +40,14 @@ kell igazodnia ("Single Source of Truth").
    - Kivétel: Ha strukturális változás történt (pl. új ID generálása).
    - Cél: A lassabb hálózat miatti villogás és adatvesztés elkerülése gépelés közben.
 
+5. Aszinkron Adatmentés (Race Condition Védelem)
+   - Probléma: Gyors felhasználói bevitelkor (pl. InputNumber) a párhuzamos API kérések 
+     eltérő sorrendben érhetnek be, felülírva a friss adatot régivel.
+   - Megoldás: "Request Queue" (Promise Chain) alkalmazása a komponensben.
+   - Szabály: Minden mentési kérést sorba kell állítani (await prevPromise).
+   - Input kezelés: PrimeVue komponenseknél a biztos mentés érdekében:
+     @update:modelValue="save(..., false)" ÉS @blur="save(..., false)" együtt használandó.
+
 --------------------------------------------------------------------------------
 
 [ 2. KÓDOLÁSI ELVEK (CLEAN CODE) ]
