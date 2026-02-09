@@ -580,7 +580,7 @@
   .category-display {
     font-size: 1.2rem;
     font-weight: bold;
-    color: #fff;
+    color: var(--primary-color);
     text-transform: uppercase;
     letter-spacing: 2px;
   }

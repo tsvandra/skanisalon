@@ -194,6 +194,8 @@ A Netlify kredit spórolása és a gyors hibajavítás érdekében:
 - BE: Service modell bõvítése 'Description' mezõvel (Megjegyzésekhez).
 - BE: ServiceController.PutService javítása (Category és Description mentés, Null check).
 - UX: 'Race Condition' hiba azonosítva a gyors adatbevitelkor (Javítás a következõ sprintben: refreshLocal logika).
-- Következõ lépés: Adatbázis migráció (AddServiceDescription) és a frontend mentési logikájának stabilizálása.
+- UX HIBAJAVÍTÁS: 'Race Condition' hiba javítva "Request Queue" (Promise Chain) bevezetésével.
+- UI: Vendég nézetben a kategóriák arany színû kiemelést kaptak.
+- STATUS: Feature #12 Befejezve -> Merge develop ágra.
 
 ================================================================================
