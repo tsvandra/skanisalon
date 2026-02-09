@@ -7,7 +7,6 @@
   const router = useRouter();
   const isMenuOpen = ref(false);
   const isLoggedIn = ref(false);
-
   const isUploadingLogo = ref(false);
   const logoInputRef = ref(null);
 
@@ -25,14 +24,15 @@
     return `${baseUrl}${path}`;
   };
 
-  // --- STABILIZÁLVA: NINCS TRANSITION ---
+  // --- JAVÍTVA: NINCS TRANSITION ---
+  // Azért vettük ki, hogy a csúszka húzásakor azonnal reagáljon
   const logoStyle = computed(() => {
     const height = company.value?.logoHeight || 50;
     return {
       height: `${height}px`,
       width: 'auto',
       display: 'block',
-      // transition: 'height 0.1s ease-out' <-- EZT KIVETTEM, EZ OKOZTA AZ UGRÁLÁST
+      // transition: 'height 0.1s ease-out' <--- EZT TÖRÖLTÜK
     };
   });
 
@@ -142,20 +142,20 @@
     padding: 0 1rem;
     display: flex;
     justify-content: space-between;
-    align-items: center; /* Ez marad center, hogy a menü és logó egy vonalban legyen */
+    align-items: center;
   }
 
   .logo-area {
-    position: relative; /* Fontos a pozicionáláshoz */
+    position: relative; /* Hogy az absolute gyermeket pozicionálhassuk */
     display: flex;
-    align-items: center; /* A logó függőlegesen középen */
-    min-height: 50px; /* Hogy legyen helye alapból */
+    align-items: center;
+    /* Min. szélesség, hogy a vezérlőnek legyen helye, ha a logó pici */
+    min-width: 250px;
   }
 
   .logo-link {
     text-decoration: none;
     display: block;
-    margin-right: 15px; /* Helyet hagyunk a vezérlőnek, ha mellette van */
   }
 
   .text-logo {
@@ -165,8 +165,15 @@
     font-family: var(--font-family);
   }
 
-  /* --- STABILIZÁLT ADMIN PANEL --- */
+  /* --- STABILIZÁLT VEZÉRLŐPANEL --- */
   .logo-admin-tools {
+    /* Fix helye van, nem tolja el a logó növekedése */
+    position: absolute;
+    left: 100%; /* A logó területtől jobbra */
+    margin-left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    /* Kinézet */
     display: flex;
     align-items: center;
     gap: 8px;
@@ -174,10 +181,7 @@
     padding: 4px 8px;
     border-radius: 20px;
     border: 1px solid #555;
-    /* Abszolút pozíció helyett maradhat flex, DE: */
-    /* Ha a logó nő, ez is mozogna. Ha zavaró, fixálhatjuk: */
-    /* position: absolute; left: 100%; top: 50%; transform: translateY(-50%); */
-    /* De maradjunk a flexnél, transition nélkül már nem szabadna ugrálnia. */
+    white-space: nowrap; /* Hogy ne törjön sorba */
   }
 
   .tool-btn {
@@ -225,7 +229,7 @@
     gap: 1.5rem;
     align-items: center;
   }
-    /* ... A többi stílus változatlan ... */
+
     nav a {
       color: #fff;
       text-decoration: none;

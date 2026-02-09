@@ -12,7 +12,7 @@
 
     const baseStyle = {
       minHeight: `${height}px`,
-      // transition: 'min-height 0.1s ease-out' <-- TÖRÖLVE A SIMASÁGÉRT
+      // transition: 'min-height 0.1s ease-out' <-- ITT SINCS TRANSITION
     };
 
     if (company.value?.footerImageUrl) {
@@ -122,10 +122,10 @@
     text-align: center;
     width: 100%;
     padding: 1.5rem;
-    height: 100%; /* Kitölti a rendelkezésre álló magasságot */
+    height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end; /* Tartalom alulra */
+    justify-content: flex-end;
     align-items: center;
   }
 
@@ -143,7 +143,7 @@
     margin: 0;
   }
 
-  /* --- STABIL POZICIONÁLÁS --- */
+  /* FIX POZÍCIÓ: JOBB ALSÓ SAROK */
   .footer-admin-panel {
     position: absolute;
     bottom: 15px;
