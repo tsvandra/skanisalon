@@ -147,6 +147,57 @@ namespace Soluvion.API.Controllers
             });
         }
 
+
+        [HttpPut("{id}")]
+        [Authorize]
+        public async Task<IActionResult> UpdateImage(int id, [FromBody] GalleryImageUpdateDto dto)
+        {
+            if (id != dto.Id) return BadRequest();
+
+            int companyId = GetCurrentCompanyId();
+            if (companyId == 0) return Unauthorized();
+
+            var image = await _context.GalleryImages
+                .Include(i => i.Category)
+                .FirstOrDefaultAsync(i => i.Id == id);
+
+            if (image == null) return NotFound();
+
+            // Biztonsági ellenőrzés
+            if (image.Category != null && image.Category.CompanyId != companyId)
+            {
+                return Forbid();
+            }
+
+            // 1. Adatok frissítése
+            image.Title = dto.Title ?? "";
+            image.OrderIndex = dto.OrderIndex;
+
+            // 2. Kategória váltás (ha változott)
+            if (!string.IsNullOrEmpty(dto.CategoryName) &&
+                (image.Category == null || image.Category.Name != dto.CategoryName))
+            {
+                var newCategory = await _context.GalleryCategories
+                    .FirstOrDefaultAsync(c => c.Name == dto.CategoryName && c.CompanyId == companyId);
+
+                if (newCategory == null)
+                {
+                    newCategory = new GalleryCategory
+                    {
+                        Name = dto.CategoryName,
+                        CompanyId = companyId
+                    };
+                    _context.GalleryCategories.Add(newCategory);
+                }
+
+                image.Category = newCategory;
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Sikeres mentés" });
+        }
+
+
         // DELETE: api/Gallery/5
         [HttpDelete("{id}")]
         [Authorize]

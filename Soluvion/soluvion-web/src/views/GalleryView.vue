@@ -1,121 +1,172 @@
 <script setup>
-  import { ref, onMounted, computed, inject, watch } from 'vue';
+  import { ref, onMounted, inject, watch, computed } from 'vue';
   import api from '@/services/api';
   import { DEFAULT_COMPANY_ID } from '@/config';
+  import { useAutoSaveQueue } from '@/composables/useAutoSaveQueue';
+  import draggable from 'vuedraggable';
 
+  // --- STATE ---
   const images = ref([]);
-  const categories = ref([]);
-  const selectedFile = ref(null);
+  const groupedImages = ref([]); // Kategóriákba rendezett struktúra
   const isLoading = ref(false);
-  const isUploading = ref(false); // Külön state a gombnak
+  const isUploading = ref(false);
   const isLoggedIn = ref(false);
+  const uploadProgress = ref(0); // Opcionális: ha később progress bar-t akarunk
 
-  // INJECT: Az aktuális cég (Admin vagy Demo)
+  // Preview / Lightbox
+  const showPreview = ref(false);
+  const previewImage = ref(null);
+
+  // Injectek
   const company = inject('company', ref(null));
+  const { addToQueue } = useAutoSaveQueue();
 
-  // Kategória kezelés
-  const selectedCategory = ref('');
-  const customCategory = ref('');
-  const isNewCategoryMode = computed(() => selectedCategory.value === 'NEW');
+  // --- ADATLEKÉRÉS ÉS TRANSZFORMÁCIÓ ---
 
-  // Adatok betöltése
   const fetchData = async () => {
-    // Ha még nincs betöltve a company, használjuk a defaultot
     const targetCompanyId = company?.value?.id || DEFAULT_COMPANY_ID;
-
     isLoading.value = true;
     try {
-      // 1. Képek lekérése adott céghez
-      const resImages = await api.get('/api/Gallery', {
-        params: { companyId: targetCompanyId }
-      });
-      images.value = resImages.data;
-
-      // 2. Kategóriák lekérése adott céghez
-      const resCats = await api.get('/api/Gallery/categories', {
-        params: { companyId: targetCompanyId }
-      });
-      categories.value = resCats.data;
-
-      // Default select beállítás
-      if (categories.value.length > 0) {
-        selectedCategory.value = categories.value[0];
-      } else {
-        selectedCategory.value = 'NEW';
-      }
+      const res = await api.get('/api/Gallery', { params: { companyId: targetCompanyId } });
+      images.value = res.data;
+      buildNestedStructure();
     } catch (error) {
-      console.error("Hiba az adatok betöltésekor:", error);
+      console.error("Hiba a betöltéskor:", error);
     } finally {
       isLoading.value = false;
     }
   };
 
-  // WATCHER: Ha változik a cég (pl. URL váltás), újratöltjük
-  watch(
-    () => company?.value?.id,
-    (newId) => {
-      if (newId) fetchData();
-    },
-    { immediate: true }
-  );
+  // A lapos listát (images) átalakítjuk csoportokká a drag-and-drop-hoz
+  const buildNestedStructure = () => {
+    const groups = {};
 
-  const handleFileChange = (event) => {
-    selectedFile.value = event.target.files[0];
+    // 1. Csoportosítás
+    images.value.forEach(img => {
+      const cat = img.category || "Egyéb";
+      if (!groups[cat]) {
+        groups[cat] = {
+          name: cat,
+          items: []
+        };
+      }
+      groups[cat].items.push(img);
+    });
+
+    // 2. Objektumból tömb + Belső rendezés OrderIndex szerint
+    groupedImages.value = Object.values(groups).map(group => {
+      group.items.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+      return group;
+    });
+
+    // 3. Opcionális: Kategóriák sorrendje (itt most ABC, de lehetne más is)
+    groupedImages.value.sort((a, b) => a.name.localeCompare(b.name));
   };
 
-  const uploadImage = async () => {
-    if (!selectedFile.value) return;
+  watch(() => company?.value?.id, (newId) => { if (newId) fetchData(); }, { immediate: true });
 
-    // Admin ellenőrzés (kliens oldalon is)
-    if (!isLoggedIn.value) {
-      alert("Nincs jogosultságod feltölteni!");
-      return;
+  // --- DRAG AND DROP & MENTÉS ---
+
+  const onDragChange = (event, groupName) => {
+    // Ha változott a sorrend vagy kategóriát váltott egy elem
+    if (event.added || event.moved) {
+      reorderGroup(groupName);
     }
+  };
 
-    let categoryToSend = selectedCategory.value;
-    if (isNewCategoryMode.value) {
-      categoryToSend = customCategory.value.trim();
-      if (!categoryToSend) {
-        alert("Kérlek add meg az új kategória nevét!");
-        return;
+  const reorderGroup = async (groupName) => {
+    const group = groupedImages.value.find(g => g.name === groupName);
+    if (!group) return;
+
+    // Végigiterálunk az új sorrenden
+    group.items.forEach((img, index) => {
+      // Csak akkor mentünk, ha változott a sorrend vagy a kategória
+      // (A backend update-hez beállítjuk az új értékeket)
+      const newOrder = index + 1;
+      const newCategory = groupName; // Ha át lett húzva máshonnan, ez az új kategória
+
+      if (img.orderIndex !== newOrder || img.category !== newCategory) {
+        img.orderIndex = newOrder;
+        img.category = newCategory;
+        saveImage(img);
+      }
+    });
+  };
+
+  const saveImage = (img) => {
+    // A Composable kezeli a sorbaállítást (ne írják felül egymást a hívások)
+    addToQueue(img.id, async () => {
+      const payload = {
+        id: img.id,
+        title: img.title,
+        categoryName: img.category,
+        orderIndex: img.orderIndex
+      };
+      await api.put(`/api/Gallery/${img.id}`, payload);
+    });
+  };
+
+  // --- FELTÖLTÉS (BULK) ---
+
+  const fileInputRef = ref(null);
+
+  const triggerUpload = () => {
+    fileInputRef.value.click();
+  };
+
+  const handleFiles = async (event) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    if (!isLoggedIn.value) return alert("Jelentkezz be a feltöltéshez!");
+
+    isUploading.value = true;
+
+    // Kiválasztjuk az első kategóriát defaultnak, vagy "Új képek"
+    let targetCategory = groupedImages.value.length > 0 ? groupedImages.value[0].name : "Új képek";
+
+    // Párhuzamos feltöltés helyett sorban (sequential), hogy a szervert ne terheljük túl
+    // és a sorrend megmaradjon.
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('category', targetCategory);
+
+      try {
+        const res = await api.post('/api/Gallery', formData, { headers: { 'Content-Type': undefined } });
+        // Azonnal hozzáadjuk a helyi listához, hogy látszódjon
+        const newImg = res.data;
+        images.value.push(newImg);
+      } catch (err) {
+        console.error(`Hiba a ${file.name} feltöltésekor:`, err);
       }
     }
 
-    isUploading.value = true;
-    const formData = new FormData();
-    formData.append('file', selectedFile.value);
-    formData.append('category', categoryToSend);
-
-    try {
-      // A backend a tokenből szedi ki a CompanyId-t, nem kell külön küldeni
-      await api.post('/api/Gallery', formData, {
-        headers: {
-          'Content-Type': undefined
-        }
-      });
-      // Siker esetén takarítás
-      selectedFile.value = null;
-      customCategory.value = '';
-      const fileInput = document.getElementById('fileInput');
-      if (fileInput) fileInput.value = "";
-
-      await fetchData(); // Lista frissítése
-      selectedCategory.value = categoryToSend; // Maradjon a kategórián
-
-    } catch (error) {
-      console.error(error);
-      alert("Hiba a feltöltésnél! Ellenőrizd, hogy be vagy-e jelentkezve.");
-    } finally {
-      isUploading.value = false;
-    }
+    // Újraépítjük a struktúrát és takarítunk
+    buildNestedStructure();
+    isUploading.value = false;
+    if (fileInputRef.value) fileInputRef.value.value = "";
   };
+
+  // --- TÖRLÉS & EGYÉB ---
 
   const deleteImage = async (id) => {
     if (!confirm("Biztosan törölni szeretnéd?")) return;
     try {
+      // UI frissítés azonnal (optimista)
+      images.value = images.value.filter(i => i.id !== id);
+      buildNestedStructure();
+
       await api.delete(`/api/Gallery/${id}`);
-      await fetchData();
-    } catch (error) { console.error(error); }
+    } catch (error) {
+      console.error(error);
+      fetchData(); // Ha hiba volt, töltsük vissza az eredetit
+    }
+  };
+
+  const openPreview = (img) => {
+    previewImage.value = img;
+    showPreview.value = true;
   };
 
   onMounted(() => {
@@ -126,213 +177,255 @@
 
 <template>
   <div class="gallery-container">
-    <h1>Munkáim</h1>
-    <p class="intro">Tekintsd meg a legújabb frizuráimat és stílusaimat.</p>
+    <div class="header-actions">
+      <h1>Galéria & Munkáim</h1>
 
-    <div class="upload-section" v-if="isLoggedIn">
-      <h3>Új kép feltöltése</h3>
-      <div class="upload-controls">
-
-        <input type="file" @change="handleFileChange" id="fileInput" accept="image/*" class="file-input" />
-
-        <div class="category-wrapper">
-          <select v-model="selectedCategory" class="cat-select">
-            <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
-            <option value="NEW" style="font-weight: bold; color: var(--primary-color);">+ Új kategória...</option>
-          </select>
-
-          <input v-if="isNewCategoryMode"
-                 v-model="customCategory"
-                 type="text"
-                 placeholder="Írd be az új nevet..."
-                 class="custom-cat-input" />
-        </div>
-
-        <button @click="uploadImage" :disabled="isUploading || !selectedFile" class="upload-btn">
-          {{ isUploading ? 'Feltöltés...' : 'Feltöltés' }}
+      <div v-if="isLoggedIn" class="upload-wrapper">
+        <input type="file" ref="fileInputRef" @change="handleFiles" multiple accept="image/*" style="display: none;" />
+        <button @click="triggerUpload" :disabled="isUploading" class="upload-btn">
+          <i class="pi pi-cloud-upload"></i>
+          {{ isUploading ? 'Feltöltés folyamatban...' : 'Új képek feltöltése' }}
         </button>
       </div>
     </div>
 
-    <div v-if="isLoading && images.length === 0" class="loading-state">
-      <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
-    </div>
+    <div v-if="isLoading" class="loading"><i class="pi pi-spin pi-spinner"></i> Betöltés...</div>
 
-    <div class="gallery-grid" v-else>
-      <div v-for="image in images" :key="image.id" class="gallery-item">
-        <img :src="image.imageUrl" :alt="image.category" loading="lazy" />
-        <div class="overlay">
-          <span class="cat-badge">{{ image.category }}</span>
-          <button v-if="isLoggedIn" @click="deleteImage(image.id)" class="delete-btn" title="Törlés">
-            <i class="pi pi-trash"></i>
-          </button>
-        </div>
+    <div v-else class="groups-container">
+
+      <div v-for="group in groupedImages" :key="group.name" class="category-section">
+        <h3 class="cat-title">{{ group.name }} <span class="count">({{ group.items.length }})</span></h3>
+
+        <draggable v-model="group.items"
+                   group="gallery-images"
+                   item-key="id"
+                   class="image-grid"
+                   @change="(e) => onDragChange(e, group.name)"
+                   :disabled="!isLoggedIn">
+
+          <template #item="{ element: img }">
+            <div class="gallery-card">
+
+              <div class="img-wrapper" @click="openPreview(img)">
+                <img :src="img.imageUrl" loading="lazy" />
+                <div class="overlay"><i class="pi pi-eye"></i></div>
+              </div>
+
+              <div v-if="isLoggedIn" class="edit-bar">
+                <input v-model="img.title"
+                       @change="saveImage(img)"
+                       placeholder="Képaláírás..."
+                       class="caption-input" />
+
+                <button @click="deleteImage(img.id)" class="del-btn" title="Törlés">
+                  <i class="pi pi-trash"></i>
+                </button>
+              </div>
+
+              <div v-else-if="img.title" class="caption-display">
+                {{ img.title }}
+              </div>
+
+            </div>
+          </template>
+        </draggable>
+      </div>
+
+      <div v-if="images.length === 0 && !isLoading" class="empty-state">
+        Még nincsenek feltöltött képek.
       </div>
     </div>
 
-    <div v-if="!isLoading && images.length === 0" class="empty-state">
-      Még nincsenek feltöltött képek ebben a galériában.
+    <div v-if="showPreview" class="lightbox" @click="showPreview = false">
+      <div class="lightbox-content" @click.stop>
+        <img :src="previewImage?.imageUrl" />
+        <p v-if="previewImage?.title">{{ previewImage.title }}</p>
+        <button class="close-btn" @click="showPreview = false">×</button>
+      </div>
     </div>
+
   </div>
 </template>
 
 <style scoped>
-  /* A stílusokat megtartottam, mert azok jók voltak */
   .gallery-container {
-    padding: 2rem;
-    text-align: center;
     max-width: 1200px;
     margin: 0 auto;
+    padding: 2rem;
+    color: #fff;
+  }
+
+  .header-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
   }
 
   h1 {
-    font-size: 2.5rem;
-    color: var(--primary-color);
-    margin-bottom: 1rem;
-  }
-
-  .intro {
-    color: #888;
-    margin-bottom: 2rem;
-  }
-
-  /* Feltöltő doboz */
-  .upload-section {
-    background: #f8f9fa;
-    padding: 1.5rem;
-    border-radius: 8px;
-    border: 1px dashed var(--primary-color);
-    margin-bottom: 2rem;
-    display: inline-block;
-    min-width: 300px;
-    max-width: 100%;
-  }
-
-    .upload-section h3 {
-      margin-top: 0;
-      color: var(--primary-color);
-    }
-
-  .upload-controls {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .category-wrapper {
-    display: flex;
-    gap: 5px;
-    align-items: center;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .cat-select {
-    padding: 8px;
-    border-radius: 4px;
-    border: 1px solid #ddd;
-    min-width: 150px;
-  }
-
-  .custom-cat-input {
-    padding: 8px;
-    border-radius: 4px;
-    border: 1px solid var(--primary-color);
-    outline: none;
+    color: var(--primary-color, #d4af37);
+    margin: 0;
   }
 
   .upload-btn {
-    background-color: var(--primary-color);
-    color: var(--secondary-color);
+    background-color: var(--primary-color, #d4af37);
+    color: #000;
     border: none;
-    padding: 8px 16px;
+    padding: 10px 20px;
     border-radius: 4px;
     cursor: pointer;
     font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform 0.2s;
   }
 
-    .upload-btn:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
+    .upload-btn:hover {
+      transform: scale(1.05);
+      background-color: #b5952f;
     }
 
-  /* Galéria rács */
-  .gallery-grid {
+  .category-section {
+    margin-bottom: 3rem;
+  }
+
+  .cat-title {
+    border-bottom: 1px solid #333;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+    color: #ddd;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .count {
+    font-size: 0.8rem;
+    color: #666;
+  }
+
+  .image-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 1.5rem;
+    min-height: 100px; /* Hogy üresen is lehessen bele húzni */
   }
 
-  .gallery-item {
-    position: relative;
-    overflow: hidden;
+  .gallery-card {
+    background: #1a1a1a;
     border-radius: 8px;
-    aspect-ratio: 1;
-    background: #2c2c2c;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    overflow: hidden;
+    transition: box-shadow 0.3s;
+    display: flex;
+    flex-direction: column;
   }
 
-    .gallery-item img {
+    .gallery-card:hover {
+      box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    }
+
+  .img-wrapper {
+    position: relative;
+    aspect-ratio: 1;
+    cursor: pointer;
+  }
+
+    .img-wrapper img {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 0.5s ease;
-    }
-
-    .gallery-item:hover img {
-      transform: scale(1.1);
     }
 
   .overlay {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
-    padding: 15px;
-    transform: translateY(100%);
-    transition: transform 0.3s ease;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
     display: flex;
-    justify-content: space-between;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    color: #fff;
+    font-size: 2rem;
+  }
+
+  .img-wrapper:hover .overlay {
+    opacity: 1;
+  }
+
+  .edit-bar {
+    padding: 10px;
+    display: flex;
+    gap: 5px;
+    background: #222;
+  }
+
+  .caption-input {
+    flex-grow: 1;
+    background: #333;
+    border: none;
+    color: #fff;
+    padding: 5px;
+    border-radius: 3px;
+    font-size: 0.9rem;
+  }
+
+  .del-btn {
+    background: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    width: 30px;
+  }
+
+  .caption-display {
+    padding: 10px;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #aaa;
+  }
+
+  /* Lightbox */
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.9);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
     align-items: center;
   }
 
-  .gallery-item:hover .overlay {
-    transform: translateY(0);
+  .lightbox-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    text-align: center;
   }
 
-  .cat-badge {
-    background-color: var(--primary-color);
-    color: var(--secondary-color);
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: bold;
-  }
-
-  .delete-btn {
-    background-color: #ff4444;
-    color: white;
-    border: none;
-    padding: 6px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-
-    .delete-btn:hover {
-      background-color: #cc0000;
+    .lightbox-content img {
+      max-width: 100%;
+      max-height: 85vh;
+      box-shadow: 0 0 20px rgba(0,0,0,0.8);
     }
 
-  .empty-state {
-    margin-top: 3rem;
-    color: #666;
-    font-style: italic;
-  }
+    .lightbox-content p {
+      color: #fff;
+      margin-top: 10px;
+      font-size: 1.2rem;
+    }
 
-  .loading-state {
-    margin-top: 3rem;
-    color: var(--primary-color);
+  .close-btn {
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 3rem;
+    cursor: pointer;
   }
 </style>
