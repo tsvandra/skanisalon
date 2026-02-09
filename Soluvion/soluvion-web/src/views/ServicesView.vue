@@ -30,6 +30,12 @@
     return val.toLocaleString('hu-HU', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
   };
 
+  // Textarea automatikus méretezés
+  const autoResize = (event) => {
+    event.target.style.height = 'auto';
+    event.target.style.height = event.target.scrollHeight + 'px';
+  };
+
   /* --- ADATTRANSZFORMÁCIÓ --- */
 
   const buildNestedStructure = (flatServices) => {
@@ -98,13 +104,16 @@
   const saveService = async (serviceItem) => {
     try {
       const payload = JSON.parse(JSON.stringify(serviceItem));
-      if (payload.variants) {
+
+      // JAVÍTÁS: Ha a variants null vagy undefined (Megjegyzés sor), legyen üres tömb
+      if (!payload.variants) {
+        payload.variants = [];
+      } else {
         payload.variants.forEach(v => {
           if (v.price === null || v.price === undefined) v.price = 0;
         });
       }
 
-      // Fontos: a payload.category mezőnek tartalmaznia kell az új nevet!
       await apiClient.put(`/api/Service/${serviceItem.id}`, payload);
     } catch (err) {
       console.error("Hiba a mentesnel:", err);
@@ -147,7 +156,6 @@
 
   const updateCategoryName = async (group, newName) => {
     group.categoryName = newName;
-    // Minden elemet frissítünk az új kategórianévvel
     const promises = group.items.map(service => {
       service.category = newName;
       return saveService(service);
@@ -166,6 +174,8 @@
     await Promise.all(promises);
   };
 
+  /* --- LÉTREHOZÁS --- */
+
   const createNewCategory = async () => {
     if (!isLoggedIn.value) return;
     const newService = {
@@ -179,7 +189,6 @@
   };
 
   const addServiceToGroupEnd = async (group) => {
-    // Megpróbáljuk lemásolni a fejléc variánsait
     let variants = [{ variantName: "Normál", price: 0, duration: 30 }];
     if (group.headerVariants && group.headerVariants.length > 0) {
       variants = group.headerVariants.map(v => ({
@@ -197,10 +206,24 @@
     await postNewService(newService);
   };
 
+  const addNoteToGroupEnd = async (group) => {
+    const newNote = {
+      name: "Új megjegyzés...",
+      category: group.categoryName,
+      defaultPrice: 0,
+      orderIndex: 99999,
+      variants: []
+    };
+    await postNewService(newNote);
+  };
+
   const postNewService = async (dto) => {
     try {
       const payload = JSON.parse(JSON.stringify(dto));
+      // Itt is figyelünk az üres tömbre
+      if (!payload.variants) payload.variants = [];
       payload.variants.forEach(v => { v.price = 0; });
+
       await apiClient.post('/api/Service', payload);
       await fetchServices();
     } catch (err) { console.error(err); }
@@ -288,7 +311,12 @@
                     <div v-if="isLoggedIn" class="drag-handle-item">⋮⋮</div>
 
                     <div class="col-name">
-                      <input v-if="isLoggedIn" v-model="service.name" @change="saveService(service)" class="name-input" />
+                      <textarea v-if="isLoggedIn"
+                                v-model="service.name"
+                                @change="saveService(service)"
+                                @input="autoResize"
+                                class="name-input"
+                                rows="1"></textarea>
                       <span v-else class="name-text">{{ service.name }}</span>
 
                       <div v-if="isLoggedIn" class="row-tools">
@@ -319,7 +347,13 @@
                     <div v-if="isLoggedIn" class="drag-handle-item">⋮⋮</div>
 
                     <div class="note-cell">
-                      <input v-if="isLoggedIn" v-model="service.name" @change="saveService(service)" class="note-input" placeholder="Megjegyzés..." />
+                      <textarea v-if="isLoggedIn"
+                                v-model="service.name"
+                                @change="saveService(service)"
+                                @input="autoResize"
+                                class="note-input"
+                                rows="1"
+                                placeholder="Megjegyzés..."></textarea>
                       <span v-else class="note-text">{{ service.name }}</span>
                     </div>
 
@@ -333,8 +367,11 @@
             </draggable>
 
             <div v-if="isLoggedIn" class="group-footer">
-              <button @click="addServiceToGroupEnd(group)" class="add-row-btn">
-                + Sor hozzáadása
+              <button @click="addServiceToGroupEnd(group)" class="add-btn-secondary">
+                + Szolgáltatás
+              </button>
+              <button @click="addNoteToGroupEnd(group)" class="add-btn-secondary note-btn">
+                + Megjegyzés
               </button>
             </div>
 
@@ -347,14 +384,14 @@
 </template>
 
 <style scoped>
-  /* --- DARK THEME ALAPOK --- */
+  /* --- DARK THEME & LAYOUT --- */
   .smart-container {
     max-width: 1000px;
     margin: 0 auto;
     padding: 20px;
     box-sizing: border-box;
-    background-color: #000; /* Fekete háttér */
-    color: #ddd; /* Világosszürke szöveg */
+    background-color: #000;
+    color: #ddd;
     min-height: 100vh;
   }
 
@@ -371,7 +408,7 @@
 
   /* GOMBOK */
   .main-add-btn {
-    background-color: #d4af37; /* Arany gomb */
+    background-color: #d4af37;
     color: #000;
     border: none;
     padding: 10px 20px;
@@ -387,29 +424,39 @@
       background-color: #b5952f;
     }
 
-  .add-row-btn {
+  .group-footer {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+    padding: 5px 0;
+  }
+
+  .add-btn-secondary {
+    flex: 1;
     background: none;
     border: 1px dashed #444;
     color: #888;
-    width: 100%;
     padding: 8px;
-    margin-top: 5px;
     cursor: pointer;
     border-radius: 4px;
     font-size: 0.9rem;
     transition: all 0.2s;
   }
 
-    .add-row-btn:hover {
+    .add-btn-secondary:hover {
       background: #111;
       color: #d4af37;
       border-color: #666;
     }
 
+  .note-btn {
+    border-style: dotted;
+    font-style: italic;
+  }
+
   /* KATEGÓRIA */
   .category-block {
     margin-bottom: 40px;
-    /* Nincs fehér háttér, marad fekete */
   }
 
   .sortable-ghost {
@@ -449,7 +496,6 @@
     letter-spacing: 2px;
   }
 
-  /* HEADERS (Oszlopok) */
   .header-variant-input {
     width: 100%;
     text-align: center;
@@ -478,6 +524,8 @@
     text-align: center;
     display: block;
     width: 100%;
+    white-space: normal;
+    word-wrap: break-word;
   }
 
   /* ADATSOROK */
@@ -485,11 +533,11 @@
     display: flex;
     align-items: center;
     padding: 10px 0;
-    border-bottom: 1px solid #1a1a1a; /* Nagyon halvány elválasztó */
+    border-bottom: 1px solid #1a1a1a;
   }
 
     .data-row:hover {
-      background-color: #111; /* Kicsit világosabb fekete hover */
+      background-color: #111;
     }
 
   .col-name {
@@ -501,13 +549,17 @@
     overflow: hidden;
   }
 
-  /* Inputs Dark Mode */
   .name-input {
     width: 100%;
     border: none;
     background: transparent;
     font-size: 1rem;
     color: #eee;
+    resize: none;
+    overflow: hidden;
+    font-family: inherit;
+    line-height: 1.4;
+    padding: 0;
   }
 
     .name-input:focus {
@@ -518,13 +570,17 @@
   .name-text {
     font-size: 1rem;
     color: #ddd;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.4;
+    display: block;
+    width: 100%;
   }
 
   .data-row:hover .name-text {
     color: #fff;
   }
 
-  /* DRAG HANDLES */
   .drag-handle-cat {
     cursor: grab;
     font-size: 1.5rem;
@@ -539,6 +595,7 @@
     font-size: 1.2rem;
     display: flex;
     align-items: center;
+    height: 100%;
   }
 
     .drag-handle-item:hover {
@@ -568,6 +625,10 @@
     background: transparent;
     font-style: italic;
     color: #aaa;
+    resize: none;
+    overflow: hidden;
+    font-family: inherit;
+    line-height: 1.4;
   }
 
     .note-input:focus {
@@ -579,6 +640,9 @@
   .note-text {
     display: block;
     width: 100%;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.4;
   }
 
   .col-variants-group {
@@ -595,6 +659,7 @@
     justify-content: center;
     position: relative;
     text-align: center;
+    align-items: flex-start;
   }
 
   .header-item {
@@ -603,7 +668,6 @@
     min-height: 40px;
   }
 
-  /* TOOLS */
   .row-tools {
     display: flex;
     align-items: center;
@@ -631,11 +695,6 @@
 
     .icon-btn.trash:hover {
       color: #ff4444;
-    }
-
-    .icon-btn.tiny {
-      font-size: 1.2rem;
-      line-height: 1rem;
     }
 
   .variant-remove-btn {

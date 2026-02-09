@@ -51,7 +51,6 @@ namespace Soluvion.API.Controllers
 
             service.CompanyId = userCompanyId;
 
-            // Ha nincs kategória, legyen alapértelmezett
             if (string.IsNullOrEmpty(service.Category)) service.Category = "Egyéb";
 
             _context.Services.Add(service);
@@ -75,17 +74,22 @@ namespace Soluvion.API.Controllers
             if (existingService == null) return NotFound();
             if (existingService.CompanyId != userCompanyId) return Forbid();
 
-            // --- MEZŐK FRISSÍTÉSE (ITT VOLT A HIBA) ---
+            // --- JAVÍTÁS: ADATOK FRISSÍTÉSE ---
             existingService.Name = service.Name;
             existingService.DefaultPrice = service.DefaultPrice;
             existingService.DefaultDuration = service.DefaultDuration;
             existingService.OrderIndex = service.OrderIndex;
+            existingService.Category = service.Category; // Kategória mentése!
 
-            // JAVÍTÁS: A Category mezőt kifejezetten frissítjük!
-            existingService.Category = service.Category;
+            // --- JAVÍTÁS: NULL CHECK A VARIÁNSOKRA (Megjegyzés sor miatt) ---
+            if (service.Variants == null)
+            {
+                service.Variants = new List<ServiceVariant>();
+            }
 
-            // Variánsok kezelése (meglévő logika)
+            // Variánsok szinkronizálása
             var incomingIds = service.Variants.Select(v => v.Id).ToList();
+
             var variantsToDelete = existingService.Variants
                 .Where(v => v.Id != 0 && !incomingIds.Contains(v.Id))
                 .ToList();
