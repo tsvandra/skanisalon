@@ -16,6 +16,11 @@
   const draggedNoteContent = ref(null);
   const draggedFromServiceId = ref(null);
 
+  // --- KÉRÉS SORBAÁLLÍTÓ (QUEUE) ---
+  // Minden szolgáltatás ID-hoz tárolunk egy Promise láncot.
+  // Így a mentések szigorúan egymás után futnak le, nem írják felül egymást.
+  const saveQueues = new Map();
+
   /* --- SEGÉDFÜGGVÉNYEK --- */
 
   const sortVariants = (variants) => {
@@ -106,49 +111,57 @@
     { immediate: true }
   );
 
-  // --- JAVÍTÁS: refreshLocal paraméter bevezetése ---
-  // Ha false (alapértelmezett), akkor nem írjuk felül a lokális adatokat a szerver válaszával.
-  // Ez megakadályozza, hogy a lassú válasz felülírja a gyors gépelést.
+  // --- JAVÍTOTT MENTÉS QUEUE-VAL ---
   const saveService = async (serviceItem, refreshLocal = false) => {
-    try {
-      const payload = JSON.parse(JSON.stringify(serviceItem));
+    const serviceId = serviceItem.id;
 
-      if (!payload.variants) payload.variants = [];
-      else {
-        payload.variants.forEach(v => {
-          if (v.price === null || v.price === undefined) v.price = 0;
-        });
-      }
-
-      const response = await apiClient.put(`/api/Service/${serviceItem.id}`, payload);
-
-      // Csak akkor frissítünk a válaszból, ha kifejezetten kértük (pl. új variáns ID miatt)
-      if (refreshLocal && response.status === 200) {
-        // Itt megkeressük az elemet a memóriában és frissítjük
-        // (De csak ha muszáj, mert ez okozza az ugrálást)
-        /* Megjegyzés: A jelenlegi struktúrában (categories -> groups -> items)
-           a 'serviceItem' referencia, tehát ha azt módosítjuk, a UI frissül.
-           De most a 'serviceItem'-et nem bántjuk, csak ha 'refreshLocal' true.
-        */
-        const updated = response.data;
-
-        // Adattisztítás a válaszból
-        if (updated.variants) {
-          updated.variants = sortVariants(updated.variants);
-          updated.variants.forEach(v => { if (v.price === 0) v.price = null; });
-        }
-        if (updated.description === null) updated.description = "";
-
-        // Mezők átmásolása a reaktív objektumba
-        Object.assign(serviceItem, updated);
-      }
-
-    } catch (err) {
-      console.error("Hiba a mentesnel:", err);
+    // Ha nincs még sor ehhez a service-hez, inicializáljuk
+    if (!saveQueues.has(serviceId)) {
+      saveQueues.set(serviceId, Promise.resolve());
     }
+
+    // Hozzáadjuk a kérést a lánc végére
+    const currentQueue = saveQueues.get(serviceId);
+
+    const newPromise = currentQueue.then(async () => {
+      try {
+        // FONTOS: A payloadot itt generáljuk, közvetlenül a küldés előtt.
+        // Így biztosan a LEGFRISSEBB állapotot küldjük el, akkor is,
+        // ha a felhasználó már 3x módosított, miközben az előző mentés futott.
+        const payload = JSON.parse(JSON.stringify(serviceItem));
+
+        if (!payload.variants) payload.variants = [];
+        else {
+          payload.variants.forEach(v => {
+            if (v.price === null || v.price === undefined || v.price === '') v.price = 0;
+            else v.price = Number(v.price); // Biztosítjuk, hogy szám legyen
+          });
+        }
+
+        const response = await apiClient.put(`/api/Service/${serviceItem.id}`, payload);
+
+        if (refreshLocal && response.status === 200) {
+          const updated = response.data;
+          if (updated.variants) {
+            updated.variants = sortVariants(updated.variants);
+            updated.variants.forEach(v => { if (v.price === 0) v.price = null; });
+          }
+          if (updated.description === null) updated.description = "";
+          Object.assign(serviceItem, updated);
+        }
+      } catch (err) {
+        console.error("Hiba a mentesnel (Queue):", err);
+      }
+    });
+
+    // Frissítjük a sor végét az új promise-ra
+    saveQueues.set(serviceId, newPromise);
+
+    return newPromise;
   };
 
   /* --- UPDATE & DRAG --- */
+  // Itt nem változott semmi lényeges, de a saveService hívások most már biztonságosak
 
   const onServiceDragChange = async (event, group) => {
     if (event.added) {
@@ -170,11 +183,13 @@
         if (item.orderIndex !== counter || item.category !== group.categoryName) {
           item.orderIndex = counter;
           item.category = group.categoryName;
-          promises.push(saveService(item, false)); // false: sorrendnél se villogjon a UI
+          promises.push(saveService(item, false));
         }
         counter += 10;
       });
     });
+    // Itt nem kell await Promise.all, a queue kezeli a sorrendet elemenként
+    // De a biztonság kedvéért megvárhatjuk.
     if (promises.length > 0) await Promise.all(promises);
   };
 
@@ -241,12 +256,12 @@
       const sourceService = group.items.find(s => s.id === draggedFromServiceId.value);
       if (sourceService) {
         sourceService.description = '';
-        await saveService(sourceService, true); // Itt frissítünk, hogy biztos eltűnjön
+        await saveService(sourceService, true);
         break;
       }
     }
 
-    await saveService(targetService, true); // Itt is, hogy biztos megjelenjen
+    await saveService(targetService, true);
   };
 
   /* --- LÉTREHOZÁS --- */
@@ -307,8 +322,6 @@
     } catch (err) { console.error(err); }
   };
 
-  // --- VARIÁNS MÓDOSÍTÁS: ITT KELL A TRUE (Refresh) ---
-  // Mert itt új ID-kat kaphatunk a szervertől
   const removeVariant = async (service, vIndex, group) => {
     service.variants.splice(vIndex, 1);
     if (group) group.headerVariants = [...service.variants];
