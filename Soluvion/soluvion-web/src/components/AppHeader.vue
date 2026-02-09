@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, onMounted, inject } from 'vue';
+  import { ref, onMounted, inject, computed } from 'vue';
   import { useRouter } from 'vue-router';
   import api from '@/services/api';
 
@@ -26,6 +26,18 @@
     return `${baseUrl}${path}`;
   };
 
+  // --- LOGÓ MÉRETEZÉS (COMPUTED STYLE) ---
+  const logoStyle = computed(() => {
+    const height = company.value?.logoHeight || 50;
+    return {
+      height: `${height}px`,
+      width: 'auto', // A szélesség alkalmazkodik
+      display: 'block',
+      transition: 'height 0.1s ease-out'
+    };
+  });
+
+  // --- LOGÓ FELTÖLTÉS ---
   const triggerLogoUpload = () => logoInputRef.value.click();
 
   const onLogoSelected = async (event) => {
@@ -49,6 +61,20 @@
     }
   };
 
+  // --- LOGÓ MÉRET MENTÉSE (@change) ---
+  const saveLogoHeight = async () => {
+    if (!company.value) return;
+    try {
+      // Ha null lenne, default 50
+      if (!company.value.logoHeight) company.value.logoHeight = 50;
+
+      await api.put(`/api/Company/${company.value.id}`, company.value);
+      console.log("Logó méret mentve:", company.value.logoHeight);
+    } catch (err) {
+      console.error("Nem sikerült menteni a logó méretét", err);
+    }
+  };
+
   onMounted(() => {
     isLoggedIn.value = !!localStorage.getItem('salon_token');
   });
@@ -59,17 +85,32 @@
     <div class="container">
 
       <div class="logo-area">
+
         <router-link to="/" class="logo-link">
-          <img v-if="company?.logoUrl" :src="getLogoUrl(company.logoUrl)" :alt="company?.name" class="logo-img" />
-          <span v-else>{{ company?.name || 'Szalon' }}</span>
+          <img v-if="company?.logoUrl"
+               :src="getLogoUrl(company.logoUrl)"
+               :alt="company?.name"
+               :style="logoStyle" />
+          <span v-else class="text-logo">{{ company?.name || 'Szalon' }}</span>
         </router-link>
 
-        <div v-if="isLoggedIn" class="logo-edit-container">
-          <button @click="triggerLogoUpload" class="edit-logo-btn" title="Logó cseréje">
+        <div v-if="isLoggedIn" class="logo-admin-tools">
+
+          <button @click="triggerLogoUpload" class="tool-btn" title="Logó cseréje">
             <i v-if="isUploadingLogo" class="pi pi-spin pi-spinner"></i>
             <i v-else class="pi pi-camera"></i>
           </button>
           <input type="file" ref="logoInputRef" @change="onLogoSelected" accept="image/*" hidden />
+
+          <div class="slider-wrapper" title="Logó mérete">
+            <input type="range"
+                   v-model="company.logoHeight"
+                   min="30"
+                   max="150"
+                   step="5"
+                   @change="saveLogoHeight" />
+          </div>
+
         </div>
       </div>
 
@@ -96,7 +137,7 @@
   .app-header {
     background-color: var(--secondary-color);
     color: #fff;
-    padding: 0.8rem 0;
+    padding: 0.5rem 0; /* Kicsit kisebb padding, hogy a logó domináljon */
     position: sticky;
     top: 0;
     z-index: 1000;
@@ -113,52 +154,91 @@
     align-items: center;
   }
 
-  /* ÚJ LOGO ELRENDEZÉS */
+  /* LOGÓ TERÜLET */
   .logo-area {
     display: flex;
     align-items: center;
-    gap: 10px; /* Hely a logó és a gomb között */
-    position: relative;
+    gap: 15px;
   }
 
   .logo-link {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: var(--primary-color);
     text-decoration: none;
-    font-family: var(--font-family);
-    display: flex;
-    align-items: center;
-  }
-
-  .logo-img {
-    max-height: 50px;
-    width: auto;
     display: block;
   }
 
-  /* SZERKESZTŐ GOMB STÍLUS */
-  .edit-logo-btn {
-    background: rgba(255, 255, 255, 0.1);
+  .text-logo {
+    font-size: 1.5rem;
+    font-weight: bold;
     color: var(--primary-color);
-    border: 1px solid var(--primary-color);
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    font-size: 1rem;
+    font-family: var(--font-family);
+  }
+
+  /* ADMIN TOOLBAR (ÚJ) */
+  .logo-admin-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 4px 8px;
+    border-radius: 20px;
+    border: 1px solid #444;
+    /* Animáció megjelenéskor */
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  .tool-btn {
+    background: transparent;
+    border: none;
+    color: #ccc;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    padding: 4px;
+    transition: color 0.2s;
   }
 
-    .edit-logo-btn:hover {
-      background: var(--primary-color);
-      color: #000;
+    .tool-btn:hover {
+      color: var(--primary-color);
       transform: scale(1.1);
     }
 
+  .slider-wrapper {
+    display: flex;
+    align-items: center;
+  }
+
+  /* Csúszka stílus - kicsi és kompakt */
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 60px; /* Rövidebb, mint a footeré, hogy elférjen a fejlécben */
+    height: 4px;
+    background: #555;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--primary-color, #d4af37);
+      cursor: pointer;
+    }
+
+  /* MENU & NAV */
   nav {
     display: flex;
     gap: 1.5rem;

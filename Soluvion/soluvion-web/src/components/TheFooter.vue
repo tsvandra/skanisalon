@@ -9,12 +9,12 @@
 
   // Stílus generálása a magasság (slider) alapján
   const footerStyle = computed(() => {
-    // Alapértelmezett magasság 250px, ha nincs beállítva
+    // Ha véletlenül 0 vagy null jönne a backendről, akkor 250 legyen az alap
     const height = company.value?.footerHeight || 250;
 
     const baseStyle = {
       minHeight: `${height}px`, // Itt használjuk a csúszka értékét
-      transition: 'min-height 0.2s ease' // Finom animáció
+      transition: 'min-height 0.1s ease-out' // Gyorsabb reakció a csúszkára
     };
 
     if (company.value?.footerImageUrl) {
@@ -54,14 +54,13 @@
   };
 
   // --- MAGASSÁG MENTÉSE ---
-  // Csak akkor hívjuk meg, ha elengedte a csúszkát (@change), hogy kíméljük a szervert
+  // Csak akkor hívjuk meg, ha elengedte a csúszkát (@change)
   const saveHeight = async () => {
     if (!company.value) return;
     try {
-      // A CompanyController.UpdateCompany-t használjuk
-      // Fontos: Elküldjük a teljes objektumot, vagy csak amit kell.
-      // A jelenlegi backend UpdateCompany mindent felülír, amit kap,
-      // ezért küldjük a company.value-t, amiben a v-model már frissítette a footerHeight-et.
+      // Biztonsági ellenőrzés: ha esetleg null lenne az érték, beállítjuk
+      if (!company.value.footerHeight) company.value.footerHeight = 250;
+
       await api.put(`/api/Company/${company.value.id}`, company.value);
       console.log("Magasság mentve:", company.value.footerHeight);
     } catch (err) {
@@ -82,18 +81,20 @@
 
       <div v-if="isLoggedIn" class="footer-admin-panel">
 
-        <button @click="triggerUpload" class="btn-admin">
+        <button @click="triggerUpload" class="btn-admin" title="Háttérkép cseréje">
           <i v-if="isUploading" class="pi pi-spin pi-spinner"></i>
-          <i v-else class="pi pi-camera"></i> Képcsere
+          <i v-else class="pi pi-camera"></i>
         </button>
         <input type="file" ref="footerInputRef" @change="onFileSelected" accept="image/*" hidden />
 
+        <div class="separator"></div>
+
         <div class="height-control">
-          <i class="pi pi-arrows-v"></i>
+          <i class="pi pi-arrows-v" style="font-size: 0.8rem"></i>
           <input type="range"
                  v-model="company.footerHeight"
-                 min="100"
-                 max="600"
+                 min="50"
+                 max="450"
                  step="10"
                  @change="saveHeight"
                  title="Lábléc magassága" />
@@ -107,28 +108,29 @@
 <style scoped>
   .app-footer {
     position: relative;
-    /* A min-height-et most már a style binding kezeli */
     display: flex;
     align-items: flex-end;
     justify-content: center;
     color: #fff;
     margin-top: auto;
     background-color: #2c2c2c;
+    /* Fontos: overflow hidden, hogy ha lekicsinyítjük, ne lógjon ki semmi */
+    overflow: hidden;
   }
 
   .overlay {
     position: absolute;
     inset: 0;
     background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.1));
-    pointer-events: none; /* Átkattintható legyen, hogy a gombok működjenek alatta */
+    pointer-events: none;
   }
 
   .content {
     position: relative;
-    z-index: 2; /* Magasabb z-index, hogy kattintható legyen */
+    z-index: 2;
     text-align: center;
     width: 100%;
-    padding: 2rem;
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -137,52 +139,83 @@
 
   .footer-info h3 {
     color: var(--primary-color, #d4af37);
-    margin-bottom: 0.5rem;
-    font-size: 1.5rem;
+    margin-bottom: 0.3rem;
+    font-size: 1.4rem;
     text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    margin-top: 0;
   }
 
-  /* ADMIN PANEL STÍLUS */
+  .footer-info p {
+    color: #aaa;
+    font-size: 0.85rem;
+    margin: 0;
+  }
+
+  /* ADMIN PANEL STÍLUS (Kompaktabb lett) */
   .footer-admin-panel {
     display: flex;
     align-items: center;
-    gap: 15px;
-    background: rgba(0, 0, 0, 0.7);
-    padding: 8px 15px;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 5px 12px;
     border-radius: 20px;
-    border: 1px solid #444;
-    margin-top: 10px;
+    border: 1px solid #555;
+    margin-top: 5px;
+    backdrop-filter: blur(4px);
+  }
+
+  .separator {
+    width: 1px;
+    height: 20px;
+    background: #555;
   }
 
   .btn-admin {
     background: transparent;
-    border: 1px solid #aaa;
+    border: none;
     color: #ddd;
-    padding: 5px 10px;
-    border-radius: 4px;
+    padding: 5px;
     cursor: pointer;
-    font-size: 0.8rem;
     display: flex;
     align-items: center;
-    gap: 5px;
+    justify-content: center;
+    transition: color 0.2s;
   }
 
     .btn-admin:hover {
-      border-color: var(--primary-color);
-      color: #fff;
-      background: rgba(255,255,255,0.1);
+      color: var(--primary-color);
+      transform: scale(1.1);
     }
 
   .height-control {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 8px;
     color: #aaa;
   }
 
-  /* Csúszka stílus */
+  /* Csúszka stílus testreszabása (hogy szebb legyen sötét módban) */
   input[type=range] {
-    width: 100px;
-    cursor: pointer;
+    -webkit-appearance: none;
+    width: 120px;
+    height: 4px;
+    background: #555;
+    border-radius: 2px;
+    outline: none;
   }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--primary-color, #d4af37);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+      input[type=range]::-webkit-slider-thumb:hover {
+        transform: scale(1.2);
+      }
 </style>

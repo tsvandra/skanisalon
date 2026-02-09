@@ -76,7 +76,7 @@ namespace Soluvion.API.Models
 
         [MaxLength(200)]
         public string? LogoPublicId { get; set; } // Cloudinary ID törléshez
-
+        public int LogoHeight { get; set; } = 50;
         [MaxLength(500)]
         public string? FooterImageUrl { get; set; } // Lábléc kép URL
 
