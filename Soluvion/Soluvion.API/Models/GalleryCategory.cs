@@ -9,6 +9,7 @@ namespace Soluvion.API.Models
 
         [MaxLength(50)]
         public string Name { get; set; } = string.Empty;
+        public int OrderIndex { get; set; } = 0;
         public int CompanyId { get; set; }
 
         [JsonIgnore]

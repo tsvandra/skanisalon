@@ -199,11 +199,11 @@ namespace Soluvion.API.Controllers
             if (companyId <= 0) return BadRequest();
             return await _context.GalleryCategories
                 .Where(c => c.CompanyId == companyId)
-                .OrderBy(c => c.Name) // Itt lehetne OrderIndex is, ha van
+                .OrderBy(c => c.OrderIndex) // Rendezés OrderIndex szerint!
                 .ToListAsync();
         }
 
-        // POST: api/Gallery/categories (Új Galéria létrehozása)
+        // POST: api/Gallery/categories
         [HttpPost("categories")]
         [Authorize]
         public async Task<ActionResult<GalleryCategory>> CreateCategory([FromBody] CategoryDto dto)
@@ -211,10 +211,16 @@ namespace Soluvion.API.Controllers
             int companyId = GetCurrentCompanyId();
             if (companyId == 0) return Unauthorized();
 
+            // Megkeressük a legkisebb indexet, hogy az új biztosan elé kerüljön (vagy 0)
+            int minIndex = await _context.GalleryCategories
+                .Where(c => c.CompanyId == companyId)
+                .MinAsync(c => (int?)c.OrderIndex) ?? 0;
+
             var newCat = new GalleryCategory
             {
                 Name = dto.Name,
-                CompanyId = companyId
+                CompanyId = companyId,
+                OrderIndex = minIndex - 1 // A lista tetejére tesszük
             };
             _context.GalleryCategories.Add(newCat);
             await _context.SaveChangesAsync();
@@ -222,34 +228,38 @@ namespace Soluvion.API.Controllers
             return Ok(newCat);
         }
 
-        // PUT: api/Gallery/categories/5 (Átnevezés)
+        // PUT: api/Gallery/categories/5 (Átnevezés VAGY Sorrendezés)
         [HttpPut("categories/{id}")]
         [Authorize]
-        public async Task<IActionResult> RenameCategory(int id, [FromBody] CategoryDto dto)
+        public async Task<IActionResult> UpdateCategory(int id, [FromBody] CategoryUpdateDto dto)
         {
             int companyId = GetCurrentCompanyId();
             var cat = await _context.GalleryCategories.FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == companyId);
 
             if (cat == null) return NotFound();
 
-            cat.Name = dto.Name;
+            // Ha jött név, frissítjük
+            if (!string.IsNullOrEmpty(dto.Name)) cat.Name = dto.Name;
+
+            // Mindig frissítjük az indexet
+            cat.OrderIndex = dto.OrderIndex;
+
             await _context.SaveChangesAsync();
             return Ok();
         }
 
-        // DELETE: api/Gallery/categories/5 (Galéria törlése)
+        // DELETE: api/Gallery/categories/5
         [HttpDelete("categories/{id}")]
         [Authorize]
         public async Task<IActionResult> DeleteCategory(int id)
         {
             int companyId = GetCurrentCompanyId();
             var cat = await _context.GalleryCategories
-                .Include(c => c.Images) // Hogy lássuk, van-e benne kép
+                .Include(c => c.Images)
                 .FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == companyId);
 
             if (cat == null) return NotFound();
 
-            // Csak akkor engedjük törölni, ha üres (biztonsági okokból)
             if (cat.Images != null && cat.Images.Any())
             {
                 return BadRequest("A kategória nem törölhető, mert képeket tartalmaz! Előbb töröld vagy mozgasd át a képeket.");
@@ -260,18 +270,4 @@ namespace Soluvion.API.Controllers
             return NoContent();
         }
     }
-
-    // DTO-k
-    //public class GalleryImageUpdateDto
-    //{
-    //    public int Id { get; set; }
-    //    public string Title { get; set; } = string.Empty;
-    //    public string CategoryName { get; set; } = string.Empty;
-    //    public int OrderIndex { get; set; }
-    //}
-
-    //public class CategoryDto
-    //{
-    //    public string Name { get; set; } = string.Empty;
-    //}
 }
