@@ -28,8 +28,7 @@ namespace Soluvion.API.Controllers
             return 0;
         }
 
-        // GET: api/Service?companyId=1
-        // Bárki láthatja az árakat
+        // GET: api/Service
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Service>>> GetServices(int companyId)
         {
@@ -43,92 +42,52 @@ namespace Soluvion.API.Controllers
         }
 
         // POST: api/Service
-        // Csak Admin vehet fel új árat!
         [HttpPost]
         [Authorize]
         public async Task<ActionResult<Service>> PostService(Service service)
         {
-            int companyId = GetCurrentCompanyId();
-            if (companyId == 0) return Unauthorized("Érvénytelen token vagy hiányzó cégadatok.");
+            int userCompanyId = GetCurrentCompanyId();
+            if (userCompanyId == 0) return Unauthorized("Nincs érvényes CompanyId.");
 
-            // 2. Felülírjuk a beküldött adatot a biztosra (hogy ne lehessen más cég nevében írni)
-            service.CompanyId = companyId;
+            service.CompanyId = userCompanyId;
 
-            if (service.OrderIndex == 0)
-            {
-                var maxIndex = await _context.Services
-                    .Where(s => s.CompanyId == companyId)
-                    .MaxAsync(s => (int?)s.OrderIndex) ?? 0;
-                service.OrderIndex = maxIndex + 1;
-            }
+            // Ha nincs kategória, legyen alapértelmezett
+            if (string.IsNullOrEmpty(service.Category)) service.Category = "Egyéb";
 
-            if (service.Variants != null)
-            {
-                foreach (var variant in service.Variants)
-                {
-                    variant.Id = 0;
-                }
-            }
-
-            // 3. Mentés
             _context.Services.Add(service);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetServices), new { companyId = service.CompanyId }, service);
+            return CreatedAtAction("GetServices", new { id = service.Id }, service);
         }
 
+        // PUT: api/Service/5
         [HttpPut("{id}")]
         [Authorize]
         public async Task<IActionResult> PutService(int id, Service service)
         {
-            if (id != service.Id) return BadRequest("Az ID nem egyezik.");
+            if (id != service.Id) return BadRequest();
 
             int userCompanyId = GetCurrentCompanyId();
-            if (userCompanyId == 0) return Unauthorized();
-
-            if (service.Variants == null) service.Variants = new List<ServiceVariant>();
-
             var existingService = await _context.Services
                 .Include(s => s.Variants)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (existingService == null) return NotFound();
+            if (existingService.CompanyId != userCompanyId) return Forbid();
 
-            if (existingService.CompanyId != userCompanyId)
-            {
-                return Forbid();
-            }
-
+            // --- MEZŐK FRISSÍTÉSE (ITT VOLT A HIBA) ---
             existingService.Name = service.Name;
             existingService.DefaultPrice = service.DefaultPrice;
             existingService.DefaultDuration = service.DefaultDuration;
-            existingService.PictogramLink = service.PictogramLink;
             existingService.OrderIndex = service.OrderIndex;
 
-            foreach (var incomingVariant in service.Variants)
-            {
-                if (incomingVariant.Id == 0)
-                {
-                    existingService.Variants.Add(incomingVariant);
-                }
-                else
-                {
-                    var existingVariant = existingService.Variants
-                        .FirstOrDefault(v => v.Id == incomingVariant.Id);
+            // JAVÍTÁS: A Category mezőt kifejezetten frissítjük!
+            existingService.Category = service.Category;
 
-                    if (existingVariant != null)
-                    {
-                        existingVariant.VariantName = incomingVariant.VariantName;
-                        existingVariant.Price = incomingVariant.Price;
-                        existingVariant.Duration = incomingVariant.Duration;
-                    }
-                }
-            }
-
-            var incomingIds = service.Variants.Select(v  => v.Id).ToList();
-
+            // Variánsok kezelése (meglévő logika)
+            var incomingIds = service.Variants.Select(v => v.Id).ToList();
             var variantsToDelete = existingService.Variants
-                .Where(v  => v.Id != 0  && !incomingIds.Contains(v.Id))
+                .Where(v => v.Id != 0 && !incomingIds.Contains(v.Id))
                 .ToList();
 
             foreach (var variant in variantsToDelete)
@@ -136,18 +95,37 @@ namespace Soluvion.API.Controllers
                 _context.ServiceVariants.Remove(variant);
             }
 
+            foreach (var variant in service.Variants)
+            {
+                if (variant.Id == 0)
+                {
+                    existingService.Variants.Add(variant);
+                }
+                else
+                {
+                    var existingVariant = existingService.Variants.FirstOrDefault(v => v.Id == variant.Id);
+                    if (existingVariant != null)
+                    {
+                        existingVariant.VariantName = variant.VariantName;
+                        existingVariant.Price = variant.Price;
+                        existingVariant.Duration = variant.Duration;
+                    }
+                }
+            }
+
             try
             {
                 await _context.SaveChangesAsync();
                 return Ok(existingService);
             }
-            catch (Exception ex)
+            catch (DbUpdateConcurrencyException)
             {
-                return StatusCode(500, $"Belso hiba: {ex.Message} {ex.InnerException?.Message}");
+                if (!_context.Services.Any(e => e.Id == id)) return NotFound();
+                else throw;
             }
         }
+
         // DELETE: api/Service/5
-        // Csak Admin törölhet!
         [HttpDelete("{id}")]
         [Authorize]
         public async Task<IActionResult> DeleteService(int id)
@@ -155,13 +133,8 @@ namespace Soluvion.API.Controllers
             var service = await _context.Services.FindAsync(id);
             if (service == null) return NotFound();
 
-            // Biztonsági ellenőrzés: A törölni kívánt szolgáltatás ehhez a céghez tartozik?
             int userCompanyId = GetCurrentCompanyId();
-
-            if (service.CompanyId != userCompanyId)
-            {
-                return Forbid("Nincs jogod más cég szolgáltatását törölni!");
-            }
+            if (service.CompanyId != userCompanyId) return Forbid();
 
             _context.Services.Remove(service);
             await _context.SaveChangesAsync();
