@@ -414,7 +414,8 @@
                                        mode="currency" currency="EUR" locale="hu-HU" :minFractionDigits="0"
                                        class="price-input"
                                        placeholder=""
-                                       @input="saveService(service, false)" />
+                                       @update:modelValue="saveService(service, false)"
+                                       @blur="saveService(service, false)" />
                           <span v-else class="price-display">
                             {{ formatCurrency(variant.price) }}
                           </span>
