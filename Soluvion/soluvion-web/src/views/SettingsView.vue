@@ -1,6 +1,6 @@
 <script setup>
   import { ref, onMounted } from 'vue';
-  // PrimeVue komponensek importálása (Feltételezem, hogy regisztrálva vannak globálisan vagy itt kell)
+  // PrimeVue komponensek
   import InputText from 'primevue/inputtext';
   import Textarea from 'primevue/textarea';
   import Button from 'primevue/button';
@@ -9,32 +9,16 @@
   import api from '@/services/api';
   import { getCompanyIdFromToken } from '../utils/jwt';
 
-  // Ezt használja a felület (egyesítettük a form-al)
-  
-  const companyData = ref({}); 
-    //name: '',
-    //email: '',
-    //phone: '',
-    //postalCode: '',
-    //city: '',
-    //streetName: '',
-    //houseNumber: '',
-    //openingHoursTitle: '',
-    //openingHoursDescription: '',
-    //openingTimeSlots: '',
-    //openingExtraInfo: '',
-    //facebookUrl: '',
-    //instagramUrl: '',
-    //tikTokUrl: '',
-    //mapEmbedUrl: '',
-    //primaryColor: '#d4af37',
-    //secondaryColor: '#1a1a1a',
-    //logoUrl: ''
-
+  const companyData = ref({});
   const isLoading = ref(false);
   const isSaving = ref(false);
+  const isUploading = ref(false); // Új state a feltöltéshez
   const successMsg = ref('');
   const errorMsg = ref('');
+
+  // Refek a rejtett fájl inputokhoz
+  const logoInputRef = ref(null);
+  const footerInputRef = ref(null);
 
   // 2. Adatok betöltése
   const loadCompanyData = async () => {
@@ -46,13 +30,13 @@
 
     isLoading.value = true;
     try {
-      // API hívás a dinamikus ID-val
       const res = await api.get(`/api/Company/${companyId}`);
-
-      // JAVÍTÁS: A felület változóját töltjük fel az adatokkal!
-      // Spread operatorral (...) másoljuk, hogy biztonságos legyen
-      companyData.value = { ...res.data };
-
+      // Default értékek beállítása, ha null jönne a backendről
+      const data = res.data;
+      if (!data.logoHeight) data.logoHeight = 50;
+      if (!data.footerHeight) data.footerHeight = 250;
+      
+      companyData.value = { ...data };
     } catch (err) {
       console.error("Hiba a betöltéskor:", err);
       errorMsg.value = "Nem sikerült betölteni a cég adatait.";
@@ -61,7 +45,40 @@
     }
   };
 
-  // 3. Mentés
+  // --- ÚJ: FÁJLFELTÖLTÉS LOGIKA ---
+  const handleUpload = async (event, type) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    isUploading.value = true;
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // A megfelelő végpont kiválasztása
+    const endpoint = type === 'logo' ? '/api/Company/upload/logo' : '/api/Company/upload/footer';
+
+    try {
+      const res = await api.post(endpoint, formData, { 
+          headers: { 'Content-Type': undefined } 
+      });
+      
+      // Frissítjük a lokális nézetet, hogy azonnal látszódjon a csere
+      if (type === 'logo') {
+          companyData.value.logoUrl = res.data.url;
+      } else {
+          companyData.value.footerImageUrl = res.data.url;
+      }
+      successMsg.value = "Kép sikeresen feltöltve!";
+      setTimeout(() => successMsg.value = '', 3000);
+    } catch (err) {
+      console.error(err);
+      errorMsg.value = "Hiba a feltöltés során.";
+    } finally {
+      isUploading.value = false;
+    }
+  };
+
+  // 3. Mentés (Ez menti a szöveges adatokat ÉS a csúszkák értékeit is)
   const saveSettings = async () => {
     const companyId = getCompanyIdFromToken();
     if (!companyId) return;
@@ -71,21 +88,20 @@
     errorMsg.value = '';
 
     try {
-      // JAVÍTÁS: A 'companyData'-t küldjük vissza, amit a felületen szerkesztettél
       await api.put(`/api/Company/${companyId}`, companyData.value);
 
       successMsg.value = "A változtatások sikeresen mentve!";
 
-      // Azonnali színfrissítés, hogy lásd az eredményt
+      // Azonnali színfrissítés
       if (companyData.value.primaryColor) {
         document.documentElement.style.setProperty('--primary-color', companyData.value.primaryColor);
         document.documentElement.style.setProperty('--secondary-color', companyData.value.secondaryColor);
       }
-
-      // Kis idő múlva eltüntetjük az üzenetet
+      
+      // Mivel a Header/Footer globális state-ből olvashat, érdemes lehet frissíteni az oldalt
+      // vagy használni a provide/inject pattern-t. 
+      // Most maradunk az egyszerű megoldásnál:
       setTimeout(() => successMsg.value = '', 3000);
-      // Opcionális: oldal frissítése, ha a fejlécben a nevet is frissíteni akarod
-      // setTimeout(() => window.location.reload(), 1500);
 
     } catch (err) {
       console.error("Mentési hiba:", err);
@@ -103,7 +119,7 @@
 <template>
   <div class="settings-container">
     <h1>Cégbeállítások</h1>
-    <p class="intro">Itt módosíthatja a weboldalán megjelenő adatokat.</p>
+    <p class="intro">Itt módosíthatja a weboldalán megjelenő adatokat és a dizájnt.</p>
 
     <div v-if="successMsg" class="alert-box success">{{ successMsg }}</div>
     <div v-if="errorMsg" class="alert-box error">{{ errorMsg }}</div>
@@ -192,23 +208,72 @@
         </TabPanel>
 
         <TabPanel header="Megjelenés">
-          <p>Figyelem: A színek megváltoztatása azonnal hatással van az oldalra!</p>
-          <div class="color-grid">
-            <div class="field">
-              <label>Elsődleges Szín (Gombok, Ikonok)</label>
-              <div class="color-input-wrapper">
-                <input type="color" v-model="companyData.primaryColor" />
-                <span>{{ companyData.primaryColor }}</span>
+          
+          <div class="design-section">
+            <h3>Logó beállítások</h3>
+            <div class="design-controls">
+              <div class="preview-box logo-preview">
+                 <img v-if="companyData.logoUrl" :src="companyData.logoUrl" :style="{ height: companyData.logoHeight + 'px' }" />
+                 <span v-else>Nincs logó feltöltve</span>
               </div>
-            </div>
-            <div class="field">
-              <label>Másodlagos Szín (Háttér)</label>
-              <div class="color-input-wrapper">
-                <input type="color" v-model="companyData.secondaryColor" />
-                <span>{{ companyData.secondaryColor }}</span>
+              
+              <div class="control-group">
+                <Button label="Logó feltöltése" icon="pi pi-upload" @click="logoInputRef.click()" class="p-button-outlined" :loading="isUploading" />
+                <input type="file" ref="logoInputRef" hidden @change="(e) => handleUpload(e, 'logo')" accept="image/*" />
+                
+                <div class="slider-container">
+                   <label>Logó mérete: {{ companyData.logoHeight }}px</label>
+                   <input type="range" v-model="companyData.logoHeight" min="30" max="150" step="2" class="custom-range" />
+                </div>
               </div>
             </div>
           </div>
+
+          <hr class="separator" />
+
+          <div class="design-section">
+            <h3>Lábléc Háttérkép</h3>
+            <div class="design-controls">
+              <div class="preview-box footer-preview" 
+                   :style="{ backgroundImage: `url(${companyData.footerImageUrl})` }">
+                 <span v-if="!companyData.footerImageUrl" style="color:white; z-index:2;">Nincs háttérkép</span>
+                 <div class="overlay"></div>
+              </div>
+              
+              <div class="control-group">
+                <Button label="Lábléc cseréje" icon="pi pi-image" @click="footerInputRef.click()" class="p-button-outlined" :loading="isUploading" />
+                <input type="file" ref="footerInputRef" hidden @change="(e) => handleUpload(e, 'footer')" accept="image/*" />
+                
+                <div class="slider-container">
+                   <label>Lábléc magassága: {{ companyData.footerHeight }}px</label>
+                   <input type="range" v-model="companyData.footerHeight" min="50" max="600" step="10" class="custom-range" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <hr class="separator" />
+
+          <div class="design-section">
+            <h3>Színek</h3>
+            <div class="color-grid">
+              <div class="field">
+                <label>Elsődleges Szín (Gombok, Ikonok)</label>
+                <div class="color-input-wrapper">
+                  <input type="color" v-model="companyData.primaryColor" />
+                  <span>{{ companyData.primaryColor }}</span>
+                </div>
+              </div>
+              <div class="field">
+                <label>Másodlagos Szín (Háttér)</label>
+                <div class="color-input-wrapper">
+                  <input type="color" v-model="companyData.secondaryColor" />
+                  <span>{{ companyData.secondaryColor }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </TabPanel>
 
       </TabView>
@@ -232,20 +297,9 @@
     padding: 2rem;
   }
 
-  h1 {
-    color: var(--primary-color);
-  }
-
-  h3 {
-    margin-top: 1.5rem;
-    margin-bottom: 0.5rem;
-    color: #555;
-  }
-
-  .intro {
-    margin-bottom: 2rem;
-    color: #666;
-  }
+  h1 { color: var(--primary-color); }
+  h3 { margin-top: 1.5rem; margin-bottom: 0.5rem; color: #555; }
+  .intro { margin-bottom: 2rem; color: #666; }
 
   .form-wrapper {
     background: white;
@@ -254,92 +308,108 @@
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
   }
 
-  .field {
-    margin-bottom: 1.5rem;
-  }
+  /* Mezők */
+  .field { margin-bottom: 1.5rem; }
+  .field label { display: block; margin-bottom: 0.5rem; font-weight: bold; color: #333; }
 
-    .field label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: bold;
-      color: #333;
-    }
+  /* PrimeVue input fix */
+  :deep(.p-inputtext), :deep(.p-inputtextarea) { width: 100%; }
+  .w-full { width: 100%; }
+  
+  .field-group { display: flex; gap: 1rem; }
+  .field-group .field { flex: 1; }
 
-  /* PrimeVue inputok teljes szélessége */
-  :deep(.p-inputtext),
-  :deep(.p-inputtextarea) {
-    width: 100%;
-  }
+  /* Alert boxok */
+  .alert-box { padding: 1rem; border-radius: 4px; margin-bottom: 1rem; text-align: center; font-weight: bold; }
+  .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+  .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+  .loading { background: #e2e3e5; color: #383d41; }
 
-  .w-full {
-    width: 100%;
-  }
-
-  .field-group {
-    display: flex;
-    gap: 1rem;
-  }
-
-    .field-group .field {
-      flex: 1;
-    }
-
-  .alert-box {
-    padding: 1rem;
-    border-radius: 4px;
-    margin-bottom: 1rem;
-    text-align: center;
-    font-weight: bold;
-  }
-
-  .success {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-  }
-
-  .error {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-  }
-
-  .loading {
-    background: #e2e3e5;
-    color: #383d41;
-  }
-
-  .actions {
-    margin-top: 2rem;
-    text-align: right;
-  }
-
+  .actions { margin-top: 2rem; text-align: right; }
+  
   .save-btn {
     background-color: var(--primary-color) !important;
     border: none !important;
     padding: 10px 20px;
   }
+  .save-btn:hover { filter: brightness(90%); }
 
-    .save-btn:hover {
-      filter: brightness(90%);
-    }
+  /* --- ÚJ DIZÁJN SZEKCIÓ STÍLUSOK --- */
+  .design-section {
+    margin-bottom: 20px;
+  }
 
-  /* Color picker stílus */
-  .color-input-wrapper {
+  .design-controls {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .preview-box {
+    width: 100%;
+    max-width: 300px;
+    height: 120px;
+    border: 1px dashed #ccc;
     display: flex;
     align-items: center;
-    gap: 10px;
-    border: 1px solid #ddd;
-    padding: 5px;
+    justify-content: center;
+    background: #f9f9f9;
+    overflow: hidden;
+    position: relative;
     border-radius: 4px;
-    width: fit-content;
   }
 
-  input[type="color"] {
-    width: 50px;
-    height: 40px;
-    border: none;
-    cursor: pointer;
-    background: none;
+  .logo-preview img {
+    height: 50px; /* Alap, de dinamikusan változik */
+    width: auto;
   }
+
+  .footer-preview {
+    background-size: auto 100%; /* Magasságra igazodik */
+    background-repeat: repeat-x;
+    background-position: center bottom;
+  }
+  
+  .overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.5), transparent);
+  }
+
+  .control-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+  }
+
+  .slider-container {
+      margin-top: 10px;
+  }
+  .slider-container label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #666;
+  }
+
+  .custom-range {
+      width: 100%;
+      cursor: pointer;
+      accent-color: var(--primary-color);
+  }
+
+  .separator {
+      border: 0;
+      border-top: 1px solid #eee;
+      margin: 20px 0;
+  }
+
+  /* Color picker */
+  .color-grid { display: flex; gap: 20px; }
+  .color-input-wrapper {
+    display: flex; align-items: center; gap: 10px;
+    border: 1px solid #ddd; padding: 5px; border-radius: 4px; width: fit-content;
+  }
+  input[type="color"] { width: 50px; height: 40px; border: none; cursor: pointer; background: none; }
 </style>

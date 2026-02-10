@@ -229,4 +229,32 @@ Refactoring / Clean Code:
 - Létrehozva: `src/composables/useAutoSaveQueue.js`: A mentési sor (queue) logika kiszervezése, hogy újrahasznosítható legyen az alkalmazásban (DRY elv).
 - DTO-k kiszervezése külön fájlokba a Backend oldalon.
 
+--------------------------------------------------------------------------------
+
+*** BEFEJEZVE - FEATURE 14: ARCULAT KEZELÉS & BEÁLLÍTÁSOK REFAKTOR ***
+Dátum: 2026-02-10
+Státusz: Kész
+
+Áttekintés:
+"White Label" képességek implementálása: az adminisztrátorok testreszabhatják a szalon arculatát (Logó, Lábléc háttérkép, Színek, Méretezés) egy dedikált Beállítások felületen.
+
+Backend Változtatások (CompanyController & Models):
+- Company modell bővítése: `LogoUrl`, `LogoHeight`, `FooterImageUrl`, `FooterHeight` mezők hozzáadása.
+- Dedikált végpontok létrehozása: `POST /api/Company/upload/logo` és `POST /api/Company/upload/footer` a Cloudinary feltöltéshez és a régi képek törléséhez.
+- `PUT /api/Company/{id}` frissítése a dizájn paraméterek (méretek, színek) kezelésére.
+
+Frontend Változtatások (SettingsView & Komponensek):
+- SettingsView.vue refaktorálása:
+  - PrimeVue `TabView` bevezetése a jobb átláthatóságért (Alapadatok / Megjelenés fülek).
+  - Valós idejű csúszkák (slider) a Logó és Lábléc magasságának állításához.
+  - Fájlfeltöltők integrálása az arculati elemekhez.
+- AppHeader.vue & TheFooter.vue frissítése:
+  - A szerkesztő eszközök (gombok, inputok) eltávolítása a megjelenítő komponensekből ("Separation of Concerns").
+  - A komponensek mostantól "buta" megjelenítők, amelyek a globális state változásaira reagálnak.
+- TheFooter.vue létrehozása: Új komponens a testreszabható lábléc háttér és magasság kezelésére.
+
+UX Döntések:
+- A dizájn vezérlők átmozgatása a "Beállítások" menübe, elkerülve a véletlen módosításokat a napi használat során.
+- Valós idejű előnézet: A Beállításokban húzott csúszkák azonnal frissítik a Fejlécet/Láblécet a reaktív state injektáláson keresztül.
+
 ================================================================================

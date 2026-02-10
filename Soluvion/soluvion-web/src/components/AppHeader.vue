@@ -1,14 +1,12 @@
 <script setup>
   import { ref, onMounted, inject, computed } from 'vue';
   import { useRouter } from 'vue-router';
-  import api from '@/services/api';
 
+  // Csak a megjelenítéshez szükséges dolgok maradnak
   const company = inject('company');
   const router = useRouter();
   const isMenuOpen = ref(false);
   const isLoggedIn = ref(false);
-  const isUploadingLogo = ref(false);
-  const logoInputRef = ref(null);
 
   const toggleMenu = () => isMenuOpen.value = !isMenuOpen.value;
 
@@ -24,50 +22,15 @@
     return `${baseUrl}${path}`;
   };
 
-  // --- JAVÍTVA: NINCS TRANSITION ---
-  // Azért vettük ki, hogy a csúszka húzásakor azonnal reagáljon
+  // A stílus marad, hogy reagáljon a Settings-ben történő változásokra
   const logoStyle = computed(() => {
     const height = company.value?.logoHeight || 50;
     return {
       height: `${height}px`,
       width: 'auto',
-      display: 'block',
-      // transition: 'height 0.1s ease-out' <--- EZT TÖRÖLTÜK
+      display: 'block'
     };
   });
-
-  const triggerLogoUpload = () => logoInputRef.value.click();
-
-  const onLogoSelected = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    isUploadingLogo.value = true;
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const res = await api.post('/api/Company/upload/logo', formData, {
-        headers: { 'Content-Type': undefined }
-      });
-      if (company.value) company.value.logoUrl = res.data.url;
-    } catch (err) {
-      console.error(err);
-      alert("Hiba a logó feltöltésekor");
-    } finally {
-      isUploadingLogo.value = false;
-    }
-  };
-
-  const saveLogoHeight = async () => {
-    if (!company.value) return;
-    try {
-      if (!company.value.logoHeight) company.value.logoHeight = 50;
-      await api.put(`/api/Company/${company.value.id}`, company.value);
-    } catch (err) {
-      console.error("Nem sikerült menteni a logó méretét", err);
-    }
-  };
 
   onMounted(() => {
     isLoggedIn.value = !!localStorage.getItem('salon_token');
@@ -86,23 +49,6 @@
                :style="logoStyle" />
           <span v-else class="text-logo">{{ company?.name || 'Szalon' }}</span>
         </router-link>
-
-        <div v-if="isLoggedIn" class="logo-admin-tools">
-          <button @click="triggerLogoUpload" class="tool-btn" title="Logó cseréje">
-            <i v-if="isUploadingLogo" class="pi pi-spin pi-spinner"></i>
-            <i v-else class="pi pi-camera"></i>
-          </button>
-          <input type="file" ref="logoInputRef" @change="onLogoSelected" accept="image/*" hidden />
-
-          <div class="slider-wrapper" title="Logó mérete">
-            <input type="range"
-                   v-model="company.logoHeight"
-                   min="30"
-                   max="150"
-                   step="2"
-                   @change="saveLogoHeight" />
-          </div>
-        </div>
       </div>
 
       <button class="menu-toggle" @click="toggleMenu">☰</button>
@@ -146,11 +92,8 @@
   }
 
   .logo-area {
-    position: relative; /* Hogy az absolute gyermeket pozicionálhassuk */
     display: flex;
     align-items: center;
-    /* Min. szélesség, hogy a vezérlőnek legyen helye, ha a logó pici */
-    min-width: 250px;
   }
 
   .logo-link {
@@ -164,65 +107,6 @@
     color: var(--primary-color);
     font-family: var(--font-family);
   }
-
-  /* --- STABILIZÁLT VEZÉRLŐPANEL --- */
-  .logo-admin-tools {
-    /* Fix helye van, nem tolja el a logó növekedése */
-    position: absolute;
-    left: 100%; /* A logó területtől jobbra */
-    margin-left: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    /* Kinézet */
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(0, 0, 0, 0.8);
-    padding: 4px 8px;
-    border-radius: 20px;
-    border: 1px solid #555;
-    white-space: nowrap; /* Hogy ne törjön sorba */
-  }
-
-  .tool-btn {
-    background: transparent;
-    border: none;
-    color: #ccc;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 4px;
-  }
-
-    .tool-btn:hover {
-      color: var(--primary-color);
-      transform: scale(1.1);
-    }
-
-  .slider-wrapper {
-    display: flex;
-    align-items: center;
-  }
-
-  input[type=range] {
-    -webkit-appearance: none;
-    width: 80px;
-    height: 4px;
-    background: #555;
-    border-radius: 2px;
-    outline: none;
-    cursor: pointer;
-  }
-
-    input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: var(--primary-color, #d4af37);
-      cursor: pointer;
-    }
 
   nav {
     display: flex;

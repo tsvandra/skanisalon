@@ -1,78 +1,80 @@
+Ôªø================================================================================
+TECHNIKAI STACK DOKUMENT√ÅCI√ì: SOLUVION (SKANI SALON)
 ================================================================================
-TECHNIKAI STACK DOKUMENT¡CI”: SOLUVION (SKANI SALON)
-================================================================================
-D·tum:    2026.02.06.
-VerziÛ:   1.2 (Technical Deep Dive)
-TÌpus:    Rendszerarchitekt˙ra Ès Biztons·g
+D√°tum:    2026.02.06.
+Verzi√≥:   1.2 (Technical Deep Dive)
+T√≠pus:    Rendszerarchitekt√∫ra √©s Biztons√°g
 
 [ 1. BACKEND ECOSYSTEM (.NET CORE) ]
 
-A rendszer magja a Microsoft .NET 10 keretrendszerre Èp¸l, amely a nagyv·llalati 
-stabilit·st ˆtvˆzi a modern felhı-technolÛgi·kkal.
+A rendszer magja a Microsoft .NET 10 keretrendszerre √©p√ºl, amely a nagyv√°llalati 
+stabilit√°st √∂tv√∂zi a modern felh√µ-technol√≥gi√°kkal.
 
 - Keretrendszer:  .NET 10 (ASP.NET Core Web API)
 - Nyelv:          C# 14
-- Architektur·lis Minta: MVC (Model-View-Controller) - API Controllers
-- AdatelÈrÈs (ORM): Entity Framework Core (Code-First megkˆzelÌtÈs)
+- Architektur√°lis Minta: MVC (Model-View-Controller) - API Controllers
+- Adatel√©r√©s (ORM): Entity Framework Core (Code-First megk√∂zel√≠t√©s)
 
-Kulcsfontoss·g˙ NuGet Csomagok:
-  > Npgsql.EntityFrameworkCore.PostgreSQL: A Postgres adatb·zis meghajtÛja.
-  > BCrypt.Net-Next: Kriptogr·fiai jelszÛkezelÈs (l·sd a Biztons·g rÈszt).
-  > System.IdentityModel.Tokens.Jwt: JWT gener·l·s Ès valid·l·s.
-  > Swashbuckle.AspNetCore: Swagger/OpenAPI dokument·ciÛ gener·l·s.
+Kulcsfontoss√°g√∫ NuGet Csomagok:
+  > Npgsql.EntityFrameworkCore.PostgreSQL: A Postgres adatb√°zis meghajt√≥ja.
+  > BCrypt.Net-Next: Kriptogr√°fiai jelsz√≥kezel√©s (l√°sd a Biztons√°g r√©szt).
+  > System.IdentityModel.Tokens.Jwt: JWT gener√°l√°s √©s valid√°l√°s.
+  > Swashbuckle.AspNetCore: Swagger/OpenAPI dokument√°ci√≥ gener√°l√°s.
 
 Dependency Injection (DI):
-  A rendszer a beÈpÌtett .NET DI kontÈnert haszn·lja a szolg·ltat·sok 
-  (pl. DbContext, Services) injekt·l·s·ra, biztosÌtva a modularit·st Ès 
-  tesztelhetısÈget.
+  A rendszer a be√©p√≠tett .NET DI kont√©nert haszn√°lja a szolg√°ltat√°sok 
+  (pl. DbContext, Services) injekt√°l√°s√°ra, biztos√≠tva a modularit√°st √©s 
+  tesztelhet√µs√©get.
+
+- CloudinaryDotNet: Felh≈ë alap√∫ k√©pt√°rol√°shoz √©s manipul√°ci√≥hoz (a lok√°lis WWWROOT t√°rol√°s kiv√°lt√°s√°ra).
 
 --------------------------------------------------------------------------------
 
-[ 2. ADATB¡ZIS R…TEG ]
+[ 2. ADATB√ÅZIS R√âTEG ]
 
-A rendszer rel·ciÛs adatb·zist haszn·l, amely a Railway felhıjÈben fut.
+A rendszer rel√°ci√≥s adatb√°zist haszn√°l, amely a Railway felh√µj√©ben fut.
 
 - Motor:          PostgreSQL 16+
-- Hosting:        Railway (Dockeriz·lt kˆrnyezet)
-- Kapcsolat:      Connection String (Kˆrnyezeti v·ltozÛbÛl injekt·lva)
-- Migr·ciÛk:      EF Core Migrations (dotnet ef migrations add/update)
+- Hosting:        Railway (Dockeriz√°lt k√∂rnyezet)
+- Kapcsolat:      Connection String (K√∂rnyezeti v√°ltoz√≥b√≥l injekt√°lva)
+- Migr√°ci√≥k:      EF Core Migrations (dotnet ef migrations add/update)
 
-Adatmodell Strukt˙ra (RÈszlet):
-  - Companies:    A bÈrlık (szalonok) adatai. (PK: Id)
-  - Users:        Adminisztr·torok/Felhaszn·lÛk. (FK: CompanyId)
-  - Services:     Szolg·ltat·sok ·rlist·ja. (FK: CompanyId)
-  - Galleries:    Feltˆltˆtt kÈpek metaadatai. (FK: CompanyId)
+Adatmodell Strukt√∫ra (R√©szlet):
+  - Companies:    A b√©rl√µk (szalonok) adatai. (PK: Id)
+  - Users:        Adminisztr√°torok/Felhaszn√°l√≥k. (FK: CompanyId)
+  - Services:     Szolg√°ltat√°sok √°rlist√°ja. (FK: CompanyId)
+  - Galleries:    Felt√∂lt√∂tt k√©pek metaadatai. (FK: CompanyId)
 
 --------------------------------------------------------------------------------
 
-[ 3. BIZTONS¡G …S AUTENTIK¡CI” (Security Stack) ]
+[ 3. BIZTONS√ÅG √âS AUTENTIK√ÅCI√ì (Security Stack) ]
 
-Ez a rendszer egyik legkritikusabb pontja. Nem t·rolunk jelszavakat nyÌlt szˆvegkÈnt.
+Ez a rendszer egyik legkritikusabb pontja. Nem t√°rolunk jelszavakat ny√≠lt sz√∂vegk√©nt.
 
-A. JelszÛ Hashing (A hi·nyzÛ l·ncszem):
-   A jelszavak t·rol·s·ra a **BCrypt** algoritmust haszn·ljuk.
+A. Jelsz√≥ Hashing (A hi√°nyz√≥ l√°ncszem):
+   A jelszavak t√°rol√°s√°ra a **BCrypt** algoritmust haszn√°ljuk.
    
-   - TechnolÛgia: BCrypt (Blowfish cipher alap˙).
-   - M˚kˆdÈs: 
-     1. Regisztr·ciÛkor a rendszer gener·l egy vÈletlenszer˚ "Salt"-ot (sÛt).
-     2. A jelszÛt ˆsszef˚zi a sÛval, Ès tˆbbszˆrˆsen hash-eli (Work Factor).
-     3. Az adatb·zisba csak a hash ker¸l mentÈsre.
-   - Elıny: VÈdelmet ny˙jt a Rainbow Table t·mad·sok Ès a Brute Force ellen 
-     (mivel a hash gener·l·sa sz·ndÈkosan lass˙).
+   - Technol√≥gia: BCrypt (Blowfish cipher alap√∫).
+   - M√ªk√∂d√©s: 
+     1. Regisztr√°ci√≥kor a rendszer gener√°l egy v√©letlenszer√ª "Salt"-ot (s√≥t).
+     2. A jelsz√≥t √∂sszef√ªzi a s√≥val, √©s t√∂bbsz√∂r√∂sen hash-eli (Work Factor).
+     3. Az adatb√°zisba csak a hash ker√ºl ment√©sre.
+   - El√µny: V√©delmet ny√∫jt a Rainbow Table t√°mad√°sok √©s a Brute Force ellen 
+     (mivel a hash gener√°l√°sa sz√°nd√©kosan lass√∫).
 
-B. Autentik·ciÛ (Stateless):
-   - Szabv·ny: JWT (JSON Web Token).
-   - TÌpus: Bearer Token.
-   - Al·Ìr·s: HMACSHA512 (Szimmetrikus kulcs˙ titkosÌt·s).
-   - Payload (Claims): A token tartalmazza a felhaszn·lÛ adatait:
+B. Autentik√°ci√≥ (Stateless):
+   - Szabv√°ny: JWT (JSON Web Token).
+   - T√≠pus: Bearer Token.
+   - Al√°√≠r√°s: HMACSHA512 (Szimmetrikus kulcs√∫ titkos√≠t√°s).
+   - Payload (Claims): A token tartalmazza a felhaszn√°l√≥ adatait:
        > NameIdentifier (User ID)
-       > Name (Felhaszn·lÛnÈv)
-       > CompanyId (Melyik cÈghez tartozik - Multi-tenancy kulcs!)
+       > Name (Felhaszn√°l√≥n√©v)
+       > CompanyId (Melyik c√©ghez tartozik - Multi-tenancy kulcs!)
    
-C. H·lÛzati Biztons·g:
-   - CORS (Cross-Origin Resource Sharing): Szigor˙an szab·lyozott h·zirend.
-     Csak a Netlify domain Ès a Localhost (fejlesztÈshez) engedÈlyezett.
-   - HTTPS: Kˆtelezı titkosÌtott csatorna (a Railway Ès Netlify automatikusan kezeli).
+C. H√°l√≥zati Biztons√°g:
+   - CORS (Cross-Origin Resource Sharing): Szigor√∫an szab√°lyozott h√°zirend.
+     Csak a Netlify domain √©s a Localhost (fejleszt√©shez) enged√©lyezett.
+   - HTTPS: K√∂telez√µ titkos√≠tott csatorna (a Railway √©s Netlify automatikusan kezeli).
 
 --------------------------------------------------------------------------------
 
@@ -82,44 +84,51 @@ A kliens oldal egy modern SPA (Single Page Application).
 
 - Keretrendszer:  Vue 3 (Composition API, <script setup> szintaxis)
 - Build Tool:     Vite (Gyors HMR - Hot Module Replacement)
-- Nyelv:          JavaScript (ESNext) / JSDoc tÌpusokkal
+- Nyelv:          JavaScript (ESNext) / JSDoc t√≠pusokkal
 
 UI & Design:
-  - Komponens Kˆnyvt·r: PrimeVue (Button, Input, Dialog, TabView, Card).
-  - CSS: Egyedi CSS + CSS Variables (Dinamikus szÌnezÈshez).
+  - Komponens K√∂nyvt√°r: PrimeVue (Button, Input, Dialog, TabView, Card).
+  - CSS: Egyedi CSS + CSS Variables (Dinamikus sz√≠nez√©shez).
   - Ikonok: PrimeIcons.
-  - Drag & Drop: vuedraggable (Sortable.js wrapper Vue 3-hoz) - A szolg·ltat·sok Ès kategÛri·k rendezÈsÈhez.
+  - Drag & Drop: vuedraggable (Sortable.js wrapper Vue 3-hoz) - A szolg√°ltat√°sok √©s kateg√≥ri√°k rendez√©s√©hez.
 
-¡llapotkezelÈs (State Management):
-  - Lok·lis State: `ref`, `reactive`.
-  - Glob·lis State: Vue `provide/inject` minta (pl. a Company adatok ·tad·s·ra).
-  - Router: Vue Router (WebHistory mÛdban).
+√Ållapotkezel√©s (State Management):
+  - Lok√°lis State: `ref`, `reactive`.
+  - Glob√°lis State: Vue `provide/inject` minta (pl. a Company adatok √°tad√°s√°ra).
+  - Router: Vue Router (WebHistory m√≥dban).
 
-API Kommunik·ciÛ:
+API Kommunik√°ci√≥:
   - Kliens: Axios.
-  - Konfigur·ciÛ: BaseURL be·llÌt·sa kˆrnyezeti v·ltozÛkbÛl.
-  - Interceptors: (Tervben) A token automatikus csatol·sa minden kÈrÈs fejlÈcÈhez.
+  - Konfigur√°ci√≥: BaseURL be√°ll√≠t√°sa k√∂rnyezeti v√°ltoz√≥kb√≥l.
+  - Interceptors: (Tervben) A token automatikus csatol√°sa minden k√©r√©s fejl√©c√©hez.
+
+- PrimeVue Tabs (TabView, TabPanel): A Be√°ll√≠t√°sok (SettingsView) ≈±rlapjainak rendszerez√©s√©hez.
 
 
 --------------------------------------------------------------------------------
 
-[ 5. INFRASTRUKT⁄RA …S DEVOPS ]
+[ 5. INFRASTRUKT√öRA √âS DEVOPS ]
 
-A rendszer CI/CD (Continuous Integration / Deployment) alapokon m˚kˆdik.
+A rendszer CI/CD (Continuous Integration / Deployment) alapokon m√ªk√∂dik.
 
 Backend Pipeline (Railway):
-  - Trigger: Git Push a main ·gra.
-  - Folyamat: Docker Image ÈpÌtÈse -> KontÈner indÌt·sa -> Portok megnyit·sa.
-  - Kˆrnyezeti V·ltozÛk: Adatb·zis URL, JWT Secret Key (TitkosÌtva t·rolva).
+  - Trigger: Git Push a main √°gra.
+  - Folyamat: Docker Image √©p√≠t√©se -> Kont√©ner ind√≠t√°sa -> Portok megnyit√°sa.
+  - K√∂rnyezeti V√°ltoz√≥k: Adatb√°zis URL, JWT Secret Key (Titkos√≠tva t√°rolva).
 
 Frontend Pipeline (Netlify):
   - Trigger: Git Push.
   - Build Parancs: `npm run build`
-  - Output: `/dist` mappa tartalm·nak publik·l·sa CDN-re.
-  - Routing Config: `netlify.toml` (SPA redirect szab·lyok).
+  - Output: `/dist` mappa tartalm√°nak publik√°l√°sa CDN-re.
+  - Routing Config: `netlify.toml` (SPA redirect szab√°lyok).
 
-Kˆrnyezeti V·ltozÛk (.env kezelÈs):
-  - FejlesztÈs (Local): .env f·jlban (VITE_API_URL=https://skanisalon...).
-  - …les (Production): A szolg·ltatÛk Dashboardj·n be·llÌtva.
+K√∂rnyezeti V√°ltoz√≥k (.env kezel√©s):
+  - Fejleszt√©s (Local): .env f√°jlban (VITE_API_URL=https://skanisalon...).
+  - √âles (Production): A szolg√°ltat√≥k Dashboardj√°n be√°ll√≠tva.
+
+  --------------------------------------------------------------------------------
+
+  Architekt√∫ra / Composables:
+- useAutoSaveQueue.js: Egyedi composable az optimista UI friss√≠t√©sekhez √©s a gyors API h√≠v√°sok (pl. cs√∫szka mozgat√°s, drag-and-drop) sorba√°ll√≠t√°s√°hoz, a versenyhelyzetek (race conditions) elker√ºl√©se √©rdek√©ben.
 
 ================================================================================

@@ -131,3 +131,24 @@ A "Front Office" (Látogatói oldal) teljes dinamizálása a cél:
    - A módosítások élesítése Railway (Backend) és Netlify (Frontend) oldalon.
 
 --------------------------------------------------------------------------------
+
+[ 6. ÚJ FEJLESZTÉSI SZABÁLYOK (2026-02-10) ]
+
+1. DATA TRANSFER OBJECTS (DTO-k)
+   - Tilos DTO osztályokat közvetlenül a Controller fájlokban definiálni.
+   - Minden DTO-t külön fájlban, a `Models` (vagy `DTOs`) mappában kell elhelyezni.
+   - Ok: A szintaktikai hibák elkerülése és a Controllerek átláthatóságának megőrzése.
+
+2. ASZINKRON ÁLLAPOTKEZELÉS (Queueing)
+   - Olyan funkcióknál, amelyek gyors, egymás utáni API hívásokat generálnak (pl. Drag-and-Drop rendezés, Csúszkák húzása), KÖTELEZŐ a `useAutoSaveQueue` composable használata.
+   - Soha ne engedjünk párhuzamos API hívásokat ugyanarra az erőforrásra a versenyhelyzetek elkerülése végett.
+
+3. SEPARATION OF CONCERNS (Admin UI)
+   - A "Site Builder" jellegű funkciók (Logó feltöltés, Layout módosítás) helye a `SettingsView`-ban van.
+   - Kerüljük a szerkesztő gombok elhelyezését közvetlenül a globális layout komponenseken (Header/Footer), hogy a napi felhasználói felület tiszta maradjon.
+   - Használjuk a reaktív `provide/inject` mintát a beállítások azonnali érvényesítéséhez az alkalmazásban.
+
+4. FELHŐ TÁROLÁS (CLOUD STORAGE)
+   - Felhasználó által feltöltött médiafájlokat TILOS lokálisan a `wwwroot`-ban tárolni.
+   - Minden médiafájlt a Cloudinary-ba (vagy egyéb felhő tárhelyre) kell feltölteni.
+   - Az adatbázisban a `PublicId`-t is tárolni kell az `Url` mellett, a fájlok későbbi törölhetősége érdekében.
