@@ -21,6 +21,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ITranslationService, OpenAiTranslationService>();
 
 builder.Services.AddCors(options =>
 {

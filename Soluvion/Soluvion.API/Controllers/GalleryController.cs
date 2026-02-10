@@ -45,18 +45,21 @@ namespace Soluvion.API.Controllers
                 .Where(i => i.Category.CompanyId == companyId)
                 .OrderBy(i => i.OrderIndex)
                 .ThenByDescending(i => i.UploadDate)
-                .Select(i => new
-                {
-                    id = i.Id,
-                    imageUrl = i.ImagePath,
-                    categoryId = i.CategoryId, // Fontos: ID alapján csoportosítunk
-                    category = i.Category != null ? i.Category.Name : "Egyéb",
-                    title = i.Title,
-                    orderIndex = i.OrderIndex
-                })
                 .ToListAsync();
 
-            return Ok(images);
+            // Memóriában vetítjük ki, hogy a Dictionary-t kezelni tudjuk
+            var result = images.Select(i => new
+            {
+                id = i.Id,
+                imageUrl = i.ImagePath,
+                categoryId = i.CategoryId,
+                // A kategória neve mostantól Dictionary objektum
+                category = i.Category != null ? i.Category.Name : new Dictionary<string, string> { { "hu", "Egyéb" } },
+                title = i.Title,
+                orderIndex = i.OrderIndex
+            });
+
+            return Ok(result);
         }
 
         // POST: api/Gallery (Kép feltöltés)
@@ -89,15 +92,23 @@ namespace Soluvion.API.Controllers
                 return BadRequest($"Hiba a feltöltés során: {uploadResult.Error.Message}");
 
             // 2. Kategória keresése vagy létrehozása
-            string categoryName = category?.Trim() ?? "Egyéb";
-            var galleryCategory = await _context.GalleryCategories
-                .FirstOrDefaultAsync(c => c.Name == categoryName && c.CompanyId == companyId);
+            // Mivel form-data-ból string jön, ezt "hu" (magyar) névként kezeljük.
+            string categoryNameString = category?.Trim() ?? "Egyéb";
+
+            // Memóriában keressük meg a "hu" kulcs alapján (EF Core ValueConversion limitation)
+            var existingCategories = await _context.GalleryCategories
+                .Where(c => c.CompanyId == companyId)
+                .ToListAsync();
+
+            var galleryCategory = existingCategories
+                .FirstOrDefault(c => c.Name.ContainsKey("hu") && c.Name["hu"] == categoryNameString);
 
             if (galleryCategory == null)
             {
                 galleryCategory = new GalleryCategory
                 {
-                    Name = categoryName,
+                    // Létrehozásnál beállítjuk a magyar nevet
+                    Name = new Dictionary<string, string> { { "hu", categoryNameString } },
                     CompanyId = companyId
                 };
                 _context.GalleryCategories.Add(galleryCategory);
@@ -148,16 +159,50 @@ namespace Soluvion.API.Controllers
             image.Title = dto.Title ?? "";
             image.OrderIndex = dto.OrderIndex;
 
-            // Kategória váltás (ha változott)
-            if (!string.IsNullOrEmpty(dto.CategoryName) &&
-                (image.Category == null || image.Category.Name != dto.CategoryName))
+            // Kategória váltás logikája (Dictionary összehasonlítással)
+            // Ha a DTO-ban van kategória név, és az különbözik a jelenlegitől
+            bool categoryChanged = false;
+            if (dto.CategoryName != null && dto.CategoryName.Any())
             {
-                var newCategory = await _context.GalleryCategories
-                    .FirstOrDefaultAsync(c => c.Name == dto.CategoryName && c.CompanyId == companyId);
+                if (image.Category == null)
+                {
+                    categoryChanged = true;
+                }
+                else
+                {
+                    // Összehasonlítjuk a két szótárat
+                    var dict1 = image.Category.Name;
+                    var dict2 = dto.CategoryName;
+
+                    // Egyszerűsített összehasonlítás: Ha a "hu" kulcs különbözik, vagy a elemszám
+                    // (A pontos Dictionary equality bonyolult, de MVP-re a "hu" egyezés elég)
+                    string name1 = dict1.ContainsKey("hu") ? dict1["hu"] : "";
+                    string name2 = dict2.ContainsKey("hu") ? dict2["hu"] : "";
+
+                    if (name1 != name2) categoryChanged = true;
+                }
+            }
+
+            if (categoryChanged)
+            {
+                // Megkeressük, létezik-e már ilyen kategória (a teljes dictionary alapján nehéz, "hu" alapján keresünk)
+                string targetHuName = dto.CategoryName.ContainsKey("hu") ? dto.CategoryName["hu"] : "Egyéb";
+
+                var existingCategories = await _context.GalleryCategories
+                   .Where(c => c.CompanyId == companyId)
+                   .ToListAsync();
+
+                var newCategory = existingCategories
+                    .FirstOrDefault(c => c.Name.ContainsKey("hu") && c.Name["hu"] == targetHuName);
 
                 if (newCategory == null)
                 {
-                    newCategory = new GalleryCategory { Name = dto.CategoryName, CompanyId = companyId };
+                    // Ha nincs, létrehozzuk a DTO-ban kapott teljes Dictionary-vel
+                    newCategory = new GalleryCategory
+                    {
+                        Name = dto.CategoryName,
+                        CompanyId = companyId
+                    };
                     _context.GalleryCategories.Add(newCategory);
                 }
                 image.Category = newCategory;
@@ -190,7 +235,7 @@ namespace Soluvion.API.Controllers
             return NoContent();
         }
 
-        // --- KATEGÓRIÁK KEZELÉSE (ÚJ) ---
+        // --- KATEGÓRIÁK KEZELÉSE ---
 
         // GET: api/Gallery/categories
         [HttpGet("categories")]
@@ -199,7 +244,7 @@ namespace Soluvion.API.Controllers
             if (companyId <= 0) return BadRequest();
             return await _context.GalleryCategories
                 .Where(c => c.CompanyId == companyId)
-                .OrderBy(c => c.OrderIndex) // Rendezés OrderIndex szerint!
+                .OrderBy(c => c.OrderIndex)
                 .ToListAsync();
         }
 
@@ -211,16 +256,15 @@ namespace Soluvion.API.Controllers
             int companyId = GetCurrentCompanyId();
             if (companyId == 0) return Unauthorized();
 
-            // Megkeressük a legkisebb indexet, hogy az új biztosan elé kerüljön (vagy 0)
             int minIndex = await _context.GalleryCategories
                 .Where(c => c.CompanyId == companyId)
                 .MinAsync(c => (int?)c.OrderIndex) ?? 0;
 
             var newCat = new GalleryCategory
             {
-                Name = dto.Name,
+                Name = dto.Name, // Dictionary átvétele
                 CompanyId = companyId,
-                OrderIndex = minIndex - 1 // A lista tetejére tesszük
+                OrderIndex = minIndex - 1
             };
             _context.GalleryCategories.Add(newCat);
             await _context.SaveChangesAsync();
@@ -238,8 +282,11 @@ namespace Soluvion.API.Controllers
 
             if (cat == null) return NotFound();
 
-            // Ha jött név, frissítjük
-            if (!string.IsNullOrEmpty(dto.Name)) cat.Name = dto.Name;
+            // Ha jött név (Dictionary), frissítjük
+            if (dto.Name != null && dto.Name.Any())
+            {
+                cat.Name = dto.Name;
+            }
 
             // Mindig frissítjük az indexet
             cat.OrderIndex = dto.OrderIndex;

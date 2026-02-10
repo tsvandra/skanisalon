@@ -13,13 +13,16 @@
   const isUploading = ref(false);
   const isLoggedIn = ref(false);
 
+  // MVP: Fix 'hu' nyelv
+  const currentLang = ref('hu');
+
   // Preview state
   const showPreview = ref(false);
   const previewImage = ref(null);
 
   // Upload state
   const fileInputRef = ref(null);
-  const currentUploadCategory = ref(null); // Melyik kategóriába töltünk éppen?
+  const currentUploadCategory = ref(null);
 
   // Focus refek
   const categoryInputRefs = ref({});
@@ -27,6 +30,12 @@
   // Injectek
   const company = inject('company', ref(null));
   const { addToQueue } = useAutoSaveQueue();
+
+  // --- SEGÉDFÜGGVÉNY ---
+  const ensureDict = (field, defaultValue = "") => {
+    if (field && typeof field === 'object') return field;
+    return { [currentLang.value]: field || defaultValue };
+  };
 
   // --- ADATLEKÉRÉS ---
 
@@ -39,8 +48,18 @@
         api.get('/api/Gallery', { params: { companyId: targetCompanyId } })
       ]);
 
-      categories.value = resCats.data; // Ezek már sorrendben jönnek a backendről (OrderIndex)
-      images.value = resImages.data;
+      // Kategóriák neveinek konvertálása Dictionary-re
+      categories.value = resCats.data.map(c => ({
+        ...c,
+        name: ensureDict(c.name, "Névtelen galéria")
+      }));
+
+      // Képek kategórianevének konvertálása
+      images.value = resImages.data.map(i => ({
+        ...i,
+        category: ensureDict(i.category, "Egyéb")
+      }));
+
       buildNestedStructure();
     } catch (error) {
       console.error("Hiba:", error);
@@ -50,24 +69,28 @@
   };
 
   const buildNestedStructure = () => {
-    // Map létrehozása a meglévő kategóriákból (sorrend megőrzése fontos!)
-    // Mivel a categories.value már sorrendben van, iteráljunk azon végig
     const groups = [];
     const groupsMap = new Map();
 
     categories.value.forEach(cat => {
       const group = {
         id: cat.id,
-        name: cat.name,
+        name: cat.name, // Ez már Dictionary
         items: [],
-        orderIndex: cat.orderIndex // Megőrizzük az eredeti indexet
+        orderIndex: cat.orderIndex
       };
       groups.push(group);
       groupsMap.set(cat.id, group);
     });
 
     // Képek besorolása
-    const uncategorized = { id: -1, name: "Egyéb / Nem kategorizált", items: [], orderIndex: 999999 };
+    // Az "Egyéb" kategóriát is Dictionary-ként kezeljük
+    const uncategorized = {
+      id: -1,
+      name: { [currentLang.value]: "Egyéb / Nem kategorizált" },
+      items: [],
+      orderIndex: 999999
+    };
 
     images.value.forEach(img => {
       if (img.categoryId && groupsMap.has(img.categoryId)) {
@@ -77,10 +100,8 @@
       }
     });
 
-    // Belső képek rendezése
     groups.forEach(g => g.items.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0)));
 
-    // Ha van egyéb, a végére csapjuk
     if (uncategorized.items.length > 0) {
       groups.push(uncategorized);
     }
@@ -92,26 +113,28 @@
 
   // --- KATEGÓRIA MŰVELETEK ---
 
-  // 1. Létrehozás (Inline)
+  // 1. Létrehozás
   const createCategory = async () => {
     if (!isLoggedIn.value) return;
 
     try {
-      // Létrehozzuk a backend-en (hogy legyen ID-ja)
-      const res = await api.post('/api/Gallery/categories', { name: "Új galéria" });
+      // Backendnek Dictionary-t küldünk
+      const payload = { name: { [currentLang.value]: "Új galéria" } };
+      const res = await api.post('/api/Gallery/categories', payload);
       const newCat = res.data;
 
-      // Beszúrjuk a helyi lista ELEJÉRE
+      // Helyi lista frissítése
+      newCat.name = ensureDict(newCat.name); // Biztosítjuk a formátumot
+
       const newGroup = {
         id: newCat.id,
-        name: "", // Üresen hagyjuk a UI-n, hogy a placeholder látszódjon
+        name: newCat.name,
         items: [],
         orderIndex: newCat.orderIndex
       };
 
       groupedImages.value.unshift(newGroup);
 
-      // Fókuszálás az input mezőre (NextTick kell, hogy a DOM frissüljön előbb)
       await nextTick();
       const inputEl = categoryInputRefs.value[newGroup.id];
       if (inputEl) inputEl.focus();
@@ -122,10 +145,9 @@
     }
   };
 
-  // 2. Kategória Mozgatás (Reorder)
+  // 2. Kategória Mozgatás
   const onCategoryDragChange = (event) => {
     if (event.moved) {
-      // Végigmegyünk az új sorrenden és frissítjük az indexeket
       groupedImages.value.forEach((group, index) => {
         if (group.id !== -1 && group.orderIndex !== index) {
           group.orderIndex = index;
@@ -135,23 +157,28 @@
     }
   };
 
-  // 3. Mentés (Átnevezés vagy Mozgatás)
+  // 3. Mentés
   const saveCategory = (group) => {
     if (!group.id || group.id === -1) return;
 
-    // Ha üres a név, akkor legyen "Új galéria" a default mentésnél
-    const nameToSend = group.name.trim() === "" ? "Új galéria" : group.name;
+    // Ellenőrizzük, hogy üres-e az aktuális nyelvi név
+    const currentName = group.name[currentLang.value]?.trim();
+    if (!currentName) {
+      group.name[currentLang.value] = "Új galéria";
+    }
 
     addToQueue(`cat-${group.id}`, async () => {
+      // A teljes Dictionary-t küldjük vissza
       await api.put(`/api/Gallery/categories/${group.id}`, {
-        name: nameToSend,
+        name: group.name,
         orderIndex: group.orderIndex
       });
     });
   };
 
   const deleteCategory = async (group) => {
-    if (!confirm(`Törlöd a "${group.name || 'Új galéria'}" mappát?`)) return;
+    const nameToShow = group.name[currentLang.value] || 'Névtelen';
+    if (!confirm(`Törlöd a "${nameToShow}" mappát?`)) return;
     try {
       await api.delete(`/api/Gallery/categories/${group.id}`);
       groupedImages.value = groupedImages.value.filter(g => g.id !== group.id);
@@ -160,18 +187,22 @@
     }
   };
 
-  // --- KÉP MŰVELETEK (NESTED DRAG) ---
+  // --- KÉP MŰVELETEK ---
 
   const onImageDragChange = (event, group) => {
     if (event.added || event.moved) {
       group.items.forEach((img, index) => {
         const newOrder = index + 1;
-        const newCategoryName = group.name || "Új galéria"; // Fallback név
 
-        if (img.orderIndex !== newOrder || img.category !== newCategoryName) {
+        // Ellenőrzés: változott-e a sorrend vagy a kategória ID
+        // Itt nem a nevet hasonlítjuk már, hanem az ID-t, ami biztosabb
+        if (img.orderIndex !== newOrder || img.categoryId !== group.id) {
           img.orderIndex = newOrder;
-          img.category = newCategoryName;
           img.categoryId = group.id;
+
+          // A kategória nevet is frissítjük a helyi objektumban (Dictionary másolat)
+          img.category = JSON.parse(JSON.stringify(group.name));
+
           saveImage(img);
         }
       });
@@ -180,10 +211,11 @@
 
   const saveImage = (img) => {
     addToQueue(img.id, async () => {
+      // A backend 'CategoryName' néven várja a Dictionary-t
       await api.put(`/api/Gallery/${img.id}`, {
         id: img.id,
         title: img.title,
-        categoryName: img.category,
+        categoryName: img.category, // Dictionary küldése
         orderIndex: img.orderIndex
       });
     });
@@ -198,11 +230,11 @@
     } catch (error) { fetchData(); }
   };
 
-  // --- FELTÖLTÉS (KATEGÓRIA SPECIFIKUS) ---
+  // --- FELTÖLTÉS ---
 
   const triggerCategoryUpload = (group) => {
-    currentUploadCategory.value = group; // Megjegyezzük, hova kattintott
-    if (fileInputRef.value) fileInputRef.value.click(); // Kattintunk a rejtett inputra
+    currentUploadCategory.value = group;
+    if (fileInputRef.value) fileInputRef.value.click();
   };
 
   const handleFiles = async (event) => {
@@ -210,11 +242,10 @@
     if (!files || files.length === 0 || !currentUploadCategory.value) return;
 
     isUploading.value = true;
-    // A kiválasztott kategória nevét használjuk
-    // Ha a név üres (épp most hoztuk létre), akkor a backend által adott "Új galéria" nevet használjuk,
-    // de biztonságosabb ID alapján, viszont a feltöltő endpoint jelenleg nevet vár.
-    // Javítás: Használjuk a group.name-et, ha üres, akkor "Új galéria".
-    const targetCatName = currentUploadCategory.value.name || "Új galéria";
+
+    // A form-data-hoz string kell. Kivesszük az aktuális nyelvi nevet.
+    // Ha üres, akkor "Új galéria" (a backend ezt majd "hu"-ként menti el)
+    const targetCatName = currentUploadCategory.value.name[currentLang.value] || "Új galéria";
 
     for (let i = 0; i < files.length; i++) {
       const formData = new FormData();
@@ -229,7 +260,7 @@
     await fetchData();
     isUploading.value = false;
     currentUploadCategory.value = null;
-    event.target.value = ""; // Reset input
+    event.target.value = "";
   };
 
   const openPreview = (img) => { previewImage.value = img; showPreview.value = true; };
@@ -275,11 +306,11 @@
               <div class="cat-title-wrapper">
                 <input v-if="isLoggedIn && group.id !== -1"
                        :ref="el => categoryInputRefs[group.id] = el"
-                       v-model="group.name"
+                       v-model="group.name[currentLang]"
                        @change="saveCategory(group)"
                        class="cat-input"
                        placeholder="Új galéria" />
-                <h3 v-else class="cat-title">{{ group.name }}</h3>
+                <h3 v-else class="cat-title">{{ group.name[currentLang] }}</h3>
                 <span class="count">({{ group.items.length }})</span>
               </div>
             </div>
@@ -342,6 +373,7 @@
 </template>
 
 <style scoped>
+  /* A stílusok változatlanok, hagyd meg az eredeti CSS-t */
   .gallery-container {
     max-width: 1200px;
     margin: 0 auto;

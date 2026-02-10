@@ -9,17 +9,18 @@ namespace Soluvion.API.Models
 
         public int CompanyId { get; set; }
         public Company? Company { get; set; }
-        
-        [MaxLength(50)]
-        public string Name { get; set; } = string.Empty;
+
+        // Többnyelvűsítés: string -> Dictionary<string, string>
+        // Tárolás: JSONB, pl.: {"hu": "Hajvágás", "en": "Haircut"}
+        public Dictionary<string, string> Name { get; set; } = new();
 
         public int OrderIndex { get; set; }
 
-        [MaxLength(50)]
-        public string? Category { get; set; }
+        // Kategória is többnyelvű
+        public Dictionary<string, string> Category { get; set; } = new();
 
-        [MaxLength(500)]
-        public string? Description { get; set; }
+        // Leírás is többnyelvű
+        public Dictionary<string, string> Description { get; set; } = new();
 
         public int DefaultDuration { get; set; }  //"Display" célra, ha nincs variáció.
 

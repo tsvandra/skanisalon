@@ -11,14 +11,14 @@
   const loading = ref(true);
   const isLoggedIn = ref(false);
 
+  // MVP: Egyelőre fixen 'hu', később ez dinamikusan változhat
+  const currentLang = ref('hu');
+
   const company = inject('company', ref(null));
 
   const draggedNoteContent = ref(null);
   const draggedFromServiceId = ref(null);
 
-  // --- KÉRÉS SORBAÁLLÍTÓ (QUEUE) ---
-  // Minden szolgáltatás ID-hoz tárolunk egy Promise láncot.
-  // Így a mentések szigorúan egymás után futnak le, nem írják felül egymást.
   const saveQueues = new Map();
 
   /* --- SEGÉDFÜGGVÉNYEK --- */
@@ -45,6 +45,13 @@
     }
   };
 
+  // Biztosítja, hogy a mező mindig objektum legyen (Dictionary)
+  const ensureDict = (field, defaultValue = "") => {
+    if (field && typeof field === 'object') return field;
+    // Ha null vagy string jönne (bár backendről már json jön), konvertáljuk
+    return { [currentLang.value]: field || defaultValue };
+  };
+
   /* --- ADATTRANSZFORMÁCIÓ --- */
 
   const buildNestedStructure = (flatServices) => {
@@ -52,19 +59,27 @@
     flatServices.sort((a, b) => a.orderIndex - b.orderIndex);
 
     flatServices.forEach(service => {
-      const catName = service.category || "Egyéb";
-      let group = groups.find(g => g.categoryName === catName);
+      // Kategória név kinyerése az aktuális nyelven
+      const catDict = ensureDict(service.category, "Egyéb");
+      const catNameStr = catDict[currentLang.value] || "Egyéb";
+
+      // Keressük a csoportot a 'hu' név alapján (MVP egyszerűsítés)
+      let group = groups.find(g => {
+        const gName = g.categoryName[currentLang.value] || "";
+        return gName === catNameStr;
+      });
 
       if (!group) {
         group = {
-          id: 'cat-' + catName,
-          categoryName: catName,
+          id: 'cat-' + catNameStr.replace(/\s+/g, '-').toLowerCase(),
+          categoryName: catDict, // Itt a teljes Dictionary-t tároljuk!
           headerVariants: [],
           items: []
         };
         groups.push(group);
       }
 
+      // Ha még nincs fejléc variáns, és ennek az elemnek van, akkor átvesszük
       if (group.headerVariants.length === 0 && service.variants && service.variants.length > 0) {
         group.headerVariants = [...service.variants];
       }
@@ -92,8 +107,11 @@
           service.variants = sortVariants(service.variants);
           service.variants.forEach(v => { if (v.price === 0) v.price = null; });
         }
-        if (!service.category) service.category = "Egyéb";
-        if (service.description === null) service.description = "";
+
+        // Dictionary konverzió / biztosítás
+        service.name = ensureDict(service.name, "Névtelen");
+        service.category = ensureDict(service.category, "Egyéb");
+        service.description = ensureDict(service.description, "");
       });
 
       categories.value = buildNestedStructure(rawServices);
@@ -111,30 +129,24 @@
     { immediate: true }
   );
 
-  // --- JAVÍTOTT MENTÉS QUEUE-VAL ---
   const saveService = async (serviceItem, refreshLocal = false) => {
     const serviceId = serviceItem.id;
 
-    // Ha nincs még sor ehhez a service-hez, inicializáljuk
     if (!saveQueues.has(serviceId)) {
       saveQueues.set(serviceId, Promise.resolve());
     }
 
-    // Hozzáadjuk a kérést a lánc végére
     const currentQueue = saveQueues.get(serviceId);
 
     const newPromise = currentQueue.then(async () => {
       try {
-        // FONTOS: A payloadot itt generáljuk, közvetlenül a küldés előtt.
-        // Így biztosan a LEGFRISSEBB állapotot küldjük el, akkor is,
-        // ha a felhasználó már 3x módosított, miközben az előző mentés futott.
         const payload = JSON.parse(JSON.stringify(serviceItem));
 
         if (!payload.variants) payload.variants = [];
         else {
           payload.variants.forEach(v => {
             if (v.price === null || v.price === undefined || v.price === '') v.price = 0;
-            else v.price = Number(v.price); // Biztosítjuk, hogy szám legyen
+            else v.price = Number(v.price);
           });
         }
 
@@ -146,7 +158,12 @@
             updated.variants = sortVariants(updated.variants);
             updated.variants.forEach(v => { if (v.price === 0) v.price = null; });
           }
-          if (updated.description === null) updated.description = "";
+
+          // Frissítésnél is figyeljünk a Dictionary szerkezetre
+          updated.name = ensureDict(updated.name);
+          updated.category = ensureDict(updated.category);
+          updated.description = ensureDict(updated.description);
+
           Object.assign(serviceItem, updated);
         }
       } catch (err) {
@@ -154,19 +171,18 @@
       }
     });
 
-    // Frissítjük a sor végét az új promise-ra
     saveQueues.set(serviceId, newPromise);
-
     return newPromise;
   };
 
   /* --- UPDATE & DRAG --- */
-  // Itt nem változott semmi lényeges, de a saveService hívások most már biztonságosak
 
   const onServiceDragChange = async (event, group) => {
     if (event.added) {
       const item = event.added.element;
-      item.category = group.categoryName;
+      // Amikor behúzunk egy elemet, átvesszük az új csoport kategória objektumát
+      // Mélymásolatot készítünk, hogy ne referencia legyen
+      item.category = JSON.parse(JSON.stringify(group.categoryName));
     }
     await reorderAll();
   };
@@ -180,23 +196,28 @@
     const promises = [];
     categories.value.forEach(group => {
       group.items.forEach(item => {
-        if (item.orderIndex !== counter || item.category !== group.categoryName) {
+        // Ellenőrizzük, változott-e a sorrend vagy a kategória
+        // A kategória összehasonlítása most a 'hu' kulcs alapján történik
+        const itemCatName = item.category[currentLang.value];
+        const groupCatName = group.categoryName[currentLang.value];
+
+        if (item.orderIndex !== counter || itemCatName !== groupCatName) {
           item.orderIndex = counter;
-          item.category = group.categoryName;
+          // Frissítjük a kategóriát a csoportéra
+          item.category = JSON.parse(JSON.stringify(group.categoryName));
           promises.push(saveService(item, false));
         }
         counter += 10;
       });
     });
-    // Itt nem kell await Promise.all, a queue kezeli a sorrendet elemenként
-    // De a biztonság kedvéért megvárhatjuk.
     if (promises.length > 0) await Promise.all(promises);
   };
 
-  const updateCategoryName = async (group, newName) => {
-    group.categoryName = newName;
+  const updateCategoryName = async (group) => {
+    // A v-model már frissítette a group.categoryName[currentLang]-ot
+    // Most végig kell mennünk az elemeken és frissíteni bennük is a kategóriát
     const promises = group.items.map(service => {
-      service.category = newName;
+      service.category = JSON.parse(JSON.stringify(group.categoryName));
       return saveService(service, false);
     });
     await Promise.all(promises);
@@ -216,7 +237,7 @@
   /* --- NOTE DRAG --- */
 
   const onNoteDragStart = (event, service) => {
-    draggedNoteContent.value = service.description;
+    draggedNoteContent.value = service.description[currentLang.value]; // Csak az aktuális nyelvű szöveget mozgatjuk
     draggedFromServiceId.value = service.id;
     event.dataTransfer.effectAllowed = 'move';
     event.target.style.opacity = '0.5';
@@ -246,16 +267,20 @@
 
     if (!draggedNoteContent.value || draggedFromServiceId.value === targetService.id) return;
 
-    if (targetService.description && targetService.description.trim() !== '') {
-      targetService.description += '\n' + draggedNoteContent.value;
+    // Csak az aktuális nyelvet fűzzük hozzá
+    const currentDesc = targetService.description[currentLang.value] || "";
+
+    if (currentDesc.trim() !== '') {
+      targetService.description[currentLang.value] = currentDesc + '\n' + draggedNoteContent.value;
     } else {
-      targetService.description = draggedNoteContent.value;
+      targetService.description[currentLang.value] = draggedNoteContent.value;
     }
 
+    // Törlés a forrásból (csak az adott nyelvről)
     for (const group of categories.value) {
       const sourceService = group.items.find(s => s.id === draggedFromServiceId.value);
       if (sourceService) {
-        sourceService.description = '';
+        sourceService.description[currentLang.value] = '';
         await saveService(sourceService, true);
         break;
       }
@@ -267,20 +292,20 @@
   /* --- LÉTREHOZÁS --- */
 
   const toggleNote = async (service) => {
-    if (!service.description) {
-      service.description = " ";
+    if (!service.description[currentLang.value]) {
+      service.description[currentLang.value] = " "; // Space init
     }
   };
 
   const createNewCategory = async () => {
     if (!isLoggedIn.value) return;
     const newService = {
-      name: "Új szolgáltatás",
-      category: "ÚJ KATEGÓRIA",
+      name: { [currentLang.value]: "Új szolgáltatás" },
+      category: { [currentLang.value]: "ÚJ KATEGÓRIA" },
       defaultPrice: 0,
       orderIndex: 99999,
       variants: [{ variantName: "Normál", price: 0, duration: 30 }],
-      description: ""
+      description: { [currentLang.value]: "" }
     };
     await postNewService(newService);
   };
@@ -294,12 +319,12 @@
     }
 
     const newService = {
-      name: "Új szolgáltatás",
-      category: group.categoryName,
+      name: { [currentLang.value]: "Új szolgáltatás" },
+      category: JSON.parse(JSON.stringify(group.categoryName)), // Másolat a csoport kategóriájáról
       defaultPrice: 0,
       orderIndex: 99999,
       variants: variants,
-      description: ""
+      description: { [currentLang.value]: "" }
     };
     await postNewService(newService);
   };
@@ -366,11 +391,11 @@
               <div v-if="isLoggedIn" class="drag-handle-cat" title="Kategória mozgatása">⋮⋮</div>
               <div class="col-name header-title-cell">
                 <input v-if="isLoggedIn"
-                       v-model="group.categoryName"
-                       @change="updateCategoryName(group, group.categoryName)"
+                       v-model="group.categoryName[currentLang]"
+                       @change="updateCategoryName(group)"
                        class="category-input"
                        placeholder="Kategória neve" />
-                <span v-else class="category-display">{{ group.categoryName }}</span>
+                <span v-else class="category-display">{{ group.categoryName[currentLang] }}</span>
               </div>
               <div class="col-variants-group">
                 <div v-for="(v, vIndex) in group.headerVariants" :key="vIndex" class="col-variant-item header-item">
@@ -402,12 +427,12 @@
 
                     <div class="col-name">
                       <textarea v-if="isLoggedIn"
-                                v-model="service.name"
+                                v-model="service.name[currentLang]"
                                 @change="saveService(service, false)"
                                 @input="autoResize"
                                 class="name-input"
                                 rows="1"></textarea>
-                      <span v-else class="name-text">{{ service.name }}</span>
+                      <span v-else class="name-text">{{ service.name[currentLang] }}</span>
 
                       <div v-if="isLoggedIn" class="row-tools">
                         <button @click="toggleNote(service)" title="Megjegyzés hozzáadása" class="icon-btn note-toggle">
@@ -438,7 +463,7 @@
                     </div>
                   </div>
 
-                  <div v-if="service.description"
+                  <div v-if="service.description && service.description[currentLang]"
                        class="note-block"
                        :draggable="isLoggedIn"
                        @dragstart="(e) => onNoteDragStart(e, service)"
@@ -450,12 +475,12 @@
 
                     <div class="note-content">
                       <textarea v-if="isLoggedIn"
-                                v-model="service.description"
+                                v-model="service.description[currentLang]"
                                 @change="saveService(service, false)"
                                 @input="autoResize"
                                 class="note-input"
                                 placeholder="Megjegyzés..."></textarea>
-                      <span v-else class="note-text">{{ service.description }}</span>
+                      <span v-else class="note-text">{{ service.description[currentLang] }}</span>
                     </div>
                   </div>
 
@@ -479,7 +504,8 @@
 </template>
 
 <style scoped>
-  /* STÍLUSOK (VÁLTOZATLANOK) */
+  /* A stílusok változatlanok maradnak, így azokat nem másolom be újra,
+     hogy rövidebb legyen a válasz. A kódban az eredeti <style scoped> blokkot hagyd meg! */
   .smart-container {
     max-width: 1000px;
     margin: 0 auto;

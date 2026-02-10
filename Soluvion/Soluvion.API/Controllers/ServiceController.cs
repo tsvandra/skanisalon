@@ -49,7 +49,11 @@ namespace Soluvion.API.Controllers
 
             service.CompanyId = userCompanyId;
 
-            if (string.IsNullOrEmpty(service.Category)) service.Category = "Egyéb";
+            // Módosítás: Dictionary ellenőrzése. Ha üres, alapértelmezett "hu" értéket állítunk be.
+            if (service.Category == null || !service.Category.Any())
+            {
+                service.Category = new Dictionary<string, string> { { "hu", "Egyéb" } };
+            }
 
             // A Description mezőt az EF Core automatikusan kezeli a model alapján
 
@@ -74,13 +78,14 @@ namespace Soluvion.API.Controllers
             if (existingService.CompanyId != userCompanyId) return Forbid();
 
             // --- ADATOK FRISSÍTÉSE ---
+            // A kliens már Dictionary-t küld, így közvetlenül átadhatjuk az értékeket.
             existingService.Name = service.Name;
             existingService.DefaultPrice = service.DefaultPrice;
             existingService.DefaultDuration = service.DefaultDuration;
             existingService.OrderIndex = service.OrderIndex;
             existingService.Category = service.Category;
 
-            // ÚJ: Megjegyzés mentése
+            // ÚJ: Megjegyzés mentése (szintén Dictionary)
             existingService.Description = service.Description;
 
             // Variánsok kezelése

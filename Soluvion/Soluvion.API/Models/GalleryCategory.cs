@@ -8,7 +8,8 @@ namespace Soluvion.API.Models
         public int Id { get; set; }
 
         [MaxLength(50)]
-        public string Name { get; set; } = string.Empty;
+        // Tárolás: JSONB, pl.: {"hu": "Hajvágás", "en": "Haircut"}
+        public Dictionary<string, string> Name { get; set; } = new();
         public int OrderIndex { get; set; } = 0;
         public int CompanyId { get; set; }
 
