@@ -2,7 +2,6 @@
   import { ref, onMounted, inject, watch } from 'vue';
   import InputNumber from 'primevue/inputnumber';
   import apiClient from '@/services/api';
-  import { getCompanyIdFromToken } from '@/utils/jwt';
   import { DEFAULT_COMPANY_ID } from '@/config';
   import draggable from 'vuedraggable';
 
@@ -11,8 +10,9 @@
   const loading = ref(true);
   const isLoggedIn = ref(false);
 
-  // MVP: Egyelőre fixen 'hu', később ez dinamikusan változhat
-  const currentLang = ref('hu');
+  // Nyelvkezelés state
+  const currentLang = ref('hu'); // Jelenleg szerkesztett nyelv
+  const translatingField = ref(null); // Éppen melyik mezőt fordítjuk (loading spinnerhez)
 
   const company = inject('company', ref(null));
 
@@ -45,11 +45,53 @@
     }
   };
 
-  // Biztosítja, hogy a mező mindig objektum legyen (Dictionary)
   const ensureDict = (field, defaultValue = "") => {
     if (field && typeof field === 'object') return field;
-    // Ha null vagy string jönne (bár backendről már json jön), konvertáljuk
     return { [currentLang.value]: field || defaultValue };
+  };
+
+  // --- AI FORDÍTÁS FUNKCIÓ ---
+  const translateField = async (obj, fieldName, targetLang) => {
+    // 1. Megkeressük a forrás szöveget (mindig a 'hu'-ból indulunk ki, vagy ami épp van)
+    const sourceText = obj[fieldName]['hu'] || obj[fieldName][currentLang.value];
+
+    if (!sourceText || sourceText.trim() === '') return;
+
+    // Loading state beállítása (egyedi azonosítóval)
+    const loadingKey = `${obj.id || 'new'}-${fieldName}-${targetLang}`;
+    translatingField.value = loadingKey;
+
+    try {
+      // API hívás
+      const response = await apiClient.post('/api/Translation', {
+        text: sourceText,
+        targetLanguage: targetLang
+      });
+
+      // Eredmény beírása
+      if (response.data && response.data.translatedText) {
+        obj[fieldName][targetLang] = response.data.translatedText;
+
+        // Ha szolgáltatásról van szó, mentsük is el automatikusan
+        if (obj.id && !obj.id.toString().startsWith('cat')) {
+          saveService(obj, false);
+        }
+      }
+    } catch (err) {
+      console.error("Fordítási hiba:", err);
+      alert("Nem sikerült a fordítás. Ellenőrizd a Backend logokat!");
+    } finally {
+      translatingField.value = null;
+    }
+  };
+
+  // Wrapper a gombnyomáshoz: Mindig az aktuális nyelvre fordít
+  const triggerTranslation = (obj, fieldName) => {
+    if (currentLang.value === 'hu') {
+      alert("Magyarról magyarra nem fordítunk! Válts nyelvet fentről.");
+      return;
+    }
+    translateField(obj, fieldName, currentLang.value);
   };
 
   /* --- ADATTRANSZFORMÁCIÓ --- */
@@ -59,27 +101,26 @@
     flatServices.sort((a, b) => a.orderIndex - b.orderIndex);
 
     flatServices.forEach(service => {
-      // Kategória név kinyerése az aktuális nyelven
       const catDict = ensureDict(service.category, "Egyéb");
-      const catNameStr = catDict[currentLang.value] || "Egyéb";
+      // Csoportosításhoz a 'hu' nevet használjuk állandó kulcsként
+      const catNameStr = catDict['hu'] || "Egyéb";
 
-      // Keressük a csoportot a 'hu' név alapján (MVP egyszerűsítés)
       let group = groups.find(g => {
-        const gName = g.categoryName[currentLang.value] || "";
+        // A csoport neve is Dictionary
+        const gName = g.categoryName['hu'] || "";
         return gName === catNameStr;
       });
 
       if (!group) {
         group = {
           id: 'cat-' + catNameStr.replace(/\s+/g, '-').toLowerCase(),
-          categoryName: catDict, // Itt a teljes Dictionary-t tároljuk!
+          categoryName: catDict,
           headerVariants: [],
           items: []
         };
         groups.push(group);
       }
 
-      // Ha még nincs fejléc variáns, és ennek az elemnek van, akkor átvesszük
       if (group.headerVariants.length === 0 && service.variants && service.variants.length > 0) {
         group.headerVariants = [...service.variants];
       }
@@ -108,7 +149,6 @@
           service.variants.forEach(v => { if (v.price === 0) v.price = null; });
         }
 
-        // Dictionary konverzió / biztosítás
         service.name = ensureDict(service.name, "Névtelen");
         service.category = ensureDict(service.category, "Egyéb");
         service.description = ensureDict(service.description, "");
@@ -159,7 +199,6 @@
             updated.variants.forEach(v => { if (v.price === 0) v.price = null; });
           }
 
-          // Frissítésnél is figyeljünk a Dictionary szerkezetre
           updated.name = ensureDict(updated.name);
           updated.category = ensureDict(updated.category);
           updated.description = ensureDict(updated.description);
@@ -176,12 +215,11 @@
   };
 
   /* --- UPDATE & DRAG --- */
+  // (Ezek a függvények változatlanok maradtak a logikában, csak a Dictionary hozzáférés miatt kell figyelni)
 
   const onServiceDragChange = async (event, group) => {
     if (event.added) {
       const item = event.added.element;
-      // Amikor behúzunk egy elemet, átvesszük az új csoport kategória objektumát
-      // Mélymásolatot készítünk, hogy ne referencia legyen
       item.category = JSON.parse(JSON.stringify(group.categoryName));
     }
     await reorderAll();
@@ -196,14 +234,12 @@
     const promises = [];
     categories.value.forEach(group => {
       group.items.forEach(item => {
-        // Ellenőrizzük, változott-e a sorrend vagy a kategória
-        // A kategória összehasonlítása most a 'hu' kulcs alapján történik
-        const itemCatName = item.category[currentLang.value];
-        const groupCatName = group.categoryName[currentLang.value];
+        // Kategória ellenőrzés 'hu' alapján
+        const itemCatName = item.category['hu'];
+        const groupCatName = group.categoryName['hu'];
 
         if (item.orderIndex !== counter || itemCatName !== groupCatName) {
           item.orderIndex = counter;
-          // Frissítjük a kategóriát a csoportéra
           item.category = JSON.parse(JSON.stringify(group.categoryName));
           promises.push(saveService(item, false));
         }
@@ -214,8 +250,7 @@
   };
 
   const updateCategoryName = async (group) => {
-    // A v-model már frissítette a group.categoryName[currentLang]-ot
-    // Most végig kell mennünk az elemeken és frissíteni bennük is a kategóriát
+    // Ha a kategória nevet módosítjuk, az összes benne lévő elemnek is frissülnie kell
     const promises = group.items.map(service => {
       service.category = JSON.parse(JSON.stringify(group.categoryName));
       return saveService(service, false);
@@ -235,9 +270,10 @@
   };
 
   /* --- NOTE DRAG --- */
+  // (Változatlan)
 
   const onNoteDragStart = (event, service) => {
-    draggedNoteContent.value = service.description[currentLang.value]; // Csak az aktuális nyelvű szöveget mozgatjuk
+    draggedNoteContent.value = service.description[currentLang.value];
     draggedFromServiceId.value = service.id;
     event.dataTransfer.effectAllowed = 'move';
     event.target.style.opacity = '0.5';
@@ -267,7 +303,6 @@
 
     if (!draggedNoteContent.value || draggedFromServiceId.value === targetService.id) return;
 
-    // Csak az aktuális nyelvet fűzzük hozzá
     const currentDesc = targetService.description[currentLang.value] || "";
 
     if (currentDesc.trim() !== '') {
@@ -276,7 +311,6 @@
       targetService.description[currentLang.value] = draggedNoteContent.value;
     }
 
-    // Törlés a forrásból (csak az adott nyelvről)
     for (const group of categories.value) {
       const sourceService = group.items.find(s => s.id === draggedFromServiceId.value);
       if (sourceService) {
@@ -293,7 +327,7 @@
 
   const toggleNote = async (service) => {
     if (!service.description[currentLang.value]) {
-      service.description[currentLang.value] = " "; // Space init
+      service.description[currentLang.value] = " ";
     }
   };
 
@@ -320,7 +354,7 @@
 
     const newService = {
       name: { [currentLang.value]: "Új szolgáltatás" },
-      category: JSON.parse(JSON.stringify(group.categoryName)), // Másolat a csoport kategóriájáról
+      category: JSON.parse(JSON.stringify(group.categoryName)),
       defaultPrice: 0,
       orderIndex: 99999,
       variants: variants,
@@ -370,6 +404,13 @@
   <div class="smart-container dark-theme">
     <div class="header-actions">
       <h2>{{ isLoggedIn ? 'Árlista Szerkesztő' : 'Árlista' }}</h2>
+
+      <div v-if="isLoggedIn" class="lang-switcher">
+        <button @click="currentLang = 'hu'" :class="{ active: currentLang === 'hu' }">HU</button>
+        <button @click="currentLang = 'en'" :class="{ active: currentLang === 'en' }">EN</button>
+        <button @click="currentLang = 'sk'" :class="{ active: currentLang === 'sk' }">SK</button>
+      </div>
+
       <button v-if="isLoggedIn" @click="createNewCategory" class="main-add-btn">
         <i class="pi pi-folder-open"></i> Új Kategória
       </button>
@@ -389,14 +430,26 @@
           <div class="category-block">
             <div class="table-row header-row">
               <div v-if="isLoggedIn" class="drag-handle-cat" title="Kategória mozgatása">⋮⋮</div>
+
               <div class="col-name header-title-cell">
-                <input v-if="isLoggedIn"
-                       v-model="group.categoryName[currentLang]"
-                       @change="updateCategoryName(group)"
-                       class="category-input"
-                       placeholder="Kategória neve" />
-                <span v-else class="category-display">{{ group.categoryName[currentLang] }}</span>
+                <div class="input-with-tools">
+                  <input v-if="isLoggedIn"
+                         v-model="group.categoryName[currentLang]"
+                         @change="updateCategoryName(group)"
+                         class="category-input"
+                         placeholder="Kategória neve" />
+                  <span v-else class="category-display">{{ group.categoryName[currentLang] }}</span>
+
+                  <button v-if="isLoggedIn && currentLang !== 'hu'"
+                          @click="triggerTranslation(group.categoryName, 'categoryName')"
+                          class="magic-btn"
+                          title="Fordítás">
+                    <i v-if="translatingField === `${group.id || 'cat'}-categoryName-${currentLang}`" class="pi pi-spin pi-spinner"></i>
+                    <i v-else class="pi pi-sparkles"></i>
+                  </button>
+                </div>
               </div>
+
               <div class="col-variants-group">
                 <div v-for="(v, vIndex) in group.headerVariants" :key="vIndex" class="col-variant-item header-item">
                   <textarea v-if="isLoggedIn"
@@ -426,13 +479,23 @@
                     <div v-if="isLoggedIn" class="drag-handle-item">⋮⋮</div>
 
                     <div class="col-name">
-                      <textarea v-if="isLoggedIn"
-                                v-model="service.name[currentLang]"
-                                @change="saveService(service, false)"
-                                @input="autoResize"
-                                class="name-input"
-                                rows="1"></textarea>
-                      <span v-else class="name-text">{{ service.name[currentLang] }}</span>
+                      <div class="input-with-tools">
+                        <textarea v-if="isLoggedIn"
+                                  v-model="service.name[currentLang]"
+                                  @change="saveService(service, false)"
+                                  @input="autoResize"
+                                  class="name-input"
+                                  rows="1"></textarea>
+                        <span v-else class="name-text">{{ service.name[currentLang] }}</span>
+
+                        <button v-if="isLoggedIn && currentLang !== 'hu'"
+                                @click="triggerTranslation(service, 'name')"
+                                class="magic-btn"
+                                title="Fordítás">
+                          <i v-if="translatingField === `${service.id}-name-${currentLang}`" class="pi pi-spin pi-spinner"></i>
+                          <i v-else class="pi pi-sparkles"></i>
+                        </button>
+                      </div>
 
                       <div v-if="isLoggedIn" class="row-tools">
                         <button @click="toggleNote(service)" title="Megjegyzés hozzáadása" class="icon-btn note-toggle">
@@ -473,7 +536,7 @@
                       <i class="pi pi-arrows-alt"></i>
                     </div>
 
-                    <div class="note-content">
+                    <div class="note-content input-with-tools">
                       <textarea v-if="isLoggedIn"
                                 v-model="service.description[currentLang]"
                                 @change="saveService(service, false)"
@@ -481,6 +544,15 @@
                                 class="note-input"
                                 placeholder="Megjegyzés..."></textarea>
                       <span v-else class="note-text">{{ service.description[currentLang] }}</span>
+
+                      <button v-if="isLoggedIn && currentLang !== 'hu'"
+                              @click="triggerTranslation(service, 'description')"
+                              class="magic-btn"
+                              title="Fordítás">
+                        <i v-if="translatingField === `${service.id}-description-${currentLang}`" class="pi pi-spin pi-spinner"></i>
+                        <i v-else class="pi pi-sparkles"></i>
+                      </button>
+
                     </div>
                   </div>
 
@@ -504,8 +576,7 @@
 </template>
 
 <style scoped>
-  /* A stílusok változatlanok maradnak, így azokat nem másolom be újra,
-     hogy rövidebb legyen a válasz. A kódban az eredeti <style scoped> blokkot hagyd meg! */
+  /* A korábbi stílusok + ÚJAK */
   .smart-container {
     max-width: 1000px;
     margin: 0 auto;
@@ -523,6 +594,58 @@
     letter-spacing: 1px;
   }
 
+  /* LANG SWITCHER */
+  .lang-switcher {
+    display: flex;
+    gap: 10px;
+    margin-right: 20px;
+  }
+
+    .lang-switcher button {
+      background: transparent;
+      border: 1px solid #444;
+      color: #888;
+      padding: 5px 10px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+
+      .lang-switcher button.active {
+        background: #d4af37;
+        color: #000;
+        border-color: #d4af37;
+      }
+
+  /* MAGIC BTN */
+  .input-with-tools {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+  }
+
+  .magic-btn {
+    opacity: 0;
+    background: none;
+    border: none;
+    color: #d4af37;
+    cursor: pointer;
+    margin-left: 5px;
+    font-size: 1rem;
+    transition: opacity 0.2s;
+  }
+
+  .input-with-tools:hover .magic-btn {
+    opacity: 1;
+  }
+
+  .magic-btn:hover {
+    transform: scale(1.1);
+    text-shadow: 0 0 5px #d4af37;
+  }
+
+  /* ... A TÖBBI STÍLUS UGYANAZ MINT EDDIG ... */
   .services-wrapper {
     padding-bottom: 50px;
   }
@@ -572,11 +695,6 @@
 
   .category-block {
     margin-bottom: 40px;
-  }
-
-  .sortable-ghost {
-    opacity: 0.5;
-    background: #111;
   }
 
   .header-row {
