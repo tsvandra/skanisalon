@@ -1,6 +1,6 @@
 <script setup>
   import { ref, onMounted, inject, watch, nextTick } from 'vue';
-  import api from '@/services/api';
+  import api from '@/services/api'; // Figyelj: itt 'api' a neve, nem 'apiClient', konzisztensen használjuk
   import { DEFAULT_COMPANY_ID } from '@/config';
   import { useAutoSaveQueue } from '@/composables/useAutoSaveQueue';
   import draggable from 'vuedraggable';
@@ -13,8 +13,9 @@
   const isUploading = ref(false);
   const isLoggedIn = ref(false);
 
-  // MVP: Fix 'hu' nyelv
+  // Nyelvkezelés & Fordítás State
   const currentLang = ref('hu');
+  const translatingField = ref(null); // Loading spinnerhez
 
   // Preview state
   const showPreview = ref(false);
@@ -31,10 +32,55 @@
   const company = inject('company', ref(null));
   const { addToQueue } = useAutoSaveQueue();
 
-  // --- SEGÉDFÜGGVÉNY ---
+  // --- SEGÉDFÜGGVÉNYEK ---
   const ensureDict = (field, defaultValue = "") => {
     if (field && typeof field === 'object') return field;
     return { [currentLang.value]: field || defaultValue };
+  };
+
+  // --- AI FORDÍTÁS FUNKCIÓ ---
+  const translateField = async (obj, fieldName, targetLang) => {
+    // Forrás: mindig a 'hu' vagy az aktuális
+    const sourceText = obj[fieldName]['hu'] || obj[fieldName][currentLang.value];
+
+    if (!sourceText || sourceText.trim() === '') return;
+
+    // Loading ID generálása
+    const loadingKey = `${obj.id || 'new'}-${fieldName}-${targetLang}`;
+    translatingField.value = loadingKey;
+
+    try {
+      const response = await api.post('/api/Translation', {
+        text: sourceText,
+        targetLanguage: targetLang
+      });
+
+      if (response.data && response.data.translatedText) {
+        obj[fieldName][targetLang] = response.data.translatedText;
+
+        // Automatikus mentés hívása a megfelelő típushoz
+        if (obj.items) {
+          // Ez egy kategória (mert vannak items-ei)
+          saveCategory(obj);
+        } else {
+          // Ez egy kép
+          saveImage(obj);
+        }
+      }
+    } catch (err) {
+      console.error("Fordítási hiba:", err);
+      alert("Hiba a fordítás során.");
+    } finally {
+      translatingField.value = null;
+    }
+  };
+
+  const triggerTranslation = (obj, fieldName) => {
+    if (currentLang.value === 'hu') {
+      alert("Válts nyelvet a fordításhoz!");
+      return;
+    }
+    translateField(obj, fieldName, currentLang.value);
   };
 
   // --- ADATLEKÉRÉS ---
@@ -48,13 +94,11 @@
         api.get('/api/Gallery', { params: { companyId: targetCompanyId } })
       ]);
 
-      // Kategóriák neveinek konvertálása Dictionary-re
       categories.value = resCats.data.map(c => ({
         ...c,
         name: ensureDict(c.name, "Névtelen galéria")
       }));
 
-      // Képek kategórianevének konvertálása
       images.value = resImages.data.map(i => ({
         ...i,
         category: ensureDict(i.category, "Egyéb")
@@ -75,7 +119,7 @@
     categories.value.forEach(cat => {
       const group = {
         id: cat.id,
-        name: cat.name, // Ez már Dictionary
+        name: cat.name,
         items: [],
         orderIndex: cat.orderIndex
       };
@@ -83,8 +127,6 @@
       groupsMap.set(cat.id, group);
     });
 
-    // Képek besorolása
-    // Az "Egyéb" kategóriát is Dictionary-ként kezeljük
     const uncategorized = {
       id: -1,
       name: { [currentLang.value]: "Egyéb / Nem kategorizált" },
@@ -113,18 +155,15 @@
 
   // --- KATEGÓRIA MŰVELETEK ---
 
-  // 1. Létrehozás
   const createCategory = async () => {
     if (!isLoggedIn.value) return;
 
     try {
-      // Backendnek Dictionary-t küldünk
       const payload = { name: { [currentLang.value]: "Új galéria" } };
       const res = await api.post('/api/Gallery/categories', payload);
       const newCat = res.data;
 
-      // Helyi lista frissítése
-      newCat.name = ensureDict(newCat.name); // Biztosítjuk a formátumot
+      newCat.name = ensureDict(newCat.name);
 
       const newGroup = {
         id: newCat.id,
@@ -145,7 +184,6 @@
     }
   };
 
-  // 2. Kategória Mozgatás
   const onCategoryDragChange = (event) => {
     if (event.moved) {
       groupedImages.value.forEach((group, index) => {
@@ -157,18 +195,15 @@
     }
   };
 
-  // 3. Mentés
   const saveCategory = (group) => {
     if (!group.id || group.id === -1) return;
 
-    // Ellenőrizzük, hogy üres-e az aktuális nyelvi név
     const currentName = group.name[currentLang.value]?.trim();
     if (!currentName) {
       group.name[currentLang.value] = "Új galéria";
     }
 
     addToQueue(`cat-${group.id}`, async () => {
-      // A teljes Dictionary-t küldjük vissza
       await api.put(`/api/Gallery/categories/${group.id}`, {
         name: group.name,
         orderIndex: group.orderIndex
@@ -194,15 +229,10 @@
       group.items.forEach((img, index) => {
         const newOrder = index + 1;
 
-        // Ellenőrzés: változott-e a sorrend vagy a kategória ID
-        // Itt nem a nevet hasonlítjuk már, hanem az ID-t, ami biztosabb
         if (img.orderIndex !== newOrder || img.categoryId !== group.id) {
           img.orderIndex = newOrder;
           img.categoryId = group.id;
-
-          // A kategória nevet is frissítjük a helyi objektumban (Dictionary másolat)
           img.category = JSON.parse(JSON.stringify(group.name));
-
           saveImage(img);
         }
       });
@@ -211,11 +241,10 @@
 
   const saveImage = (img) => {
     addToQueue(img.id, async () => {
-      // A backend 'CategoryName' néven várja a Dictionary-t
       await api.put(`/api/Gallery/${img.id}`, {
         id: img.id,
-        title: img.title,
-        categoryName: img.category, // Dictionary küldése
+        title: img.title, // Megj: A kép címe egyelőre string maradt a backendben, de előkészítettük
+        categoryName: img.category,
         orderIndex: img.orderIndex
       });
     });
@@ -243,9 +272,8 @@
 
     isUploading.value = true;
 
-    // A form-data-hoz string kell. Kivesszük az aktuális nyelvi nevet.
-    // Ha üres, akkor "Új galéria" (a backend ezt majd "hu"-ként menti el)
-    const targetCatName = currentUploadCategory.value.name[currentLang.value] || "Új galéria";
+    // Feltöltéskor a backend stringet vár, így a 'hu' nevet küldjük (fallback az újra)
+    const targetCatName = currentUploadCategory.value.name['hu'] || "Új galéria";
 
     for (let i = 0; i < files.length; i++) {
       const formData = new FormData();
@@ -276,6 +304,12 @@
     <div class="header-actions">
       <h1>Galéria & Munkáim</h1>
 
+      <div v-if="isLoggedIn" class="lang-switcher">
+        <button @click="currentLang = 'hu'" :class="{ active: currentLang === 'hu' }">HU</button>
+        <button @click="currentLang = 'en'" :class="{ active: currentLang === 'en' }">EN</button>
+        <button @click="currentLang = 'sk'" :class="{ active: currentLang === 'sk' }">SK</button>
+      </div>
+
       <button v-if="isLoggedIn" @click="createCategory" class="btn primary-btn big-btn">
         <i class="pi pi-plus-circle"></i> Új Galéria Létrehozása
       </button>
@@ -304,13 +338,24 @@
               </div>
 
               <div class="cat-title-wrapper">
-                <input v-if="isLoggedIn && group.id !== -1"
-                       :ref="el => categoryInputRefs[group.id] = el"
-                       v-model="group.name[currentLang]"
-                       @change="saveCategory(group)"
-                       class="cat-input"
-                       placeholder="Új galéria" />
-                <h3 v-else class="cat-title">{{ group.name[currentLang] }}</h3>
+                <div class="input-with-tools">
+                  <input v-if="isLoggedIn && group.id !== -1"
+                         :ref="el => categoryInputRefs[group.id] = el"
+                         v-model="group.name[currentLang]"
+                         @change="saveCategory(group)"
+                         class="cat-input"
+                         placeholder="Új galéria" />
+                  <h3 v-else class="cat-title">{{ group.name[currentLang] }}</h3>
+
+                  <button v-if="isLoggedIn && currentLang !== 'hu' && group.id !== -1"
+                          @click="triggerTranslation(group.name, 'name')"
+                          class="magic-btn"
+                          title="Fordítás">
+                    <i v-if="translatingField === `${group.id}-name-${currentLang}`" class="pi pi-spin pi-spinner"></i>
+                    <i v-else class="pi pi-sparkles"></i>
+                  </button>
+                </div>
+
                 <span class="count">({{ group.items.length }})</span>
               </div>
             </div>
@@ -373,7 +418,7 @@
 </template>
 
 <style scoped>
-  /* A stílusok változatlanok, hagyd meg az eredeti CSS-t */
+  /* Ugyanazok a stílusok, plusz az újak */
   .gallery-container {
     max-width: 1200px;
     margin: 0 auto;
@@ -397,7 +442,59 @@
     letter-spacing: 2px;
   }
 
-  /* GOMBOK */
+  /* LANG SWITCHER (ServiceView-ból átemelve a konzisztencia miatt) */
+  .lang-switcher {
+    display: flex;
+    gap: 10px;
+    margin-right: 20px;
+  }
+
+    .lang-switcher button {
+      background: transparent;
+      border: 1px solid #444;
+      color: #888;
+      padding: 5px 10px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+
+      .lang-switcher button.active {
+        background: #d4af37;
+        color: #000;
+        border-color: #d4af37;
+      }
+
+  /* MAGIC BTN */
+  .input-with-tools {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: auto;
+    flex-grow: 1;
+  }
+
+  .magic-btn {
+    opacity: 0;
+    background: none;
+    border: none;
+    color: #d4af37;
+    cursor: pointer;
+    margin-left: 5px;
+    font-size: 1rem;
+    transition: opacity 0.2s;
+  }
+
+  .input-with-tools:hover .magic-btn {
+    opacity: 1;
+  }
+
+  .magic-btn:hover {
+    transform: scale(1.1);
+    text-shadow: 0 0 5px #d4af37;
+  }
+
+  /* BUTTONS */
   .btn {
     border: none;
     border-radius: 4px;
@@ -437,7 +534,7 @@
     transform: scale(1.03);
   }
 
-  /* KATEGÓRIA SZEKCIÓ */
+  /* CATEGORY SECTION */
   .category-section {
     margin-bottom: 2rem;
     background: #111;
@@ -522,7 +619,7 @@
       color: #ff4444;
     }
 
-  /* GRID & KÉPEK */
+  /* GRID */
   .image-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -617,7 +714,7 @@
     color: #999;
   }
 
-  /* Lightbox */
+  /* LIGHTBOX */
   .lightbox {
     position: fixed;
     inset: 0;
