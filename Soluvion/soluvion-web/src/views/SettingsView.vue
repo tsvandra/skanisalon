@@ -18,6 +18,7 @@
 
   // Refek a rejtett fájl inputokhoz
   const logoInputRef = ref(null);
+  const heroInputRef = ref(null); // ÚJ
   const footerInputRef = ref(null);
 
   // 2. Adatok betöltése
@@ -35,7 +36,7 @@
       const data = res.data;
       if (!data.logoHeight) data.logoHeight = 50;
       if (!data.footerHeight) data.footerHeight = 250;
-      
+
       companyData.value = { ...data };
     } catch (err) {
       console.error("Hiba a betöltéskor:", err);
@@ -53,20 +54,25 @@
     isUploading.value = true;
     const formData = new FormData();
     formData.append('file', file);
-    
+
     // A megfelelő végpont kiválasztása
-    const endpoint = type === 'logo' ? '/api/Company/upload/logo' : '/api/Company/upload/footer';
+    let endpoint = '';
+    if (type === 'logo') endpoint = '/api/Company/upload/logo';
+    else if (type === 'hero') endpoint = '/api/Company/upload/hero';
+    else endpoint = '/api/Company/upload/footer';
 
     try {
-      const res = await api.post(endpoint, formData, { 
-          headers: { 'Content-Type': undefined } 
+      const res = await api.post(endpoint, formData, {
+        headers: { 'Content-Type': undefined }
       });
-      
+
       // Frissítjük a lokális nézetet, hogy azonnal látszódjon a csere
       if (type === 'logo') {
-          companyData.value.logoUrl = res.data.url;
+        companyData.value.logoUrl = res.data.url;
+      } else if (type === 'hero') {
+        companyData.value.heroImageUrl = res.data.url;
       } else {
-          companyData.value.footerImageUrl = res.data.url;
+        companyData.value.footerImageUrl = res.data.url;
       }
       successMsg.value = "Kép sikeresen feltöltve!";
       setTimeout(() => successMsg.value = '', 3000);
@@ -97,10 +103,7 @@
         document.documentElement.style.setProperty('--primary-color', companyData.value.primaryColor);
         document.documentElement.style.setProperty('--secondary-color', companyData.value.secondaryColor);
       }
-      
-      // Mivel a Header/Footer globális state-ből olvashat, érdemes lehet frissíteni az oldalt
-      // vagy használni a provide/inject pattern-t. 
-      // Most maradunk az egyszerű megoldásnál:
+
       setTimeout(() => successMsg.value = '', 3000);
 
     } catch (err) {
@@ -208,23 +211,42 @@
         </TabPanel>
 
         <TabPanel header="Megjelenés">
-          
+
           <div class="design-section">
             <h3>Logó beállítások</h3>
             <div class="design-controls">
               <div class="preview-box logo-preview">
-                 <img v-if="companyData.logoUrl" :src="companyData.logoUrl" :style="{ height: companyData.logoHeight + 'px' }" />
-                 <span v-else>Nincs logó feltöltve</span>
+                <img v-if="companyData.logoUrl" :src="companyData.logoUrl" :style="{ height: companyData.logoHeight + 'px' }" />
+                <span v-else>Nincs logó feltöltve</span>
               </div>
-              
+
               <div class="control-group">
                 <Button label="Logó feltöltése" icon="pi pi-upload" @click="logoInputRef.click()" class="p-button-outlined" :loading="isUploading" />
                 <input type="file" ref="logoInputRef" hidden @change="(e) => handleUpload(e, 'logo')" accept="image/*" />
-                
+
                 <div class="slider-container">
-                   <label>Logó mérete: {{ companyData.logoHeight }}px</label>
-                   <input type="range" v-model="companyData.logoHeight" min="30" max="150" step="2" class="custom-range" />
+                  <label>Logó mérete: {{ companyData.logoHeight }}px</label>
+                  <input type="range" v-model="companyData.logoHeight" min="30" max="150" step="2" class="custom-range" />
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <hr class="separator" />
+
+          <div class="design-section">
+            <h3>Kezdőoldal Borítókép (Hero)</h3>
+            <div class="design-controls">
+              <div class="preview-box hero-preview"
+                   :style="{ backgroundImage: `url(${companyData.heroImageUrl || 'https://via.placeholder.com/400x200?text=Alapertelmezett'})` }">
+                <span v-if="!companyData.heroImageUrl" style="color:white; z-index:2; text-shadow: 0 0 5px black;">Nincs egyedi kép</span>
+                <div class="overlay"></div>
+              </div>
+
+              <div class="control-group">
+                <Button label="Borítókép cseréje" icon="pi pi-image" @click="heroInputRef.click()" class="p-button-outlined" :loading="isUploading" />
+                <input type="file" ref="heroInputRef" hidden @change="(e) => handleUpload(e, 'hero')" accept="image/*" />
+                <small style="display:block; margin-top:5px; color:#888;">Ajánlott méret: 1920x400px</small>
               </div>
             </div>
           </div>
@@ -234,19 +256,19 @@
           <div class="design-section">
             <h3>Lábléc Háttérkép</h3>
             <div class="design-controls">
-              <div class="preview-box footer-preview" 
+              <div class="preview-box footer-preview"
                    :style="{ backgroundImage: `url(${companyData.footerImageUrl})` }">
-                 <span v-if="!companyData.footerImageUrl" style="color:white; z-index:2;">Nincs háttérkép</span>
-                 <div class="overlay"></div>
+                <span v-if="!companyData.footerImageUrl" style="color:white; z-index:2;">Nincs háttérkép</span>
+                <div class="overlay"></div>
               </div>
-              
+
               <div class="control-group">
                 <Button label="Lábléc cseréje" icon="pi pi-image" @click="footerInputRef.click()" class="p-button-outlined" :loading="isUploading" />
                 <input type="file" ref="footerInputRef" hidden @change="(e) => handleUpload(e, 'footer')" accept="image/*" />
-                
+
                 <div class="slider-container">
-                   <label>Lábléc magassága: {{ companyData.footerHeight }}px</label>
-                   <input type="range" v-model="companyData.footerHeight" min="50" max="600" step="10" class="custom-range" />
+                  <label>Lábléc magassága: {{ companyData.footerHeight }}px</label>
+                  <input type="range" v-model="companyData.footerHeight" min="50" max="600" step="10" class="custom-range" />
                 </div>
               </div>
             </div>
@@ -297,9 +319,20 @@
     padding: 2rem;
   }
 
-  h1 { color: var(--primary-color); }
-  h3 { margin-top: 1.5rem; margin-bottom: 0.5rem; color: #555; }
-  .intro { margin-bottom: 2rem; color: #666; }
+  h1 {
+    color: var(--primary-color);
+  }
+
+  h3 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: #555;
+  }
+
+  .intro {
+    margin-bottom: 2rem;
+    color: #666;
+  }
 
   .form-wrapper {
     background: white;
@@ -309,30 +342,75 @@
   }
 
   /* Mezők */
-  .field { margin-bottom: 1.5rem; }
-  .field label { display: block; margin-bottom: 0.5rem; font-weight: bold; color: #333; }
+  .field {
+    margin-bottom: 1.5rem;
+  }
+
+    .field label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+      color: #333;
+    }
 
   /* PrimeVue input fix */
-  :deep(.p-inputtext), :deep(.p-inputtextarea) { width: 100%; }
-  .w-full { width: 100%; }
-  
-  .field-group { display: flex; gap: 1rem; }
-  .field-group .field { flex: 1; }
+  :deep(.p-inputtext), :deep(.p-inputtextarea) {
+    width: 100%;
+  }
+
+  .w-full {
+    width: 100%;
+  }
+
+  .field-group {
+    display: flex;
+    gap: 1rem;
+  }
+
+    .field-group .field {
+      flex: 1;
+    }
 
   /* Alert boxok */
-  .alert-box { padding: 1rem; border-radius: 4px; margin-bottom: 1rem; text-align: center; font-weight: bold; }
-  .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-  .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-  .loading { background: #e2e3e5; color: #383d41; }
+  .alert-box {
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    text-align: center;
+    font-weight: bold;
+  }
 
-  .actions { margin-top: 2rem; text-align: right; }
-  
+  .success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+  }
+
+  .error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+  }
+
+  .loading {
+    background: #e2e3e5;
+    color: #383d41;
+  }
+
+  .actions {
+    margin-top: 2rem;
+    text-align: right;
+  }
+
   .save-btn {
     background-color: var(--primary-color) !important;
     border: none !important;
     padding: 10px 20px;
   }
-  .save-btn:hover { filter: brightness(90%); }
+
+    .save-btn:hover {
+      filter: brightness(90%);
+    }
 
   /* --- ÚJ DIZÁJN SZEKCIÓ STÍLUSOK --- */
   .design-section {
@@ -370,46 +448,70 @@
     background-repeat: repeat-x;
     background-position: center bottom;
   }
-  
+
+  /* ÚJ HERO PREVIEW STYLE */
+  .hero-preview {
+    background-size: cover;
+    background-position: center;
+  }
+
   .overlay {
-      position: absolute; inset: 0;
-      background: linear-gradient(to top, rgba(0,0,0,0.5), transparent);
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.5), transparent);
   }
 
   .control-group {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
   }
 
   .slider-container {
-      margin-top: 10px;
+    margin-top: 10px;
   }
-  .slider-container label {
+
+    .slider-container label {
       display: block;
       margin-bottom: 5px;
       font-weight: bold;
       color: #666;
-  }
+    }
 
   .custom-range {
-      width: 100%;
-      cursor: pointer;
-      accent-color: var(--primary-color);
+    width: 100%;
+    cursor: pointer;
+    accent-color: var(--primary-color);
   }
 
   .separator {
-      border: 0;
-      border-top: 1px solid #eee;
-      margin: 20px 0;
+    border: 0;
+    border-top: 1px solid #eee;
+    margin: 20px 0;
   }
 
   /* Color picker */
-  .color-grid { display: flex; gap: 20px; }
-  .color-input-wrapper {
-    display: flex; align-items: center; gap: 10px;
-    border: 1px solid #ddd; padding: 5px; border-radius: 4px; width: fit-content;
+  .color-grid {
+    display: flex;
+    gap: 20px;
   }
-  input[type="color"] { width: 50px; height: 40px; border: none; cursor: pointer; background: none; }
+
+  .color-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #ddd;
+    padding: 5px;
+    border-radius: 4px;
+    width: fit-content;
+  }
+
+  input[type="color"] {
+    width: 50px;
+    height: 40px;
+    border: none;
+    cursor: pointer;
+    background: none;
+  }
 </style>

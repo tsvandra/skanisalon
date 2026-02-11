@@ -74,7 +74,7 @@ namespace Soluvion.API.Controllers
             existingCompany.FooterHeight = updatedCompany.FooterHeight;
             existingCompany.LogoHeight = updatedCompany.LogoHeight;
 
-            // Megjegyzés: A LogoUrl és FooterImageUrl itt NEM frissül, azokat a külön endpoint kezeli
+            // Megjegyzés: A LogoUrl, HeroImageUrl és FooterImageUrl itt NEM frissül, azokat a külön endpoint kezeli
 
             await _context.SaveChangesAsync();
             return Ok(existingCompany);
@@ -89,13 +89,20 @@ namespace Soluvion.API.Controllers
             return CreatedAtAction(nameof(GetCompanyById), new { id = company.Id }, company);
         }
 
-        // --- ÚJ: KÉPFELTÖLTÉS (LOGO & FOOTER) ---
+        // --- ÚJ: KÉPFELTÖLTÉS (LOGO, HERO & FOOTER) ---
 
         [HttpPost("upload/logo")]
         [Authorize]
         public async Task<IActionResult> UploadLogo(IFormFile file)
         {
             return await UploadBrandingImage(file, "logo");
+        }
+
+        [HttpPost("upload/hero")]
+        [Authorize]
+        public async Task<IActionResult> UploadHero(IFormFile file)
+        {
+            return await UploadBrandingImage(file, "hero");
         }
 
         [HttpPost("upload/footer")]
@@ -131,22 +138,34 @@ namespace Soluvion.API.Controllers
             if (uploadResult.Error != null) return BadRequest(uploadResult.Error.Message);
 
             // 2. Régi törlése
-            string? oldPublicId = type == "logo" ? company.LogoPublicId : company.FooterImagePublicId;
+            string? oldPublicId = null;
+            switch (type)
+            {
+                case "logo": oldPublicId = company.LogoPublicId; break;
+                case "hero": oldPublicId = company.HeroImagePublicId; break;
+                case "footer": oldPublicId = company.FooterImagePublicId; break;
+            }
+
             if (!string.IsNullOrEmpty(oldPublicId))
             {
                 await _cloudinary.DestroyAsync(new DeletionParams(oldPublicId));
             }
 
             // 3. Mentés DB-be
-            if (type == "logo")
+            switch (type)
             {
-                company.LogoUrl = uploadResult.SecureUrl.ToString();
-                company.LogoPublicId = uploadResult.PublicId;
-            }
-            else
-            {
-                company.FooterImageUrl = uploadResult.SecureUrl.ToString();
-                company.FooterImagePublicId = uploadResult.PublicId;
+                case "logo":
+                    company.LogoUrl = uploadResult.SecureUrl.ToString();
+                    company.LogoPublicId = uploadResult.PublicId;
+                    break;
+                case "hero":
+                    company.HeroImageUrl = uploadResult.SecureUrl.ToString();
+                    company.HeroImagePublicId = uploadResult.PublicId;
+                    break;
+                case "footer":
+                    company.FooterImageUrl = uploadResult.SecureUrl.ToString();
+                    company.FooterImagePublicId = uploadResult.PublicId;
+                    break;
             }
 
             await _context.SaveChangesAsync();

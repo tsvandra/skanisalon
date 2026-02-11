@@ -41,11 +41,9 @@ namespace Soluvion.API.Models
         [MaxLength(500)]
         public string? TikTokUrl { get; set; }
 
-        // --- TÉRKÉP (ÚJ MEZŐ) ---
         public string? MapEmbedUrl { get; set; }
 
-        // --- NYITVATARTÁS KONFIGURÁCIÓ (ÚJ MEZŐK) ---
-        // 1. Cím (Pl: "Bejelentkezés alapján")
+
         [MaxLength(100)]
         public string OpeningHoursTitle { get; set; } = "Bejelentkezés alapján";
         // 2. Leírás (Pl: "Jelenleg kizárólag...")
@@ -72,16 +70,22 @@ namespace Soluvion.API.Models
 
         // Design
         [MaxLength(500)]
-        public string? LogoUrl { get; set; } // Logó URL
+        public string? LogoUrl { get; set; } 
 
         [MaxLength(200)]
-        public string? LogoPublicId { get; set; } // Cloudinary ID törléshez
+        public string? LogoPublicId { get; set; }
         public int LogoHeight { get; set; } = 50;
+
         [MaxLength(500)]
-        public string? FooterImageUrl { get; set; } // Lábléc kép URL
+        public string? HeroImageUrl { get; set; }
+        [MaxLength(200)]
+        public string? HeroImagePublicId { get; set; }
+
+        [MaxLength(500)]
+        public string? FooterImageUrl { get; set; } 
 
         [MaxLength(200)]
-        public string? FooterImagePublicId { get; set; } // Cloudinary ID
+        public string? FooterImagePublicId { get; set; }
         public int FooterHeight { get; set; } = 250;
 
         [MaxLength (20)]

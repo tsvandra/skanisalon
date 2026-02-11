@@ -1,6 +1,6 @@
 <script setup>
   //import { ref, onMounted } from 'vue';
-  import { inject } from 'vue';
+  import { inject, computed } from 'vue';
   import Button from 'primevue/button';
   import Card from 'primevue/card';
   import { useRouter } from 'vue-router';
@@ -9,6 +9,12 @@
   const router = useRouter();
 
   const company = inject('company');
+
+  // --- ÚJ: Dinamikus Hero Kép logika ---
+  // Ha van a DB-ben kép, azt használjuk, ha nincs, akkor a default Unsplash képet.
+  const heroImageUrl = computed(() => {
+    return company.value?.heroImageUrl || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80';
+  });
 
 
   //const company = ref(null);
@@ -45,7 +51,7 @@
 <template>
   <div class="home-container">
 
-    <div class="hero-section">
+    <div class="hero-section" :style="{ backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${heroImageUrl})` }">
       <div class="hero-content">
 
         <h1 class="main-title">{{ company?.name || 'SZKÁNI SZALON!' }}</h1>
@@ -90,8 +96,7 @@
 
   /* HERO SZEKCIÓ BEÁLLÍTÁSAI */
   .hero-section {
-    /* Itt állíthatod be a hátteret. Most egy internetes képet használunk. */
-    background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80');
+    /* Most már dinamikusan kapja a style attributumból a képet */
     background-size: cover;
     background-position: center;
     height: 400px; /* A fejléc magassága */
