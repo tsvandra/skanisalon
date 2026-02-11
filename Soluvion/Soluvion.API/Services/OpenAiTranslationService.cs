@@ -34,7 +34,7 @@ namespace Soluvion.API.Services
             // 2. Megadjuk a feladatot (User message)
             var messages = new List<ChatMessage>
             {
-                new SystemChatMessage($"You are a professional translator for a beauty salon website. Translate the input text to {targetLanguage}. Only return the translated text, no explanations."),
+                new SystemChatMessage($"You are a professional translator for a hair salon website. Translate the input text to {targetLanguage}. Only return the translated text, no explanations."),
                 new UserChatMessage(text)
             };
 
