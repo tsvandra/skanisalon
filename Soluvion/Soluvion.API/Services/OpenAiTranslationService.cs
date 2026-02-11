@@ -11,7 +11,7 @@ namespace Soluvion.API.Services
     public class OpenAiTranslationService : ITranslationService
     {
         private readonly ChatClient _chatClient;
-        private const string MODEL_ID = "gpt-4o-mini"; // Költséghatékony és gyors modell
+        private const string MODEL_ID = "gpt-5.2"; // Költséghatékony és gyors modell
 
         public OpenAiTranslationService(IConfiguration configuration)
         {
