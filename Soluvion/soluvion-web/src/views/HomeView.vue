@@ -70,8 +70,8 @@
         <template #title>
           Üdvözöllek a {{ company.name }}-ban!
         </template>
-        <template #content>
-          <p class="intro-text">
+      <template #content>
+          <div class="intro-text">
           <p style="color: #ddd"><strong>Szívvel-lélekkel a szépségedért.</strong></p>
 
           A Szkáni Szalonban nem csupán szolgáltatást nyújtok, hanem élményt. Minden vendég különleges figyelmet kap, mert hiszem, hogy a minőségi idő és a professzionális gondoskodás jár neked.
@@ -80,7 +80,7 @@
           <br>
           <br>
           Minőség, odafigyelés és egy kis varázslat – várlak szeretettel!
-          </p>
+          </div>
           <p>
             Tekintsd meg folyamatosan bővülő szolgáltatásaimat és galériámat.
           </p>
