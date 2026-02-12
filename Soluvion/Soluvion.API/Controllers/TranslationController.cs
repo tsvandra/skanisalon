@@ -1,13 +1,16 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Soluvion.API.Data;
 using Soluvion.API.Services;
+using System.Security.Claims;
 
 namespace Soluvion.API.Controllers
 {
-    // DTO (Data Transfer Object) a kéréshez: mit és mire fordítsunk
     public class TranslationRequest
     {
         public string Text { get; set; } = string.Empty;
-        public string TargetLanguage { get; set; } = "en"; // Alapértelmezett: angol
+        public string TargetLanguage { get; set; } = "en";
+        public string Context { get; set; } = "general";
     }
 
     [Route("api/[controller]")]
@@ -15,14 +18,25 @@ namespace Soluvion.API.Controllers
     public class TranslationController : ControllerBase
     {
         private readonly ITranslationService _translationService;
+        private readonly AppDbContext _context; // Adatbázis elérés injektálása
 
-        public TranslationController(ITranslationService translationService)
+        public TranslationController(ITranslationService translationService, AppDbContext context)
         {
             _translationService = translationService;
+            _context = context;
         }
 
-        // POST: api/Translation
-        // Példa hívás: { "text": "Hajvágás", "targetLanguage": "en" }
+        // Segédfüggvény a CompanyId kinyerésére a tokenből
+        private int GetCurrentCompanyId()
+        {
+            var companyClaim = User.FindFirst("CompanyId");
+            if (companyClaim != null && int.TryParse(companyClaim.Value, out int companyId))
+            {
+                return companyId;
+            }
+            return 0;
+        }
+
         [HttpPost]
         public async Task<IActionResult> Translate([FromBody] TranslationRequest request)
         {
@@ -31,10 +45,30 @@ namespace Soluvion.API.Controllers
                 return BadRequest("Nincs szöveg, amit lefordíthatnék.");
             }
 
-            // Meghívjuk a service-t (ami az OpenAI-t hívja)
-            var translatedText = await _translationService.TranslateTextAsync(request.Text, request.TargetLanguage);
+            // 1. Lekérjük a cég típusát az adatbázisból
+            string companyTypeName = "Beauty Salon"; // Alapértelmezett fallback
+            int companyId = GetCurrentCompanyId();
 
-            // Visszaadjuk a frontendnek JSON-ben
+            if (companyId > 0)
+            {
+                var company = await _context.Companies
+                    .Include(c => c.CompanyType) // Betöltjük a kapcsolódó típust
+                    .FirstOrDefaultAsync(c => c.Id == companyId);
+
+                if (company != null && company.CompanyType != null)
+                {
+                    companyTypeName = company.CompanyType.Name;
+                }
+            }
+
+            // 2. Átadjuk a típust is a service-nek
+            var translatedText = await _translationService.TranslateTextAsync(
+                request.Text,
+                request.TargetLanguage,
+                request.Context,
+                companyTypeName // <--- Itt adjuk át a dinamikus típust
+            );
+
             return Ok(new { translatedText });
         }
     }

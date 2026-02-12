@@ -54,9 +54,9 @@
     <div class="hero-section" :style="{ backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${heroImageUrl})` }">
       <div class="hero-content">
 
-        <h1 class="main-title">{{ company?.name || 'SZKÁNI SZALON!' }}</h1>
+        <!--<h1 class="main-title">{{ company?.name || 'SZKÁNI SZALON!' }}</h1>-->
 
-        <p class="subtitle">Stílus. Elegancia. Szépség.</p>
+        <!--<p class="subtitle">Stílus. Elegancia. Szépség.</p>-->
 
         <div class="hero-buttons">
           <Button label="Árlista megtekintése" icon="pi pi-list" class="p-button-raised p-button-warning" @click="goToServices" style="margin-right: 15px; background: var(--primary-color); border:none" />
@@ -72,9 +72,14 @@
         </template>
         <template #content>
           <p class="intro-text">
-            Sok szeretettel várok minden kedves régi és új vendéget a Szkáni Szalonban!
-            Célom, hogy a nálunk töltött idő ne csak egy szolgáltatás legyen, hanem igazi feltöltődés.
-            Professzionális anyagaim és szakértelmem garancia a minőségre.
+          <p style="color: #ddd"><strong>Szívvel-lélekkel a szépségedért.</strong></p>
+
+          A Szkáni Szalonban nem csupán szolgáltatást nyújtok, hanem élményt. Minden vendég különleges figyelmet kap, mert hiszem, hogy a minőségi idő és a professzionális gondoskodás jár neked.
+
+          Célom, hogy a szépségápolás ne kötelezettség, hanem a napod fénypontja legyen, és mosolyogva, ragyogva lépj ki tőlem.
+          <br>
+          <br>
+          Minőség, odafigyelés és egy kis varázslat – várlak szeretettel!
           </p>
           <p>
             Tekintsd meg folyamatosan bővülő szolgáltatásaimat és galériámat.
