@@ -152,3 +152,18 @@ A "Front Office" (Látogatói oldal) teljes dinamizálása a cél:
    - Felhasználó által feltöltött médiafájlokat TILOS lokálisan a `wwwroot`-ban tárolni.
    - Minden médiafájlt a Cloudinary-ba (vagy egyéb felhő tárhelyre) kell feltölteni.
    - Az adatbázisban a `PublicId`-t is tárolni kell az `Url` mellett, a fájlok későbbi törölhetősége érdekében.
+
+[ 7.AI FEJLESZTÉSI SZABÁLYOK]
+
+1. API Kulcs Biztonság:
+   TILOS API kulcsot (sk-...) kódban vagy config fájlban commitolni. 
+   Ha véletlenül megtörténik, a kulcsot azonnal vissza kell vonni és a Git history-t tisztítani (soft reset).
+
+2. Prompt Logika (SaaS Rule):
+   TILOS hard-coded üzleti típusokat (pl. "Fodrászat") írni a System Promptba. 
+   Mindig a `CompanyType` változót kell behelyettesíteni, hogy a rendszer skálázható maradjon.
+
+3. Frontend Hívás:
+   Az AI fordítás mindig "On-Demand" (gombnyomásra) történik, sosem automatikusan a háttérben.
+   A Frontendnek KÖTELEZŐ küldenie a `context` paramétert ('service', 'gallery', 'inventory'), 
+   különben a backend "general" módban fordít, ami pontatlan lehet.

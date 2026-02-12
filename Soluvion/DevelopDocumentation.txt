@@ -78,7 +78,7 @@ A kód stabilitásának megõrzése érdekében szigorú elágaztatási modellt 
       $ git branch -d feature/12-arlista-backend
 
    E. Publikálás (Deploy):
-      $ git push origin develop  --> Ekkor indul a Netlify/Railway build!
+      $ git push origin /*aktualisan beallitott branch*/  --> Ekkor indul a Netlify/Railway build!
 
 --------------------------------------------------------------------------------
 
@@ -256,5 +256,26 @@ Frontend Változtatások (SettingsView & Komponensek):
 UX Döntések:
 - A dizájn vezérlők átmozgatása a "Beállítások" menübe, elkerülve a véletlen módosításokat a napi használat során.
 - Valós idejű előnézet: A Beállításokban húzott csúszkák azonnal frissítik a Fejlécet/Láblécet a reaktív state injektáláson keresztül.
+
+--------------------------------------------------------------------------------
+
+=== FEATURE: INTELLIGENS AI FORDÍTÁS (2026.02.12) ===
+
+A rendszerbe bekerült egy kontextus-érzékeny fordító modul.
+
+Működési elv (SaaS kompatibilitás):
+Ahelyett, hogy fix promptokat égetnénk a kódba ("Te egy fodrász vagy"), a rendszer dinamikusan állítja össze az utasítást három változóból:
+
+1. Company Business Type (Adatbázisból): 
+   Meghatározza a szakterületet (pl. Hair Salon vs Car Mechanic). 
+   Így az AI tudja, hogy a "vágás" hajat jelent vagy fémet.
+
+2. Page Context (Frontendről):
+   - 'service': Árlista mód. Utasítás: "Tömörség, márkanevek (L'Oreal) megőrzése."
+   - 'gallery': Galéria mód. Utasítás: "Kreatív, marketinges, érzelmes leírás."
+   
+3. User Input: A fordítandó szöveg.
+
+Ez a struktúra lehetővé teszi, hogy a szoftver kódmódosítás nélkül kiszolgáljon különböző típusú vállalkozásokat.
 
 ================================================================================

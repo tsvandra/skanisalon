@@ -131,4 +131,22 @@ Környezeti Változók (.env kezelés):
   Architektúra / Composables:
 - useAutoSaveQueue.js: Egyedi composable az optimista UI frissítésekhez és a gyors API hívások (pl. csúszka mozgatás, drag-and-drop) sorbaállításához, a versenyhelyzetek (race conditions) elkerülése érdekében.
 
+  --------------------------------------------------------------------------------
+
+  === AI & 3RD PARTY INTEGRÁCIÓK ===
+
+1. OpenAI Integration:
+   - Library: Hivatalos `OpenAI` .NET kliens.
+   - Modell: `gpt-5.2` (Költséghatékony, gyors).
+   - Prompt Engineering: System Message dinamikus injektálása.
+
+2. Biztonság (Secrets Management):
+   - Fejlesztés alatt: `User Secrets` (dotnet user-secrets). A kulcsok nem kerülnek a Git repóba.
+   - Éles környezet (Railway): Environment Variables (`OpenAI__ApiKey`).
+
+3. Backend Architektúra:
+   - Controller: `TranslationController` (fogadja a requestet, lekéri a CompanyType-ot).
+   - Service: `OpenAiTranslationService` (végzi a kommunikációt az API-val).
+   - Interface: `ITranslationService` (a tesztelhetőség és cserélhetőség miatt).
+
 ================================================================================
