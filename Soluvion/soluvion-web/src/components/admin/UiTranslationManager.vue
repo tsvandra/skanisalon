@@ -63,7 +63,7 @@ const loadOverrides = async () => {
     if (!store.activeCompanyId) return;
     isLoading.value = true;
     try {
-        const res = await api.get(`/Translation/overrides/${store.activeCompanyId}/${selectedLang.value}`);
+        const res = await api.get(`/api/Translation/overrides/${store.activeCompanyId}/${selectedLang.value}`);
         overrides.value = res.data; // { "nav.home": "Kezdőlap", ... }
     } catch (err) {
         console.error("Hiba a felülírások betöltésekor", err);
@@ -80,7 +80,7 @@ const saveOverride = async (key, newValue) => {
     // Most upsert logic: ha van érték, mentjük.
 
     try {
-        await api.post('/Translation/save-override', {
+        await api.post('/api/Translation/save-override', {
             companyId: store.activeCompanyId,
             languageCode: selectedLang.value,
             key: key,

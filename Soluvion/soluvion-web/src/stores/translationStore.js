@@ -32,7 +32,7 @@ export const useTranslationStore = defineStore('translation', () => {
   // 2. Nyelvek listájának lekérése
   const fetchLanguages = async (companyId) => {
     try {
-      const response = await api.get(`/Translation/languages/${companyId}`);
+      const response = await api.get(`/api/Translation/languages/${companyId}`);
       languages.value = response.data;
     } catch (error) {
       console.error('Hiba a nyelvek betöltésekor:', error);
@@ -43,7 +43,7 @@ export const useTranslationStore = defineStore('translation', () => {
   const addLanguage = async (companyId, targetLang) => {
     isLoading.value = true;
     try {
-      await api.post('/Translation/add-language', {
+      await api.post('/api/Translation/add-language', {
         companyId,
         targetLanguage: targetLang
       });
@@ -68,7 +68,7 @@ export const useTranslationStore = defineStore('translation', () => {
   // 4. Publikálás
   const publishLanguage = async (companyId, langCode) => {
     try {
-      await api.post('/Translation/publish', { companyId, languageCode: langCode });
+      await api.post('/api/Translation/publish', { companyId, languageCode: langCode });
 
       const lang = languages.value.find(l => l.languageCode === langCode);
       if (lang) lang.status = 'Published';
@@ -101,7 +101,7 @@ export const useTranslationStore = defineStore('translation', () => {
   const loadOverrides = async (companyId, langCode) => {
     try {
       // Backend: Dictionary<string, string> -> { "nav.services": "Kezelések" }
-      const response = await api.get(`/Translation/overrides/${companyId}/${langCode}`);
+      const response = await api.get(`/api/Translation/overrides/${companyId}/${langCode}`);
       const overrides = response.data;
 
       // Minden kulcsot egyesével behúzunk a vue-i18n memóriájába
