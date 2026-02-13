@@ -1,0 +1,25 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "logout": "Logout"
+  },
+  "nav": {
+    "home": "Home",
+    "services": "Services",
+    "gallery": "Gallery",
+    "contact": "Contact",
+    "admin": "Admin"
+  },
+  "admin": {
+    "addLanguage": "Add Language",
+    "languageStatus": "Language Status",
+    "publish": "Publish",
+    "translating": "Translating...",
+    "reviewPending": "Review Pending",
+    "published": "Published"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "common": {
+    "loading": "Betöltés...",
+    "save": "Mentés",
+    "cancel": "Mégsem",
+    "delete": "Törlés",
+    "edit": "Szerkesztés",
+    "logout": "Kilépés",
+    "login": "Belépés",
+    "settings": "Beállítások"
+  },
+  "nav": {
+    "home": "Kezdőlap",
+    "services": "Árlista",
+    "gallery": "Galéria",
+    "contact": "Kapcsolat"
+  },
+  "home": {
+    "welcome": "Üdvözöllek a {company}-ban!",
+    "subtitle": "Stílus. Elegancia. Szépség.",
+    "viewServices": "Árlista megtekintése",
+    "bookAppointment": "Időpontfoglalás",
+    "introTitle": "Szívvel-lélekkel a szépségedért.",
+    "introText": "A Szkáni Szalonban nem csupán szolgáltatást nyújtok, hanem élményt. Minden vendég különleges figyelmet kap, mert hiszem, hogy a minőségi idő és a professzionális gondoskodás jár neked. Célom, hogy a szépségápolás ne kötelezettség, hanem a napod fénypontja legyen, és mosolyogva, ragyogva lépj ki tőlem. Minőség, odafigyelés és egy kis varázslat – várlak szeretettel!",
+    "checkGallery": "Tekintsd meg folyamatosan bővülő szolgáltatásaimat és galériámat."
+  },
+  "services": {
+    "title": "Árlista",
+    "editorTitle": "Árlista Szerkesztő",
+    "newCategory": "Új Kategória",
+    "addService": "+ Szolgáltatás hozzáadása",
+    "categoryNamePlaceholder": "Kategória neve",
+    "serviceNamePlaceholder": "Szolgáltatás neve",
+    "notePlaceholder": "Megjegyzés...",
+    "variantName": "Változat",
+    "normal": "Normál",
+    "extra": "Extra"
+  },
+  "gallery": {
+    "title": "Galéria & Munkáim",
+    "newGallery": "Új Galéria Létrehozása",
+    "uploadHere": "Képek feltöltése ide",
+    "emptyState": "Kattints az 'Új Galéria' gombra a kezdéshez!",
+    "untitled": "Névtelen galéria"
+  }
+}

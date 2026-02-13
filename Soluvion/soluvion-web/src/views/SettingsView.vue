@@ -7,18 +7,22 @@
   import TabView from 'primevue/tabview';
   import TabPanel from 'primevue/tabpanel';
   import api from '@/services/api';
-  import { getCompanyIdFromToken } from '../utils/jwt';
+  import { getCompanyIdFromToken } from '@/utils/jwt';
+
+  // ÚJ IMPORTOK
+  import LanguageManager from '@/components/admin/LanguageManager.vue';
+  import UiTranslationManager from '@/components/admin/UiTranslationManager.vue';
 
   const companyData = ref({});
   const isLoading = ref(false);
   const isSaving = ref(false);
-  const isUploading = ref(false); // Új state a feltöltéshez
+  const isUploading = ref(false);
   const successMsg = ref('');
   const errorMsg = ref('');
 
   // Refek a rejtett fájl inputokhoz
   const logoInputRef = ref(null);
-  const heroInputRef = ref(null); // ÚJ
+  const heroInputRef = ref(null);
   const footerInputRef = ref(null);
 
   // 2. Adatok betöltése
@@ -32,7 +36,6 @@
     isLoading.value = true;
     try {
       const res = await api.get(`/api/Company/${companyId}`);
-      // Default értékek beállítása, ha null jönne a backendről
       const data = res.data;
       if (!data.logoHeight) data.logoHeight = 50;
       if (!data.footerHeight) data.footerHeight = 250;
@@ -46,7 +49,7 @@
     }
   };
 
-  // --- ÚJ: FÁJLFELTÖLTÉS LOGIKA ---
+  // --- FÁJLFELTÖLTÉS LOGIKA ---
   const handleUpload = async (event, type) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -55,7 +58,6 @@
     const formData = new FormData();
     formData.append('file', file);
 
-    // A megfelelő végpont kiválasztása
     let endpoint = '';
     if (type === 'logo') endpoint = '/api/Company/upload/logo';
     else if (type === 'hero') endpoint = '/api/Company/upload/hero';
@@ -66,14 +68,10 @@
         headers: { 'Content-Type': undefined }
       });
 
-      // Frissítjük a lokális nézetet, hogy azonnal látszódjon a csere
-      if (type === 'logo') {
-        companyData.value.logoUrl = res.data.url;
-      } else if (type === 'hero') {
-        companyData.value.heroImageUrl = res.data.url;
-      } else {
-        companyData.value.footerImageUrl = res.data.url;
-      }
+      if (type === 'logo') companyData.value.logoUrl = res.data.url;
+      else if (type === 'hero') companyData.value.heroImageUrl = res.data.url;
+      else companyData.value.footerImageUrl = res.data.url;
+
       successMsg.value = "Kép sikeresen feltöltve!";
       setTimeout(() => successMsg.value = '', 3000);
     } catch (err) {
@@ -84,7 +82,7 @@
     }
   };
 
-  // 3. Mentés (Ez menti a szöveges adatokat ÉS a csúszkák értékeit is)
+  // 3. Mentés
   const saveSettings = async () => {
     const companyId = getCompanyIdFromToken();
     if (!companyId) return;
@@ -97,13 +95,10 @@
       await api.put(`/api/Company/${companyId}`, companyData.value);
 
       successMsg.value = "A változtatások sikeresen mentve!";
-
-      // Azonnali színfrissítés
       if (companyData.value.primaryColor) {
         document.documentElement.style.setProperty('--primary-color', companyData.value.primaryColor);
         document.documentElement.style.setProperty('--secondary-color', companyData.value.secondaryColor);
       }
-
       setTimeout(() => successMsg.value = '', 3000);
 
     } catch (err) {
@@ -211,7 +206,6 @@
         </TabPanel>
 
         <TabPanel header="Megjelenés">
-
           <div class="design-section">
             <h3>Logó beállítások</h3>
             <div class="design-controls">
@@ -219,11 +213,9 @@
                 <img v-if="companyData.logoUrl" :src="companyData.logoUrl" :style="{ height: companyData.logoHeight + 'px' }" />
                 <span v-else>Nincs logó feltöltve</span>
               </div>
-
               <div class="control-group">
                 <Button label="Logó feltöltése" icon="pi pi-upload" @click="logoInputRef.click()" class="p-button-outlined" :loading="isUploading" />
                 <input type="file" ref="logoInputRef" hidden @change="(e) => handleUpload(e, 'logo')" accept="image/*" />
-
                 <div class="slider-container">
                   <label>Logó mérete: {{ companyData.logoHeight }}px</label>
                   <input type="range" v-model="companyData.logoHeight" min="30" max="150" step="2" class="custom-range" />
@@ -231,9 +223,7 @@
               </div>
             </div>
           </div>
-
           <hr class="separator" />
-
           <div class="design-section">
             <h3>Kezdőoldal Borítókép (Hero)</h3>
             <div class="design-controls">
@@ -242,7 +232,6 @@
                 <span v-if="!companyData.heroImageUrl" style="color:white; z-index:2; text-shadow: 0 0 5px black;">Nincs egyedi kép</span>
                 <div class="overlay"></div>
               </div>
-
               <div class="control-group">
                 <Button label="Borítókép cseréje" icon="pi pi-image" @click="heroInputRef.click()" class="p-button-outlined" :loading="isUploading" />
                 <input type="file" ref="heroInputRef" hidden @change="(e) => handleUpload(e, 'hero')" accept="image/*" />
@@ -250,9 +239,7 @@
               </div>
             </div>
           </div>
-
           <hr class="separator" />
-
           <div class="design-section">
             <h3>Lábléc Háttérkép</h3>
             <div class="design-controls">
@@ -261,11 +248,9 @@
                 <span v-if="!companyData.footerImageUrl" style="color:white; z-index:2;">Nincs háttérkép</span>
                 <div class="overlay"></div>
               </div>
-
               <div class="control-group">
                 <Button label="Lábléc cseréje" icon="pi pi-image" @click="footerInputRef.click()" class="p-button-outlined" :loading="isUploading" />
                 <input type="file" ref="footerInputRef" hidden @change="(e) => handleUpload(e, 'footer')" accept="image/*" />
-
                 <div class="slider-container">
                   <label>Lábléc magassága: {{ companyData.footerHeight }}px</label>
                   <input type="range" v-model="companyData.footerHeight" min="50" max="600" step="10" class="custom-range" />
@@ -273,21 +258,19 @@
               </div>
             </div>
           </div>
-
           <hr class="separator" />
-
           <div class="design-section">
             <h3>Színek</h3>
             <div class="color-grid">
               <div class="field">
-                <label>Elsődleges Szín (Gombok, Ikonok)</label>
+                <label>Elsődleges Szín</label>
                 <div class="color-input-wrapper">
                   <input type="color" v-model="companyData.primaryColor" />
                   <span>{{ companyData.primaryColor }}</span>
                 </div>
               </div>
               <div class="field">
-                <label>Másodlagos Szín (Háttér)</label>
+                <label>Másodlagos Szín</label>
                 <div class="color-input-wrapper">
                   <input type="color" v-model="companyData.secondaryColor" />
                   <span>{{ companyData.secondaryColor }}</span>
@@ -295,7 +278,14 @@
               </div>
             </div>
           </div>
+        </TabPanel>
 
+        <TabPanel header="Fordítások & Nyelvek">
+          <div class="p-3">
+            <LanguageManager />
+            <hr class="separator" style="margin: 3rem 0;" />
+            <UiTranslationManager />
+          </div>
         </TabPanel>
 
       </TabView>
@@ -307,12 +297,16 @@
                 @click="saveSettings"
                 class="save-btn" />
       </div>
-
     </div>
   </div>
 </template>
 
 <style scoped>
+  /* A stílusok ugyanazok, mint eddig, csak a p-3 helper kellhet */
+  .p-3 {
+    padding: 1rem;
+  }
+
   .settings-container {
     max-width: 900px;
     margin: 0 auto;
@@ -341,7 +335,6 @@
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
   }
 
-  /* Mezők */
   .field {
     margin-bottom: 1.5rem;
   }
@@ -353,7 +346,6 @@
       color: #333;
     }
 
-  /* PrimeVue input fix */
   :deep(.p-inputtext), :deep(.p-inputtextarea) {
     width: 100%;
   }
@@ -371,7 +363,6 @@
       flex: 1;
     }
 
-  /* Alert boxok */
   .alert-box {
     padding: 1rem;
     border-radius: 4px;
@@ -412,7 +403,6 @@
       filter: brightness(90%);
     }
 
-  /* --- ÚJ DIZÁJN SZEKCIÓ STÍLUSOK --- */
   .design-section {
     margin-bottom: 20px;
   }
@@ -439,17 +429,16 @@
   }
 
   .logo-preview img {
-    height: 50px; /* Alap, de dinamikusan változik */
+    height: 50px;
     width: auto;
   }
 
   .footer-preview {
-    background-size: auto 100%; /* Magasságra igazodik */
+    background-size: auto 100%;
     background-repeat: repeat-x;
     background-position: center bottom;
   }
 
-  /* ÚJ HERO PREVIEW STYLE */
   .hero-preview {
     background-size: cover;
     background-position: center;
@@ -491,7 +480,6 @@
     margin: 20px 0;
   }
 
-  /* Color picker */
   .color-grid {
     display: flex;
     gap: 20px;
