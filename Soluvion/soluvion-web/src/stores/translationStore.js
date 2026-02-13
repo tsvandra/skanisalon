@@ -120,4 +120,29 @@ export const useTranslationStore = defineStore('translation', () => {
 
   // 7. FŐ NYELVVÁLTÓ FÜGGVÉNY
   const setLanguage = async (langCode) => {
-// a) Beállítjuk a vue-i18n nyelvét
+    // a) Beállítjuk a vue-i18n nyelvét (ez azonnal betölti a JSON fájlt)
+    i18n.global.locale.value = langCode;
+    currentLanguage.value = langCode;
+    document.querySelector('html').setAttribute('lang', langCode);
+
+    // b) Ha van beállított cég, lekérjük a DB-ből a felülírásokat
+    if (activeCompanyId.value > 0) {
+      await loadOverrides(activeCompanyId.value, langCode);
+    }
+  };
+
+  return {
+    languages,
+    currentLanguage,
+    isLoading,
+    activeCompanyId,
+    publishedLanguages,
+    pendingReviews,
+    setCompanyId,
+    fetchLanguages,
+    addLanguage,
+    publishLanguage,
+    setLanguage,
+    loadOverrides
+  };
+});
