@@ -66,14 +66,17 @@ namespace Soluvion.API.Controllers
 
             if (company == null) return NotFound("Cég nem található.");
 
+            // Ha nem kér AI-t, akkor a státusz rögtön "ReviewPending" (hogy szerkeszthesse),
+            // vagy "Created". Legyen ReviewPending, hogy a banner figyelmeztesse: "Hé, ez még üres!"
+            var initialStatus = dto.UseAi ? TranslationStatus.Translating : TranslationStatus.ReviewPending;
+
             if (company.Languages.Any(l => l.LanguageCode == dto.TargetLanguage) || company.DefaultLanguage == dto.TargetLanguage)
             {
-                // Ha már létezik, akkor is engedjük újra lefutni a fordítást (javítás/újragenerálás céljából),
-                // de a státuszt visszaállítjuk Translating-re.
                 var existing = company.Languages.FirstOrDefault(l => l.LanguageCode == dto.TargetLanguage);
                 if (existing != null)
                 {
-                    existing.Status = TranslationStatus.Translating;
+                    // Ha újraindítjuk, frissítjük a státuszt
+                    existing.Status = initialStatus;
                 }
             }
             else
@@ -82,7 +85,7 @@ namespace Soluvion.API.Controllers
                 {
                     CompanyId = dto.CompanyId,
                     LanguageCode = dto.TargetLanguage,
-                    Status = TranslationStatus.Translating,
+                    Status = initialStatus,
                     LastUpdated = DateTime.UtcNow
                 };
                 _context.CompanyLanguages.Add(newLang);
@@ -90,10 +93,49 @@ namespace Soluvion.API.Controllers
 
             await _context.SaveChangesAsync();
 
-            // Háttérfolyamat indítása - átadjuk a UI szótárat is!
-            _ = Task.Run(() => PerformBackgroundTranslation(dto.CompanyId, dto.TargetLanguage, dto.BaseUiTranslations));
+            // CSAK AKKOR indítjuk a jobot, ha kérte az AI-t!
+            if (dto.UseAi)
+            {
+                _ = Task.Run(() => PerformBackgroundTranslation(dto.CompanyId, dto.TargetLanguage, dto.BaseUiTranslations));
+                return Accepted(new { message = $"A(z) {dto.TargetLanguage} nyelv hozzáadva. A fordítás elindult." });
+            }
+            else
+            {
+                return Ok(new { message = $"A(z) {dto.TargetLanguage} nyelv hozzáadva (üresen). Kezdheted a kézi fordítást." });
+            }
+        }
 
-            return Accepted(new { message = $"A(z) {dto.TargetLanguage} nyelv hozzáadva. A fordítás a háttérben elindult, nyugodtan elhagyhatod az oldalt." });
+        // Nyelv törlése
+        [HttpDelete("language/{companyId}/{langCode}")]
+        public async Task<IActionResult> DeleteLanguage(int companyId, string langCode)
+        {
+            var company = await _context.Companies
+                .Include(c => c.Languages)
+                .FirstOrDefaultAsync(c => c.Id == companyId);
+
+            if (company == null) return NotFound("Cég nem található.");
+            if (company.DefaultLanguage == langCode) return BadRequest("Az alapértelmezett nyelv nem törölhető.");
+
+            // 1. Töröljük a kapcsolatot
+            var langEntity = company.Languages.FirstOrDefault(l => l.LanguageCode == langCode);
+            if (langEntity != null)
+            {
+                _context.CompanyLanguages.Remove(langEntity);
+            }
+
+            // 2. Töröljük a UI Overrides bejegyzéseket is ehhez a nyelvhez
+            var overrides = await _context.UiTranslationOverrides
+                .Where(o => o.CompanyId == companyId && o.LanguageCode == langCode)
+                .ToListAsync();
+
+            _context.UiTranslationOverrides.RemoveRange(overrides);
+
+            // Megjegyzés: A JSONB mezőkből (Service.Name['sk']) NEM töröljük ki a kulcsokat,
+            // mert az nagyon erőforrásigényes lenne, és nem zavar senkit, ha ott marad "szemétként".
+            // Ha újra hozzáadják a nyelvet, felülíródik.
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Nyelv sikeresen törölve." });
         }
 
         // 3. Publikálás (Review után)

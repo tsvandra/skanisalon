@@ -70,20 +70,11 @@ export const useTranslationStore = defineStore('translation', () => {
   };
 
   // 2. JAVÍTOTT: Dinamikus forrásnyelv választás
-  const addLanguage = async (companyId, targetLang) => {
-
-    if (!activeCompanyDefaultLang.value) {
-      console.warn("Még nem töltődött be a cég alapnyelve, várunk...");
-      return;
-    }
-
+  const addLanguage = async (companyId, targetLang, useAi = true) => {
     isLoading.value = true;
     try {
       // Megkeressük a cég alapnyelvét (pl. 'en')
       const sourceLang = activeCompanyDefaultLang.value;
-
-      // Megpróbáljuk betölteni a hozzá tartozó üzeneteket a statikus JSON-ból
-      // Ha nincs meg a rendszerben (pl. egyedi alapnyelv), akkor fallback 'hu' vagy 'en'
       let sourceMessages = i18n.global.messages.value[sourceLang];
 
       if (!sourceMessages) {
@@ -97,24 +88,36 @@ export const useTranslationStore = defineStore('translation', () => {
       await api.post('/api/Translation/add-language', {
         companyId,
         targetLanguage: targetLang,
-        baseUiTranslations: flattenedUi
+        baseUiTranslations: flattenedUi,
+        useAi: useAi
       });
 
       const existing = languages.value.find(l => l.languageCode === targetLang);
       if (!existing) {
         languages.value.push({
           languageCode: targetLang,
-          status: 'Translating',
+          status: useAi ? 'Translating' : 'ReviewPending',
           isDefault: false
         });
       } else {
-        existing.status = 'Translating';
+        existing.status = useAi ? 'Translating': 'ReviewPending';
       }
     } catch (error) {
       console.error('Hiba a nyelv hozzáadásakor:', error);
       throw error;
     } finally {
       isLoading.value = false;
+    }
+  };
+
+  const deleteLanguage = async (companyId, langCode) => {
+    try {
+      await api.delete(`/api/Translation/language/${companyId}/${langCode}`);
+      // Lokális lista frissítése
+      languages.value = languages.value.filter(l => l.languageCode !== langCode);
+    } catch (error) {
+      console.error('Hiba a törléskor:', error);
+      throw error;
     }
   };
 
@@ -168,6 +171,7 @@ export const useTranslationStore = defineStore('translation', () => {
     initCompany, // setCompanyId helyett ezt használjuk
     fetchLanguages,
     addLanguage,
+    deleteLanguage,
     publishLanguage,
     setLanguage,
     loadOverrides
