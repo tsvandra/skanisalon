@@ -77,7 +77,7 @@
       const data = res.data;
       company.value = data;
 
-      translationStore.setCompanyId(data.id);
+      translationStore.initCompany(data.id, data.defaultLanguage);
 
       // CSS Változók beállítása
       document.documentElement.style.setProperty('--primary-color', data.primaryColor || '#d4af37');

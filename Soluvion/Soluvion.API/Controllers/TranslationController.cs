@@ -60,36 +60,40 @@ namespace Soluvion.API.Controllers
         [HttpPost("add-language")]
         public async Task<IActionResult> AddLanguage([FromBody] AddLanguageDto dto)
         {
-            // Validáció
             var company = await _context.Companies
                 .Include(c => c.Languages)
                 .FirstOrDefaultAsync(c => c.Id == dto.CompanyId);
 
             if (company == null) return NotFound("Cég nem található.");
 
-            // Már létezik?
             if (company.Languages.Any(l => l.LanguageCode == dto.TargetLanguage) || company.DefaultLanguage == dto.TargetLanguage)
             {
-                return BadRequest("Ez a nyelv már hozzá van adva.");
+                // Ha már létezik, akkor is engedjük újra lefutni a fordítást (javítás/újragenerálás céljából),
+                // de a státuszt visszaállítjuk Translating-re.
+                var existing = company.Languages.FirstOrDefault(l => l.LanguageCode == dto.TargetLanguage);
+                if (existing != null)
+                {
+                    existing.Status = TranslationStatus.Translating;
+                }
+            }
+            else
+            {
+                var newLang = new CompanyLanguage
+                {
+                    CompanyId = dto.CompanyId,
+                    LanguageCode = dto.TargetLanguage,
+                    Status = TranslationStatus.Translating,
+                    LastUpdated = DateTime.UtcNow
+                };
+                _context.CompanyLanguages.Add(newLang);
             }
 
-            // 1. Lépés: Létrehozzuk az adatbázis bejegyzést "Translating" státusszal
-            var newLang = new CompanyLanguage
-            {
-                CompanyId = dto.CompanyId,
-                LanguageCode = dto.TargetLanguage,
-                Status = TranslationStatus.Translating, // Azonnal translating, mert indítjuk a jobot
-                LastUpdated = DateTime.UtcNow
-            };
-
-            _context.CompanyLanguages.Add(newLang);
             await _context.SaveChangesAsync();
 
-            // 2. Lépés: Háttérfolyamat indítása (Fire-and-Forget)
-            // Fontos: Nem várjuk meg (await), hogy a user ne várakozzon percekig!
-            _ = Task.Run(() => PerformBackgroundTranslation(dto.CompanyId, dto.TargetLanguage));
+            // Háttérfolyamat indítása - átadjuk a UI szótárat is!
+            _ = Task.Run(() => PerformBackgroundTranslation(dto.CompanyId, dto.TargetLanguage, dto.BaseUiTranslations));
 
-            return Accepted(new { message = $"A(z) {dto.TargetLanguage} nyelv hozzáadva. A fordítás a háttérben elindult." });
+            return Accepted(new { message = $"A(z) {dto.TargetLanguage} nyelv hozzáadva. A fordítás a háttérben elindult, nyugodtan elhagyhatod az oldalt." });
         }
 
         // 3. Publikálás (Review után)
@@ -152,9 +156,8 @@ namespace Soluvion.API.Controllers
 
 
         // --- PRIVATE BACKGROUND WORKER ---
-        private async Task PerformBackgroundTranslation(int companyId, string targetLanguage)
+        private async Task PerformBackgroundTranslation(int companyId, string targetLanguage, Dictionary<string, string> uiTranslations)
         {
-            // Külön Scope létrehozása, mert a Controller már rég megszűnik, mire ez lefut
             using (var scope = _scopeFactory.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -166,51 +169,81 @@ namespace Soluvion.API.Controllers
                     if (company == null) return;
 
                     string sourceLang = company.DefaultLanguage;
-                    string companyTypeContext = company.CompanyType?.Name ?? "General Business"; // Ha betöltöttük volna a típust
+                    string companyTypeContext = company.CompanyType?.Name ?? "Beauty Salon";
 
-                    // --- A) SZOLGÁLTATÁSOK FORDÍTÁSA ---
+                    // --- A) UI STATIKUS SZÖVEGEK FORDÍTÁSA (ÚJ RÉSZ) ---
+                    if (uiTranslations != null && uiTranslations.Count > 0)
+                    {
+                        foreach (var kvp in uiTranslations)
+                        {
+                            string key = kvp.Key;
+                            string originalText = kvp.Value;
+
+                            // Csak akkor fordítunk, ha van értelmes szöveg
+                            if (!string.IsNullOrWhiteSpace(originalText))
+                            {
+                                // AI fordítás (Rövid UI szöveg kontextussal)
+                                var translatedText = await translationService.TranslateTextAsync(originalText, targetLanguage, "user interface button or label", companyTypeContext);
+
+                                // Mentés az Overrides táblába
+                                var overrideEntity = await dbContext.UiTranslationOverrides
+                                    .FirstOrDefaultAsync(o => o.CompanyId == companyId && o.LanguageCode == targetLanguage && o.TranslationKey == key);
+
+                                if (overrideEntity == null)
+                                {
+                                    dbContext.UiTranslationOverrides.Add(new UiTranslationOverride
+                                    {
+                                        CompanyId = companyId,
+                                        LanguageCode = targetLanguage,
+                                        TranslationKey = key,
+                                        TranslatedText = translatedText
+                                    });
+                                }
+                                else
+                                {
+                                    overrideEntity.TranslatedText = translatedText;
+                                }
+                            }
+                        }
+                        // Szakaszos mentés, hogy ne vesszen el minden hiba esetén
+                        await dbContext.SaveChangesAsync();
+                    }
+
+                    // --- B) SZOLGÁLTATÁSOK FORDÍTÁSA ---
                     var services = await dbContext.Services.Where(s => s.CompanyId == companyId).ToListAsync();
-
                     foreach (var service in services)
                     {
-                        // 1. Név
                         if (service.Name.TryGetValue(sourceLang, out var nameSource))
                         {
-                            var translatedName = await translationService.TranslateTextAsync(nameSource, targetLanguage, "service", companyTypeContext);
+                            var translatedName = await translationService.TranslateTextAsync(nameSource, targetLanguage, "service name", companyTypeContext);
                             service.Name[targetLanguage] = translatedName;
                         }
-
-                        // 2. Leírás
                         if (service.Description.TryGetValue(sourceLang, out var descSource))
                         {
-                            var translatedDesc = await translationService.TranslateTextAsync(descSource, targetLanguage, "service", companyTypeContext);
+                            var translatedDesc = await translationService.TranslateTextAsync(descSource, targetLanguage, "service description", companyTypeContext);
                             service.Description[targetLanguage] = translatedDesc;
                         }
-
-                        // 3. Kategória (ha van benne szöveg)
                         if (service.Category.TryGetValue(sourceLang, out var catSource))
                         {
-                            // Itt érdemes lenne optimalizálni, hogy ugyanazt a kategóriát ne fordítsuk le 100x,
-                            // de egyelőre MVP szinten maradhat így, vagy cache-elhetjük memóriában a loop alatt.
-                            var translatedCat = await translationService.TranslateTextAsync(catSource, targetLanguage, "service", companyTypeContext);
+                            var translatedCat = await translationService.TranslateTextAsync(catSource, targetLanguage, "service category", companyTypeContext);
                             service.Category[targetLanguage] = translatedCat;
                         }
                     }
+                    await dbContext.SaveChangesAsync();
 
-                    // --- B) GALÉRIA KATEGÓRIÁK FORDÍTÁSA ---
+                    // --- C) GALÉRIA KATEGÓRIÁK FORDÍTÁSA ---
                     var galleryCats = await dbContext.GalleryCategories.Where(g => g.CompanyId == companyId).ToListAsync();
                     foreach (var cat in galleryCats)
                     {
                         if (cat.Name.TryGetValue(sourceLang, out var catNameSource))
                         {
-                            var translatedCatName = await translationService.TranslateTextAsync(catNameSource, targetLanguage, "gallery", companyTypeContext);
+                            var translatedCatName = await translationService.TranslateTextAsync(catNameSource, targetLanguage, "gallery category", companyTypeContext);
                             cat.Name[targetLanguage] = translatedCatName;
                         }
                     }
+                    await dbContext.SaveChangesAsync();
 
-                    // --- MENTÉS ÉS STÁTUSZ FRISSÍTÉS ---
-
-                    // Státusz átállítása ReviewPending-re
+                    // --- VÉGE: STÁTUSZ FRISSÍTÉS ---
                     var langEntity = await dbContext.CompanyLanguages
                         .FirstOrDefaultAsync(cl => cl.CompanyId == companyId && cl.LanguageCode == targetLanguage);
 
@@ -223,9 +256,8 @@ namespace Soluvion.API.Controllers
                 }
                 catch (Exception ex)
                 {
-                    // Hiba kezelés: Logolás és Státusz Error-ra állítása
                     Console.WriteLine($"Translation Error: {ex.Message}");
-
+                    // Hiba esetén Error státusz
                     var langEntity = await dbContext.CompanyLanguages
                         .FirstOrDefaultAsync(cl => cl.CompanyId == companyId && cl.LanguageCode == targetLanguage);
 

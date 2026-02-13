@@ -5,31 +5,30 @@ import i18n from '@/i18n';
 
 export const useTranslationStore = defineStore('translation', () => {
   // --- STATE ---
-  const languages = ref([]); // { languageCode: 'sk', status: 'Published', ... }
-  const currentLanguage = ref('hu');
+  const languages = ref([]);
+  const currentLanguage = ref('null');
   const isLoading = ref(false);
-  const activeCompanyId = ref(0); // Ezt az App.vue állítja majd be
+  const activeCompanyId = ref(0);
+  // ÚJ: Tároljuk a cég alapnyelvét, hogy tudjuk, miről fordítsunk
+  const activeCompanyDefaultLang = ref('hu');
 
   // --- GETTERS ---
-
-  // Vendégeknek: Csak ami publikus vagy alapértelmezett
   const publishedLanguages = computed(() =>
     languages.value.filter(l => l.status === 'Published' || l.isDefault)
   );
 
-  // Adminnak: Ami ellenőrzésre vár (Bannerhez)
   const pendingReviews = computed(() =>
     languages.value.filter(l => l.status === 'ReviewPending')
   );
 
   // --- ACTIONS ---
 
-  // 1. Aktív cég beállítása (Ezt hívja meg az App.vue betöltéskor)
-  const setCompanyId = (id) => {
+  // 1. JAVÍTOTT: Init függvény, ami a nyelvet is beállítja
+  const initCompany = (id, defaultLang) => {
     activeCompanyId.value = id;
+    activeCompanyDefaultLang.value = defaultLang || 'hu';
   };
 
-  // 2. Nyelvek listájának lekérése
   const fetchLanguages = async (companyId) => {
     try {
       const response = await api.get(`/api/Translation/languages/${companyId}`);
@@ -39,47 +38,20 @@ export const useTranslationStore = defineStore('translation', () => {
     }
   };
 
-  // 3. Új nyelv hozzáadása (Triggereli a Backend AI folyamatot)
-  const addLanguage = async (companyId, targetLang) => {
-    isLoading.value = true;
-    try {
-      await api.post('/api/Translation/add-language', {
-        companyId,
-        targetLanguage: targetLang
-      });
-
-      // Optimista frissítés
-      const existing = languages.value.find(l => l.languageCode === targetLang);
-      if (!existing) {
-        languages.value.push({
-          languageCode: targetLang,
-          status: 'Translating',
-          isDefault: false
-        });
+  // Helper
+  const flattenObject = (obj, prefix = '') => {
+    return Object.keys(obj).reduce((acc, k) => {
+      const pre = prefix.length ? prefix + '.' : '';
+      if (typeof obj[k] === 'object' && obj[k] !== null) {
+        Object.assign(acc, flattenObject(obj[k], pre + k));
+      } else {
+        acc[pre + k] = obj[k];
       }
-    } catch (error) {
-      console.error('Hiba a nyelv hozzáadásakor:', error);
-      throw error;
-    } finally {
-      isLoading.value = false;
-    }
+      return acc;
+    }, {});
   };
 
-  // 4. Publikálás
-  const publishLanguage = async (companyId, langCode) => {
-    try {
-      await api.post('/api/Translation/publish', { companyId, languageCode: langCode });
-
-      const lang = languages.value.find(l => l.languageCode === langCode);
-      if (lang) lang.status = 'Published';
-
-    } catch (error) {
-      console.error('Publikálási hiba:', error);
-    }
-  };
-
-  // 5. HELPER: Lapos kulcsok (pl. "nav.home") átalakítása objektummá
-  // Mert a vue-i18n mergeLocaleMessage objektumot vár (pl. { nav: { home: "..." } })
+  // Helper unflatten
   const unflatten = (data) => {
     if (Object(data) !== data || Array.isArray(data)) return data;
     var result = {}, cur, prop, idx, last, temp;
@@ -97,14 +69,72 @@ export const useTranslationStore = defineStore('translation', () => {
     return result[""] || result;
   };
 
-  // 6. Felülírások betöltése DB-ből és MERGE az i18n-be
+  // 2. JAVÍTOTT: Dinamikus forrásnyelv választás
+  const addLanguage = async (companyId, targetLang) => {
+
+    if (!activeCompanyDefaultLang.value) {
+      console.warn("Még nem töltődött be a cég alapnyelve, várunk...");
+      return;
+    }
+
+    isLoading.value = true;
+    try {
+      // Megkeressük a cég alapnyelvét (pl. 'en')
+      const sourceLang = activeCompanyDefaultLang.value;
+
+      // Megpróbáljuk betölteni a hozzá tartozó üzeneteket a statikus JSON-ból
+      // Ha nincs meg a rendszerben (pl. egyedi alapnyelv), akkor fallback 'hu' vagy 'en'
+      let sourceMessages = i18n.global.messages.value[sourceLang];
+
+      if (!sourceMessages) {
+        console.warn(`Nincs statikus JSON fájl a(z) '${sourceLang}' nyelvhez, fallback 'hu' használata.`);
+        sourceMessages = i18n.global.messages.value['hu'] || i18n.global.messages.value['en'];
+      }
+
+      // Lapítjuk a JSON-t a küldéshez
+      const flattenedUi = flattenObject(sourceMessages || {});
+
+      await api.post('/api/Translation/add-language', {
+        companyId,
+        targetLanguage: targetLang,
+        baseUiTranslations: flattenedUi
+      });
+
+      const existing = languages.value.find(l => l.languageCode === targetLang);
+      if (!existing) {
+        languages.value.push({
+          languageCode: targetLang,
+          status: 'Translating',
+          isDefault: false
+        });
+      } else {
+        existing.status = 'Translating';
+      }
+    } catch (error) {
+      console.error('Hiba a nyelv hozzáadásakor:', error);
+      throw error;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  const publishLanguage = async (companyId, langCode) => {
+    try {
+      await api.post('/api/Translation/publish', { companyId, languageCode: langCode });
+
+      const lang = languages.value.find(l => l.languageCode === langCode);
+      if (lang) lang.status = 'Published';
+
+    } catch (error) {
+      console.error('Publikálási hiba:', error);
+    }
+  };
+
   const loadOverrides = async (companyId, langCode) => {
     try {
-      // Backend: Dictionary<string, string> -> { "nav.services": "Kezelések" }
       const response = await api.get(`/api/Translation/overrides/${companyId}/${langCode}`);
       const overrides = response.data;
 
-      // Minden kulcsot egyesével behúzunk a vue-i18n memóriájába
       Object.keys(overrides).forEach(key => {
         const nestedObject = unflatten({ [key]: overrides[key] });
         i18n.global.mergeLocaleMessage(langCode, nestedObject);
@@ -113,19 +143,15 @@ export const useTranslationStore = defineStore('translation', () => {
       console.log(`Overrides loaded for ${langCode}:`, overrides);
 
     } catch (error) {
-      // Nem kritikus hiba, ha nincs override, marad az eredeti JSON
-      console.warn('Nincs egyedi felülírás vagy hiba történt:', error);
+      // Silent fail, ha nincs override
     }
   };
 
-  // 7. FŐ NYELVVÁLTÓ FÜGGVÉNY
   const setLanguage = async (langCode) => {
-    // a) Beállítjuk a vue-i18n nyelvét (ez azonnal betölti a JSON fájlt)
     i18n.global.locale.value = langCode;
     currentLanguage.value = langCode;
     document.querySelector('html').setAttribute('lang', langCode);
 
-    // b) Ha van beállított cég, lekérjük a DB-ből a felülírásokat
     if (activeCompanyId.value > 0) {
       await loadOverrides(activeCompanyId.value, langCode);
     }
@@ -136,9 +162,10 @@ export const useTranslationStore = defineStore('translation', () => {
     currentLanguage,
     isLoading,
     activeCompanyId,
+    activeCompanyDefaultLang, // Exportáljuk, ha kellene máshol
     publishedLanguages,
     pendingReviews,
-    setCompanyId,
+    initCompany, // setCompanyId helyett ezt használjuk
     fetchLanguages,
     addLanguage,
     publishLanguage,
