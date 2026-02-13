@@ -118,28 +118,37 @@ export const useTranslationStore = defineStore('translation', () => {
   // --- JAVÍTOTT loadOverrides (1. Probléma megoldása) ---
   const loadOverrides = async (companyId, langCode) => {
     try {
-      // 1. lépés: Ha az adott nyelv még üres a vue-i18n-ben (mert nincs statikus JSON),
-      // töltsük fel a magyar (vagy alap) szövegekkel, hogy ne kulcsokat lásson a user.
+      // 1. LÉPÉS: BÁZIS MEGTEREMTÉSE
+      // Megnézzük, van-e már betöltve valami ehhez a nyelvhez
       const currentMessages = i18n.global.getLocaleMessage(langCode);
-      const isEmpty = Object.keys(currentMessages).length === 0;
+      const hasContent = Object.keys(currentMessages).length > 0;
 
-      if (isEmpty) {
-        // Fallback: HU betöltése alapnak
-        const baseMessages = i18n.global.getLocaleMessage('hu');
-        // Deep copy, hogy ne referencia legyen
-        i18n.global.setLocaleMessage(langCode, JSON.parse(JSON.stringify(baseMessages)));
+      // Ha üres (pl. 'sk'), akkor másoljuk át a 'hu' (vagy default) tartalmát alapnak!
+      if (!hasContent) {
+        const baseLang = 'hu'; // Vagy activeCompanyDefaultLang.value
+        const baseMessages = i18n.global.getLocaleMessage(baseLang);
+
+        // Fontos: JSON parse/stringify a deep copy miatt, hogy ne referencia legyen
+        if (Object.keys(baseMessages).length > 0) {
+          i18n.global.setLocaleMessage(langCode, JSON.parse(JSON.stringify(baseMessages)));
+          console.log(`Base language '${baseLang}' copied to '${langCode}'`);
+        } else {
+          console.warn(`Base language '${baseLang}' is empty! UI might show keys.`);
+        }
       }
 
-      // 2. lépés: Adatbázis override-ok betöltése és ráhúzása
+      // 2. LÉPÉS: OVERRIDES BETÖLTÉSE
       const response = await api.get(`/api/Translation/overrides/${companyId}/${langCode}`);
       const overrides = response.data;
 
+      // 3. LÉPÉS: MERGE
+      // Egyesével beolvasztjuk a változásokat
       Object.keys(overrides).forEach(key => {
         const nestedObject = unflatten({ [key]: overrides[key] });
         i18n.global.mergeLocaleMessage(langCode, nestedObject);
       });
 
-      console.log(`Overrides merged for ${langCode}`);
+      console.log(`Overrides loaded for ${langCode}:`, overrides);
 
     } catch (error) {
       console.warn('Nincs egyedi felülírás vagy hiba történt:', error);
@@ -155,6 +164,16 @@ export const useTranslationStore = defineStore('translation', () => {
     i18n.global.locale.value = langCode;
     currentLanguage.value = langCode;
     document.querySelector('html').setAttribute('lang', langCode);
+  };
+
+  const deepMerge = (target, source) => {
+    for (const key in source) {
+      if (source[key] instanceof Object && key in target) {
+        Object.assign(source[key], deepMerge(target[key], source[key]));
+      }
+    }
+    Object.assign(target || {}, source);
+    return target;
   };
 
   return {

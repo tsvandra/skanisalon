@@ -15,6 +15,8 @@ namespace Soluvion.API.Models
 
         public TranslationStatus Status { get; set; } = TranslationStatus.Created;
 
+        public int Progress { get; set; } = 0;
+
         // Opcionális: Ki kezdeményezte / mikor
         public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
     }

@@ -10,6 +10,7 @@
   import Tag from 'primevue/tag';
   import Checkbox from 'primevue/checkbox';
   import { jwtDecode } from "jwt-decode";
+  import ProgressBar from 'primevue/progressbar';
 
   const store = useTranslationStore();
   const toast = useToast();
@@ -179,11 +180,20 @@
         </template>
       </Column>
 
-      <Column field="status" header="Státusz">
+      <Column field="status" header="Státusz" style="min-width: 200px;">
         <template #body="slotProps">
-          <div class="flex items-center gap-2">
-            <Tag :value="getStatusLabel(slotProps.data.status)" :severity="getSeverity(slotProps.data.status)" />
-            <i v-if="slotProps.data.status === 'Translating'" class="pi pi-spin pi-spinner text-blue-500"></i>
+          <div class="flex flex-col gap-2">
+
+            <div v-if="slotProps.data.status === 'Translating'" class="w-full">
+              <div class="flex justify-between mb-1">
+                <span class="text-xs text-blue-600 font-bold">Fordítás...</span>
+                <span class="text-xs text-gray-600">{{ slotProps.data.progress || 0 }}%</span>
+              </div>
+              <ProgressBar :value="slotProps.data.progress || 0" :showValue="false" style="height: 6px;"></ProgressBar>
+            </div>
+
+            <Tag v-else :value="getStatusLabel(slotProps.data.status)" :severity="getSeverity(slotProps.data.status)" />
+
           </div>
         </template>
       </Column>
