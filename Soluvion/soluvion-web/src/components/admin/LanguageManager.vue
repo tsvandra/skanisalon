@@ -1,23 +1,46 @@
 <script setup>
-  import { ref, onMounted } from 'vue';
+  import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
   import { useTranslationStore } from '@/stores/translationStore';
   import { useToast } from 'primevue/usetoast';
   import DataTable from 'primevue/datatable';
   import Column from 'primevue/column';
   import Button from 'primevue/button';
   import Dialog from 'primevue/dialog';
-  import InputText from 'primevue/inputtext';
+  import Select from 'primevue/select'; // Dropdown helyett
   import Tag from 'primevue/tag';
-  import Checkbox from 'primevue/checkbox'; // <--- ÚJ IMPORT
+  import Checkbox from 'primevue/checkbox';
   import { jwtDecode } from "jwt-decode";
 
   const store = useTranslationStore();
   const toast = useToast();
 
   const isDialogVisible = ref(false);
-  const newLangCode = ref('');
-  const useAi = ref(true); // <--- ÚJ STATE: Alapból bekapcsolva
+  const selectedLangCode = ref(null); // InputText helyett Select model
+  const useAi = ref(true);
   const loading = ref(false);
+  let pollingInterval = null; // Időzítő változó
+
+  // --- 3. PROBLÉMA MEGOLDÁSA: Elérhető nyelvek listája ---
+  const allLanguages = [
+    { label: 'Magyar', value: 'hu' },
+    { label: 'Slovenský (Szlovák)', value: 'sk' },
+    { label: 'English (Angol)', value: 'en' },
+    { label: 'Deutsch (Német)', value: 'de' },
+    { label: 'Română (Román)', value: 'ro' },
+    { label: 'Українська (Ukrán)', value: 'ua' },
+    { label: 'Français (Francia)', value: 'fr' },
+    { label: 'Italiano (Olasz)', value: 'it' },
+    { label: 'Español (Spanyol)', value: 'es' },
+    { label: 'Pусский (Orosz)', value: 'ru' }
+  ];
+
+  // Szűrjük a listát: Ne mutassa a cég alapnyelvét és a már hozzáadottakat
+  const availableLanguagesOptions = computed(() => {
+    return allLanguages.filter(lang =>
+      lang.value !== store.activeCompanyDefaultLang &&
+      !store.languages.some(added => added.languageCode === lang.value)
+    );
+  });
 
   const getCompanyId = () => {
     const token = localStorage.getItem('salon_token');
@@ -32,12 +55,47 @@
 
   const companyId = getCompanyId();
 
-  onMounted(() => {
+  // --- 2. PROBLÉMA MEGOLDÁSA: POLLING (Folyamatos ellenőrzés) ---
+  const startPolling = () => {
+    if (pollingInterval) return; // Már fut
+
+    pollingInterval = setInterval(async () => {
+      // Frissítjük a listát
+      await store.fetchLanguages(companyId);
+
+      // Megnézzük, van-e még folyamatban lévő fordítás
+      const isTranslating = store.languages.some(l => l.status === 'Translating');
+
+      // Ha nincs már "Translating", leállítjuk a pollingot és jelezzük a sikert
+      if (!isTranslating) {
+        stopPolling();
+        toast.add({ severity: 'success', summary: 'Kész!', detail: 'A fordítás befejeződött.', life: 3000 });
+      }
+    }, 3000); // 3 másodpercenként ellenőriz
+  };
+
+  const stopPolling = () => {
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      pollingInterval = null;
+    }
+  };
+
+  onMounted(async () => {
     if (companyId) {
-      store.fetchLanguages(companyId);
+      await store.fetchLanguages(companyId);
+      // Ha belépéskor van folyamatban lévő, indítjuk a pollingot
+      if (store.languages.some(l => l.status === 'Translating')) {
+        startPolling();
+      }
     }
   });
 
+  onUnmounted(() => {
+    stopPolling(); // Takarítás kilépéskor
+  });
+
+  // Státusz kijelzés
   const getSeverity = (status) => {
     switch (status) {
       case 'Published': return 'success';
@@ -60,19 +118,23 @@
   };
 
   const onAddLanguage = async () => {
-    if (!newLangCode.value) return;
+    if (!selectedLangCode.value) return;
 
     loading.value = true;
     try {
-      // Átadjuk a useAi.value-t is
-      await store.addLanguage(companyId, newLangCode.value.toLowerCase(), useAi.value);
-
-      const detailMsg = useAi.value ? 'Fordítás elindítva a háttérben!' : 'Nyelv létrehozva kézi szerkesztéshez.';
-      toast.add({ severity: 'success', summary: 'Siker', detail: detailMsg, life: 3000 });
+      await store.addLanguage(companyId, selectedLangCode.value, useAi.value);
 
       isDialogVisible.value = false;
-      newLangCode.value = '';
-      useAi.value = true; // Visszaállítás alaphelyzetbe
+      selectedLangCode.value = null;
+      useAi.value = true;
+
+      if (useAi.value) {
+        toast.add({ severity: 'info', summary: 'Folyamatban', detail: 'Fordítás elindítva, kérlek várj...', life: 3000 });
+        startPolling(); // Indítjuk a figyelést
+      } else {
+        toast.add({ severity: 'success', summary: 'Siker', detail: 'Nyelv létrehozva.', life: 3000 });
+      }
+
     } catch (error) {
       toast.add({ severity: 'error', summary: 'Hiba', detail: 'Nem sikerült hozzáadni a nyelvet.', life: 3000 });
     } finally {
@@ -89,7 +151,6 @@
     }
   };
 
-  // ÚJ: Törlés funkció
   const onDelete = async (langCode) => {
     if (!confirm(`Biztosan törölni szeretnéd a(z) ${langCode.toUpperCase()} nyelvet? Ez a művelet nem vonható vissza.`)) return;
 
@@ -111,16 +172,19 @@
     </div>
 
     <DataTable :value="store.languages" tableStyle="min-width: 50rem">
-      <Column field="languageCode" header="Nyelvkód">
+      <Column field="languageCode" header="Nyelv">
         <template #body="slotProps">
-          <span class="font-bold uppercase">{{ slotProps.data.languageCode }}</span>
+          <span class="font-bold text-lg uppercase">{{ slotProps.data.languageCode }}</span>
           <span v-if="slotProps.data.isDefault" class="ml-2 text-xs text-gray-500">(Alapértelmezett)</span>
         </template>
       </Column>
 
       <Column field="status" header="Státusz">
         <template #body="slotProps">
-          <Tag :value="getStatusLabel(slotProps.data.status)" :severity="getSeverity(slotProps.data.status)" />
+          <div class="flex items-center gap-2">
+            <Tag :value="getStatusLabel(slotProps.data.status)" :severity="getSeverity(slotProps.data.status)" />
+            <i v-if="slotProps.data.status === 'Translating'" class="pi pi-spin pi-spinner text-blue-500"></i>
+          </div>
         </template>
       </Column>
 
@@ -133,10 +197,6 @@
                     severity="success"
                     size="small"
                     @click="onPublish(slotProps.data.languageCode)" />
-
-            <span v-else-if="slotProps.data.status === 'Translating'" class="text-sm text-gray-500 flex items-center">
-              <i class="pi pi-spin pi-spinner mr-1"></i> Dolgozunk...
-            </span>
 
             <Button v-if="!slotProps.data.isDefault"
                     icon="pi pi-trash"
@@ -154,8 +214,14 @@
       <div class="flex flex-col gap-4 mb-4">
 
         <div class="flex flex-col gap-2">
-          <label for="langCode" class="font-semibold">Nyelvkód (pl. sk, en, de)</label>
-          <InputText id="langCode" v-model="newLangCode" class="flex-auto" autocomplete="off" maxlength="2" placeholder="sk" />
+          <label for="langSelect" class="font-semibold">Válassz nyelvet</label>
+          <Select id="langSelect"
+                  v-model="selectedLangCode"
+                  :options="availableLanguagesOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Válassz a listából..."
+                  class="w-full" />
         </div>
 
         <div class="flex items-center gap-2 mt-2">
@@ -166,7 +232,7 @@
         </div>
 
         <small v-if="useAi" class="text-gray-500">
-          A rendszer lefordítja a szolgáltatásokat és a gombokat. Ez pár percet igénybe vehet.
+          A rendszer lefordítja a szolgáltatásokat és a gombokat. Ez 1-2 percet vehet igénybe.
         </small>
         <small v-else class="text-gray-500">
           Létrejön egy üres nyelvi profil, amit neked kell feltöltened tartalommal.
@@ -175,14 +241,13 @@
       </div>
       <div class="flex justify-end gap-2">
         <Button type="button" label="Mégsem" severity="secondary" @click="isDialogVisible = false"></Button>
-        <Button type="button" label="Hozzáadás" @click="onAddLanguage" :loading="loading"></Button>
+        <Button type="button" label="Hozzáadás" @click="onAddLanguage" :loading="loading" :disabled="!selectedLangCode"></Button>
       </div>
     </Dialog>
   </div>
 </template>
 
 <style scoped>
-  /* Tailwind utility classes fallback, ha nincs telepítve */
   .flex {
     display: flex;
   }
@@ -223,6 +288,10 @@
     font-size: 1.25rem;
   }
 
+  .text-lg {
+    font-size: 1.125rem;
+  }
+
   .font-bold {
     font-weight: 700;
   }
@@ -243,12 +312,16 @@
     color: #6b7280;
   }
 
+  .text-blue-500 {
+    color: #3b82f6;
+  }
+
   .ml-2 {
     margin-left: 0.5rem;
   }
 
-  .mr-1 {
-    margin-right: 0.25rem;
+  .w-full {
+    width: 100%;
   }
 
   .cursor-pointer {

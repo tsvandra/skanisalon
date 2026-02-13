@@ -6,10 +6,9 @@ import i18n from '@/i18n';
 export const useTranslationStore = defineStore('translation', () => {
   // --- STATE ---
   const languages = ref([]);
-  const currentLanguage = ref('null');
+  const currentLanguage = ref('hu');
   const isLoading = ref(false);
   const activeCompanyId = ref(0);
-  // ÚJ: Tároljuk a cég alapnyelvét, hogy tudjuk, miről fordítsunk
   const activeCompanyDefaultLang = ref('hu');
 
   // --- GETTERS ---
@@ -23,7 +22,6 @@ export const useTranslationStore = defineStore('translation', () => {
 
   // --- ACTIONS ---
 
-  // 1. JAVÍTOTT: Init függvény, ami a nyelvet is beállítja
   const initCompany = (id, defaultLang) => {
     activeCompanyId.value = id;
     activeCompanyDefaultLang.value = defaultLang || 'hu';
@@ -38,7 +36,6 @@ export const useTranslationStore = defineStore('translation', () => {
     }
   };
 
-  // Helper
   const flattenObject = (obj, prefix = '') => {
     return Object.keys(obj).reduce((acc, k) => {
       const pre = prefix.length ? prefix + '.' : '';
@@ -51,7 +48,6 @@ export const useTranslationStore = defineStore('translation', () => {
     }, {});
   };
 
-  // Helper unflatten
   const unflatten = (data) => {
     if (Object(data) !== data || Array.isArray(data)) return data;
     var result = {}, cur, prop, idx, last, temp;
@@ -69,20 +65,15 @@ export const useTranslationStore = defineStore('translation', () => {
     return result[""] || result;
   };
 
-  // 2. JAVÍTOTT: Dinamikus forrásnyelv választás
   const addLanguage = async (companyId, targetLang, useAi = true) => {
     isLoading.value = true;
     try {
-      // Megkeressük a cég alapnyelvét (pl. 'en')
       const sourceLang = activeCompanyDefaultLang.value;
       let sourceMessages = i18n.global.messages.value[sourceLang];
 
       if (!sourceMessages) {
-        console.warn(`Nincs statikus JSON fájl a(z) '${sourceLang}' nyelvhez, fallback 'hu' használata.`);
         sourceMessages = i18n.global.messages.value['hu'] || i18n.global.messages.value['en'];
       }
-
-      // Lapítjuk a JSON-t a küldéshez
       const flattenedUi = flattenObject(sourceMessages || {});
 
       await api.post('/api/Translation/add-language', {
@@ -92,16 +83,9 @@ export const useTranslationStore = defineStore('translation', () => {
         useAi: useAi
       });
 
-      const existing = languages.value.find(l => l.languageCode === targetLang);
-      if (!existing) {
-        languages.value.push({
-          languageCode: targetLang,
-          status: useAi ? 'Translating' : 'ReviewPending',
-          isDefault: false
-        });
-      } else {
-        existing.status = useAi ? 'Translating': 'ReviewPending';
-      }
+      // Frissítjük a listát, de a polling majd kezeli a státuszt
+      await fetchLanguages(companyId);
+
     } catch (error) {
       console.error('Hiba a nyelv hozzáadásakor:', error);
       throw error;
@@ -110,10 +94,20 @@ export const useTranslationStore = defineStore('translation', () => {
     }
   };
 
+  const publishLanguage = async (companyId, langCode) => {
+    try {
+      await api.post('/api/Translation/publish', { companyId, languageCode: langCode });
+      // Lokális frissítés
+      const lang = languages.value.find(l => l.languageCode === langCode);
+      if (lang) lang.status = 'Published';
+    } catch (error) {
+      console.error('Publikálási hiba:', error);
+    }
+  };
+
   const deleteLanguage = async (companyId, langCode) => {
     try {
       await api.delete(`/api/Translation/language/${companyId}/${langCode}`);
-      // Lokális lista frissítése
       languages.value = languages.value.filter(l => l.languageCode !== langCode);
     } catch (error) {
       console.error('Hiba a törléskor:', error);
@@ -121,20 +115,22 @@ export const useTranslationStore = defineStore('translation', () => {
     }
   };
 
-  const publishLanguage = async (companyId, langCode) => {
-    try {
-      await api.post('/api/Translation/publish', { companyId, languageCode: langCode });
-
-      const lang = languages.value.find(l => l.languageCode === langCode);
-      if (lang) lang.status = 'Published';
-
-    } catch (error) {
-      console.error('Publikálási hiba:', error);
-    }
-  };
-
+  // --- JAVÍTOTT loadOverrides (1. Probléma megoldása) ---
   const loadOverrides = async (companyId, langCode) => {
     try {
+      // 1. lépés: Ha az adott nyelv még üres a vue-i18n-ben (mert nincs statikus JSON),
+      // töltsük fel a magyar (vagy alap) szövegekkel, hogy ne kulcsokat lásson a user.
+      const currentMessages = i18n.global.getLocaleMessage(langCode);
+      const isEmpty = Object.keys(currentMessages).length === 0;
+
+      if (isEmpty) {
+        // Fallback: HU betöltése alapnak
+        const baseMessages = i18n.global.getLocaleMessage('hu');
+        // Deep copy, hogy ne referencia legyen
+        i18n.global.setLocaleMessage(langCode, JSON.parse(JSON.stringify(baseMessages)));
+      }
+
+      // 2. lépés: Adatbázis override-ok betöltése és ráhúzása
       const response = await api.get(`/api/Translation/overrides/${companyId}/${langCode}`);
       const overrides = response.data;
 
@@ -143,21 +139,22 @@ export const useTranslationStore = defineStore('translation', () => {
         i18n.global.mergeLocaleMessage(langCode, nestedObject);
       });
 
-      console.log(`Overrides loaded for ${langCode}:`, overrides);
+      console.log(`Overrides merged for ${langCode}`);
 
     } catch (error) {
-      // Silent fail, ha nincs override
+      console.warn('Nincs egyedi felülírás vagy hiba történt:', error);
     }
   };
 
   const setLanguage = async (langCode) => {
-    i18n.global.locale.value = langCode;
-    currentLanguage.value = langCode;
-    document.querySelector('html').setAttribute('lang', langCode);
-
+    // Először betöltjük az adatokat (fontos a sorrend, hogy mire váltunk, legyen adat)
     if (activeCompanyId.value > 0) {
       await loadOverrides(activeCompanyId.value, langCode);
     }
+
+    i18n.global.locale.value = langCode;
+    currentLanguage.value = langCode;
+    document.querySelector('html').setAttribute('lang', langCode);
   };
 
   return {
@@ -165,14 +162,14 @@ export const useTranslationStore = defineStore('translation', () => {
     currentLanguage,
     isLoading,
     activeCompanyId,
-    activeCompanyDefaultLang, // Exportáljuk, ha kellene máshol
+    activeCompanyDefaultLang,
     publishedLanguages,
     pendingReviews,
-    initCompany, // setCompanyId helyett ezt használjuk
+    initCompany,
     fetchLanguages,
     addLanguage,
-    deleteLanguage,
     publishLanguage,
+    deleteLanguage,
     setLanguage,
     loadOverrides
   };
