@@ -115,7 +115,7 @@
       <span class="text-yellow-800 font-medium flex items-center justify-center gap-2">
         <i class="pi pi-exclamation-triangle"></i>
         Figyelem: {{ translationStore.pendingReviews.length }} új nyelv fordítása elkészült és ellenőrzésre vár!
-        <router-link to="/settings" class="underline font-bold hover:text-yellow-900">
+        <router-link to="/beallitasok" class="underline font-bold hover:text-yellow-900">
           Ugrás a beállításokhoz
         </router-link>
       </span>

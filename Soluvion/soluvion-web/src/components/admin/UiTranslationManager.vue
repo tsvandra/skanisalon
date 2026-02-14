@@ -126,7 +126,8 @@
             <div class="input-wrapper">
               <div class="p-inputgroup">
                 <InputText v-model="overrides[item.key]"
-                           :placeholder="messages[selectedLang]?.[item.key.split('.')[0]]?.[item.key.split('.')[1]] || item.original" />
+                           :placeholder="item.original"
+                           class="w-full" />
                 <Button icon="pi pi-check" @click="saveOverride(item.key, overrides[item.key])" />
               </div>
             </div>

@@ -116,35 +116,39 @@ export const useTranslationStore = defineStore('translation', () => {
   // --- A LÉNYEG: A NYELV FELÉPÍTÉSE MEMÓRIÁBAN ---
   const loadOverrides = async (companyId, langCode) => {
     try {
-      // 1. Megnézzük, létezik-e már a nyelv a vue-i18n rendszerében
-      let currentMessages = i18n.global.getLocaleMessage(langCode);
+      // 1. LÉPÉS: BÁZIS MEGTEREMTÉSE
+      const currentMessages = i18n.global.getLocaleMessage(langCode);
+      const hasContent = Object.keys(currentMessages).length > 0;
 
-      // Ha üres vagy hiányos, akkor létrehozzuk a Master (HU) alapján
-      if (!currentMessages || Object.keys(currentMessages).length === 0) {
-        console.log(`Creating '${langCode}' based on Master Template...`);
+      // Ha üres a célnyelv (pl. 'en'), akkor klónozzuk a MASTER (hu.json) tartalmát!
+      // JAVÍTÁS: Nem a i18n memóriából vesszük az alapot, hanem a biztos importból (masterMessages)
+      if (!hasContent) {
+        console.log(`Initializing '${langCode}' from Master Template...`);
 
-        // Deep copy a master JSON-ból
+        // Deep copy a master JSON-ból (ez garantáltan tele van szöveggel)
         const template = JSON.parse(JSON.stringify(masterMessages));
 
-        // Beállítjuk az új nyelvet. Mostantól az 'sk' létezik, de minden szöveg magyar benne.
+        // Beállítjuk az új nyelvet
         i18n.global.setLocaleMessage(langCode, template);
       }
 
-      // 2. Letöltjük a DB-ből a fordításokat
+      // 2. LÉPÉS: OVERRIDES BETÖLTÉSE
       const response = await api.get(`/api/Translation/overrides/${companyId}/${langCode}`);
-      const overrides = response.data; // { "nav.home": "Domov", ... }
+      const overrides = response.data;
 
-      // 3. Felülírjuk a sablont a tényleges fordításokkal
+      // 3. LÉPÉS: MERGE
       if (overrides && Object.keys(overrides).length > 0) {
         Object.keys(overrides).forEach(key => {
           const nestedObject = unflatten({ [key]: overrides[key] });
           i18n.global.mergeLocaleMessage(langCode, nestedObject);
         });
         console.log(`Overrides loaded and merged for ${langCode}`);
+      } else {
+        console.log(`No overrides found for ${langCode}, using base template.`);
       }
 
     } catch (error) {
-      console.warn('Hiba a felülírások betöltésekor (de a sablonnak köszönhetően nem lesz üres):', error);
+      console.warn('Hiba a felülírások betöltésekor:', error);
     }
   };
 
