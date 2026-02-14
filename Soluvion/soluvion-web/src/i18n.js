@@ -5,7 +5,7 @@ import en from './locales/en.json';
 const i18n = createI18n({
   legacy: false, // Composition API mód
   locale: 'hu', // Alapértelmezett nyelv
-  fallbackLocale: 'en',
+  fallbackLocale: 'hu',
   globalInjection: true, // Hogy a template-ben használhassuk a $t-t
   messages: {
     hu,

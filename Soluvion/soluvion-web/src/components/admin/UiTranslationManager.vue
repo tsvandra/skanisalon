@@ -3,7 +3,8 @@
   import { useTranslationStore } from '@/stores/translationStore';
   import { useI18n } from 'vue-i18n';
   import api from '@/services/api';
-  import Select from 'primevue/select'; // Dropdown helyett
+  // PrimeVue komponensek
+  import Select from 'primevue/select';
   import InputText from 'primevue/inputtext';
   import Button from 'primevue/button';
   import Accordion from 'primevue/accordion';
@@ -26,20 +27,22 @@
       .map(l => ({ label: l.languageCode.toUpperCase(), value: l.languageCode }));
   });
 
+  // Biztonságos Flatten
   const flattenObject = (obj, prefix = '') => {
     return Object.keys(obj).reduce((acc, k) => {
       const pre = prefix.length ? prefix + '.' : '';
-      if (typeof obj[k] === 'object' && obj[k] !== null) {
+      if (typeof obj[k] === 'object' && obj[k] !== null && !Array.isArray(obj[k])) {
         Object.assign(acc, flattenObject(obj[k], pre + k));
       } else {
-        acc[pre + k] = obj[k];
+        acc[pre + k] = String(obj[k]); // Kényszerített string konverzió a biztonság kedvéért
       }
       return acc;
     }, {});
   };
 
   const baseKeys = computed(() => {
-    const huMessages = messages.value['hu'];
+    // Mindig a betöltött magyar üzenetekből indulunk ki
+    const huMessages = messages.value['hu'] || {};
     return flattenObject(huMessages);
   });
 
@@ -50,7 +53,7 @@
       if (!groups[groupName]) groups[groupName] = [];
       groups[groupName].push({
         key: key,
-        original: baseKeys.value[key]
+        original: baseKeys.value[key] // Ez biztosan string
       });
     });
     return groups;
@@ -61,7 +64,7 @@
     isLoading.value = true;
     try {
       const res = await api.get(`/api/Translation/overrides/${store.activeCompanyId}/${selectedLang.value}`);
-      overrides.value = res.data;
+      overrides.value = res.data || {};
     } catch (err) {
       console.error("Hiba a felülírások betöltésekor", err);
     } finally {
@@ -108,7 +111,7 @@
       </div>
     </div>
 
-    <p class="info-text">Itt írhatod át a weboldal fix szövegeit (gombok, menük). Az alapértelmezett értékhez töröld ki a mező tartalmát.</p>
+    <p class="info-text">Itt írhatod át a weboldal fix szövegeit. Töröld ki a mezőt az alapértelmezett érték visszaállításához.</p>
 
     <div v-if="isLoading">Betöltés...</div>
 
@@ -120,7 +123,7 @@
           <div v-for="item in items" :key="item.key" class="translation-row">
             <div class="key-info">
               <span class="key-label">{{ item.key }}</span>
-              <small class="original-text">Eredeti (HU): {{ item.original }}</small>
+              <small class="original-text">Alap (HU): {{ item.original }}</small>
             </div>
 
             <div class="input-wrapper">
@@ -140,6 +143,7 @@
 </template>
 
 <style scoped>
+  /* Stílusok változatlanok */
   .ui-translator {
     margin-top: 2rem;
     background: #fff;
@@ -203,5 +207,9 @@
   .p-inputgroup button {
     background: var(--primary-color);
     border-color: var(--primary-color);
+  }
+
+  .w-full {
+    width: 100%;
   }
 </style>

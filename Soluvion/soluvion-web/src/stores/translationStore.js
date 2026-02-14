@@ -2,19 +2,15 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import api from '@/services/api';
 import i18n from '@/i18n';
-
-// --- ÚJ IMPORT: Ez a "DNS-e" az alkalmazásnak. Minden nyelv ebből születik. ---
-import masterMessages from '@/locales/hu.json';
+import masterMessages from '@/locales/hu.json'; // Mester sablon
 
 export const useTranslationStore = defineStore('translation', () => {
-  // --- STATE ---
   const languages = ref([]);
   const currentLanguage = ref('hu');
   const isLoading = ref(false);
   const activeCompanyId = ref(0);
   const activeCompanyDefaultLang = ref('hu');
 
-  // --- GETTERS ---
   const publishedLanguages = computed(() =>
     languages.value.filter(l => l.status === 'Published' || l.isDefault)
   );
@@ -23,27 +19,16 @@ export const useTranslationStore = defineStore('translation', () => {
     languages.value.filter(l => l.status === 'ReviewPending')
   );
 
-  // --- ACTIONS ---
-
   const initCompany = (id, defaultLang) => {
     activeCompanyId.value = id;
     activeCompanyDefaultLang.value = defaultLang || 'hu';
-  };
-
-  const fetchLanguages = async (companyId) => {
-    try {
-      const response = await api.get(`/api/Translation/languages/${companyId}`);
-      languages.value = response.data;
-    } catch (error) {
-      console.error('Hiba a nyelvek betöltésekor:', error);
-    }
   };
 
   // Helper: Flatten
   const flattenObject = (obj, prefix = '') => {
     return Object.keys(obj).reduce((acc, k) => {
       const pre = prefix.length ? prefix + '.' : '';
-      if (typeof obj[k] === 'object' && obj[k] !== null) {
+      if (typeof obj[k] === 'object' && obj[k] !== null && !Array.isArray(obj[k])) {
         Object.assign(acc, flattenObject(obj[k], pre + k));
       } else {
         acc[pre + k] = obj[k];
@@ -70,11 +55,33 @@ export const useTranslationStore = defineStore('translation', () => {
     return result[""] || result;
   };
 
+  // Helper: Deep Merge (Objektumok összefésülése)
+  const deepMerge = (target, source) => {
+    for (const key in source) {
+      if (source[key] instanceof Object && key in target && !(source[key] instanceof Array)) {
+        Object.assign(source[key], deepMerge(target[key], source[key]));
+      }
+    }
+    Object.assign(target || {}, source);
+    return target;
+  };
+
+  const fetchLanguages = async (companyId) => {
+    try {
+      const response = await api.get(`/api/Translation/languages/${companyId}`);
+      languages.value = response.data;
+    } catch (error) {
+      console.error('Hiba a nyelvek betöltésekor:', error);
+    }
+  };
+
   const addLanguage = async (companyId, targetLang, useAi = true) => {
     isLoading.value = true;
     try {
-      // Mindig a betöltött masterMessages-t használjuk alapnak a küldéshez
-      const flattenedUi = flattenObject(masterMessages || {});
+      const sourceLang = activeCompanyDefaultLang.value;
+      let sourceMessages = i18n.global.messages.value[sourceLang] || i18n.global.messages.value['hu'];
+
+      const flattenedUi = flattenObject(sourceMessages || {});
 
       await api.post('/api/Translation/add-language', {
         companyId,
@@ -84,7 +91,6 @@ export const useTranslationStore = defineStore('translation', () => {
       });
 
       await fetchLanguages(companyId);
-
     } catch (error) {
       console.error('Hiba a nyelv hozzáadásakor:', error);
       throw error;
@@ -113,39 +119,33 @@ export const useTranslationStore = defineStore('translation', () => {
     }
   };
 
-  // --- A LÉNYEG: A NYELV FELÉPÍTÉSE MEMÓRIÁBAN ---
+  // --- JAVÍTOTT loadOverrides (Most már egyesíti a rétegeket) ---
   const loadOverrides = async (companyId, langCode) => {
     try {
-      // 1. LÉPÉS: BÁZIS MEGTEREMTÉSE
+      // 1. Réteg: Mester Sablon (HU) - Deep Copy!
+      // Ez biztosítja, hogy minden kulcs létezzen.
+      const baseStructure = JSON.parse(JSON.stringify(masterMessages));
+
+      // 2. Réteg: Jelenlegi betöltött üzenetek (pl. ha van en.json)
       const currentMessages = i18n.global.getLocaleMessage(langCode);
-      const hasContent = Object.keys(currentMessages).length > 0;
-
-      // Ha üres a célnyelv (pl. 'en'), akkor klónozzuk a MASTER (hu.json) tartalmát!
-      // JAVÍTÁS: Nem a i18n memóriából vesszük az alapot, hanem a biztos importból (masterMessages)
-      if (!hasContent) {
-        console.log(`Initializing '${langCode}' from Master Template...`);
-
-        // Deep copy a master JSON-ból (ez garantáltan tele van szöveggel)
-        const template = JSON.parse(JSON.stringify(masterMessages));
-
-        // Beállítjuk az új nyelvet
-        i18n.global.setLocaleMessage(langCode, template);
+      if (currentMessages && Object.keys(currentMessages).length > 0) {
+        deepMerge(baseStructure, currentMessages);
       }
 
-      // 2. LÉPÉS: OVERRIDES BETÖLTÉSE
+      // 3. Réteg: Adatbázisból jövő felülírások
       const response = await api.get(`/api/Translation/overrides/${companyId}/${langCode}`);
       const overrides = response.data;
 
-      // 3. LÉPÉS: MERGE
       if (overrides && Object.keys(overrides).length > 0) {
         Object.keys(overrides).forEach(key => {
           const nestedObject = unflatten({ [key]: overrides[key] });
-          i18n.global.mergeLocaleMessage(langCode, nestedObject);
+          deepMerge(baseStructure, nestedObject);
         });
         console.log(`Overrides loaded and merged for ${langCode}`);
-      } else {
-        console.log(`No overrides found for ${langCode}, using base template.`);
       }
+
+      // 4. Beállítás
+      i18n.global.setLocaleMessage(langCode, baseStructure);
 
     } catch (error) {
       console.warn('Hiba a felülírások betöltésekor:', error);
@@ -153,19 +153,17 @@ export const useTranslationStore = defineStore('translation', () => {
   };
 
   const setLanguage = async (langCode) => {
-    // Először betöltjük/felépítjük a nyelvet
     if (activeCompanyId.value > 0) {
       await loadOverrides(activeCompanyId.value, langCode);
-    } else {
-      // Ha valamiért nincs cég ID (pl. vendég mód hiba), akkor is inicializáljuk a sablonból
-      // hogy ne haljon meg az oldal
-      const currentMessages = i18n.global.getLocaleMessage(langCode);
-      if (!currentMessages || Object.keys(currentMessages).length === 0) {
+    }
+    // Fallback: Ha nincs cég, de a nyelv üres, töltsük be a mestert
+    else {
+      const msgs = i18n.global.getLocaleMessage(langCode);
+      if (!msgs || Object.keys(msgs).length === 0) {
         i18n.global.setLocaleMessage(langCode, JSON.parse(JSON.stringify(masterMessages)));
       }
     }
 
-    // Majd átváltunk rá
     i18n.global.locale.value = langCode;
     currentLanguage.value = langCode;
     document.querySelector('html').setAttribute('lang', langCode);
