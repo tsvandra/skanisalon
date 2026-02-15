@@ -2,15 +2,17 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import api from '@/services/api';
 import i18n from '@/i18n';
-import masterMessages from '@/locales/hu.json'; // Mester sablon
+import masterMessages from '@/locales/hu.json'; // Ez a biztos pont
 
 export const useTranslationStore = defineStore('translation', () => {
+  // --- STATE ---
   const languages = ref([]);
   const currentLanguage = ref('hu');
   const isLoading = ref(false);
   const activeCompanyId = ref(0);
   const activeCompanyDefaultLang = ref('hu');
 
+  // --- GETTERS ---
   const publishedLanguages = computed(() =>
     languages.value.filter(l => l.status === 'Published' || l.isDefault)
   );
@@ -19,12 +21,14 @@ export const useTranslationStore = defineStore('translation', () => {
     languages.value.filter(l => l.status === 'ReviewPending')
   );
 
+  // --- ACTIONS ---
+
   const initCompany = (id, defaultLang) => {
     activeCompanyId.value = id;
     activeCompanyDefaultLang.value = defaultLang || 'hu';
   };
 
-  // Helper: Flatten
+  // Helper: Flatten (Csak küldéshez kell)
   const flattenObject = (obj, prefix = '') => {
     return Object.keys(obj).reduce((acc, k) => {
       const pre = prefix.length ? prefix + '.' : '';
@@ -37,7 +41,7 @@ export const useTranslationStore = defineStore('translation', () => {
     }, {});
   };
 
-  // Helper: Unflatten
+  // Helper: Unflatten (Klasszikus, biztos módszer)
   const unflatten = (data) => {
     if (Object(data) !== data || Array.isArray(data)) return data;
     var result = {}, cur, prop, idx, last, temp;
@@ -55,17 +59,6 @@ export const useTranslationStore = defineStore('translation', () => {
     return result[""] || result;
   };
 
-  // Helper: Deep Merge (Objektumok összefésülése)
-  const deepMerge = (target, source) => {
-    for (const key in source) {
-      if (source[key] instanceof Object && key in target && !(source[key] instanceof Array)) {
-        Object.assign(source[key], deepMerge(target[key], source[key]));
-      }
-    }
-    Object.assign(target || {}, source);
-    return target;
-  };
-
   const fetchLanguages = async (companyId) => {
     try {
       const response = await api.get(`/api/Translation/languages/${companyId}`);
@@ -79,9 +72,13 @@ export const useTranslationStore = defineStore('translation', () => {
     isLoading.value = true;
     try {
       const sourceLang = activeCompanyDefaultLang.value;
-      let sourceMessages = i18n.global.messages.value[sourceLang] || i18n.global.messages.value['hu'];
+      // Biztonságos fallback
+      let sourceMessages = i18n.global.messages.value[sourceLang];
+      if (!sourceMessages || Object.keys(sourceMessages).length === 0) {
+        sourceMessages = masterMessages;
+      }
 
-      const flattenedUi = flattenObject(sourceMessages || {});
+      const flattenedUi = flattenObject(sourceMessages);
 
       await api.post('/api/Translation/add-language', {
         companyId,
@@ -119,44 +116,52 @@ export const useTranslationStore = defineStore('translation', () => {
     }
   };
 
-  // --- JAVÍTOTT loadOverrides (Most már egyesíti a rétegeket) ---
+  // --- ROBUSZTUS BETÖLTÉS ---
   const loadOverrides = async (companyId, langCode) => {
     try {
-      // 1. Réteg: Mester Sablon (HU) - Deep Copy!
-      // Ez biztosítja, hogy minden kulcs létezzen.
-      const baseStructure = JSON.parse(JSON.stringify(masterMessages));
+      console.log(`Loading language: ${langCode}...`);
 
-      // 2. Réteg: Jelenlegi betöltött üzenetek (pl. ha van en.json)
-      const currentMessages = i18n.global.getLocaleMessage(langCode);
-      if (currentMessages && Object.keys(currentMessages).length > 0) {
-        deepMerge(baseStructure, currentMessages);
-      }
+      // 1. LÉPÉS: ALAPOZÁS (Reset)
+      // Mindig a tiszta masterMessages-t (HU) állítjuk be alapnak.
+      // Ezzel garantáljuk, hogy minden kulcs létezik.
+      // Fontos: JSON parse/stringify a deep copy miatt.
+      i18n.global.setLocaleMessage(langCode, JSON.parse(JSON.stringify(masterMessages)));
 
-      // 3. Réteg: Adatbázisból jövő felülírások
+      // 2. LÉPÉS: DB ADATOK LETÖLTÉSE
       const response = await api.get(`/api/Translation/overrides/${companyId}/${langCode}`);
-      const overrides = response.data;
+      const overrides = response.data; // { "nav.home": "Home", ... }
 
+      // 3. LÉPÉS: RÁOLVASZTÁS (Merge)
       if (overrides && Object.keys(overrides).length > 0) {
-        Object.keys(overrides).forEach(key => {
-          const nestedObject = unflatten({ [key]: overrides[key] });
-          deepMerge(baseStructure, nestedObject);
-        });
-        console.log(`Overrides loaded and merged for ${langCode}`);
-      }
+        // Átalakítjuk az overrides-t egyetlen nagy nested objektummá
+        // Így csak egyszer kell hívni a mergeLocaleMessage-t (gyorsabb és stabilabb)
+        const mergedOverrides = {};
 
-      // 4. Beállítás
-      i18n.global.setLocaleMessage(langCode, baseStructure);
+        Object.keys(overrides).forEach(key => {
+          // Itt egy kis trükk: unflatten egyesével, majd merge a lokális objektumba
+          const nested = unflatten({ [key]: overrides[key] });
+          // Egyszerű deep merge a lokális temp objektumba
+          // (Itt most egyszerűsítve, feltételezve, hogy a unflatten jól működik)
+          // De a biztosabb, ha a vue-i18n-re bízzuk:
+          i18n.global.mergeLocaleMessage(langCode, nested);
+        });
+
+        console.log(`Success: ${Object.keys(overrides).length} overrides applied to ${langCode}`);
+      } else {
+        console.log(`No overrides found for ${langCode}, using base template.`);
+      }
 
     } catch (error) {
-      console.warn('Hiba a felülírások betöltésekor:', error);
+      console.warn('Hiba a felülírások betöltésekor (marad a magyar alap):', error);
     }
   };
 
   const setLanguage = async (langCode) => {
+    // 1. Ha van cég, betöltjük az adatbázisból
     if (activeCompanyId.value > 0) {
       await loadOverrides(activeCompanyId.value, langCode);
     }
-    // Fallback: Ha nincs cég, de a nyelv üres, töltsük be a mestert
+    // 2. Ha nincs cég (pl. vendég), de a nyelv üres, akkor is inicializáljuk a masterből
     else {
       const msgs = i18n.global.getLocaleMessage(langCode);
       if (!msgs || Object.keys(msgs).length === 0) {
@@ -164,6 +169,7 @@ export const useTranslationStore = defineStore('translation', () => {
       }
     }
 
+    // 3. Váltás
     i18n.global.locale.value = langCode;
     currentLanguage.value = langCode;
     document.querySelector('html').setAttribute('lang', langCode);
