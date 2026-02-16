@@ -153,6 +153,9 @@ A "Front Office" (Látogatói oldal) teljes dinamizálása a cél:
    - Minden médiafájlt a Cloudinary-ba (vagy egyéb felhő tárhelyre) kell feltölteni.
    - Az adatbázisban a `PublicId`-t is tárolni kell az `Url` mellett, a fájlok későbbi törölhetősége érdekében.
 
+
+--------------------------------------------------------------------------------
+
 [ 7.AI FEJLESZTÉSI SZABÁLYOK]
 
 1. API Kulcs Biztonság:
@@ -167,3 +170,26 @@ A "Front Office" (Látogatói oldal) teljes dinamizálása a cél:
    Az AI fordítás mindig "On-Demand" (gombnyomásra) történik, sosem automatikusan a háttérben.
    A Frontendnek KÖTELEZŐ küldenie a `context` paramétert ('service', 'gallery', 'inventory'), 
    különben a backend "general" módban fordít, ami pontatlan lehet.
+
+--------------------------------------------------------------------------------
+
+[ 8. LOKALIZÁCIÓS ÉS UI SZABÁLYOK (2026.02.16) ]
+
+1.  Nyelvi Fájlok Tilalma:
+    TILOS fizikai JSON fájlt létrehozni új nyelveknek (pl. en.json, sk.json). 
+    Kizárólag a `hu.json` létezhet fizikailag, minden más nyelvet a Store-nak kell generálnia runtime a DB-ből.
+
+2.  UI Szövegek Kezelése:
+    Minden statikus szöveget (gomb, label, placeholder) a `hu.json`-ba kell felvenni.
+    TILOS hard-coded stringeket hagyni a .vue fájlokban (kivéve tesztelés alatt).
+
+3.  PrimeVue v4 Kompatibilitás:
+    Új komponensek írásakor vagy refaktoráláskor TILOS a régi PrimeVue v3 elnevezéseket használni.
+    - Helyes: `<Select>`, `<Tabs>`, `<AccordionPanel>`.
+    - Helytelen: `<Dropdown>`, `<TabView>`, `<AccordionTab>`.
+
+4.  Aszinkron Folyamatok UI Visszajelzése:
+    Ha egy folyamat (pl. AI fordítás) 1 másodpercnél tovább tart:
+    - A szervernek azonnal vissza kell térnie `Accepted (202)` státusszal.
+    - A kliensnek Polling mechanizmussal vagy WebSocket-tel kell figyelnie a státuszt.
+    - Kötelező a Progress Bar vagy Spinner használata a felhasználó tájékoztatására.
