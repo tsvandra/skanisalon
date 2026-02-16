@@ -10,6 +10,10 @@ namespace Soluvion.API.Models
         [MaxLength(200)]
         public string Name { get; set; } = string.Empty;
 
+        [MaxLength(100)]
+        public string? Domain { get; set; }
+        public string? SettingsJson { get; set; }
+
         public int CompanyTypeId { get; set; }
         public CompanyType? CompanyType { get; set; }
         public bool IsDeleted { get; set; } = false; 

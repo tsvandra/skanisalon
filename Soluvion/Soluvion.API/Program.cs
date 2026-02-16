@@ -8,6 +8,7 @@ using Swashbuckle.AspNetCore.Filters;
 using System.Text;
 using System.Net;
 using Soluvion.API.Services;
+using Soluvion.API.Middleware;
 using Microsoft.AspNetCore.Authentication;
 using CloudinaryDotNet;
 
@@ -22,6 +23,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITranslationService, OpenAiTranslationService>();
+builder.Services.AddScoped<ITenantContext, TenantContext>();
 
 builder.Services.AddCors(options =>
 {
@@ -115,6 +117,8 @@ app.Use(async (context, next) =>
 
 
 app.UseCors("AllowAll");
+
+app.UseMiddleware<TenantResolutionMiddleware>();
 
 AppContext.SetSwitch("Npqsql.EnableLegacyTimestampBehavior", true);
 

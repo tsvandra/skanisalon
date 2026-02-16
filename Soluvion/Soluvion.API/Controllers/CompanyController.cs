@@ -4,8 +4,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
+using Soluvion.API.DTOs;
 using Soluvion.API.Models;
+using Soluvion.API.Models.DTOs; // Új DTO namespace
+using Soluvion.API.Services;    // ITenantContext miatt
 using System.Security.Claims;
+using Soluvion.API.Models.Enums;
 
 namespace Soluvion.API.Controllers
 {
@@ -15,19 +19,92 @@ namespace Soluvion.API.Controllers
     {
         private readonly AppDbContext _context;
         private readonly Cloudinary _cloudinary;
+        private readonly ITenantContext _tenantContext; // Új service injektálása
 
-        public CompanyController(AppDbContext context, Cloudinary cloudinary)
+        public CompanyController(AppDbContext context, Cloudinary cloudinary, ITenantContext tenantContext)
         {
             _context = context;
             _cloudinary = cloudinary;
+            _tenantContext = tenantContext;
         }
 
-        // GET: api/Company/1
+        // --- ÚJ ENDPOINT: PUBLIKUS CONFIG LEKÉRÉSE (VENDÉG NÉZET) ---
+        // GET: api/Company/public-config
+        [HttpGet("public-config")]
+        [AllowAnonymous] // Bárki hívhatja bejelentkezés nélkül
+        public ActionResult<CompanyPublicProfileDto> GetPublicConfig()
+        {
+            var company = _tenantContext.CurrentCompany;
+
+            if (company == null)
+            {
+                // Ha a Middleware nem találta meg a céget (rossz domain),
+                // akkor visszaadhatunk egy 404-et, vagy egy alapértelmezett "Landing Page"-et.
+                return NotFound("A kért szalon nem található ezen a címen.");
+            }
+
+            // Mapping (Entity -> DTO)
+            // Csak a biztonságos, publikus adatokat adjuk vissza
+            var dto = new CompanyPublicProfileDto
+            {
+                Id = company.Id,
+                Name = company.Name,
+
+                // Design
+                LogoUrl = company.LogoUrl,
+                LogoHeight = company.LogoHeight,
+                FooterImageUrl = company.FooterImageUrl,
+                FooterHeight = company.FooterHeight,
+                HeroImageUrl = company.HeroImageUrl,
+                PrimaryColor = company.PrimaryColor,
+                SecondaryColor = company.SecondaryColor,
+
+                // Tartalom
+                OpeningHoursTitle = company.OpeningHoursTitle,
+                OpeningHoursDescription = company.OpeningHoursDescription,
+                OpeningTimeSlots = company.OpeningTimeSlots,
+                OpeningExtraInfo = company.OpeningExtraInfo,
+
+                // Kapcsolat
+                Phone = company.Phone,
+                Email = company.Email,
+                FacebookUrl = company.FacebookUrl,
+                InstagramUrl = company.InstagramUrl,
+                TikTokUrl = company.TikTokUrl,
+                MapEmbedUrl = company.MapEmbedUrl,
+
+                State = company.State,
+                City = company.City,
+                StreetName = company.StreetName,
+                HouseNumber = company.HouseNumber,
+                PostalCode = company.PostalCode,
+
+                // Nyelvek
+                DefaultLanguage = company.DefaultLanguage,
+                // Itt kinyerjük a nyelvkódokat a CompanyLanguage listából
+                SupportedLanguages = company.Languages
+                    .Where(l => l.Status == TranslationStatus.Published) // Csak az aktív nyelveket adjuk vissza!
+                    .Select(l => l.LanguageCode)
+                    .ToList()
+            };
+
+            // Ha a listában nincs benne a default nyelv (pl. hu), tegyük bele biztonságból
+            if (!dto.SupportedLanguages.Contains(dto.DefaultLanguage))
+            {
+                dto.SupportedLanguages.Add(dto.DefaultLanguage);
+            }
+
+            return Ok(dto);
+        }
+        // -------------------------------------------------------------
+
+        // GET: api/Company/1 (Ezt csak Admin használja, vagy explicit ID kérésnél)
         [HttpGet("{id}")]
         public async Task<ActionResult<Company>> GetCompanyById(int id)
         {
             var company = await _context.Companies
                 .Include(c => c.CompanyType)
+                .Include(c => c.Languages) // Nyelveket is betöltjük
                 .FirstOrDefaultAsync(c => c.Id == id);
 
             if (company == null) return NotFound();
