@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
 using Soluvion.API.Models;
+using Soluvion.API.Models.DTOs;
 using System.Security.Claims;
 
 namespace Soluvion.API.Controllers

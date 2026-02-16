@@ -17,6 +17,8 @@ namespace Soluvion.API.Data
         public DbSet<GalleryCategory> GalleryCategories { get; set; }
         public DbSet<GalleryImage> GalleryImages { get; set; }
         public DbSet<User> Users { get; set; }
+        public DbSet<CompanyLanguage> CompanyLanguages { get; set; }
+        public DbSet<UiTranslationOverride> UiTranslationOverrides { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -69,6 +71,28 @@ namespace Soluvion.API.Data
                         v => JsonSerializer.Serialize(v, jsonOptions),
                         v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, jsonOptions) ?? new Dictionary<string, string>())
                     .Metadata.SetValueComparer(dictionaryComparer);
+            });
+
+            modelBuilder.Entity<CompanyLanguage>(entity =>
+            {
+                // Összetett kulcs: CompanyId + LanguageCode
+                entity.HasKey(cl => new { cl.CompanyId, cl.LanguageCode });
+
+                entity.HasOne(cl => cl.Company)
+                    .WithMany(c => c.Languages)
+                    .HasForeignKey(cl => cl.CompanyId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<UiTranslationOverride>(entity =>
+            {
+                // Összetett kulcs: CompanyId + LanguageCode + TranslationKey
+                entity.HasKey(o => new { o.CompanyId, o.LanguageCode, o.TranslationKey });
+
+                entity.HasOne(o => o.Company)
+                    .WithMany(c => c.TranslationOverrides)
+                    .HasForeignKey(o => o.CompanyId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }

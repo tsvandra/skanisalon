@@ -149,4 +149,31 @@ Környezeti Változók (.env kezelés):
    - Service: `OpenAiTranslationService` (végzi a kommunikációt az API-val).
    - Interface: `ITranslationService` (a tesztelhetőség és cserélhetőség miatt).
 
+
+--------------------------------------------------------------------------------
+
+  === FRONTEND I18N STRATÉGIA (SaaS) ===
+
+1.  Tárolás:
+    - Statikus fájl (`locales/hu.json`): Csak a Mester nyelv.
+    - Adatbázis (`UiTranslationOverrides`): Minden más nyelv és egyedi felülírás.
+
+2.  Store Logika (`translationStore.js`):
+    - "Reset & Merge" stratégia: Nyelvváltáskor a store először kényszerítetten beállítja a Mester nyelvet az új nyelvkód alá, majd ráolvasztja az adatbázisból érkező különbségeket.
+    - Kerüljük a `vue-i18n` beépített fallback mechanizmusát a kulcsok megjelenítése ellen; helyette explicit memóriamásolást használunk.
+
+3.  UI Komponensek (PrimeVue v4 Standards):
+    - A projekt szigorúan a PrimeVue v4 új API-ját követi.
+    - Tilos használni: `TabView`, `AccordionTab`, `Dropdown`.
+    - Kötelező használni: `Tabs`, `AccordionPanel`, `Select`.
+
+  --------------------------------------------------------------------------------
+
+  === BACKEND ASYNC WORKERS ===
+
+1.  Translation Job:
+    - A fordítási folyamatok (mivel sokáig tarthatnak) nem blokkolják a HTTP kérést.
+    - Megvalósítás: `Task.Run` + `IServiceScopeFactory` (új scope nyitása a háttérszálnak).
+    - Progress Tracking: A job szakaszosan ment a DB-be, frissítve a `CompanyLanguage.Progress` (0-100) mezőt.
+
 ================================================================================

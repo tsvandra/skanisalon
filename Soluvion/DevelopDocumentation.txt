@@ -278,4 +278,31 @@ Ahelyett, hogy fix promptokat égetnénk a kódba ("Te egy fodrász vagy"), a re
 
 Ez a struktúra lehetővé teszi, hogy a szoftver kódmódosítás nélkül kiszolgáljon különböző típusú vállalkozásokat.
 
+--------------------------------------------------------------------------------
+
+=== FEATURE: HIBRID SaaS LOKALIZÁCIÓ (2026.02.16) ===
+
+A rendszer teljeskörű többnyelvűsítése elkészült, egyedi "Master Template" architektúrával.
+
+Probléma: 
+SaaS környezetben nem hozhatunk létre fizikai .json fájlokat minden új nyelvhez, amit egy szalon bekapcsol. A `vue-i18n` viszont fájlokat vagy memóriában lévő objektumokat vár.
+
+Megoldás (Runtime Generation):
+1.  Master Source: A `locales/hu.json` a rendszer DNS-e. Ez tartalmazza az összes kulcsot.
+2.  Memory Cloning: Amikor a felhasználó nyelvet vált (pl. 'sk'), a Store a memóriában leklónozza a `hu.json` tartalmát az 'sk' kulcs alá. Ezzel garantáljuk, hogy minden UI elemnek van értéke (fallback).
+3.  DB Merge: A rendszer letölti az `UiTranslationOverrides` táblából a cég-specifikus fordításokat, és felülírja velük a memóriában lévő klónt.
+
+Folyamat (Language Onboarding):
+1.  Admin hozzáad egy nyelvet -> Frontend elküldi a `hu.json` tartalmát a Backendnek.
+2.  Backend elindít egy háttérszálat (Fire-and-Forget), ami OpenAI-val lefordítja a UI elemeket és a dinamikus tartalmat (Szolgáltatások, Galéria).
+3.  Backend számolja a haladást (`Progress` mező).
+4.  Frontend Polling-gal figyeli a státuszt és Progress Bart jelenít meg.
+
+Tech Debt Fix (PrimeVue v4):
+A fejlesztés során kivezettük a deprecated komponenseket:
+- TabView -> Tabs
+- Dropdown -> Select
+- AccordionTab -> AccordionPanel
+
+
 ================================================================================

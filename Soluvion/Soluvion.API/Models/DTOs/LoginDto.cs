@@ -1,4 +1,4 @@
-﻿namespace Soluvion.API.Models
+﻿namespace Soluvion.API.Models.DTOs
 {
     public class LoginDto
     {

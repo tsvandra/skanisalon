@@ -94,5 +94,8 @@ namespace Soluvion.API.Models
         public string SecondaryColor { get; set; } = "#1a1a1a";
         [MaxLength(5)]
         public string DefaultLanguage { get; set; } = "hu";
+
+        public ICollection<CompanyLanguage> Languages { get; set; } = new List<CompanyLanguage>();
+        public ICollection<UiTranslationOverride> TranslationOverrides { get; set; } = new List<UiTranslationOverride>();
     }
 }

@@ -1,12 +1,13 @@
 <script setup>
   import { ref, onMounted, inject, computed } from 'vue';
   import { useRouter } from 'vue-router';
+  import LanguageSwitcher from './LanguageSwitcher.vue'; // <--- ÚJ IMPORT
 
-  // Csak a megjelenítéshez szükséges dolgok maradnak
   const company = inject('company');
+  // Az isLoggedIn-t most már az App.vue-ból injectáljuk, hogy szinkronban legyen
+  const isLoggedIn = inject('isLoggedIn');
   const router = useRouter();
   const isMenuOpen = ref(false);
-  const isLoggedIn = ref(false);
 
   const toggleMenu = () => isMenuOpen.value = !isMenuOpen.value;
 
@@ -22,7 +23,6 @@
     return `${baseUrl}${path}`;
   };
 
-  // A stílus marad, hogy reagáljon a Settings-ben történő változásokra
   const logoStyle = computed(() => {
     const height = company.value?.logoHeight || 50;
     return {
@@ -30,10 +30,6 @@
       width: 'auto',
       display: 'block'
     };
-  });
-
-  onMounted(() => {
-    isLoggedIn.value = !!localStorage.getItem('salon_token');
   });
 </script>
 
@@ -54,17 +50,21 @@
       <button class="menu-toggle" @click="toggleMenu">☰</button>
 
       <nav :class="{ 'is-open': isMenuOpen }">
-        <router-link to="/" @click="isMenuOpen = false">Kezdőlap</router-link>
-        <router-link to="/szolgaltatasok" @click="isMenuOpen = false">Árlista</router-link>
-        <router-link to="/galeria" @click="isMenuOpen = false">Galéria</router-link>
-        <router-link to="/kapcsolat" @click="isMenuOpen = false">Kapcsolat</router-link>
+        <router-link to="/" @click="isMenuOpen = false">{{ $t('nav.home') }}</router-link>
+        <router-link to="/szolgaltatasok" @click="isMenuOpen = false">{{ $t('nav.services') }}</router-link>
+        <router-link to="/galeria" @click="isMenuOpen = false">{{ $t('nav.gallery') }}</router-link>
+        <router-link to="/kapcsolat" @click="isMenuOpen = false">{{ $t('nav.contact') }}</router-link>
 
-        <router-link v-if="isLoggedIn" to="/beallitasok" @click="isMenuOpen = false" class="settings-link">
+        <div class="lang-wrapper">
+          <LanguageSwitcher :adminMode="isLoggedIn" />
+        </div>
+
+        <router-link v-if="isLoggedIn" to="/beallitasok" @click="isMenuOpen = false" class="settings-link" :title="$t('common.settings')">
           <i class="pi pi-cog" style="font-size: 1.2rem;"></i>
         </router-link>
 
-        <button v-if="isLoggedIn" @click="handleLogout" class="auth-btn logout">Kilépés</button>
-        <router-link v-else to="/login" @click="isMenuOpen = false" class="auth-btn login">Belépés</router-link>
+        <button v-if="isLoggedIn" @click="handleLogout" class="auth-btn logout">{{ $t('common.logout') }}</button>
+        <router-link v-else to="/login" @click="isMenuOpen = false" class="auth-btn login">{{ $t('common.login') }}</router-link>
       </nav>
     </div>
   </header>
@@ -125,6 +125,12 @@
         color: var(--primary-color);
       }
 
+  /* ÚJ: Kis margó a nyelvváltónak */
+  .lang-wrapper {
+    margin-left: 10px;
+    margin-right: 10px;
+  }
+
   .settings-link {
     color: var(--primary-color) !important;
     transition: transform 0.3s !important;
@@ -181,5 +187,11 @@
       nav.is-open {
         display: flex;
       }
+
+    .lang-wrapper {
+      margin: 15px 0;
+      display: flex;
+      justify-content: center;
+    }
   }
 </style>

@@ -1,89 +1,55 @@
 <script setup>
-  import { ref, onMounted, inject, watch, nextTick } from 'vue';
-  import api from '@/services/api'; // Figyelj: itt 'api' a neve, nem 'apiClient', konzisztensen használjuk
+  import { ref, onMounted, inject, watch, nextTick, computed } from 'vue';
+  import api from '@/services/api';
   import { DEFAULT_COMPANY_ID } from '@/config';
   import { useAutoSaveQueue } from '@/composables/useAutoSaveQueue';
   import draggable from 'vuedraggable';
+  import { useI18n } from 'vue-i18n'; // <--- ÚJ
 
-  // --- STATE ---
+  const { locale } = useI18n(); // <--- Globális locale
+  const isLoggedIn = inject('isLoggedIn');
+
+  // Globális nyelv
+  const currentLang = computed(() => locale.value);
+
   const images = ref([]);
   const categories = ref([]);
   const groupedImages = ref([]);
   const isLoading = ref(false);
   const isUploading = ref(false);
-  const isLoggedIn = ref(false);
-
-  // Nyelvkezelés & Fordítás State
-  const currentLang = ref('hu');
-  const translatingField = ref(null); // Loading spinnerhez
-
-  // Preview state
+  const translatingField = ref(null);
   const showPreview = ref(false);
   const previewImage = ref(null);
-
-  // Upload state
   const fileInputRef = ref(null);
   const currentUploadCategory = ref(null);
-
-  // Focus refek
   const categoryInputRefs = ref({});
-
-  // Injectek
   const company = inject('company', ref(null));
   const { addToQueue } = useAutoSaveQueue();
 
-  // --- SEGÉDFÜGGVÉNYEK ---
   const ensureDict = (field, defaultValue = "") => {
     if (field && typeof field === 'object') return field;
     return { [currentLang.value]: field || defaultValue };
   };
 
-  // --- AI FORDÍTÁS FUNKCIÓ ---
   const translateField = async (obj, fieldName, targetLang) => {
-    // Forrás: mindig a 'hu' vagy az aktuális
     const sourceText = obj[fieldName]['hu'] || obj[fieldName][currentLang.value];
-
     if (!sourceText || sourceText.trim() === '') return;
-
-    // Loading ID generálása
     const loadingKey = `${obj.id || 'new'}-${fieldName}-${targetLang}`;
     translatingField.value = loadingKey;
-
     try {
-      const response = await api.post('/api/Translation', {
-        text: sourceText,
-        targetLanguage: targetLang
-      });
-
+      const response = await api.post('/api/Translation', { text: sourceText, targetLanguage: targetLang });
       if (response.data && response.data.translatedText) {
         obj[fieldName][targetLang] = response.data.translatedText;
-
-        // Automatikus mentés hívása a megfelelő típushoz
-        if (obj.items) {
-          // Ez egy kategória (mert vannak items-ei)
-          saveCategory(obj);
-        } else {
-          // Ez egy kép
-          saveImage(obj);
-        }
+        if (obj.items) saveCategory(obj); else saveImage(obj);
       }
-    } catch (err) {
-      console.error("Fordítási hiba:", err);
-      alert("Hiba a fordítás során.");
-    } finally {
-      translatingField.value = null;
-    }
+    } catch (err) { console.error("Fordítási hiba:", err); }
+    finally { translatingField.value = null; }
   };
 
   const triggerTranslation = (obj, fieldName) => {
-    if (currentLang.value === 'hu') {
-      alert("Válts nyelvet a fordításhoz!");
-      return;
-    }
+    if (currentLang.value === 'hu') { alert("Válts nyelvet fentről!"); return; }
     translateField(obj, fieldName, currentLang.value);
   };
-
-  // --- ADATLEKÉRÉS ---
 
   const fetchData = async () => {
     const targetCompanyId = company?.value?.id || DEFAULT_COMPANY_ID;
@@ -93,47 +59,27 @@
         api.get('/api/Gallery/categories', { params: { companyId: targetCompanyId } }),
         api.get('/api/Gallery', { params: { companyId: targetCompanyId } })
       ]);
-
-      categories.value = resCats.data.map(c => ({
-        ...c,
-        name: ensureDict(c.name, "Névtelen galéria")
-      }));
-
-      images.value = resImages.data.map(i => ({
-        ...i,
-        category: ensureDict(i.category, "Egyéb")
-      }));
-
+      categories.value = resCats.data.map(c => ({ ...c, name: ensureDict(c.name, "Névtelen galéria") }));
+      images.value = resImages.data.map(i => ({ ...i, category: ensureDict(i.category, "Egyéb") }));
       buildNestedStructure();
-    } catch (error) {
-      console.error("Hiba:", error);
-    } finally {
-      isLoading.value = false;
-    }
+    } catch (error) { console.error("Hiba:", error); }
+    finally { isLoading.value = false; }
   };
 
   const buildNestedStructure = () => {
     const groups = [];
     const groupsMap = new Map();
-
     categories.value.forEach(cat => {
-      const group = {
-        id: cat.id,
-        name: cat.name,
-        items: [],
-        orderIndex: cat.orderIndex
-      };
+      const group = { id: cat.id, name: cat.name, items: [], orderIndex: cat.orderIndex };
       groups.push(group);
       groupsMap.set(cat.id, group);
     });
-
     const uncategorized = {
       id: -1,
       name: { [currentLang.value]: "Egyéb / Nem kategorizált" },
       items: [],
       orderIndex: 999999
     };
-
     images.value.forEach(img => {
       if (img.categoryId && groupsMap.has(img.categoryId)) {
         groupsMap.get(img.categoryId).items.push(img);
@@ -141,47 +87,26 @@
         uncategorized.items.push(img);
       }
     });
-
     groups.forEach(g => g.items.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0)));
-
-    if (uncategorized.items.length > 0) {
-      groups.push(uncategorized);
-    }
-
+    if (uncategorized.items.length > 0) groups.push(uncategorized);
     groupedImages.value = groups;
   };
 
   watch(() => company?.value?.id, (newId) => { if (newId) fetchData(); }, { immediate: true });
 
-  // --- KATEGÓRIA MŰVELETEK ---
-
   const createCategory = async () => {
     if (!isLoggedIn.value) return;
-
     try {
       const payload = { name: { [currentLang.value]: "Új galéria" } };
       const res = await api.post('/api/Gallery/categories', payload);
       const newCat = res.data;
-
       newCat.name = ensureDict(newCat.name);
-
-      const newGroup = {
-        id: newCat.id,
-        name: newCat.name,
-        items: [],
-        orderIndex: newCat.orderIndex
-      };
-
+      const newGroup = { id: newCat.id, name: newCat.name, items: [], orderIndex: newCat.orderIndex };
       groupedImages.value.unshift(newGroup);
-
       await nextTick();
       const inputEl = categoryInputRefs.value[newGroup.id];
       if (inputEl) inputEl.focus();
-
-    } catch (err) {
-      console.error(err);
-      alert("Hiba a létrehozáskor.");
-    }
+    } catch (err) { console.error(err); }
   };
 
   const onCategoryDragChange = (event) => {
@@ -197,38 +122,25 @@
 
   const saveCategory = (group) => {
     if (!group.id || group.id === -1) return;
-
     const currentName = group.name[currentLang.value]?.trim();
-    if (!currentName) {
-      group.name[currentLang.value] = "Új galéria";
-    }
-
+    if (!currentName) group.name[currentLang.value] = "Új galéria";
     addToQueue(`cat-${group.id}`, async () => {
-      await api.put(`/api/Gallery/categories/${group.id}`, {
-        name: group.name,
-        orderIndex: group.orderIndex
-      });
+      await api.put(`/api/Gallery/categories/${group.id}`, { name: group.name, orderIndex: group.orderIndex });
     });
   };
 
   const deleteCategory = async (group) => {
-    const nameToShow = group.name[currentLang.value] || 'Névtelen';
-    if (!confirm(`Törlöd a "${nameToShow}" mappát?`)) return;
+    if (!confirm(`Törlöd a "${group.name[currentLang.value]}" mappát?`)) return;
     try {
       await api.delete(`/api/Gallery/categories/${group.id}`);
       groupedImages.value = groupedImages.value.filter(g => g.id !== group.id);
-    } catch (err) {
-      alert("Nem sikerült törölni. Győződj meg róla, hogy üres!");
-    }
+    } catch (err) { alert("Nem sikerült törölni."); }
   };
-
-  // --- KÉP MŰVELETEK ---
 
   const onImageDragChange = (event, group) => {
     if (event.added || event.moved) {
       group.items.forEach((img, index) => {
         const newOrder = index + 1;
-
         if (img.orderIndex !== newOrder || img.categoryId !== group.id) {
           img.orderIndex = newOrder;
           img.categoryId = group.id;
@@ -243,7 +155,7 @@
     addToQueue(img.id, async () => {
       await api.put(`/api/Gallery/${img.id}`, {
         id: img.id,
-        title: img.title, // Megj: A kép címe egyelőre string maradt a backendben, de előkészítettük
+        title: img.title,
         categoryName: img.category,
         orderIndex: img.orderIndex
       });
@@ -259,8 +171,6 @@
     } catch (error) { fetchData(); }
   };
 
-  // --- FELTÖLTÉS ---
-
   const triggerCategoryUpload = (group) => {
     currentUploadCategory.value = group;
     if (fileInputRef.value) fileInputRef.value.click();
@@ -269,22 +179,15 @@
   const handleFiles = async (event) => {
     const files = event.target.files;
     if (!files || files.length === 0 || !currentUploadCategory.value) return;
-
     isUploading.value = true;
-
-    // Feltöltéskor a backend stringet vár, így a 'hu' nevet küldjük (fallback az újra)
     const targetCatName = currentUploadCategory.value.name['hu'] || "Új galéria";
-
     for (let i = 0; i < files.length; i++) {
       const formData = new FormData();
       formData.append('file', files[i]);
       formData.append('category', targetCatName);
-
-      try {
-        await api.post('/api/Gallery', formData, { headers: { 'Content-Type': undefined } });
-      } catch (err) { console.error(err); }
+      try { await api.post('/api/Gallery', formData, { headers: { 'Content-Type': undefined } }); }
+      catch (err) { console.error(err); }
     }
-
     await fetchData();
     isUploading.value = false;
     currentUploadCategory.value = null;
@@ -292,33 +195,22 @@
   };
 
   const openPreview = (img) => { previewImage.value = img; showPreview.value = true; };
-
-  onMounted(() => {
-    const token = localStorage.getItem('salon_token');
-    isLoggedIn.value = !!token;
-  });
 </script>
 
 <template>
   <div class="gallery-container">
     <div class="header-actions">
-      <h1>Galéria & Munkáim</h1>
-
-      <div v-if="isLoggedIn" class="lang-switcher">
-        <button @click="currentLang = 'hu'" :class="{ active: currentLang === 'hu' }">HU</button>
-        <button @click="currentLang = 'en'" :class="{ active: currentLang === 'en' }">EN</button>
-        <button @click="currentLang = 'sk'" :class="{ active: currentLang === 'sk' }">SK</button>
-      </div>
+      <h1>{{ $t('gallery.title') }}</h1>
 
       <button v-if="isLoggedIn" @click="createCategory" class="btn primary-btn big-btn">
-        <i class="pi pi-plus-circle"></i> Új Galéria Létrehozása
+        <i class="pi pi-plus-circle"></i> {{ $t('gallery.newGallery') }}
       </button>
 
       <input type="file" ref="fileInputRef" @change="handleFiles" multiple accept="image/*" style="display: none;" />
     </div>
 
     <div v-if="isLoading" class="loading-state">
-      <i class="pi pi-spin pi-spinner"></i> Betöltés...
+      <i class="pi pi-spin pi-spinner"></i> {{ $t('common.loading') }}
     </div>
 
     <draggable v-else
@@ -333,9 +225,7 @@
 
           <div class="cat-header">
             <div class="cat-left">
-              <div v-if="isLoggedIn && group.id !== -1" class="drag-handle-cat" title="Galéria mozgatása">
-                ⋮⋮
-              </div>
+              <div v-if="isLoggedIn && group.id !== -1" class="drag-handle-cat" title="Galéria mozgatása">⋮⋮</div>
 
               <div class="cat-title-wrapper">
                 <div class="input-with-tools">
@@ -349,41 +239,25 @@
 
                   <button v-if="isLoggedIn && currentLang !== 'hu' && group.id !== -1"
                           @click="triggerTranslation(group.name, 'name')"
-                          class="magic-btn"
-                          title="Fordítás">
+                          class="magic-btn" title="Fordítás">
                     <i v-if="translatingField === `${group.id}-name-${currentLang}`" class="pi pi-spin pi-spinner"></i>
                     <i v-else class="pi pi-sparkles"></i>
                   </button>
                 </div>
-
                 <span class="count">({{ group.items.length }})</span>
               </div>
             </div>
 
             <div v-if="isLoggedIn && group.id !== -1" class="cat-actions">
-
               <button @click="triggerCategoryUpload(group)" class="btn upload-sm-btn" :disabled="isUploading">
                 <i v-if="isUploading && currentUploadCategory?.id === group.id" class="pi pi-spin pi-spinner"></i>
-                <i v-else class="pi pi-cloud-upload"></i>
-                Képek feltöltése ide
+                <i v-else class="pi pi-cloud-upload"></i> {{ $t('gallery.uploadHere') }}
               </button>
-
-              <button v-if="group.items.length === 0"
-                      @click="deleteCategory(group)"
-                      class="cat-delete-btn"
-                      title="Galéria törlése">
-                <i class="pi pi-trash"></i>
-              </button>
+              <button v-if="group.items.length === 0" @click="deleteCategory(group)" class="cat-delete-btn"><i class="pi pi-trash"></i></button>
             </div>
           </div>
 
-          <draggable v-model="group.items"
-                     group="gallery-images"
-                     item-key="id"
-                     class="image-grid"
-                     @change="(e) => onImageDragChange(e, group)"
-                     :disabled="!isLoggedIn"
-                     ghost-class="ghost-card">
+          <draggable v-model="group.items" group="gallery-images" item-key="id" class="image-grid" @change="(e) => onImageDragChange(e, group)" :disabled="!isLoggedIn" ghost-class="ghost-card">
             <template #item="{ element: img }">
               <div class="gallery-card">
                 <div class="img-wrapper" @click="openPreview(img)">
@@ -404,7 +278,7 @@
     </draggable>
 
     <div v-if="!isLoading && groupedImages.length === 0" class="empty-state">
-      Kattints az "Új Galéria" gombra a kezdéshez!
+      {{ $t('gallery.emptyState') }}
     </div>
 
     <div v-if="showPreview" class="lightbox" @click="showPreview = false">
@@ -418,7 +292,7 @@
 </template>
 
 <style scoped>
-  /* Ugyanazok a stílusok, plusz az újak */
+  /* (Stílusok változatlanok) */
   .gallery-container {
     max-width: 1200px;
     margin: 0 auto;
@@ -442,30 +316,6 @@
     letter-spacing: 2px;
   }
 
-  /* LANG SWITCHER (ServiceView-ból átemelve a konzisztencia miatt) */
-  .lang-switcher {
-    display: flex;
-    gap: 10px;
-    margin-right: 20px;
-  }
-
-    .lang-switcher button {
-      background: transparent;
-      border: 1px solid #444;
-      color: #888;
-      padding: 5px 10px;
-      cursor: pointer;
-      border-radius: 4px;
-      font-weight: bold;
-    }
-
-      .lang-switcher button.active {
-        background: #d4af37;
-        color: #000;
-        border-color: #d4af37;
-      }
-
-  /* MAGIC BTN */
   .input-with-tools {
     position: relative;
     display: flex;
@@ -494,7 +344,6 @@
     text-shadow: 0 0 5px #d4af37;
   }
 
-  /* BUTTONS */
   .btn {
     border: none;
     border-radius: 4px;
@@ -534,7 +383,6 @@
     transform: scale(1.03);
   }
 
-  /* CATEGORY SECTION */
   .category-section {
     margin-bottom: 2rem;
     background: #111;
@@ -619,7 +467,6 @@
       color: #ff4444;
     }
 
-  /* GRID */
   .image-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -714,7 +561,6 @@
     color: #999;
   }
 
-  /* LIGHTBOX */
   .lightbox {
     position: fixed;
     inset: 0;

@@ -1,4 +1,4 @@
-﻿namespace Soluvion.API.Models
+﻿namespace Soluvion.API.Models.DTOs
 {
     public class GalleryImageUpdateDto
     {
@@ -9,13 +9,5 @@
         public Dictionary<string, string> CategoryName { get; set; } = new();
 
         public int OrderIndex { get; set; }
-    }
-
-    public class CategoryDto
-    {
-        // Kategória létrehozás/módosítás többnyelvű névvel
-        public Dictionary<string, string> Name { get; set; } = new();
-
-        public int OrderIndex { set; get; }
     }
 }
