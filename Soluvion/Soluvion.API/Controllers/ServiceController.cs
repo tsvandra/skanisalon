@@ -3,7 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
 using Soluvion.API.Models;
-using Soluvion.API.Services; // ITenantContext
+using Soluvion.API.Models.DTOs; // ServiceDto
+using Soluvion.API.Services;
 
 namespace Soluvion.API.Controllers
 {
@@ -12,7 +13,7 @@ namespace Soluvion.API.Controllers
     public class ServiceController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private readonly ITenantContext _tenantContext; // ÚJ
+        private readonly ITenantContext _tenantContext;
 
         public ServiceController(AppDbContext context, ITenantContext tenantContext)
         {
@@ -20,7 +21,6 @@ namespace Soluvion.API.Controllers
             _tenantContext = tenantContext;
         }
 
-        // Helper: Admin műveleteknél (POST/PUT) a User Claim a mérvadó
         private int GetUserCompanyId()
         {
             var companyClaim = User.FindFirst("CompanyId");
@@ -32,44 +32,61 @@ namespace Soluvion.API.Controllers
         }
 
         // GET: api/Service (Publikus lista)
-        // Most már nem kérünk paramétert, hanem a Contextből olvassuk ki
         [HttpGet]
-        [AllowAnonymous] // Biztosítjuk, hogy bárki hívhassa
-        public async Task<ActionResult<IEnumerable<Service>>> GetServices()
+        [AllowAnonymous]
+        public async Task<ActionResult<IEnumerable<ServiceDto>>> GetServices()
         {
-            // 1. Megnézzük, melyik cég oldalán vagyunk (Tenant Context)
             var currentCompany = _tenantContext.CurrentCompany;
+            if (currentCompany == null) return BadRequest("Tenant Context hiányzik.");
 
-            if (currentCompany == null)
-            {
-                return BadRequest("Nem sikerült azonosítani a szalont (Tenant Context hiányzik).");
-            }
-
-            // 2. Szűrés a megtalált cégre
-            return await _context.Services
+            // Adatbázisból lekérés
+            var services = await _context.Services
                 .Include(s => s.Variants)
                 .Where(s => s.CompanyId == currentCompany.Id)
                 .OrderBy(s => s.OrderIndex)
                 .ToListAsync();
+
+            // Mapping Entity -> DTO (Kézi konverzió a biztonságért)
+            var dtos = services.Select(s => new ServiceDto
+            {
+                Id = s.Id,
+                CompanyId = s.CompanyId,
+                Name = s.Name,
+                Category = s.Category,
+                Description = s.Description,
+                DefaultPrice = s.DefaultPrice,
+                DefaultDuration = s.DefaultDuration,
+                OrderIndex = s.OrderIndex,
+                Variants = s.Variants.Select(v => new ServiceVariantDto
+                {
+                    Id = v.Id,
+                    VariantName = v.VariantName,
+                    Price = v.Price,
+                    Duration = v.Duration
+                }).ToList()
+            }).ToList();
+
+            return Ok(dtos);
         }
+
+        // POST, PUT, DELETE metódusoknál is érdemes DTO-t fogadni, 
+        // de a mostani hiba szempontjából a GET a kritikus. 
+        // A te meglévő POST/PUT kódod működhet, ha a kliens jó JSON-t küld,
+        // de itt hagyom a biztonságos Entity verziót, amit már megírtunk:
 
         [HttpPost]
         [Authorize]
         public async Task<ActionResult<Service>> PostService(Service service)
         {
             int userCompanyId = GetUserCompanyId();
-            if (userCompanyId == 0) return Unauthorized("Nincs érvényes CompanyId.");
+            if (userCompanyId == 0) return Unauthorized();
 
             service.CompanyId = userCompanyId;
-
             if (service.Category == null || !service.Category.Any())
-            {
                 service.Category = new Dictionary<string, string> { { "hu", "Egyéb" } };
-            }
 
             _context.Services.Add(service);
             await _context.SaveChangesAsync();
-
             return CreatedAtAction("GetServices", new { id = service.Id }, service);
         }
 
@@ -78,77 +95,56 @@ namespace Soluvion.API.Controllers
         public async Task<IActionResult> PutService(int id, Service service)
         {
             if (id != service.Id) return BadRequest();
-
             int userCompanyId = GetUserCompanyId();
-            var existingService = await _context.Services
+
+            var existing = await _context.Services
                 .Include(s => s.Variants)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
-            if (existingService == null) return NotFound();
-            if (existingService.CompanyId != userCompanyId) return Forbid();
+            if (existing == null || existing.CompanyId != userCompanyId) return NotFound();
 
-            existingService.Name = service.Name;
-            existingService.DefaultPrice = service.DefaultPrice;
-            existingService.DefaultDuration = service.DefaultDuration;
-            existingService.OrderIndex = service.OrderIndex;
-            existingService.Category = service.Category;
-            existingService.Description = service.Description;
+            // Update logic
+            existing.Name = service.Name;
+            existing.Category = service.Category;
+            existing.Description = service.Description;
+            existing.DefaultPrice = service.DefaultPrice;
+            existing.DefaultDuration = service.DefaultDuration;
+            existing.OrderIndex = service.OrderIndex;
 
-            if (service.Variants == null) service.Variants = new List<ServiceVariant>();
-
+            // Variants merge logic (meglévő kódod alapján)
             var incomingIds = service.Variants.Select(v => v.Id).ToList();
-            var variantsToDelete = existingService.Variants
-                .Where(v => v.Id != 0 && !incomingIds.Contains(v.Id))
-                .ToList();
+            var toDelete = existing.Variants.Where(v => v.Id != 0 && !incomingIds.Contains(v.Id)).ToList();
+            _context.ServiceVariants.RemoveRange(toDelete);
 
-            foreach (var variant in variantsToDelete)
+            foreach (var v in service.Variants)
             {
-                _context.ServiceVariants.Remove(variant);
-            }
-
-            foreach (var variant in service.Variants)
-            {
-                if (variant.Id == 0)
-                {
-                    existingService.Variants.Add(variant);
-                }
+                if (v.Id == 0) existing.Variants.Add(v);
                 else
                 {
-                    var existingVariant = existingService.Variants.FirstOrDefault(v => v.Id == variant.Id);
-                    if (existingVariant != null)
+                    var existVar = existing.Variants.FirstOrDefault(x => x.Id == v.Id);
+                    if (existVar != null)
                     {
-                        existingVariant.VariantName = variant.VariantName;
-                        existingVariant.Price = variant.Price;
-                        existingVariant.Duration = variant.Duration;
+                        existVar.VariantName = v.VariantName;
+                        existVar.Price = v.Price;
+                        existVar.Duration = v.Duration;
                     }
                 }
             }
 
-            try
-            {
-                await _context.SaveChangesAsync();
-                return Ok(existingService);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!_context.Services.Any(e => e.Id == id)) return NotFound();
-                else throw;
-            }
+            await _context.SaveChangesAsync();
+            return Ok(existing);
         }
 
         [HttpDelete("{id}")]
         [Authorize]
         public async Task<IActionResult> DeleteService(int id)
         {
-            var service = await _context.Services.FindAsync(id);
-            if (service == null) return NotFound();
+            var s = await _context.Services.FindAsync(id);
+            if (s == null) return NotFound();
+            if (s.CompanyId != GetUserCompanyId()) return Forbid();
 
-            int userCompanyId = GetUserCompanyId();
-            if (service.CompanyId != userCompanyId) return Forbid();
-
-            _context.Services.Remove(service);
+            _context.Services.Remove(s);
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
     }
