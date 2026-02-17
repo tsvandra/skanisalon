@@ -1,5 +1,6 @@
 // src/services/api.js
 import axios from 'axios';
+import { DEFAULT_COMPANY_ID } from '@/config'; // Vagy import.meta.env közvetlenül
 
 // Létrehozunk egy alap kapcsolatot a környezeti változók alapján
 const api = axios.create({
@@ -16,16 +17,23 @@ api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
-  // --- ÚJ: Tenant Context kezelése ---
-  // Megnézzük, van-e az URL-ben forceTenant paraméter (fejlesztéshez)
+  // --- TENANT CONTEXT KEZELÉSE (JAVÍTOTT) ---
+
+  // 1. Megnézzük, van-e az URL-ben kényszerítés (fejlesztéshez: ?forceTenant=7)
   const urlParams = new URLSearchParams(window.location.search);
   const forceTenantId = urlParams.get('forceTenant');
 
-  // Ha van az URL-ben, akkor azt használjuk (és minden API híváshoz hozzácsapjuk Headerként)
+  // 2. Megnézzük a .env fájlt (alapértelmezett fejlesztői ID)
+  const defaultEnvId = import.meta.env.VITE_DEFAULT_COMPANY_ID;
+
   if (forceTenantId) {
+    // Ha az URL-ben van, az a legerősebb
     config.headers['X-Tenant-ID'] = forceTenantId;
+  } else if (defaultEnvId) {
+    // Ha nincs az URL-ben, de van a .env-ben, használjuk azt (Így működik a sima localhost:5173 is)
+    config.headers['X-Tenant-ID'] = defaultEnvId;
   }
-  // -----------------------------------
+  // ------------------------------------------
 
   return config;
 },
@@ -37,9 +45,6 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
-      // Token lejárat kezelése (opcionális: logout logika)
-    }
     return Promise.reject(error);
   }
 );

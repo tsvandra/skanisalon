@@ -11,20 +11,20 @@ export const useCompanyStore = defineStore('company', {
 
   getters: {
     currentCompany: (state) => state.company,
-    primaryColor: (state) => state.company?.primaryColor || '#10b981', // Default zöld, ha nincs adat
+    primaryColor: (state) => state.company?.primaryColor || '#d4af37',
   },
 
   actions: {
     async fetchPublicConfig() {
       this.loading = true;
+      this.error = null;
       try {
-        // A 'api.js' interceptor automatikusan beteszi az X-Tenant-ID-t, 
-        // ha van ?forceTenant=7 az URL-ben.
+        // Most már az api.js automatikusan kezeli a headereket (URL-ből vagy .env-ből)
         const response = await api.get('/api/Company/public-config');
 
         this.company = response.data;
 
-        // AZONNALI DYNAMIC THEME (Színek beállítása)
+        // DYNAMIC THEME ALKALMAZÁSA
         this.applyTheme(this.company.primaryColor, this.company.secondaryColor);
 
         // Tab cím beállítása
@@ -43,28 +43,27 @@ export const useCompanyStore = defineStore('company', {
 
       const root = document.documentElement;
 
-      // Konzol log, hogy lásd, lefut-e
-      console.log(`🎨 SZÍNEZÉS INDUL: ${primaryHex}`);
-
-      // --- PRIME VUE 4 AURA HACK ---
-      // Felülírjuk az összes lehetséges árnyalatot a fő színre, 
-      // hogy biztosan látszódjon a változás.
-      // (Később majd írhatunk egy okosabb függvényt, ami világosít/sötétít)
-
+      // 1. PRIME VUE 4 VÁLTOZÓK (Az új komponensekhez)
       const shades = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950'];
-
       shades.forEach(shade => {
         root.style.setProperty(`--p-primary-${shade}`, primaryHex);
       });
-
-      // Alap változók
       root.style.setProperty('--p-primary-color', primaryHex);
-      root.style.setProperty('--p-primary-emphasis-color', primaryHex); // Hover effektekhez
+      root.style.setProperty('--p-primary-emphasis-color', primaryHex);
 
-      // Secondary
+      // 2. LEGACY VÁLTOZÓK (Hogy a régi dizájn is megjavuljon!)
+      // Ez volt a hiba oka: a régi gombok ezt keresték, de nem találták.
+      root.style.setProperty('--primary-color', primaryHex);
+
       if (secondaryHex) {
         root.style.setProperty('--salon-secondary', secondaryHex);
+        root.style.setProperty('--secondary-color', secondaryHex); // Legacy név
+      } else {
+        root.style.setProperty('--secondary-color', '#1a1a1a');
       }
+
+      // Font (opcionális, ha dinamikus lenne)
+      root.style.setProperty('--font-family', "'Playfair Display', serif");
     }
   }
 });
