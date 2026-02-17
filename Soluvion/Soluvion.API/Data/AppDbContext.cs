@@ -1,5 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking; // FONTOS: Ez kell az összehasonlításhoz
 using Soluvion.API.Models;
+using System.Text.Json; // FONTOS: Ez kell a JSON kezeléshez
 
 namespace Soluvion.API.Data
 {
@@ -24,39 +26,74 @@ namespace Soluvion.API.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // --- 1. ÖSSZETETT KULCSOK KONFIGURÁLÁSA (HIÁNYZÓ RÉSZEK) ---
-
-            // CompanyLanguage: Egy cégnél egy nyelv csak egyszer szerepelhet
+            // --- 1. ÖSSZETETT KULCSOK ---
             modelBuilder.Entity<CompanyLanguage>()
                 .HasKey(cl => new { cl.CompanyId, cl.LanguageCode });
 
-            // UiTranslationOverride: Egy cégnél, egy nyelven, egy kulcsnak csak egy fordítása lehet
-            // EZT HIÁNYOLTA MOST A RENDSZER:
             modelBuilder.Entity<UiTranslationOverride>()
                 .HasKey(t => new { t.CompanyId, t.LanguageCode, t.TranslationKey });
 
 
-            // --- 2. JSONB MEZŐK KONFIGURÁLÁSA ---
-            // A Program.cs-ben lévő .EnableDynamicJson() miatt itt elég a típust megadni.
+            // --- 2. JSONB KONVERZIÓK (MANUÁLIS) ---
+            // Ez oldja meg a "Reading as Dictionary is not supported" hibát!
 
-            // Szolgáltatás variáns név
+            // Segédváltozó az összehasonlításhoz (hogy az EF lássa, ha változott a Dictionary tartalma)
+            var dictionaryComparer = new ValueComparer<Dictionary<string, string>>(
+                (c1, c2) => c1.SequenceEqual(c2),
+                c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
+                c => c.ToDictionary(entry => entry.Key, entry => entry.Value));
+
+            // --- ServiceVariant ---
             modelBuilder.Entity<ServiceVariant>()
-                .Property(v => v.VariantName).HasColumnType("jsonb");
+                .Property(v => v.VariantName)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
+                    dictionaryComparer);
 
-            // Szolgáltatás mezők
+            // --- Service ---
             modelBuilder.Entity<Service>()
-                .Property(s => s.Name).HasColumnType("jsonb");
-            modelBuilder.Entity<Service>()
-                .Property(s => s.Category).HasColumnType("jsonb");
-            modelBuilder.Entity<Service>()
-                .Property(s => s.Description).HasColumnType("jsonb");
+                .Property(s => s.Name)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
+                    dictionaryComparer);
 
-            // Galéria mezők
+            modelBuilder.Entity<Service>()
+                .Property(s => s.Category)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
+                    dictionaryComparer);
+
+            modelBuilder.Entity<Service>()
+                .Property(s => s.Description)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
+                    dictionaryComparer);
+
+            // --- GalleryImage ---
             modelBuilder.Entity<GalleryImage>()
-                .Property(g => g.Title).HasColumnType("jsonb");
+                .Property(g => g.Title)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
+                    dictionaryComparer);
 
+            // --- GalleryCategory ---
             modelBuilder.Entity<GalleryCategory>()
-                .Property(c => c.Name).HasColumnType("jsonb");
+                .Property(c => c.Name)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
+                    dictionaryComparer);
         }
     }
 }
