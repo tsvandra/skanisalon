@@ -282,7 +282,7 @@
                            class="caption-input" />
 
                     <button v-if="currentLang !== 'hu'"
-                            @click="triggerTranslation(img.title, 'title')"
+                            @click="triggerTranslation(img, 'title')"
                             class="magic-btn small-magic" title="Fordítás">
                       <i v-if="translatingField === `${img.id}-title-${currentLang}`" class="pi pi-spin pi-spinner"></i>
                       <i v-else class="pi pi-sparkles"></i>
