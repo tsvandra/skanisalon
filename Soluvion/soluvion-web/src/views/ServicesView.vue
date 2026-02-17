@@ -120,12 +120,11 @@
 
   /* --- API MŰVELETEK --- */
   const fetchServices = async () => {
-    const targetCompanyId = company?.value?.id || DEFAULT_COMPANY_ID;
     loading.value = true;
     try {
-      const response = await apiClient.get('/api/Service', {
-        params: { companyId: targetCompanyId }
-      });
+      // JAVÍTÁS: Nem kell paraméter, a fejléc (X-Tenant-ID) viszi az infót!
+      const response = await apiClient.get('/api/Service');
+
       const rawServices = response.data;
       rawServices.forEach(service => {
         if (service.variants) {

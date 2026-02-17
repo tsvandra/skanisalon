@@ -24,6 +24,7 @@ namespace Soluvion.API.Controllers
 
         // 1. Státuszok lekérdezése (Admin felülethez)
         [HttpGet("languages/{companyId}")]
+        [AllowAnonymous] // <--- FONTOS: Vendég is hívhatja!
         public async Task<ActionResult<IEnumerable<LanguageStatusDto>>> GetCompanyLanguages(int companyId)
         {
             var company = await _context.Companies
@@ -34,17 +35,23 @@ namespace Soluvion.API.Controllers
 
             var result = new List<LanguageStatusDto>();
 
-            // Default nyelv hozzáadása (ez mindig "Published"-nek számít logikailag)
+            // Default nyelv hozzáadása
             result.Add(new LanguageStatusDto
             {
                 LanguageCode = company.DefaultLanguage,
                 Status = TranslationStatus.Published.ToString(),
-                IsDefault = true
+                IsDefault = true,
+                Progress = 100
             });
 
             // Többi nyelv hozzáadása
+            // JAVÍTÁS: Vendégnek is le kell tudnia kérni a listát, 
+            // a szűrést ("csak published") majd a Frontend végzi el (publishedLanguages computed).
             foreach (var lang in company.Languages)
             {
+                // Kerüljük a duplikációt (ha a default nyelv is benne lenne a listában)
+                if (lang.LanguageCode == company.DefaultLanguage) continue;
+
                 result.Add(new LanguageStatusDto
                 {
                     LanguageCode = lang.LanguageCode,

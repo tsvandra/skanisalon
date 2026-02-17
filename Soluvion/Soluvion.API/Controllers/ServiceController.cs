@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
 using Soluvion.API.Models;
-using System.Security.Claims;
+using Soluvion.API.Services; // ITenantContext
 
 namespace Soluvion.API.Controllers
 {
@@ -12,13 +12,16 @@ namespace Soluvion.API.Controllers
     public class ServiceController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly ITenantContext _tenantContext; // ÚJ
 
-        public ServiceController(AppDbContext context)
+        public ServiceController(AppDbContext context, ITenantContext tenantContext)
         {
             _context = context;
+            _tenantContext = tenantContext;
         }
 
-        private int GetCurrentCompanyId()
+        // Helper: Admin műveleteknél (POST/PUT) a User Claim a mérvadó
+        private int GetUserCompanyId()
         {
             var companyClaim = User.FindFirst("CompanyId");
             if (companyClaim != null && int.TryParse(companyClaim.Value, out int companyId))
@@ -28,14 +31,24 @@ namespace Soluvion.API.Controllers
             return 0;
         }
 
+        // GET: api/Service (Publikus lista)
+        // Most már nem kérünk paramétert, hanem a Contextből olvassuk ki
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Service>>> GetServices(int companyId)
+        [AllowAnonymous] // Biztosítjuk, hogy bárki hívhassa
+        public async Task<ActionResult<IEnumerable<Service>>> GetServices()
         {
-            if (companyId <= 0) return BadRequest("CompanyId megadása kötelező.");
+            // 1. Megnézzük, melyik cég oldalán vagyunk (Tenant Context)
+            var currentCompany = _tenantContext.CurrentCompany;
 
+            if (currentCompany == null)
+            {
+                return BadRequest("Nem sikerült azonosítani a szalont (Tenant Context hiányzik).");
+            }
+
+            // 2. Szűrés a megtalált cégre
             return await _context.Services
                 .Include(s => s.Variants)
-                .Where(s => s.CompanyId == companyId)
+                .Where(s => s.CompanyId == currentCompany.Id)
                 .OrderBy(s => s.OrderIndex)
                 .ToListAsync();
         }
@@ -44,18 +57,15 @@ namespace Soluvion.API.Controllers
         [Authorize]
         public async Task<ActionResult<Service>> PostService(Service service)
         {
-            int userCompanyId = GetCurrentCompanyId();
+            int userCompanyId = GetUserCompanyId();
             if (userCompanyId == 0) return Unauthorized("Nincs érvényes CompanyId.");
 
             service.CompanyId = userCompanyId;
 
-            // Módosítás: Dictionary ellenőrzése. Ha üres, alapértelmezett "hu" értéket állítunk be.
             if (service.Category == null || !service.Category.Any())
             {
                 service.Category = new Dictionary<string, string> { { "hu", "Egyéb" } };
             }
-
-            // A Description mezőt az EF Core automatikusan kezeli a model alapján
 
             _context.Services.Add(service);
             await _context.SaveChangesAsync();
@@ -69,7 +79,7 @@ namespace Soluvion.API.Controllers
         {
             if (id != service.Id) return BadRequest();
 
-            int userCompanyId = GetCurrentCompanyId();
+            int userCompanyId = GetUserCompanyId();
             var existingService = await _context.Services
                 .Include(s => s.Variants)
                 .FirstOrDefaultAsync(s => s.Id == id);
@@ -77,18 +87,13 @@ namespace Soluvion.API.Controllers
             if (existingService == null) return NotFound();
             if (existingService.CompanyId != userCompanyId) return Forbid();
 
-            // --- ADATOK FRISSÍTÉSE ---
-            // A kliens már Dictionary-t küld, így közvetlenül átadhatjuk az értékeket.
             existingService.Name = service.Name;
             existingService.DefaultPrice = service.DefaultPrice;
             existingService.DefaultDuration = service.DefaultDuration;
             existingService.OrderIndex = service.OrderIndex;
             existingService.Category = service.Category;
-
-            // ÚJ: Megjegyzés mentése (szintén Dictionary)
             existingService.Description = service.Description;
 
-            // Variánsok kezelése
             if (service.Variants == null) service.Variants = new List<ServiceVariant>();
 
             var incomingIds = service.Variants.Select(v => v.Id).ToList();
@@ -138,7 +143,7 @@ namespace Soluvion.API.Controllers
             var service = await _context.Services.FindAsync(id);
             if (service == null) return NotFound();
 
-            int userCompanyId = GetCurrentCompanyId();
+            int userCompanyId = GetUserCompanyId();
             if (service.CompanyId != userCompanyId) return Forbid();
 
             _context.Services.Remove(service);

@@ -1,24 +1,19 @@
 <script setup>
-  import { ref, onMounted, provide, watch, computed } from 'vue'; // computed hozzáadva
+  import { ref, onMounted, provide, watch, computed } from 'vue';
   import { RouterView, useRoute } from 'vue-router';
   import AppHeader from '@/components/AppHeader.vue';
   import TheFooter from '@/components/TheFooter.vue';
-
-  // STORE-ok importálása (A régi direkt API hívás helyett)
   import { useCompanyStore } from '@/stores/companyStore';
   import { useTranslationStore } from '@/stores/translationStore';
-
   import Toast from 'primevue/toast';
   import { jwtDecode } from "jwt-decode";
 
-  // Store példányosítása
   const companyStore = useCompanyStore();
   const translationStore = useTranslationStore();
   const route = useRoute();
-
   const isLoggedIn = ref(false);
 
-  // --- AUTH STATUS ELLENŐRZÉSE (Admin funkciókhoz) ---
+  // --- AUTH STATUS ELLENŐRZÉSE ---
   const checkAuthStatus = () => {
     const token = localStorage.getItem('salon_token');
     isLoggedIn.value = !!token;
@@ -27,8 +22,7 @@
       try {
         const decoded = jwtDecode(token);
         const companyId = parseInt(decoded.CompanyId || decoded.companyId || 0);
-
-        // Ha be vagyunk lépve, betöltjük a szerkesztéshez szükséges nyelvi státuszokat is
+        // Ha admin vagy, betöltjük a nyelveket (beleértve a nem publikusakat is a státuszok miatt)
         if (companyId) {
           translationStore.fetchLanguages(companyId);
         }
@@ -38,28 +32,30 @@
     }
   };
 
-  // Figyeljük a navigációt
   watch(() => route.path, () => {
     checkAuthStatus();
   });
 
-  // Van-e függőben lévő fordítás? (Admin bannerhez)
   const hasPendingReviews = computed(() => translationStore.pendingReviews.length > 0);
 
-  // --- PROVIDE ---
-  // A gyermek komponensek (pl AppHeader) még mindig várhatják a 'company' és 'isLoggedIn' változókat.
-  // Átadjuk nekik a Store-ból származó adatot.
-  provide('company', computed(() => companyStore.company)); // Reaktív computed property-ként adjuk át
+  provide('company', computed(() => companyStore.company));
   provide('isLoggedIn', isLoggedIn);
 
   onMounted(async () => {
-    // 1. Auth ellenőrzés
     checkAuthStatus();
 
-    // 2. Cégadatok betöltése
-    // A main.js 'initApp'-ja elvileg már elindította, de biztos ami biztos:
+    // 1. Cégadatok betöltése (Ha még nincs)
     if (!companyStore.company) {
       await companyStore.fetchPublicConfig();
+    }
+
+    // 2. JAVÍTÁS: Ha vendég vagyunk (és sikeres volt a config betöltés),
+    // akkor is le kell kérni a nyelveket a nyelvválasztóhoz!
+    if (companyStore.company && !isLoggedIn.value) {
+      // Inicializáljuk a store-t a cég adataival
+      translationStore.initCompany(companyStore.company.id, companyStore.company.defaultLanguage);
+      // Letöltjük a nyelveket (A TranslationController [AllowAnonymous] miatt ez már működni fog)
+      await translationStore.fetchLanguages(companyStore.company.id);
     }
   });
 </script>
