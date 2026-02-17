@@ -29,8 +29,11 @@
 
     <div class="content">
       <div class="footer-info">
-        <h3>{{ company?.name || 'Soluvion Salon' }}</h3>
-        <p>&copy; {{ new Date().getFullYear() }} Minden jog fenntartva.</p>
+        <h3>{{ company?.name || 'Skani Salon' }}</h3>
+
+        <p>
+          &copy; {{ new Date().getFullYear() }} {{ $t('footer.rights') }}
+        </p>
       </div>
     </div>
   </footer>

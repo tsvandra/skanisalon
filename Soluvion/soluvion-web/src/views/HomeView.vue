@@ -25,7 +25,7 @@
 
     <div class="hero-section" :style="{ backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${heroImageUrl})` }">
       <div class="hero-content">
-        <h1 v-if="company">{{ company.name }}</h1>
+        <!--<h1 v-if="company">{{ company.name }}</h1>-->
         <div class="hero-buttons">
           <Button :label="$t('home.viewServices')" icon="pi pi-list" class="p-button-raised p-button-warning action-btn" @click="goToServices" />
           <Button :label="$t('home.bookAppointment')" icon="pi pi-calendar" class="p-button-outlined p-button-secondary action-btn-secondary" @click="goToContact" />

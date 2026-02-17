@@ -42,5 +42,40 @@
     "uploadHere": "Képek feltöltése ide",
     "emptyState": "Kattints az 'Új Galéria' gombra a kezdéshez!",
     "untitled": "Névtelen galéria"
+  },
+  "contact": {
+    "title": "Kapcsolat",
+    "subtitle": "Kérdésed van? Időpontot foglalnál? Keress fel bizalommal!",
+    "myContacts": "Elérhetőségeim",
+    "address": "Cím",
+    "phone": "Telefon",
+    "email": "Email",
+    "openingHours": "Nyitvatartás",
+    "writeUs": "Írj bátran!",
+    "form": {
+      "name": "Név",
+      "namePlaceholder": "Ide jön a neved",
+      "email": "Email cím",
+      "emailPlaceholder": "pelda@email.com",
+      "message": "Üzenet",
+      "messagePlaceholder": "Miben segíthetek?",
+      "send": "Üzenet küldése",
+      "sending": "Küldés...",
+      "success": "Köszönöm! Üzenetedet megkaptam."
+    }
+  },
+  "settings": {
+    "title": "Cégbeállítások",
+    "intro": "Itt módosíthatja a weboldalán megjelenő adatokat és a dizájnt.",
+    "tabs": {
+      "contacts": "Elérhetőségek",
+      "opening": "Nyitvatartás",
+      "social": "Közösségi & Térkép",
+      "design": "Megjelenés",
+      "languages": "Fordítások & Nyelvek"
+    }
+  },
+  "footer": {
+    "rights": "Minden jog fenntartva."
   }
 }

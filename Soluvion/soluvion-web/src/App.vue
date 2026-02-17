@@ -11,7 +11,9 @@
   const companyStore = useCompanyStore();
   const translationStore = useTranslationStore();
   const route = useRoute();
+
   const isLoggedIn = ref(false);
+  const isAppReady = ref(false); // <--- AZ ÚJ KAPCSOLÓ
 
   // --- AUTH STATUS ELLENŐRZÉSE ---
   const checkAuthStatus = async () => {
@@ -24,12 +26,15 @@
         const companyId = parseInt(decoded.CompanyId || decoded.companyId || 0);
 
         if (companyId) {
-          // JAVÍTÁS: Adminnak is be kell állítani az aktív környezetet!
-          // Ha a companyStore már betöltött, tudjuk a default nyelvet, ha nem, 'hu'-t tippelünk (később frissül)
+          // Ha admin vagy, inicializáljuk a szerkesztői környezetet
           const defaultLang = companyStore.company?.defaultLanguage || 'hu';
-
           translationStore.initCompany(companyId, defaultLang);
           await translationStore.fetchLanguages(companyId);
+
+          if (defaultLang && defaultLang !== translationStore.currentLanguage) {
+            console.log(`🌍 Induló nyelv beállítása (Admin Default): ${defaultLang}`);
+            await translationStore.setLanguage(defaultLang);
+          }
         }
       } catch (e) {
         console.error("Token decode hiba:", e);
@@ -46,19 +51,43 @@
   provide('company', computed(() => companyStore.company));
   provide('isLoggedIn', isLoggedIn);
 
+  // --- A FŐ LOGIKA ---
   onMounted(async () => {
-    // 1. Cégadatok betöltése (MINDENKINEK)
-    if (!companyStore.company) {
-      await companyStore.fetchPublicConfig();
-    }
+    try {
+      // 1. Cégadatok betöltése (Ezalatt még a Loading screen megy)
+      if (!companyStore.company) {
+        await companyStore.fetchPublicConfig();
+      }
 
-    // 2. Auth és Nyelvi környezet beállítása
-    await checkAuthStatus();
+      // 2. Auth ellenőrzés
+      await checkAuthStatus();
 
-    // 3. Ha VENDÉG, akkor külön inicializálunk (az Admin-t a checkAuthStatus intézi)
-    if (companyStore.company && !isLoggedIn.value) {
-      translationStore.initCompany(companyStore.company.id, companyStore.company.defaultLanguage);
-      await translationStore.fetchLanguages(companyStore.company.id);
+      // 3. NYELV BEÁLLÍTÁSA (Mielőtt kirajzolnánk az oldalt!)
+      if (companyStore.company) {
+        // Inicializáljuk a store-t
+        translationStore.initCompany(companyStore.company.id, companyStore.company.defaultLanguage);
+
+        if (!isLoggedIn.value) {
+          // Vendég mód: letöltjük a nyelveket
+          await translationStore.fetchLanguages(companyStore.company.id);
+
+          // DÖNTÉS: Milyen nyelven induljunk?
+          // A) Ha van a cégnek alapértelmezett nyelve, azt használjuk
+          const targetLang = companyStore.company.defaultLanguage;
+
+          if (targetLang && targetLang !== 'hu') {
+            console.log(`🌍 Induló nyelv beállítása (Cég Default): ${targetLang}`);
+            // Ez a 'await' a kulcs! Megvárjuk, amíg letölti a szlovák szótárat.
+            await translationStore.setLanguage(targetLang);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Kritikus hiba az indításnál:", error);
+    } finally {
+      // 4. CSAK MOST HÚZZUK FEL A FÜGGÖNYT!
+      // Akármi történt, most már engedjük látni a felületet
+      isAppReady.value = true;
     }
   });
 </script>
@@ -66,7 +95,7 @@
 <template>
   <Toast />
 
-  <div v-if="!companyStore.loading && companyStore.company" class="app-wrapper">
+  <div v-if="isAppReady && companyStore.company" class="app-wrapper">
 
     <div v-if="isLoggedIn && hasPendingReviews" class="bg-yellow-100 border-b border-yellow-200 p-3 text-center sticky-banner">
       <span class="text-yellow-800 font-medium flex items-center justify-center gap-2">
@@ -92,27 +121,24 @@
 
   <div v-else class="loading-screen">
     <div class="flex flex-col items-center">
-      <i class="pi pi-spin pi-spinner" style="font-size: 2rem; margin-bottom: 15px; color: var(--p-primary-color);"></i>
-      <div style="color: white;">Betöltés...</div>
-      <div v-if="companyStore.error" class="text-red-500 mt-2 text-sm">
-        Hiba történt a kapcsolódáskor.
+      <i class="pi pi-spin pi-spinner" style="font-size: 2rem; margin-bottom: 15px; color: #888;"></i>
+
+      <div v-if="companyStore.error" class="text-red-500 mt-4 text-sm">
+        Nem sikerült csatlakozni a szerverhez.
       </div>
     </div>
   </div>
 </template>
 
 <style>
-  /* A globális változókat most már a companyStore.js állítja be dinamikusan (applyTheme),
-     így innen kivehetjük a fix értékeket, vagy hagyhatjuk fallback-nek. */
-
+  /* Globális stílusok */
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: #1a1a1a; /* Fix sötét háttér */
+    background-color: #1a1a1a;
     color: #ffffff;
   }
 
-  /* Linkek színe dinamikus lesz a CSS változók miatt */
   h1, h2, h3, a {
     color: var(--p-primary-color);
   }
@@ -131,13 +157,18 @@
     align-items: center;
     height: 100vh;
     background-color: #1a1a1a;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 9999;
   }
 
   main {
     flex: 1;
   }
 
-  /* Utility classes (Tailwind replacement) */
+  /* Utility classes */
   .bg-yellow-100 {
     background-color: #fef9c3;
   }

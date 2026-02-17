@@ -12,8 +12,8 @@ namespace Soluvion.API.Models
         [JsonIgnore]
         public Service? Service { get; set; }
 
-        [MaxLength(50)]
-        public string VariantName { get; set; } = string.Empty;
+        [Column(TypeName = "jsonb")]
+        public Dictionary<string, string> VariantName { get; set; } = new();
 
         [Column(TypeName = "decimal(10, 2)")]
         public decimal Price { get; set; }

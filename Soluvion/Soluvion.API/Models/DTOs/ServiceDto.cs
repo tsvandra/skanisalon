@@ -16,7 +16,7 @@
     public class ServiceVariantDto
     {
         public int Id { get; set; }
-        public string VariantName { get; set; }
+        public Dictionary<string, string> VariantName { get; set; }
         public decimal? Price { get; set; }
         public int Duration { get; set; }
     }

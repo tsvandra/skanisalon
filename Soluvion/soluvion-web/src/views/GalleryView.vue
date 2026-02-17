@@ -1,12 +1,11 @@
 <script setup>
-  import { ref, onMounted, inject, watch, nextTick, computed } from 'vue';
+  import { ref, inject, watch, nextTick, computed } from 'vue';
   import api from '@/services/api';
-  import { DEFAULT_COMPANY_ID } from '@/config';
   import { useAutoSaveQueue } from '@/composables/useAutoSaveQueue';
   import draggable from 'vuedraggable';
-  import { useI18n } from 'vue-i18n'; // <--- ÚJ
+  import { useI18n } from 'vue-i18n';
 
-  const { locale } = useI18n(); // <--- Globális locale
+  const { locale } = useI18n();
   const isLoggedIn = inject('isLoggedIn');
 
   // Globális nyelv
@@ -27,7 +26,7 @@
   const { addToQueue } = useAutoSaveQueue();
 
   const ensureDict = (field, defaultValue = "") => {
-    if (field && typeof field === 'object') return field;
+    if (field && typeof field === 'object' && field !== null) return field;
     return { [currentLang.value]: field || defaultValue };
   };
 
@@ -54,25 +53,26 @@
   const fetchData = async () => {
     isLoading.value = true;
     try {
-      // JAVÍTÁS: Paraméterek törlése (api.js intézi a headert)
       const [resCats, resImages] = await Promise.all([
         api.get('/api/Gallery/categories'),
         api.get('/api/Gallery')
       ]);
 
-      // Biztonsági ellenőrzés
       const rawCats = Array.isArray(resCats.data) ? resCats.data : [];
       const rawImages = Array.isArray(resImages.data) ? resImages.data : [];
 
       categories.value = rawCats.map(c => ({ ...c, name: ensureDict(c.name, "Névtelen galéria") }));
-      images.value = rawImages.map(i => ({ ...i, category: ensureDict(i.category, "Egyéb") }));
+
+      // MÓDOSÍTÁS: Title is Dictionary!
+      images.value = rawImages.map(i => ({
+        ...i,
+        category: ensureDict(i.category, "Egyéb"),
+        title: ensureDict(i.title, "")
+      }));
 
       buildNestedStructure();
-    } catch (error) {
-      console.error("Hiba a galéria betöltésekor:", error);
-    } finally {
-      isLoading.value = false;
-    }
+    } catch (error) { console.error("Hiba:", error); }
+    finally { isLoading.value = false; }
   };
 
   const buildNestedStructure = () => {
@@ -164,7 +164,7 @@
     addToQueue(img.id, async () => {
       await api.put(`/api/Gallery/${img.id}`, {
         id: img.id,
-        title: img.title,
+        title: img.title, // Dictionary mentése
         categoryName: img.category,
         orderIndex: img.orderIndex
       });
@@ -209,7 +209,7 @@
 <template>
   <div class="gallery-container">
     <div class="header-actions">
-      <h1>{{ $t('gallery.title') }}</h1>
+      <h2>{{ $t('gallery.title') }}</h2>
 
       <button v-if="isLoggedIn" @click="createCategory" class="btn primary-btn big-btn">
         <i class="pi pi-plus-circle"></i> {{ $t('gallery.newGallery') }}
@@ -270,14 +270,32 @@
             <template #item="{ element: img }">
               <div class="gallery-card">
                 <div class="img-wrapper" @click="openPreview(img)">
-                  <img :src="img.imageUrl" loading="lazy" :alt="img.title" />
+                  <img :src="img.imageUrl" loading="lazy" :alt="img.title[currentLang]" />
                   <div class="overlay"><i class="pi pi-eye"></i></div>
                 </div>
+
                 <div v-if="isLoggedIn" class="edit-bar">
-                  <input v-model="img.title" @change="saveImage(img)" placeholder="Cím..." class="caption-input" />
+                  <div class="input-with-tools" style="width: auto; flex-grow: 1;">
+                    <input v-model="img.title[currentLang]"
+                           @change="saveImage(img)"
+                           placeholder="Cím..."
+                           class="caption-input" />
+
+                    <button v-if="currentLang !== 'hu'"
+                            @click="triggerTranslation(img.title, 'title')"
+                            class="magic-btn small-magic" title="Fordítás">
+                      <i v-if="translatingField === `${img.id}-title-${currentLang}`" class="pi pi-spin pi-spinner"></i>
+                      <i v-else class="pi pi-sparkles"></i>
+                    </button>
+                  </div>
+
                   <button @click="deleteImage(img.id)" class="del-btn"><i class="pi pi-trash"></i></button>
                 </div>
-                <div v-else-if="img.title" class="caption-display">{{ img.title }}</div>
+
+                <div v-else-if="img.title && img.title[currentLang]" class="caption-display">
+                  {{ img.title[currentLang] }}
+                </div>
+
               </div>
             </template>
           </draggable>
@@ -293,7 +311,7 @@
     <div v-if="showPreview" class="lightbox" @click="showPreview = false">
       <div class="lightbox-content" @click.stop>
         <img :src="previewImage?.imageUrl" />
-        <p v-if="previewImage?.title" class="lightbox-caption">{{ previewImage.title }}</p>
+        <p v-if="previewImage?.title" class="lightbox-caption">{{ previewImage.title[currentLang] }}</p>
         <button class="close-btn" @click="showPreview = false">×</button>
       </div>
     </div>
@@ -301,12 +319,19 @@
 </template>
 
 <style scoped>
-  /* (Stílusok változatlanok) */
+  /* Stílusok maradnak a régiek, csak a magic-btn osztályokat adjuk hozzá */
   .gallery-container {
     max-width: 1200px;
     margin: 0 auto;
     padding: 2rem;
     color: #fff;
+  }
+
+  h2 {
+    color: var(--primary-color, #d4af37);
+    margin: 0;
+    font-weight: 300;
+    letter-spacing: 2px;
   }
 
   .header-actions {
@@ -316,13 +341,6 @@
     margin-bottom: 2rem;
     border-bottom: 1px solid #333;
     padding-bottom: 1rem;
-  }
-
-  h1 {
-    color: var(--primary-color, #d4af37);
-    margin: 0;
-    font-weight: 300;
-    letter-spacing: 2px;
   }
 
   .input-with-tools {
@@ -344,6 +362,11 @@
     transition: opacity 0.2s;
   }
 
+  .small-magic {
+    font-size: 0.8rem;
+    margin-left: 2px;
+  }
+
   .input-with-tools:hover .magic-btn {
     opacity: 1;
   }
@@ -352,6 +375,9 @@
     transform: scale(1.1);
     text-shadow: 0 0 5px #d4af37;
   }
+
+  /* ... A többi stílus változatlan marad a korábbi verziódból ... */
+  /* (Csak a biztonság kedvéért a korábbi stílusokat ne töröld ki, csak illeszd be a magic-btn-t) */
 
   .btn {
     border: none;

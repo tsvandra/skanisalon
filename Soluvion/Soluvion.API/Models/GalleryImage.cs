@@ -9,8 +9,8 @@ namespace Soluvion.API.Models
         public int CategoryId { get; set; }
         public GalleryCategory? Category { get; set; }
 
-        [MaxLength(100)]
-        public string Title { get; set; } = string.Empty;
+        [Column(TypeName = "jsonb")]
+        public Dictionary<string, string> Title { get; set; } = new();
 
         [MaxLength(500)]
         public string ImagePath { get; set; } = string.Empty;

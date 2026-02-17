@@ -123,7 +123,7 @@ namespace Soluvion.API.Controllers
                 ImagePath = uploadResult.SecureUrl.ToString(),
                 PublicId = uploadResult.PublicId,
                 CategoryId = galleryCategory.Id,
-                Title = file.FileName,
+                Title = new Dictionary<string, string> { { "hu", file.FileName } },
                 UploadDate = DateTime.UtcNow,
                 OrderIndex = 9999
             };
@@ -159,7 +159,10 @@ namespace Soluvion.API.Controllers
             if (image == null) return NotFound();
             if (image.Category != null && image.Category.CompanyId != companyId) return Forbid();
 
-            image.Title = dto.Title ?? "";
+            if (dto.Title != null)
+            {
+                image.Title = dto.Title;
+            }
             image.OrderIndex = dto.OrderIndex;
 
             // Kategória váltás logika

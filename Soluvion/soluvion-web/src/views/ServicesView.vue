@@ -1,25 +1,23 @@
 <script setup>
-  import { ref, onMounted, inject, watch, computed } from 'vue';
+  import { ref, inject, watch, computed, nextTick } from 'vue';
   import InputNumber from 'primevue/inputnumber';
   import apiClient from '@/services/api';
   import { DEFAULT_COMPANY_ID } from '@/config';
   import draggable from 'vuedraggable';
-  import { useI18n } from 'vue-i18n'; // <--- ÚJ
+  import { useI18n } from 'vue-i18n';
 
-  const { locale } = useI18n(); // <--- Globális locale
+  const { locale } = useI18n();
   const isLoggedIn = inject('isLoggedIn');
 
   const services = ref([]);
   const categories = ref([]);
   const loading = ref(true);
 
-  // Computed a globális nyelvre, így ha a fejlécben váltasz, itt is frissül minden
+  // Globális nyelv
   const currentLang = computed(() => locale.value);
 
   const translatingField = ref(null);
   const company = inject('company', ref(null));
-  const draggedNoteContent = ref(null);
-  const draggedFromServiceId = ref(null);
   const saveQueues = new Map();
 
   /* --- SEGÉDFÜGGVÉNYEK --- */
@@ -45,12 +43,13 @@
     }
   };
 
+  // Biztosítja, hogy egy mező szótár (object) legyen
   const ensureDict = (field, defaultValue = "") => {
-    if (field && typeof field === 'object') return field;
+    if (field && typeof field === 'object' && field !== null) return field;
     return { [currentLang.value]: field || defaultValue };
   };
 
-  // --- AI FORDÍTÁS FUNKCIÓ ---
+  // --- AI FORDÍTÁS ---
   const translateField = async (obj, fieldName, targetLang) => {
     const sourceText = obj[fieldName]['hu'] || obj[fieldName][currentLang.value];
     if (!sourceText || sourceText.trim() === '') return;
@@ -72,7 +71,7 @@
       }
     } catch (err) {
       console.error("Fordítási hiba:", err);
-      alert("Nem sikerült a fordítás. Ellenőrizd a Backend logokat!");
+      alert("Nem sikerült a fordítás.");
     } finally {
       translatingField.value = null;
     }
@@ -93,7 +92,7 @@
 
     flatServices.forEach(service => {
       const catDict = ensureDict(service.category, "Egyéb");
-      const catNameStr = catDict['hu'] || "Egyéb";
+      const catNameStr = catDict['hu'] || "Egyéb"; // Csoportosításhoz a magyart (vagy defaultot) használjuk kulcsként
 
       let group = groups.find(g => {
         const gName = g.categoryName['hu'] || "";
@@ -110,14 +109,17 @@
         groups.push(group);
       }
 
+      // Ha a csoportnak még nincs fejléce, de a szolgáltatásnak vannak variánsai, átvesszük a struktúrát
       if (group.headerVariants.length === 0 && service.variants && service.variants.length > 0) {
-        group.headerVariants = [...service.variants];
+        // Deep copy, hogy ne referencia legyen
+        group.headerVariants = JSON.parse(JSON.stringify(service.variants));
       }
       group.items.push(service);
     });
     return groups;
   };
 
+  /* --- API MŰVELETEK --- */
   const fetchServices = async () => {
     loading.value = true;
     try {
@@ -126,21 +128,17 @@
 
       const rawServices = response.data;
 
-      // 2. DEBUG: Nézzük meg, mit kaptunk
-      console.log("Services API válasz:", rawServices);
-
-      // 3. BIZTONSÁG: Ha nem tömb, akkor ne próbáljunk forEach-elni
+      // 2. BIZTONSÁG: Ha nem tömb, akkor ne próbáljunk forEach-elni
       if (!Array.isArray(rawServices)) {
         console.error("KRITIKUS HIBA: A szerver nem tömböt küldött!", rawServices);
-        // Ha véletlenül objektum jönne (pl { $values: [...] }), kezelhetjük:
+        // Fallback, ha véletlenül .NET $values wrapperbe csomagolta
         if (rawServices && Array.isArray(rawServices.$values)) {
-          // Fallback, ha mégis ReferenceHandler van bekapcsolva
           processServices(rawServices.$values);
         }
         return;
       }
 
-      // Ha tömb, mehet a feldolgozás
+      // 3. Feldolgozás
       processServices(rawServices);
 
     } catch (error) {
@@ -150,12 +148,15 @@
     }
   };
 
-  // Kiszerveztük a feldolgozást egy külön függvénybe
   const processServices = (serviceList) => {
     serviceList.forEach(service => {
       if (service.variants) {
         service.variants = sortVariants(service.variants);
-        service.variants.forEach(v => { if (v.price === 0) v.price = null; });
+        service.variants.forEach(v => {
+          if (v.price === 0) v.price = null;
+          // FONTOS: A variantName most már Dictionary, biztosítjuk a formátumot
+          v.variantName = ensureDict(v.variantName, "Extra");
+        });
       }
       service.name = ensureDict(service.name, "Névtelen");
       service.category = ensureDict(service.category, "Egyéb");
@@ -187,7 +188,10 @@
           const updated = response.data;
           if (updated.variants) {
             updated.variants = sortVariants(updated.variants);
-            updated.variants.forEach(v => { if (v.price === 0) v.price = null; });
+            updated.variants.forEach(v => {
+              if (v.price === 0) v.price = null;
+              v.variantName = ensureDict(v.variantName);
+            });
           }
           updated.name = ensureDict(updated.name);
           updated.category = ensureDict(updated.category);
@@ -209,6 +213,7 @@
     await reorderAll();
   };
   const onCategoryDragChange = async () => { await reorderAll(); };
+
   const reorderAll = async () => {
     let counter = 10;
     const promises = [];
@@ -226,6 +231,7 @@
     });
     if (promises.length > 0) await Promise.all(promises);
   };
+
   const updateCategoryName = async (group) => {
     const promises = group.items.map(service => {
       service.category = JSON.parse(JSON.stringify(group.categoryName));
@@ -233,35 +239,47 @@
     });
     await Promise.all(promises);
   };
-  const updateGroupVariantName = async (group, variantIndex, newName) => {
+
+  // Variáns fejléc módosítása (Most már dictionary-t kezel)
+  const updateGroupVariantName = async (group, variantIndex) => {
     const promises = group.items.map(service => {
       if (service.variants && service.variants[variantIndex]) {
-        service.variants[variantIndex].variantName = newName;
+        // Átmásoljuk a teljes szótárat a fejlécből a sorokba
+        service.variants[variantIndex].variantName = JSON.parse(JSON.stringify(group.headerVariants[variantIndex].variantName));
         return saveService(service, false);
       }
       return Promise.resolve();
     });
     await Promise.all(promises);
   };
+
   const onNoteDragStart = (event, service) => {
     draggedNoteContent.value = service.description[currentLang.value];
     draggedFromServiceId.value = service.id;
     event.dataTransfer.effectAllowed = 'move';
     event.target.style.opacity = '0.5';
   };
+
+  // (Note Drag logika maradhat, csak a dragged változók kellenek)
+  const draggedNoteContent = ref(null);
+  const draggedFromServiceId = ref(null);
+
   const onNoteDragEnd = (event) => {
     event.target.style.opacity = '1';
     draggedNoteContent.value = null;
     draggedFromServiceId.value = null;
     document.querySelectorAll('.service-drop-zone').forEach(el => el.classList.remove('drag-over'));
   };
+
   const onNoteDragOver = (event) => {
     event.preventDefault();
     event.currentTarget.classList.add('drag-over');
   };
+
   const onNoteDragLeave = (event) => {
     event.currentTarget.classList.remove('drag-over');
   };
+
   const onNoteDrop = async (event, targetService) => {
     event.preventDefault();
     event.currentTarget.classList.remove('drag-over');
@@ -282,11 +300,13 @@
     }
     await saveService(targetService, true);
   };
+
   const toggleNote = async (service) => {
     if (!service.description[currentLang.value]) {
       service.description[currentLang.value] = " ";
     }
   };
+
   const createNewCategory = async () => {
     if (!isLoggedIn.value) return;
     const newService = {
@@ -294,16 +314,21 @@
       category: { [currentLang.value]: "ÚJ KATEGÓRIA" },
       defaultPrice: 0,
       orderIndex: 99999,
-      variants: [{ variantName: "Normál", price: 0, duration: 30 }],
+      // Variant név is dictionary!
+      variants: [{ variantName: { [currentLang.value]: "Normál" }, price: 0, duration: 30 }],
       description: { [currentLang.value]: "" }
     };
     await postNewService(newService);
   };
+
   const addServiceToGroupEnd = async (group) => {
-    let variants = [{ variantName: "Normál", price: 0, duration: 30 }];
+    let variants = [{ variantName: { [currentLang.value]: "Normál" }, price: 0, duration: 30 }];
     if (group.headerVariants && group.headerVariants.length > 0) {
       variants = group.headerVariants.map(v => ({
-        variantName: v.variantName, price: 0, duration: v.duration
+        // Deep copy a szótárra
+        variantName: JSON.parse(JSON.stringify(v.variantName)),
+        price: 0,
+        duration: v.duration
       }));
     }
     const newService = {
@@ -316,6 +341,7 @@
     };
     await postNewService(newService);
   };
+
   const postNewService = async (dto) => {
     try {
       const payload = JSON.parse(JSON.stringify(dto));
@@ -325,6 +351,7 @@
       await fetchServices();
     } catch (err) { console.error(err); }
   };
+
   const deleteService = async (id) => {
     if (!confirm("Biztosan törölni akarod?")) return;
     try {
@@ -332,14 +359,21 @@
       await fetchServices();
     } catch (err) { console.error(err); }
   };
+
   const removeVariant = async (service, vIndex, group) => {
     service.variants.splice(vIndex, 1);
     if (group) group.headerVariants = [...service.variants];
     await saveService(service, true);
   };
+
   const addVariantToService = async (service, group) => {
     if (!service.variants) service.variants = [];
-    service.variants.push({ id: 0, variantName: "Extra", price: 0, duration: 30 });
+    service.variants.push({
+      id: 0,
+      variantName: { [currentLang.value]: "Extra" },
+      price: 0,
+      duration: 30
+    });
     if (group) group.headerVariants = [...service.variants];
     await saveService(service, true);
   };
@@ -386,12 +420,22 @@
 
               <div class="col-variants-group">
                 <div v-for="(v, vIndex) in group.headerVariants" :key="vIndex" class="col-variant-item header-item">
-                  <textarea v-if="isLoggedIn"
-                            :value="v.variantName"
-                            @change="(e) => updateGroupVariantName(group, vIndex, e.target.value)"
-                            class="header-variant-input"
-                            rows="2"></textarea>
-                  <span v-else class="header-label">{{ v.variantName }}</span>
+
+                  <div v-if="isLoggedIn" class="input-with-tools">
+                    <textarea v-model="v.variantName[currentLang]"
+                              @change="updateGroupVariantName(group, vIndex)"
+                              class="header-variant-input"
+                              rows="2"></textarea>
+
+                    <button v-if="currentLang !== 'hu'"
+                            @click="triggerTranslation(v.variantName, 'variantName')"
+                            class="magic-btn small-magic" title="Fordítás">
+                      <i class="pi pi-sparkles"></i>
+                    </button>
+                  </div>
+
+                  <span v-else class="header-label">{{ v.variantName[currentLang] }}</span>
+
                 </div>
               </div>
             </div>
@@ -507,8 +551,6 @@
     letter-spacing: 1px;
   }
 
-  /* LANG SWITCHER CLASS TÖRLÉSRE KERÜLHETNE, DE HA MARAD, NEM GOND */
-
   /* MAGIC BTN */
   .input-with-tools {
     position: relative;
@@ -526,6 +568,11 @@
     margin-left: 5px;
     font-size: 1rem;
     transition: opacity 0.2s;
+  }
+
+  .small-magic {
+    font-size: 0.8rem;
+    margin-left: 2px;
   }
 
   .input-with-tools:hover .magic-btn {
