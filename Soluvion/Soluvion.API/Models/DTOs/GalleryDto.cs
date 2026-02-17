@@ -16,4 +16,12 @@
         public Dictionary<string, string> Name { get; set; }
         public int OrderIndex { get; set; }
     }
+
+    public class UiTranslationOverrideDto
+    {
+        public int CompanyId { get; set; }
+        public string LanguageCode { get; set; } = string.Empty;
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+    }
 }
