@@ -18,22 +18,32 @@ namespace Soluvion.API.Data
         public DbSet<GalleryImage> GalleryImages { get; set; }
         public DbSet<GalleryCategory> GalleryCategories { get; set; }
 
-        // EZ HIÁNYZOTT:
         public DbSet<UiTranslationOverride> UiTranslationOverrides { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // --- JSONB MEZŐK KONFIGURÁLÁSA ---
+            // --- 1. ÖSSZETETT KULCSOK KONFIGURÁLÁSA (HIÁNYZÓ RÉSZEK) ---
+
+            // CompanyLanguage: Egy cégnél egy nyelv csak egyszer szerepelhet
+            modelBuilder.Entity<CompanyLanguage>()
+                .HasKey(cl => new { cl.CompanyId, cl.LanguageCode });
+
+            // UiTranslationOverride: Egy cégnél, egy nyelven, egy kulcsnak csak egy fordítása lehet
+            // EZT HIÁNYOLTA MOST A RENDSZER:
+            modelBuilder.Entity<UiTranslationOverride>()
+                .HasKey(t => new { t.CompanyId, t.LanguageCode, t.TranslationKey });
+
+
+            // --- 2. JSONB MEZŐK KONFIGURÁLÁSA ---
             // A Program.cs-ben lévő .EnableDynamicJson() miatt itt elég a típust megadni.
 
-            // 1. Szolgáltatás variáns név
+            // Szolgáltatás variáns név
             modelBuilder.Entity<ServiceVariant>()
-                .Property(v => v.VariantName)
-                .HasColumnType("jsonb");
+                .Property(v => v.VariantName).HasColumnType("jsonb");
 
-            // 2. Szolgáltatás mezők
+            // Szolgáltatás mezők
             modelBuilder.Entity<Service>()
                 .Property(s => s.Name).HasColumnType("jsonb");
             modelBuilder.Entity<Service>()
@@ -41,7 +51,7 @@ namespace Soluvion.API.Data
             modelBuilder.Entity<Service>()
                 .Property(s => s.Description).HasColumnType("jsonb");
 
-            // 3. Galéria mezők
+            // Galéria mezők
             modelBuilder.Entity<GalleryImage>()
                 .Property(g => g.Title).HasColumnType("jsonb");
 
