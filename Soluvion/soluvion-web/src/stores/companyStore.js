@@ -43,13 +43,25 @@ export const useCompanyStore = defineStore('company', {
 
       const root = document.documentElement;
 
-      // 1. PrimeVue Aura Primary Color felülírása
-      // A legegyszerűbb módszer: beállítjuk a fő színt
-      // (Profi módban árnyalatokat is kéne generálni, de MVP-nek ez elég)
-      root.style.setProperty('--p-primary-color', primaryHex);
-      root.style.setProperty('--p-primary-500', primaryHex); // Gombok alap színe
+      // Konzol log, hogy lásd, lefut-e
+      console.log(`🎨 SZÍNEZÉS INDUL: ${primaryHex}`);
 
-      // Opcionális: Secondary szín (saját használatra)
+      // --- PRIME VUE 4 AURA HACK ---
+      // Felülírjuk az összes lehetséges árnyalatot a fő színre, 
+      // hogy biztosan látszódjon a változás.
+      // (Később majd írhatunk egy okosabb függvényt, ami világosít/sötétít)
+
+      const shades = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950'];
+
+      shades.forEach(shade => {
+        root.style.setProperty(`--p-primary-${shade}`, primaryHex);
+      });
+
+      // Alap változók
+      root.style.setProperty('--p-primary-color', primaryHex);
+      root.style.setProperty('--p-primary-emphasis-color', primaryHex); // Hover effektekhez
+
+      // Secondary
       if (secondaryHex) {
         root.style.setProperty('--salon-secondary', secondaryHex);
       }
