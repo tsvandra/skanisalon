@@ -99,21 +99,21 @@ app.Use(async (context, next) =>
     }
 });
 
-// 2. KÉZI OPTIONS KEZELÉS (Preflight Fix)
-// Ez "átveri" a böngészőt: ha OPTIONS kérés jön, azonnal rávágjuk, hogy "OK",
-// még mielőtt a bonyolult logika elhasalhatna.
-app.Use(async (context, next) =>
-{
-    if (context.Request.Method == "OPTIONS")
-    {
-        context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
-        context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-        context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tenant-ID");
-        context.Response.StatusCode = (int)HttpStatusCode.OK;
-        return; // Itt meg is állunk, nem engedjük tovább a hibás részhez
-    }
-    await next();
-});
+//// 2. KÉZI OPTIONS KEZELÉS (Preflight Fix)
+//// Ez "átveri" a böngészőt: ha OPTIONS kérés jön, azonnal rávágjuk, hogy "OK",
+//// még mielőtt a bonyolult logika elhasalhatna.
+//app.Use(async (context, next) =>
+//{
+//    if (context.Request.Method == "OPTIONS")
+//    {
+//        context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
+//        context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+//        context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tenant-ID");
+//        context.Response.StatusCode = (int)HttpStatusCode.OK;
+//        return; // Itt meg is állunk, nem engedjük tovább a hibás részhez
+//    }
+//    await next();
+//});
 
 
 app.UseCors("AllowAll");

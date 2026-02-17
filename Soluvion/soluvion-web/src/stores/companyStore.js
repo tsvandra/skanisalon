@@ -20,7 +20,7 @@ export const useCompanyStore = defineStore('company', {
       try {
         // A 'api.js' interceptor automatikusan beteszi az X-Tenant-ID-t, 
         // ha van ?forceTenant=7 az URL-ben.
-        const response = await api.get('/Company/public-config');
+        const response = await api.get('/api/Company/public-config');
 
         this.company = response.data;
 
