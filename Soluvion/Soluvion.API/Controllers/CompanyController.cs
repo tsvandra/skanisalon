@@ -6,10 +6,9 @@ using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
 using Soluvion.API.DTOs;
 using Soluvion.API.Models;
-using Soluvion.API.Models.DTOs; // Új DTO namespace
-using Soluvion.API.Services;    // ITenantContext miatt
-using System.Security.Claims;
+using Soluvion.API.Models.DTOs; // Itt van a CompanySettingsDto
 using Soluvion.API.Models.Enums;
+using Soluvion.API.Services;
 
 namespace Soluvion.API.Controllers
 {
@@ -19,7 +18,7 @@ namespace Soluvion.API.Controllers
     {
         private readonly AppDbContext _context;
         private readonly Cloudinary _cloudinary;
-        private readonly ITenantContext _tenantContext; // Új service injektálása
+        private readonly ITenantContext _tenantContext;
 
         public CompanyController(AppDbContext context, Cloudinary cloudinary, ITenantContext tenantContext)
         {
@@ -28,29 +27,18 @@ namespace Soluvion.API.Controllers
             _tenantContext = tenantContext;
         }
 
-        // --- ÚJ ENDPOINT: PUBLIKUS CONFIG LEKÉRÉSE (VENDÉG NÉZET) ---
-        // GET: api/Company/public-config
+        // GET: api/Company/public-config (VENDÉG NÉZET)
         [HttpGet("public-config")]
-        [AllowAnonymous] // Bárki hívhatja bejelentkezés nélkül
+        [AllowAnonymous]
         public ActionResult<CompanyPublicProfileDto> GetPublicConfig()
         {
             var company = _tenantContext.CurrentCompany;
+            if (company == null) return NotFound("A kért szalon nem található.");
 
-            if (company == null)
-            {
-                // Ha a Middleware nem találta meg a céget (rossz domain),
-                // akkor visszaadhatunk egy 404-et, vagy egy alapértelmezett "Landing Page"-et.
-                return NotFound("A kért szalon nem található ezen a címen.");
-            }
-
-            // Mapping (Entity -> DTO)
-            // Csak a biztonságos, publikus adatokat adjuk vissza
             var dto = new CompanyPublicProfileDto
             {
                 Id = company.Id,
                 Name = company.Name,
-
-                // Design
                 LogoUrl = company.LogoUrl,
                 LogoHeight = company.LogoHeight,
                 FooterImageUrl = company.FooterImageUrl,
@@ -58,37 +46,28 @@ namespace Soluvion.API.Controllers
                 HeroImageUrl = company.HeroImageUrl,
                 PrimaryColor = company.PrimaryColor,
                 SecondaryColor = company.SecondaryColor,
-
-                // Tartalom
                 OpeningHoursTitle = company.OpeningHoursTitle,
                 OpeningHoursDescription = company.OpeningHoursDescription,
                 OpeningTimeSlots = company.OpeningTimeSlots,
                 OpeningExtraInfo = company.OpeningExtraInfo,
-
-                // Kapcsolat
                 Phone = company.Phone,
                 Email = company.Email,
                 FacebookUrl = company.FacebookUrl,
                 InstagramUrl = company.InstagramUrl,
                 TikTokUrl = company.TikTokUrl,
                 MapEmbedUrl = company.MapEmbedUrl,
-
                 State = company.State,
                 City = company.City,
                 StreetName = company.StreetName,
                 HouseNumber = company.HouseNumber,
                 PostalCode = company.PostalCode,
-
-                // Nyelvek
                 DefaultLanguage = company.DefaultLanguage,
-                // Itt kinyerjük a nyelvkódokat a CompanyLanguage listából
                 SupportedLanguages = company.Languages
-                    .Where(l => l.Status == TranslationStatus.Published) // Csak az aktív nyelveket adjuk vissza!
+                    .Where(l => l.Status == TranslationStatus.Published)
                     .Select(l => l.LanguageCode)
                     .ToList()
             };
 
-            // Ha a listában nincs benne a default nyelv (pl. hu), tegyük bele biztonságból
             if (!dto.SupportedLanguages.Contains(dto.DefaultLanguage))
             {
                 dto.SupportedLanguages.Add(dto.DefaultLanguage);
@@ -96,98 +75,107 @@ namespace Soluvion.API.Controllers
 
             return Ok(dto);
         }
-        // -------------------------------------------------------------
 
-        // GET: api/Company/1 (Ezt csak Admin használja, vagy explicit ID kérésnél)
+        // --- ADMIN BEÁLLÍTÁSOK (JAVÍTOTT DTO-VAL) ---
+
+        // GET: api/Company/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<Company>> GetCompanyById(int id)
+        [Authorize] // Csak bejelentkezve!
+        public async Task<ActionResult<CompanySettingsDto>> GetCompanySettings(int id)
         {
-            var company = await _context.Companies
-                .Include(c => c.CompanyType)
-                .Include(c => c.Languages) // Nyelveket is betöltjük
-                .FirstOrDefaultAsync(c => c.Id == id);
+            // Jogosultság ellenőrzés
+            var companyClaim = User.FindFirst("CompanyId");
+            if (companyClaim == null || int.Parse(companyClaim.Value) != id)
+                return Forbid();
 
-            if (company == null) return NotFound();
+            var c = await _context.Companies.FindAsync(id);
+            if (c == null) return NotFound();
 
-            return company;
+            // Kézi mapping DTO-ba (így elkerüljük a körkörös hivatkozást)
+            var dto = new CompanySettingsDto
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Email = c.Email,
+                Phone = c.Phone,
+                City = c.City,
+                StreetName = c.StreetName,
+                HouseNumber = c.HouseNumber,
+                PostalCode = c.PostalCode,
+                State = c.State,
+                FacebookUrl = c.FacebookUrl,
+                InstagramUrl = c.InstagramUrl,
+                TikTokUrl = c.TikTokUrl,
+                MapEmbedUrl = c.MapEmbedUrl,
+                OpeningHoursTitle = c.OpeningHoursTitle,
+                OpeningHoursDescription = c.OpeningHoursDescription,
+                OpeningTimeSlots = c.OpeningTimeSlots,
+                OpeningExtraInfo = c.OpeningExtraInfo,
+                PrimaryColor = c.PrimaryColor,
+                SecondaryColor = c.SecondaryColor,
+                FooterHeight = c.FooterHeight,
+                LogoHeight = c.LogoHeight,
+                LogoUrl = c.LogoUrl,
+                HeroImageUrl = c.HeroImageUrl,
+                FooterImageUrl = c.FooterImageUrl
+            };
+
+            return Ok(dto);
         }
 
-        // PUT: api/Company/5
+        // PUT: api/Company/{id}
         [HttpPut("{id}")]
         [Authorize]
-        public async Task<IActionResult> UpdateCompany(int id, [FromBody] Company updatedCompany)
+        public async Task<IActionResult> UpdateCompany(int id, [FromBody] CompanySettingsDto dto)
         {
             var companyClaim = User.FindFirst("CompanyId");
-            if (companyClaim == null) return Unauthorized("Nincs cég hozzárendelve a felhasználóhoz.");
+            if (companyClaim == null) return Unauthorized();
+            if (id != int.Parse(companyClaim.Value)) return Forbid();
 
-            int userCompanyId = int.Parse(companyClaim.Value);
+            var existing = await _context.Companies.FindAsync(id);
+            if (existing == null) return NotFound();
 
-            if (id != userCompanyId)
-            {
-                return Forbid("Nincs jogosultsága más cég adatait módosítani!");
-            }
+            // Adatok átmásolása DTO-ból Entity-be
+            existing.Name = dto.Name;
+            existing.Email = dto.Email;
+            existing.Phone = dto.Phone;
+            existing.City = dto.City;
+            existing.StreetName = dto.StreetName;
+            existing.HouseNumber = dto.HouseNumber;
+            existing.PostalCode = dto.PostalCode;
+            existing.State = dto.State; // Ha van ilyen mező a DTO-ban
 
-            var existingCompany = await _context.Companies.FindAsync(userCompanyId);
-            if (existingCompany == null) return NotFound("A cég nem található.");
+            existing.FacebookUrl = dto.FacebookUrl;
+            existing.InstagramUrl = dto.InstagramUrl;
+            existing.TikTokUrl = dto.TikTokUrl;
+            existing.MapEmbedUrl = dto.MapEmbedUrl;
 
-            // Adatok frissítése
-            existingCompany.Name = updatedCompany.Name;
-            existingCompany.Email = updatedCompany.Email;
-            existingCompany.Phone = updatedCompany.Phone;
-            existingCompany.City = updatedCompany.City;
-            existingCompany.StreetName = updatedCompany.StreetName;
-            existingCompany.HouseNumber = updatedCompany.HouseNumber;
-            existingCompany.PostalCode = updatedCompany.PostalCode;
-            existingCompany.FacebookUrl = updatedCompany.FacebookUrl;
-            existingCompany.InstagramUrl = updatedCompany.InstagramUrl;
-            existingCompany.TikTokUrl = updatedCompany.TikTokUrl;
-            existingCompany.MapEmbedUrl = updatedCompany.MapEmbedUrl;
-            existingCompany.OpeningHoursTitle = updatedCompany.OpeningHoursTitle;
-            existingCompany.OpeningHoursDescription = updatedCompany.OpeningHoursDescription;
-            existingCompany.OpeningTimeSlots = updatedCompany.OpeningTimeSlots;
-            existingCompany.OpeningExtraInfo = updatedCompany.OpeningExtraInfo;
-            existingCompany.PrimaryColor = updatedCompany.PrimaryColor;
-            existingCompany.SecondaryColor = updatedCompany.SecondaryColor;
-            existingCompany.FooterHeight = updatedCompany.FooterHeight;
-            existingCompany.LogoHeight = updatedCompany.LogoHeight;
+            existing.OpeningHoursTitle = dto.OpeningHoursTitle;
+            existing.OpeningHoursDescription = dto.OpeningHoursDescription;
+            existing.OpeningTimeSlots = dto.OpeningTimeSlots;
+            existing.OpeningExtraInfo = dto.OpeningExtraInfo;
 
-            // Megjegyzés: A LogoUrl, HeroImageUrl és FooterImageUrl itt NEM frissül, azokat a külön endpoint kezeli
+            existing.PrimaryColor = dto.PrimaryColor;
+            existing.SecondaryColor = dto.SecondaryColor;
+            existing.FooterHeight = dto.FooterHeight;
+            existing.LogoHeight = dto.LogoHeight;
 
             await _context.SaveChangesAsync();
-            return Ok(existingCompany);
+            return Ok(dto); // Visszaküldjük a frissített adatokat
         }
 
-        // POST: api/Company
-        [HttpPost]
-        public async Task<ActionResult<Company>> CreateCompany(Company company)
-        {
-            _context.Companies.Add(company);
-            await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetCompanyById), new { id = company.Id }, company);
-        }
-
-        // --- ÚJ: KÉPFELTÖLTÉS (LOGO, HERO & FOOTER) ---
-
+        // --- KÉPFELTÖLTÉS (Változatlan) ---
         [HttpPost("upload/logo")]
         [Authorize]
-        public async Task<IActionResult> UploadLogo(IFormFile file)
-        {
-            return await UploadBrandingImage(file, "logo");
-        }
+        public async Task<IActionResult> UploadLogo(IFormFile file) => await UploadBrandingImage(file, "logo");
 
         [HttpPost("upload/hero")]
         [Authorize]
-        public async Task<IActionResult> UploadHero(IFormFile file)
-        {
-            return await UploadBrandingImage(file, "hero");
-        }
+        public async Task<IActionResult> UploadHero(IFormFile file) => await UploadBrandingImage(file, "hero");
 
         [HttpPost("upload/footer")]
         [Authorize]
-        public async Task<IActionResult> UploadFooter(IFormFile file)
-        {
-            return await UploadBrandingImage(file, "footer");
-        }
+        public async Task<IActionResult> UploadFooter(IFormFile file) => await UploadBrandingImage(file, "footer");
 
         private async Task<IActionResult> UploadBrandingImage(IFormFile file, string type)
         {
@@ -198,9 +186,8 @@ namespace Soluvion.API.Controllers
             var company = await _context.Companies.FindAsync(companyId);
             if (company == null) return NotFound();
 
-            if (file == null || file.Length == 0) return BadRequest("Nincs fájl kiválasztva.");
+            if (file == null || file.Length == 0) return BadRequest("Nincs fájl.");
 
-            // 1. Feltöltés
             var uploadResult = new ImageUploadResult();
             using (var stream = file.OpenReadStream())
             {
@@ -214,21 +201,21 @@ namespace Soluvion.API.Controllers
 
             if (uploadResult.Error != null) return BadRequest(uploadResult.Error.Message);
 
-            // 2. Régi törlése
-            string? oldPublicId = null;
-            switch (type)
+            // Régi törlése
+            string? oldPublicId = type switch
             {
-                case "logo": oldPublicId = company.LogoPublicId; break;
-                case "hero": oldPublicId = company.HeroImagePublicId; break;
-                case "footer": oldPublicId = company.FooterImagePublicId; break;
-            }
+                "logo" => company.LogoPublicId,
+                "hero" => company.HeroImagePublicId,
+                "footer" => company.FooterImagePublicId,
+                _ => null
+            };
 
             if (!string.IsNullOrEmpty(oldPublicId))
             {
                 await _cloudinary.DestroyAsync(new DeletionParams(oldPublicId));
             }
 
-            // 3. Mentés DB-be
+            // Mentés
             switch (type)
             {
                 case "logo":
