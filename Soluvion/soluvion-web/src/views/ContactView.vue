@@ -1,28 +1,53 @@
 <script setup>
-  import { ref, inject } from 'vue'; // inject kell a cégadatokhoz!
+  import { ref, computed } from 'vue';
+  import { useCompanyStore } from '@/stores/companyStore'; // Store használata
+  import api from '@/services/api'; // API hívás
+
   import Card from 'primevue/card';
   import InputText from 'primevue/inputtext';
   import Textarea from 'primevue/textarea';
   import Button from 'primevue/button';
   import Message from 'primevue/message';
 
-  // 1. BEHÚZZUK A CÉGADATOKAT
-  const company = inject('company');
+  // 1. CÉGADATOK A STORE-BÓL
+  const companyStore = useCompanyStore();
+  const company = computed(() => companyStore.company);
 
   const name = ref('');
   const email = ref('');
   const messageText = ref('');
   const submitted = ref(false);
+  const isLoading = ref(false);
 
-  const sendMessage = () => {
-    if (name.value && email.value && messageText.value) {
+  const sendMessage = async () => {
+    if (!name.value || !email.value || !messageText.value) {
+      alert("Kérlek tölts ki minden mezőt!");
+      return;
+    }
+
+    isLoading.value = true;
+
+    try {
+      // 2. API HÍVÁS
+      await api.post('/api/Contact', {
+        name: name.value,
+        email: email.value,
+        message: messageText.value
+      });
+
+      // SIKER
       submitted.value = true;
       name.value = '';
       email.value = '';
       messageText.value = '';
-      setTimeout(() => { submitted.value = false; }, 3000);
-    } else {
-      alert("Kérlek tölts ki minden mezőt!");
+
+      setTimeout(() => { submitted.value = false; }, 5000);
+
+    } catch (error) {
+      console.error("Hiba az üzenet küldésekor:", error);
+      alert("Hiba történt a küldés során. Kérlek próbáld újra később.");
+    } finally {
+      isLoading.value = false;
     }
   }
 </script>
@@ -43,8 +68,8 @@
             Elérhetőségeim
           </template>
           <template #content>
-            <ul class="contact-list">
-              <li v-if="company?.city">
+            <ul class="contact-list" v-if="company">
+              <li v-if="company.city">
                 <i class="pi pi-map-marker icon"></i>
                 <div>
                   <strong>Cím:</strong><br>
@@ -52,14 +77,14 @@
                   {{ company.streetName }} {{ company.houseNumber }}.
                 </div>
               </li>
-              <li v-if="company?.phone">
+              <li v-if="company.phone">
                 <i class="pi pi-phone icon"></i>
                 <div>
                   <strong>Telefon:</strong><br>
                   <a :href="`tel:${company.phone}`">{{ company.phone }}</a>
                 </div>
               </li>
-              <li v-if="company?.email">
+              <li v-if="company.email">
                 <i class="pi pi-envelope icon"></i>
                 <div>
                   <strong>Email:</strong><br>
@@ -67,6 +92,7 @@
                 </div>
               </li>
             </ul>
+            <div v-else>Betöltés...</div>
           </template>
         </Card>
 
@@ -75,37 +101,34 @@
             Nyitvatartás
           </template>
           <template #content>
-            <div class="opening-info">
+            <div class="opening-info" v-if="company">
 
               <div style="margin-bottom: 20px;">
                 <i class="pi pi-calendar-clock" style="font-size: 2rem; color: var(--primary-color); margin-bottom: 10px;"></i>
-                <h3 style="margin: 0; color: #888;">{{ company?.openingHoursTitle || 'Nyitvatartás' }}</h3>
+                <h3 style="margin: 0; color: #888;">{{ company.openingHoursTitle || 'Nyitvatartás' }}</h3>
               </div>
 
-              <p v-if="company?.openingHoursDescription" style="line-height: 1.6; color: #888;">
+              <p v-if="company.openingHoursDescription" style="line-height: 1.6; color: #888;">
                 {{ company.openingHoursDescription }}
               </p>
 
-              <div v-if="company?.openingTimeSlots"
+              <div v-if="company.openingTimeSlots"
                    style="background: #f9f9f9; color: #555; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary-color); margin: 15px 0;"
                    v-html="company.openingTimeSlots">
               </div>
 
-              <p v-if="company?.openingExtraInfo" style="font-size: 0.9rem; margin-top: 20px;">
+              <p v-if="company.openingExtraInfo" style="font-size: 0.9rem; margin-top: 20px;">
                 {{ company.openingExtraInfo }}
               </p>
 
               <div class="social-buttons" style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
-
-                <a v-if="company?.facebookUrl" :href="company.facebookUrl" target="_blank" style="text-decoration: none; flex: 1;">
+                <a v-if="company.facebookUrl" :href="company.facebookUrl" target="_blank" style="text-decoration: none; flex: 1;">
                   <Button label="Facebook" icon="pi pi-facebook" class="p-button-outlined custom-btn-outline" style="width: 100%;" />
                 </a>
-
-                <a v-if="company?.instagramUrl" :href="company.instagramUrl" target="_blank" style="text-decoration: none; flex: 1;">
+                <a v-if="company.instagramUrl" :href="company.instagramUrl" target="_blank" style="text-decoration: none; flex: 1;">
                   <Button label="Instagram" icon="pi pi-instagram" class="p-button-outlined custom-btn-outline" style="width: 100%;" />
                 </a>
-
-                <a v-if="company?.tikTokUrl" :href="company.tikTokUrl" target="_blank" style="text-decoration: none; flex: 1;">
+                <a v-if="company.tikTokUrl" :href="company.tikTokUrl" target="_blank" style="text-decoration: none; flex: 1;">
                   <Button label="TikTok" icon="pi pi-video" class="p-button-outlined custom-btn-outline" style="width: 100%;" />
                 </a>
               </div>
@@ -125,6 +148,7 @@
             <div v-if="submitted" style="margin-bottom: 15px;">
               <Message severity="success" :closable="false">Köszönöm! Üzenetedet megkaptam.</Message>
             </div>
+
             <div class="form-group">
               <label>Név</label>
               <InputText v-model="name" placeholder="Ide jön a neved" style="width: 100%" class="custom-input" />
@@ -137,7 +161,12 @@
               <label>Üzenet</label>
               <Textarea v-model="messageText" rows="4" placeholder="Miben segíthetek?" style="width: 100%" class="custom-input" />
             </div>
-            <Button label="Üzenet küldése" icon="pi pi-send" @click="sendMessage" class="custom-btn" />
+
+            <Button :label="isLoading ? 'Küldés...' : 'Üzenet küldése'"
+                    :icon="isLoading ? 'pi pi-spin pi-spinner' : 'pi pi-send'"
+                    :disabled="isLoading"
+                    @click="sendMessage"
+                    class="custom-btn" />
           </template>
         </Card>
 
@@ -157,6 +186,7 @@
 </template>
 
 <style scoped>
+  /* A stílusok maradtak a régiek, csak a működés változott */
   .contact-container {
     max-width: 1200px;
     margin: 0 auto;
@@ -241,32 +271,29 @@
     overflow: hidden;
   }
 
-  /* Gombok felülírása */
+  /* Gombok felülírása - CSS változók használatával */
   :deep(.custom-btn) {
-    background: var(--primary-color) !important;
-    border: 1px solid var(--primary-color) !important;
-    color: var(--secondary-color) !important;
+    background: var(--p-primary-color) !important;
+    border: 1px solid var(--p-primary-color) !important;
+    color: var(--p-primary-contrast-color, #000) !important;
     font-weight: bold;
   }
 
   :deep(.custom-btn:hover) {
-    background: #b5952f !important;
-    border-color: #b5952f !important;
+    filter: brightness(90%);
   }
 
-  /* Outlined gomb */
   :deep(.custom-btn-outline) {
-    color: var(--primary-color) !important;
-    border-color: var(--primary-color) !important;
+    color: var(--p-primary-color) !important;
+    border-color: var(--p-primary-color) !important;
   }
 
   :deep(.custom-btn-outline:hover) {
-    background: rgba(212, 175, 55, 0.1) !important;
+    background: rgba(255, 255, 255, 0.1) !important;
   }
 
-  /* Input mezők fókuszban */
   :deep(.custom-input:focus) {
-    border-color: var(--primary-color) !important;
-    box-shadow: 0 0 0 1px var(--primary-color) !important;
+    border-color: var(--p-primary-color) !important;
+    box-shadow: 0 0 0 1px var(--p-primary-color) !important;
   }
 </style>
