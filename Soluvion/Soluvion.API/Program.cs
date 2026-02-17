@@ -11,11 +11,16 @@ using Soluvion.API.Services;
 using Soluvion.API.Middleware;
 using Microsoft.AspNetCore.Authentication;
 using CloudinaryDotNet;
+using Npgsql;
 
 
 var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+dataSourceBuilder.EnableDynamicJson();
+var dataSource = dataSourceBuilder.Build();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
    options.UseNpgsql(connectionString));
