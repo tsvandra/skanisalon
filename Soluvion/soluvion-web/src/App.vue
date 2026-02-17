@@ -14,7 +14,7 @@
   const isLoggedIn = ref(false);
 
   // --- AUTH STATUS ELLENŐRZÉSE ---
-  const checkAuthStatus = () => {
+  const checkAuthStatus = async () => {
     const token = localStorage.getItem('salon_token');
     isLoggedIn.value = !!token;
 
@@ -22,9 +22,14 @@
       try {
         const decoded = jwtDecode(token);
         const companyId = parseInt(decoded.CompanyId || decoded.companyId || 0);
-        // Ha admin vagy, betöltjük a nyelveket (beleértve a nem publikusakat is a státuszok miatt)
+
         if (companyId) {
-          translationStore.fetchLanguages(companyId);
+          // JAVÍTÁS: Adminnak is be kell állítani az aktív környezetet!
+          // Ha a companyStore már betöltött, tudjuk a default nyelvet, ha nem, 'hu'-t tippelünk (később frissül)
+          const defaultLang = companyStore.company?.defaultLanguage || 'hu';
+
+          translationStore.initCompany(companyId, defaultLang);
+          await translationStore.fetchLanguages(companyId);
         }
       } catch (e) {
         console.error("Token decode hiba:", e);
@@ -42,19 +47,17 @@
   provide('isLoggedIn', isLoggedIn);
 
   onMounted(async () => {
-    checkAuthStatus();
-
-    // 1. Cégadatok betöltése (Ha még nincs)
+    // 1. Cégadatok betöltése (MINDENKINEK)
     if (!companyStore.company) {
       await companyStore.fetchPublicConfig();
     }
 
-    // 2. JAVÍTÁS: Ha vendég vagyunk (és sikeres volt a config betöltés),
-    // akkor is le kell kérni a nyelveket a nyelvválasztóhoz!
+    // 2. Auth és Nyelvi környezet beállítása
+    await checkAuthStatus();
+
+    // 3. Ha VENDÉG, akkor külön inicializálunk (az Admin-t a checkAuthStatus intézi)
     if (companyStore.company && !isLoggedIn.value) {
-      // Inicializáljuk a store-t a cég adataival
       translationStore.initCompany(companyStore.company.id, companyStore.company.defaultLanguage);
-      // Letöltjük a nyelveket (A TranslationController [AllowAnonymous] miatt ez már működni fog)
       await translationStore.fetchLanguages(companyStore.company.id);
     }
   });

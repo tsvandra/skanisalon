@@ -1,48 +1,71 @@
 <script setup>
-import { computed } from 'vue';
-import { useTranslationStore } from '@/stores/translationStore';
-import { useI18n } from 'vue-i18n';
+  import { computed } from 'vue';
+  import { useTranslationStore } from '@/stores/translationStore';
+  import { useI18n } from 'vue-i18n';
 
-const store = useTranslationStore();
-const { locale } = useI18n();
+  const store = useTranslationStore();
+  const { locale } = useI18n();
 
-// Props: 'adminMode' - ha true, minden nyelvet mutat, ha false, csak a publikusat
-const props = defineProps({
-  adminMode: {
-    type: Boolean,
-    default: false
-  }
-});
+  // Props
+  const props = defineProps({
+    adminMode: {
+      type: Boolean,
+      default: false
+    }
+  });
 
-// Mely nyelvekeleníthetőek meg?
-const availableLanguages = computed(() => {
-  if (props.adminMode) {
-    // Admin látja az összeset (hogy tudja szerkeszteni őket)
-    return store.languages;
-  } else {
-    // Vendég csak a publikusat
-    return store.publishedLanguages;
-  }
-});
+  // Mely nyelvek jeleníthetőek meg?
+  const availableLanguages = computed(() => {
+    // Biztonsági ellenőrzés: ha a store még üres, ne omoljon össze
+    const list = props.adminMode ? store.languages : store.publishedLanguages;
+    return list || [];
+  });
 
-const currentLang = computed(() => locale.value);
+  const currentLang = computed(() => locale.value);
 
-const switchLang = (code) => {
-  store.setLanguage(code);
-};
+  const switchLang = async (code) => {
+    console.log(`[LanguageSwitcher] Gomb megnyomva: ${code}`);
+
+    if (!code) {
+      console.error("Hiba: Érvénytelen nyelvkód!");
+      return;
+    }
+
+    try {
+      await store.setLanguage(code);
+      console.log(`[LanguageSwitcher] Sikeres váltás: ${code}`);
+    } catch (err) {
+      console.error("[LanguageSwitcher] Hiba a váltáskor:", err);
+      // Ha hiba van (pl. nem töltődnek be az override-ok),
+      // akkor is kényszerítsük át a nyelvet a UI-on, hogy ne tűnjön halottnak a gomb
+      locale.value = code;
+    }
+  };
 </script>
 
 <template>
   <div class="language-switcher">
-    <button v-for="lang in availableLanguages"
-            :key="lang.languageCode"
-            @click="switchLang(lang.languageCode)"
-            class="lang-btn"
-            :class="{ active: currentLang === lang.languageCode }"
-            :title="lang.status !== 'Published' ? `Státusz: ${lang.status}` : ''">
-      {{ lang.languageCode.toUpperCase() }}
-      <span v-if="adminMode && lang.status !== 'Published'" class="status-dot">●</span>
-    </button>
+    <template v-if="availableLanguages.length > 0">
+      <button v-for="lang in availableLanguages"
+              :key="lang.languageCode"
+              @click="switchLang(lang.languageCode)"
+              class="lang-btn"
+              :class="{ active: currentLang === lang.languageCode }"
+              :title="lang.status !== 'Published' ? `Státusz: ${lang.status}` : ''">
+
+        {{ lang.languageCode ? lang.languageCode.toUpperCase() : '?' }}
+
+        <span v-if="adminMode && lang.status !== 'Published'"
+              class="status-dot"
+              :class="lang.status === 'Error' ? 'error' : 'pending'">
+          ●
+        </span>
+      </button>
+    </template>
+
+    <div v-else-if="adminMode" style="font-size: 0.7rem; color: #888;">
+      (Nincs adat)
+    </div>
   </div>
 </template>
 
@@ -64,6 +87,7 @@ const switchLang = (code) => {
     font-weight: bold;
     transition: all 0.2s;
     position: relative;
+    min-width: 32px; /* Hogy biztosan kattintható legyen */
   }
 
     .lang-btn:hover {
@@ -80,9 +104,17 @@ const switchLang = (code) => {
 
   .status-dot {
     position: absolute;
-    top: -2px;
-    right: -2px;
-    font-size: 8px;
-    color: orange;
+    top: -3px;
+    right: -3px;
+    font-size: 10px;
+    line-height: 1;
   }
+
+    .status-dot.pending {
+      color: orange;
+    }
+
+    .status-dot.error {
+      color: red;
+    }
 </style>
