@@ -11,18 +11,22 @@ namespace Soluvion.API.Data
         public DbSet<Company> Companies { get; set; }
         public DbSet<CompanyLanguage> CompanyLanguages { get; set; }
         public DbSet<CompanyType> CompanyTypes { get; set; }
+
         public DbSet<Service> Services { get; set; }
         public DbSet<ServiceVariant> ServiceVariants { get; set; }
+
         public DbSet<GalleryImage> GalleryImages { get; set; }
         public DbSet<GalleryCategory> GalleryCategories { get; set; }
+
+        // EZ HIÁNYZOTT:
+        public DbSet<UiTranslationOverride> UiTranslationOverrides { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
             // --- JSONB MEZŐK KONFIGURÁLÁSA ---
-            // Mivel a Program.cs-ben bekapcsoltuk a .EnableDynamicJson()-t,
-            // itt elég csak a típust megadni, nem kell kézi konverzió!
+            // A Program.cs-ben lévő .EnableDynamicJson() miatt itt elég a típust megadni.
 
             // 1. Szolgáltatás variáns név
             modelBuilder.Entity<ServiceVariant>()
