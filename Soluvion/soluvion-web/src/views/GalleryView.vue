@@ -247,7 +247,7 @@
                   <h3 v-else class="cat-title">{{ group.name[currentLang] }}</h3>
 
                   <button v-if="isLoggedIn && currentLang !== 'hu' && group.id !== -1"
-                          @click="triggerTranslation(group.name, 'name')"
+                          @click="triggerTranslation(group, 'name')"
                           class="magic-btn" title="Fordítás">
                     <i v-if="translatingField === `${group.id}-name-${currentLang}`" class="pi pi-spin pi-spinner"></i>
                     <i v-else class="pi pi-sparkles"></i>
