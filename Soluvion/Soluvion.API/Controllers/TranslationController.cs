@@ -224,6 +224,7 @@ namespace Soluvion.API.Controllers
 
 
         // --- HÁTTÉRFOLYAMAT (A TE EREDETI KÓDOD) ---
+        // --- HÁTTÉRFOLYAMAT (A TE EREDETI KÓDOD) ---
         private async Task PerformBackgroundTranslation(int companyId, string targetLanguage, Dictionary<string, string> uiTranslations)
         {
             using (var scope = _scopeFactory.CreateScope())
@@ -242,4 +243,82 @@ namespace Soluvion.API.Controllers
                                      + (await dbContext.Services.CountAsync(s => s.CompanyId == companyId) * 3)
                                      + (await dbContext.GalleryCategories.CountAsync(g => g.CompanyId == companyId));
 
-                    if (totalItems == 0) totalItems = 1
+                    if (totalItems == 0) totalItems = 1;
+                    int currentItem = 0;
+
+                    async Task UpdateProgress()
+                    {
+                        currentItem++;
+                        if (currentItem % 5 == 0 || currentItem == totalItems)
+                        {
+                            var langToUpdate = await dbContext.CompanyLanguages.FindAsync(companyId, targetLanguage);
+                            if (langToUpdate != null)
+                            {
+                                langToUpdate.Progress = (int)((double)currentItem / totalItems * 100);
+                                if (langToUpdate.Progress > 99) langToUpdate.Progress = 99;
+                                await dbContext.SaveChangesAsync();
+                            }
+                        }
+                    }
+
+                    // Mock Translate Helper (Mivel nincs ITranslationService fájlunk most)
+                    string MockTranslate(string text) => $"[AI-{targetLanguage}] {text}";
+
+                    // A) UI
+                    if (uiTranslations != null)
+                    {
+                        foreach (var kvp in uiTranslations)
+                        {
+                            if (!string.IsNullOrWhiteSpace(kvp.Value))
+                            {
+                                string translated = MockTranslate(kvp.Value);
+                                var ov = await dbContext.UiTranslationOverrides.FirstOrDefaultAsync(o => o.CompanyId == companyId && o.LanguageCode == targetLanguage && o.TranslationKey == kvp.Key);
+                                if (ov == null) dbContext.UiTranslationOverrides.Add(new UiTranslationOverride { CompanyId = companyId, LanguageCode = targetLanguage, TranslationKey = kvp.Key, TranslatedText = translated });
+                                else ov.TranslatedText = translated;
+                            }
+                            await UpdateProgress();
+                        }
+                        await dbContext.SaveChangesAsync();
+                    }
+
+                    // B) Services
+                    var services = await dbContext.Services.Where(s => s.CompanyId == companyId).ToListAsync();
+                    foreach (var s in services)
+                    {
+                        if (s.Name.ContainsKey("hu")) s.Name[targetLanguage] = MockTranslate(s.Name["hu"]);
+                        await UpdateProgress();
+                        if (s.Category.ContainsKey("hu")) s.Category[targetLanguage] = MockTranslate(s.Category["hu"]);
+                        await UpdateProgress();
+                        if (s.Description.ContainsKey("hu")) s.Description[targetLanguage] = MockTranslate(s.Description["hu"]);
+                        await UpdateProgress();
+                    }
+                    await dbContext.SaveChangesAsync();
+
+                    // C) Gallery
+                    var cats = await dbContext.GalleryCategories.Where(c => c.CompanyId == companyId).ToListAsync();
+                    foreach (var c in cats)
+                    {
+                        if (c.Name.ContainsKey("hu")) c.Name[targetLanguage] = MockTranslate(c.Name["hu"]);
+                        await UpdateProgress();
+                    }
+                    await dbContext.SaveChangesAsync();
+
+                    // KÉSZ
+                    var finalLang = await dbContext.CompanyLanguages.FindAsync(companyId, targetLanguage);
+                    if (finalLang != null)
+                    {
+                        finalLang.Status = TranslationStatus.ReviewPending;
+                        finalLang.Progress = 100;
+                        await dbContext.SaveChangesAsync();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Hiba: " + ex.Message);
+                    var l = await dbContext.CompanyLanguages.FindAsync(companyId, targetLanguage);
+                    if (l != null) { l.Status = TranslationStatus.Error; await dbContext.SaveChangesAsync(); }
+                }
+            }
+        }
+    }
+}
