@@ -52,18 +52,27 @@
   };
 
   const fetchData = async () => {
-    const targetCompanyId = company?.value?.id || DEFAULT_COMPANY_ID;
     isLoading.value = true;
     try {
+      // JAVÍTÁS: Paraméterek törlése (api.js intézi a headert)
       const [resCats, resImages] = await Promise.all([
-        api.get('/api/Gallery/categories', { params: { companyId: targetCompanyId } }),
-        api.get('/api/Gallery', { params: { companyId: targetCompanyId } })
+        api.get('/api/Gallery/categories'),
+        api.get('/api/Gallery')
       ]);
-      categories.value = resCats.data.map(c => ({ ...c, name: ensureDict(c.name, "Névtelen galéria") }));
-      images.value = resImages.data.map(i => ({ ...i, category: ensureDict(i.category, "Egyéb") }));
+
+      // Biztonsági ellenőrzés
+      const rawCats = Array.isArray(resCats.data) ? resCats.data : [];
+      const rawImages = Array.isArray(resImages.data) ? resImages.data : [];
+
+      categories.value = rawCats.map(c => ({ ...c, name: ensureDict(c.name, "Névtelen galéria") }));
+      images.value = rawImages.map(i => ({ ...i, category: ensureDict(i.category, "Egyéb") }));
+
       buildNestedStructure();
-    } catch (error) { console.error("Hiba:", error); }
-    finally { isLoading.value = false; }
+    } catch (error) {
+      console.error("Hiba a galéria betöltésekor:", error);
+    } finally {
+      isLoading.value = false;
+    }
   };
 
   const buildNestedStructure = () => {

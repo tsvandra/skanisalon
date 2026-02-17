@@ -118,30 +118,50 @@
     return groups;
   };
 
-  /* --- API MŰVELETEK --- */
   const fetchServices = async () => {
-    const targetCompanyId = company?.value?.id || DEFAULT_COMPANY_ID;
     loading.value = true;
     try {
-      const response = await apiClient.get('/api/Service', {
-        params: { companyId: targetCompanyId }
-      });
+      // 1. Paraméter nélkül hívjuk (Header viszi az ID-t)
+      const response = await apiClient.get('/api/Service');
+
       const rawServices = response.data;
-      rawServices.forEach(service => {
-        if (service.variants) {
-          service.variants = sortVariants(service.variants);
-          service.variants.forEach(v => { if (v.price === 0) v.price = null; });
+
+      // 2. DEBUG: Nézzük meg, mit kaptunk
+      console.log("Services API válasz:", rawServices);
+
+      // 3. BIZTONSÁG: Ha nem tömb, akkor ne próbáljunk forEach-elni
+      if (!Array.isArray(rawServices)) {
+        console.error("KRITIKUS HIBA: A szerver nem tömböt küldött!", rawServices);
+        // Ha véletlenül objektum jönne (pl { $values: [...] }), kezelhetjük:
+        if (rawServices && Array.isArray(rawServices.$values)) {
+          // Fallback, ha mégis ReferenceHandler van bekapcsolva
+          processServices(rawServices.$values);
         }
-        service.name = ensureDict(service.name, "Névtelen");
-        service.category = ensureDict(service.category, "Egyéb");
-        service.description = ensureDict(service.description, "");
-      });
-      categories.value = buildNestedStructure(rawServices);
+        return;
+      }
+
+      // Ha tömb, mehet a feldolgozás
+      processServices(rawServices);
+
     } catch (error) {
       console.error('Hiba a betolteskor:', error);
     } finally {
       loading.value = false;
     }
+  };
+
+  // Kiszerveztük a feldolgozást egy külön függvénybe
+  const processServices = (serviceList) => {
+    serviceList.forEach(service => {
+      if (service.variants) {
+        service.variants = sortVariants(service.variants);
+        service.variants.forEach(v => { if (v.price === 0) v.price = null; });
+      }
+      service.name = ensureDict(service.name, "Névtelen");
+      service.category = ensureDict(service.category, "Egyéb");
+      service.description = ensureDict(service.description, "");
+    });
+    categories.value = buildNestedStructure(serviceList);
   };
 
   watch(() => company?.value?.id, (newId) => { if (newId) fetchServices(); }, { immediate: true });

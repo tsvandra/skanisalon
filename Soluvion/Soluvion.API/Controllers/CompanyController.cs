@@ -4,8 +4,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
+using Soluvion.API.DTOs;
 using Soluvion.API.Models;
-using System.Security.Claims;
+using Soluvion.API.Models.DTOs; // Itt van a CompanySettingsDto
+using Soluvion.API.Models.Enums;
+using Soluvion.API.Services;
 
 namespace Soluvion.API.Controllers
 {
@@ -15,102 +18,164 @@ namespace Soluvion.API.Controllers
     {
         private readonly AppDbContext _context;
         private readonly Cloudinary _cloudinary;
+        private readonly ITenantContext _tenantContext;
 
-        public CompanyController(AppDbContext context, Cloudinary cloudinary)
+        public CompanyController(AppDbContext context, Cloudinary cloudinary, ITenantContext tenantContext)
         {
             _context = context;
             _cloudinary = cloudinary;
+            _tenantContext = tenantContext;
         }
 
-        // GET: api/Company/1
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Company>> GetCompanyById(int id)
+        // GET: api/Company/public-config (VENDÉG NÉZET)
+        [HttpGet("public-config")]
+        [AllowAnonymous]
+        public ActionResult<CompanyPublicProfileDto> GetPublicConfig()
         {
-            var company = await _context.Companies
-                .Include(c => c.CompanyType)
-                .FirstOrDefaultAsync(c => c.Id == id);
+            var company = _tenantContext.CurrentCompany;
+            if (company == null) return NotFound("A kért szalon nem található.");
 
-            if (company == null) return NotFound();
-
-            return company;
-        }
-
-        // PUT: api/Company/5
-        [HttpPut("{id}")]
-        [Authorize]
-        public async Task<IActionResult> UpdateCompany(int id, [FromBody] Company updatedCompany)
-        {
-            var companyClaim = User.FindFirst("CompanyId");
-            if (companyClaim == null) return Unauthorized("Nincs cég hozzárendelve a felhasználóhoz.");
-
-            int userCompanyId = int.Parse(companyClaim.Value);
-
-            if (id != userCompanyId)
+            var dto = new CompanyPublicProfileDto
             {
-                return Forbid("Nincs jogosultsága más cég adatait módosítani!");
+                Id = company.Id,
+                Name = company.Name,
+                LogoUrl = company.LogoUrl,
+                LogoHeight = company.LogoHeight,
+                FooterImageUrl = company.FooterImageUrl,
+                FooterHeight = company.FooterHeight,
+                HeroImageUrl = company.HeroImageUrl,
+                PrimaryColor = company.PrimaryColor,
+                SecondaryColor = company.SecondaryColor,
+                OpeningHoursTitle = company.OpeningHoursTitle,
+                OpeningHoursDescription = company.OpeningHoursDescription,
+                OpeningTimeSlots = company.OpeningTimeSlots,
+                OpeningExtraInfo = company.OpeningExtraInfo,
+                Phone = company.Phone,
+                Email = company.Email,
+                FacebookUrl = company.FacebookUrl,
+                InstagramUrl = company.InstagramUrl,
+                TikTokUrl = company.TikTokUrl,
+                MapEmbedUrl = company.MapEmbedUrl,
+                State = company.State,
+                City = company.City,
+                StreetName = company.StreetName,
+                HouseNumber = company.HouseNumber,
+                PostalCode = company.PostalCode,
+                DefaultLanguage = company.DefaultLanguage,
+                SupportedLanguages = company.Languages
+                    .Where(l => l.Status == TranslationStatus.Published)
+                    .Select(l => l.LanguageCode)
+                    .ToList()
+            };
+
+            if (!dto.SupportedLanguages.Contains(dto.DefaultLanguage))
+            {
+                dto.SupportedLanguages.Add(dto.DefaultLanguage);
             }
 
-            var existingCompany = await _context.Companies.FindAsync(userCompanyId);
-            if (existingCompany == null) return NotFound("A cég nem található.");
-
-            // Adatok frissítése
-            existingCompany.Name = updatedCompany.Name;
-            existingCompany.Email = updatedCompany.Email;
-            existingCompany.Phone = updatedCompany.Phone;
-            existingCompany.City = updatedCompany.City;
-            existingCompany.StreetName = updatedCompany.StreetName;
-            existingCompany.HouseNumber = updatedCompany.HouseNumber;
-            existingCompany.PostalCode = updatedCompany.PostalCode;
-            existingCompany.FacebookUrl = updatedCompany.FacebookUrl;
-            existingCompany.InstagramUrl = updatedCompany.InstagramUrl;
-            existingCompany.TikTokUrl = updatedCompany.TikTokUrl;
-            existingCompany.MapEmbedUrl = updatedCompany.MapEmbedUrl;
-            existingCompany.OpeningHoursTitle = updatedCompany.OpeningHoursTitle;
-            existingCompany.OpeningHoursDescription = updatedCompany.OpeningHoursDescription;
-            existingCompany.OpeningTimeSlots = updatedCompany.OpeningTimeSlots;
-            existingCompany.OpeningExtraInfo = updatedCompany.OpeningExtraInfo;
-            existingCompany.PrimaryColor = updatedCompany.PrimaryColor;
-            existingCompany.SecondaryColor = updatedCompany.SecondaryColor;
-            existingCompany.FooterHeight = updatedCompany.FooterHeight;
-            existingCompany.LogoHeight = updatedCompany.LogoHeight;
-
-            // Megjegyzés: A LogoUrl, HeroImageUrl és FooterImageUrl itt NEM frissül, azokat a külön endpoint kezeli
-
-            await _context.SaveChangesAsync();
-            return Ok(existingCompany);
+            return Ok(dto);
         }
 
-        // POST: api/Company
-        [HttpPost]
-        public async Task<ActionResult<Company>> CreateCompany(Company company)
+        // --- ADMIN BEÁLLÍTÁSOK (JAVÍTOTT DTO-VAL) ---
+
+        // GET: api/Company/{id}
+        [HttpGet("{id}")]
+        [Authorize] // Csak bejelentkezve!
+        public async Task<ActionResult<CompanySettingsDto>> GetCompanySettings(int id)
         {
-            _context.Companies.Add(company);
-            await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetCompanyById), new { id = company.Id }, company);
+            // Jogosultság ellenőrzés
+            var companyClaim = User.FindFirst("CompanyId");
+            if (companyClaim == null || int.Parse(companyClaim.Value) != id)
+                return Forbid();
+
+            var c = await _context.Companies.FindAsync(id);
+            if (c == null) return NotFound();
+
+            // Kézi mapping DTO-ba (így elkerüljük a körkörös hivatkozást)
+            var dto = new CompanySettingsDto
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Email = c.Email,
+                Phone = c.Phone,
+                City = c.City,
+                StreetName = c.StreetName,
+                HouseNumber = c.HouseNumber,
+                PostalCode = c.PostalCode,
+                State = c.State,
+                FacebookUrl = c.FacebookUrl,
+                InstagramUrl = c.InstagramUrl,
+                TikTokUrl = c.TikTokUrl,
+                MapEmbedUrl = c.MapEmbedUrl,
+                OpeningHoursTitle = c.OpeningHoursTitle,
+                OpeningHoursDescription = c.OpeningHoursDescription,
+                OpeningTimeSlots = c.OpeningTimeSlots,
+                OpeningExtraInfo = c.OpeningExtraInfo,
+                PrimaryColor = c.PrimaryColor,
+                SecondaryColor = c.SecondaryColor,
+                FooterHeight = c.FooterHeight,
+                LogoHeight = c.LogoHeight,
+                LogoUrl = c.LogoUrl,
+                HeroImageUrl = c.HeroImageUrl,
+                FooterImageUrl = c.FooterImageUrl
+            };
+
+            return Ok(dto);
         }
 
-        // --- ÚJ: KÉPFELTÖLTÉS (LOGO, HERO & FOOTER) ---
+        // PUT: api/Company/{id}
+        [HttpPut("{id}")]
+        [Authorize]
+        public async Task<IActionResult> UpdateCompany(int id, [FromBody] CompanySettingsDto dto)
+        {
+            var companyClaim = User.FindFirst("CompanyId");
+            if (companyClaim == null) return Unauthorized();
+            if (id != int.Parse(companyClaim.Value)) return Forbid();
 
+            var existing = await _context.Companies.FindAsync(id);
+            if (existing == null) return NotFound();
+
+            // Adatok átmásolása DTO-ból Entity-be
+            existing.Name = dto.Name;
+            existing.Email = dto.Email;
+            existing.Phone = dto.Phone;
+            existing.City = dto.City;
+            existing.StreetName = dto.StreetName;
+            existing.HouseNumber = dto.HouseNumber;
+            existing.PostalCode = dto.PostalCode;
+            existing.State = dto.State; // Ha van ilyen mező a DTO-ban
+
+            existing.FacebookUrl = dto.FacebookUrl;
+            existing.InstagramUrl = dto.InstagramUrl;
+            existing.TikTokUrl = dto.TikTokUrl;
+            existing.MapEmbedUrl = dto.MapEmbedUrl;
+
+            existing.OpeningHoursTitle = dto.OpeningHoursTitle;
+            existing.OpeningHoursDescription = dto.OpeningHoursDescription;
+            existing.OpeningTimeSlots = dto.OpeningTimeSlots;
+            existing.OpeningExtraInfo = dto.OpeningExtraInfo;
+
+            existing.PrimaryColor = dto.PrimaryColor;
+            existing.SecondaryColor = dto.SecondaryColor;
+            existing.FooterHeight = dto.FooterHeight;
+            existing.LogoHeight = dto.LogoHeight;
+
+            await _context.SaveChangesAsync();
+            return Ok(dto); // Visszaküldjük a frissített adatokat
+        }
+
+        // --- KÉPFELTÖLTÉS (Változatlan) ---
         [HttpPost("upload/logo")]
         [Authorize]
-        public async Task<IActionResult> UploadLogo(IFormFile file)
-        {
-            return await UploadBrandingImage(file, "logo");
-        }
+        public async Task<IActionResult> UploadLogo(IFormFile file) => await UploadBrandingImage(file, "logo");
 
         [HttpPost("upload/hero")]
         [Authorize]
-        public async Task<IActionResult> UploadHero(IFormFile file)
-        {
-            return await UploadBrandingImage(file, "hero");
-        }
+        public async Task<IActionResult> UploadHero(IFormFile file) => await UploadBrandingImage(file, "hero");
 
         [HttpPost("upload/footer")]
         [Authorize]
-        public async Task<IActionResult> UploadFooter(IFormFile file)
-        {
-            return await UploadBrandingImage(file, "footer");
-        }
+        public async Task<IActionResult> UploadFooter(IFormFile file) => await UploadBrandingImage(file, "footer");
 
         private async Task<IActionResult> UploadBrandingImage(IFormFile file, string type)
         {
@@ -121,9 +186,8 @@ namespace Soluvion.API.Controllers
             var company = await _context.Companies.FindAsync(companyId);
             if (company == null) return NotFound();
 
-            if (file == null || file.Length == 0) return BadRequest("Nincs fájl kiválasztva.");
+            if (file == null || file.Length == 0) return BadRequest("Nincs fájl.");
 
-            // 1. Feltöltés
             var uploadResult = new ImageUploadResult();
             using (var stream = file.OpenReadStream())
             {
@@ -137,21 +201,21 @@ namespace Soluvion.API.Controllers
 
             if (uploadResult.Error != null) return BadRequest(uploadResult.Error.Message);
 
-            // 2. Régi törlése
-            string? oldPublicId = null;
-            switch (type)
+            // Régi törlése
+            string? oldPublicId = type switch
             {
-                case "logo": oldPublicId = company.LogoPublicId; break;
-                case "hero": oldPublicId = company.HeroImagePublicId; break;
-                case "footer": oldPublicId = company.FooterImagePublicId; break;
-            }
+                "logo" => company.LogoPublicId,
+                "hero" => company.HeroImagePublicId,
+                "footer" => company.FooterImagePublicId,
+                _ => null
+            };
 
             if (!string.IsNullOrEmpty(oldPublicId))
             {
                 await _cloudinary.DestroyAsync(new DeletionParams(oldPublicId));
             }
 
-            // 3. Mentés DB-be
+            // Mentés
             switch (type)
             {
                 case "logo":

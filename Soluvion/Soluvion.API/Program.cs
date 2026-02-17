@@ -8,6 +8,7 @@ using Swashbuckle.AspNetCore.Filters;
 using System.Text;
 using System.Net;
 using Soluvion.API.Services;
+using Soluvion.API.Middleware;
 using Microsoft.AspNetCore.Authentication;
 using CloudinaryDotNet;
 
@@ -22,15 +23,16 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITranslationService, OpenAiTranslationService>();
+builder.Services.AddScoped<ITenantContext, TenantContext>();
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
         policy =>
         {
-            policy.AllowAnyOrigin()  // Bárhonnan jöhet kérés (Netlify, localhost)
+            policy.WithOrigins("http://localhost:5173", "https://skanisalon.sk", "https://www.skanisalon.sk", "https://skanisalon-production.netlify.app")  // Bárhonnan jöhet kérés (Netlify, localhost)
                   .AllowAnyMethod()  // GET, POST, PUT, DELETE, OPTIONS
-                  .AllowAnyHeader(); // Bármilyen fejléc mehet
+                  .WithHeaders("X-Tenant-ID", "Authorization", "Content-Type"); // Bármilyen fejléc mehet
         });
 });
 
@@ -97,24 +99,26 @@ app.Use(async (context, next) =>
     }
 });
 
-// 2. KÉZI OPTIONS KEZELÉS (Preflight Fix)
-// Ez "átveri" a böngészőt: ha OPTIONS kérés jön, azonnal rávágjuk, hogy "OK",
-// még mielőtt a bonyolult logika elhasalhatna.
-app.Use(async (context, next) =>
-{
-    if (context.Request.Method == "OPTIONS")
-    {
-        context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
-        context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-        context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization");
-        context.Response.StatusCode = (int)HttpStatusCode.OK;
-        return; // Itt meg is állunk, nem engedjük tovább a hibás részhez
-    }
-    await next();
-});
+//// 2. KÉZI OPTIONS KEZELÉS (Preflight Fix)
+//// Ez "átveri" a böngészőt: ha OPTIONS kérés jön, azonnal rávágjuk, hogy "OK",
+//// még mielőtt a bonyolult logika elhasalhatna.
+//app.Use(async (context, next) =>
+//{
+//    if (context.Request.Method == "OPTIONS")
+//    {
+//        context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
+//        context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+//        context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tenant-ID");
+//        context.Response.StatusCode = (int)HttpStatusCode.OK;
+//        return; // Itt meg is állunk, nem engedjük tovább a hibás részhez
+//    }
+//    await next();
+//});
 
 
 app.UseCors("AllowAll");
+
+app.UseMiddleware<TenantResolutionMiddleware>();
 
 AppContext.SetSwitch("Npqsql.EnableLegacyTimestampBehavior", true);
 
