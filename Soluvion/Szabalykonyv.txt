@@ -193,3 +193,15 @@ A "Front Office" (Látogatói oldal) teljes dinamizálása a cél:
     - A szervernek azonnal vissza kell térnie `Accepted (202)` státusszal.
     - A kliensnek Polling mechanizmussal vagy WebSocket-tel kell figyelnie a státuszt.
     - Kötelező a Progress Bar vagy Spinner használata a felhasználó tájékoztatására.
+
+--------------------------------------------------------------------------------
+
+[ 9. ÚJ FEJLESZTÉSI SZABÁLYOK KIEGÉSZÍTÉS (2026-02-18) ]
+
+1.  CONTROLLER HIGIÉNIA (Strict Mode)
+    - TILOS DTO osztályokat, Enumokat vagy segédosztályokat a Controller fájlon belül definiálni, még ideiglenesen sem!
+    - Minden új adatstruktúrának azonnal létre kell hozni a saját fájlját a `Models/DTOs` mappában.
+    - Ha egy Controller meghaladja a 200 sort vagy túl sok felelőssége van (pl. Mock logika), a logikát ki kell szervezni egy Service osztályba.
+
+2.  ADATBÁZIS ELNEVEZÉSEK
+    - Kulcs-érték párokat tároló tábláknál a kulcs mező neve legyen konzisztensen `TranslationKey` (vagy `ConfigKey`), kerüljük a generikus `Key` elnevezést, mert az az Entity Frameworkben és a C# kulcsszavaknál is ütközést okozhat.

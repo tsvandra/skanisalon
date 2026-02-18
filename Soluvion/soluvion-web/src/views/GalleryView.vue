@@ -8,7 +8,6 @@
   const { locale } = useI18n();
   const isLoggedIn = inject('isLoggedIn');
 
-  // Globális nyelv
   const currentLang = computed(() => locale.value);
 
   const images = ref([]);
@@ -63,7 +62,6 @@
 
       categories.value = rawCats.map(c => ({ ...c, name: ensureDict(c.name, "Névtelen galéria") }));
 
-      // MÓDOSÍTÁS: Title is Dictionary!
       images.value = rawImages.map(i => ({
         ...i,
         category: ensureDict(i.category, "Egyéb"),
@@ -164,8 +162,8 @@
     addToQueue(img.id, async () => {
       await api.put(`/api/Gallery/${img.id}`, {
         id: img.id,
-        title: img.title, // Dictionary mentése
-        categoryName: img.category,
+        title: img.title, 
+        category: img.category,
         orderIndex: img.orderIndex
       });
     });
@@ -319,7 +317,6 @@
 </template>
 
 <style scoped>
-  /* Stílusok maradnak a régiek, csak a magic-btn osztályokat adjuk hozzá */
   .gallery-container {
     max-width: 1200px;
     margin: 0 auto;
@@ -375,9 +372,6 @@
     transform: scale(1.1);
     text-shadow: 0 0 5px #d4af37;
   }
-
-  /* ... A többi stílus változatlan marad a korábbi verziódból ... */
-  /* (Csak a biztonság kedvéért a korábbi stílusokat ne töröld ki, csak illeszd be a magic-btn-t) */
 
   .btn {
     border: none;
