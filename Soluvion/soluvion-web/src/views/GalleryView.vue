@@ -8,6 +8,7 @@
   const { locale } = useI18n();
   const isLoggedIn = inject('isLoggedIn');
 
+  // Globális nyelv
   const currentLang = computed(() => locale.value);
 
   const images = ref([]);
@@ -29,6 +30,7 @@
     return { [currentLang.value]: field || defaultValue };
   };
 
+  // --- AI FORDÍTÁS (SaaS DINAMIKUS ALAPNYELVVEL) ---
   const translateField = async (obj, fieldName, targetLang) => {
     const defaultLang = company.value?.defaultLanguage || 'hu';
     const sourceText = obj[fieldName][defaultLang] || obj[fieldName][currentLang.value];
@@ -37,6 +39,7 @@
 
     const loadingKey = `${obj.id || 'new'}-${fieldName}-${targetLang}`;
     translatingField.value = loadingKey;
+
     try {
       const response = await api.post('/api/Translation', { text: sourceText, targetLanguage: targetLang });
       if (response.data && response.data.translatedText) {
@@ -50,7 +53,7 @@
   const triggerTranslation = (obj, fieldName) => {
     const defaultLang = company.value?.defaultLanguage || 'hu';
     if (currentLang.value === defaultLang) {
-      alert(`A(z) '${defaultLang}' az alapértelmezett nyelv, erről fordítunk a többire! Kérlek, válts egy másik nyelvre a fejlécben.`);
+      alert(`A(z) '${defaultLang}' az alapértelmezett nyelv, erről fordítunk a többire! Kérlek, válts egy másik nyelvre a fejlécben, hogy fordítani tudj.`);
       return;
     }
     translateField(obj, fieldName, currentLang.value);
@@ -169,7 +172,7 @@
     addToQueue(img.id, async () => {
       await api.put(`/api/Gallery/${img.id}`, {
         id: img.id,
-        title: img.title, 
+        title: img.title,
         category: img.category,
         orderIndex: img.orderIndex
       });
@@ -251,7 +254,7 @@
                          placeholder="Új galéria" />
                   <h3 v-else class="cat-title">{{ group.name[currentLang] }}</h3>
 
-                  <button v-if="isLoggedIn && currentLang !== 'hu' && group.id !== -1"
+                  <button v-if="isLoggedIn && group.id !== -1"
                           @click="triggerTranslation(group, 'name')"
                           class="magic-btn" title="Fordítás">
                     <i v-if="translatingField === `${group.id}-name-${currentLang}`" class="pi pi-spin pi-spinner"></i>
@@ -286,7 +289,7 @@
                            placeholder="Cím..."
                            class="caption-input" />
 
-                    <button v-if="currentLang !== 'hu'"
+                    <button v-if="isLoggedIn"
                             @click="triggerTranslation(img, 'title')"
                             class="magic-btn small-magic" title="Fordítás">
                       <i v-if="translatingField === `${img.id}-title-${currentLang}`" class="pi pi-spin pi-spinner"></i>
@@ -356,7 +359,7 @@
   }
 
   .magic-btn {
-    opacity: 0;
+    opacity: 0.3; /* --- ITT AZ ÁTLÁTSZÓSÁG --- */
     background: none;
     border: none;
     color: #d4af37;
