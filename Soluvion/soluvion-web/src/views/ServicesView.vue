@@ -17,6 +17,8 @@
   const currentLang = computed(() => locale.value);
 
   const translatingField = ref(null);
+
+  // ITT VAN A GLOBÁLIS VÁLTOZÓNK (az App.vue-ból kapjuk)
   const company = inject('company', ref(null));
   const saveQueues = new Map();
 
@@ -49,9 +51,12 @@
     return { [currentLang.value]: field || defaultValue };
   };
 
-  // --- AI FORDÍTÁS ---
+  // --- AI FORDÍTÁS (SaaS DINAMIKUS ALAPNYELVVEL) ---
   const translateField = async (obj, fieldName, targetLang) => {
-    const sourceText = obj[fieldName]['hu'] || obj[fieldName][currentLang.value];
+    const defaultLang = company.value?.defaultLanguage || 'hu';
+    // A cég alapértelmezett nyelvét vesszük alapul, vagy azt a nyelvet, amin épp áll a UI
+    const sourceText = obj[fieldName][defaultLang] || obj[fieldName][currentLang.value];
+
     if (!sourceText || sourceText.trim() === '') return;
 
     const loadingKey = `${obj.id || 'new'}-${fieldName}-${targetLang}`;
@@ -78,8 +83,9 @@
   };
 
   const triggerTranslation = (obj, fieldName) => {
-    if (currentLang.value === 'hu') {
-      alert("Magyarról magyarra nem fordítunk! Válts nyelvet fentről.");
+    const defaultLang = company.value?.defaultLanguage || 'hu';
+    if (currentLang.value === defaultLang) {
+      alert(`A(z) '${defaultLang}' az alapértelmezett nyelv, erről fordítunk a többire! Kérlek, válts egy másik nyelvre a fejlécben, hogy fordítani tudj.`);
       return;
     }
     translateField(obj, fieldName, currentLang.value);
@@ -88,14 +94,17 @@
   /* --- ADATTRANSZFORMÁCIÓ --- */
   const buildNestedStructure = (flatServices) => {
     const groups = [];
+    const defaultLang = company.value?.defaultLanguage || 'hu';
+
     flatServices.sort((a, b) => a.orderIndex - b.orderIndex);
 
     flatServices.forEach(service => {
       const catDict = ensureDict(service.category, "Egyéb");
-      const catNameStr = catDict['hu'] || "Egyéb"; // Csoportosításhoz a magyart (vagy defaultot) használjuk kulcsként
+      // Csoportosításhoz a cég alapértelmezett nyelvét használjuk kulcsként
+      const catNameStr = catDict[defaultLang] || catDict['hu'] || "Egyéb";
 
       let group = groups.find(g => {
-        const gName = g.categoryName['hu'] || "";
+        const gName = g.categoryName[defaultLang] || g.categoryName['hu'] || "";
         return gName === catNameStr;
       });
 
@@ -131,7 +140,6 @@
       // 2. BIZTONSÁG: Ha nem tömb, akkor ne próbáljunk forEach-elni
       if (!Array.isArray(rawServices)) {
         console.error("KRITIKUS HIBA: A szerver nem tömböt küldött!", rawServices);
-        // Fallback, ha véletlenül .NET $values wrapperbe csomagolta
         if (rawServices && Array.isArray(rawServices.$values)) {
           processServices(rawServices.$values);
         }
@@ -154,7 +162,6 @@
         service.variants = sortVariants(service.variants);
         service.variants.forEach(v => {
           if (v.price === 0) v.price = null;
-          // FONTOS: A variantName most már Dictionary, biztosítjuk a formátumot
           v.variantName = ensureDict(v.variantName, "Extra");
         });
       }
@@ -240,11 +247,9 @@
     await Promise.all(promises);
   };
 
-  // Variáns fejléc módosítása (Most már dictionary-t kezel)
   const updateGroupVariantName = async (group, variantIndex) => {
     const promises = group.items.map(service => {
       if (service.variants && service.variants[variantIndex]) {
-        // Átmásoljuk a teljes szótárat a fejlécből a sorokba
         service.variants[variantIndex].variantName = JSON.parse(JSON.stringify(group.headerVariants[variantIndex].variantName));
         return saveService(service, false);
       }
@@ -260,7 +265,6 @@
     event.target.style.opacity = '0.5';
   };
 
-  // (Note Drag logika maradhat, csak a dragged változók kellenek)
   const draggedNoteContent = ref(null);
   const draggedFromServiceId = ref(null);
 
@@ -314,7 +318,6 @@
       category: { [currentLang.value]: "ÚJ KATEGÓRIA" },
       defaultPrice: 0,
       orderIndex: 99999,
-      // Variant név is dictionary!
       variants: [{ variantName: { [currentLang.value]: "Normál" }, price: 0, duration: 30 }],
       description: { [currentLang.value]: "" }
     };
@@ -325,7 +328,6 @@
     let variants = [{ variantName: { [currentLang.value]: "Normál" }, price: 0, duration: 30 }];
     if (group.headerVariants && group.headerVariants.length > 0) {
       variants = group.headerVariants.map(v => ({
-        // Deep copy a szótárra
         variantName: JSON.parse(JSON.stringify(v.variantName)),
         price: 0,
         duration: v.duration
@@ -409,8 +411,8 @@
                          :placeholder="$t('services.categoryNamePlaceholder')" />
                   <span v-else class="category-display">{{ group.categoryName[currentLang] }}</span>
 
-                  <button v-if="isLoggedIn && currentLang !== 'hu'"
-                          @click="triggerTranslation(group.categoryName, 'categoryName')"
+                  <button v-if="isLoggedIn"
+                          @click="triggerTranslation(group, 'categoryName')"
                           class="magic-btn" title="Fordítás">
                     <i v-if="translatingField === `${group.id || 'cat'}-categoryName-${currentLang}`" class="pi pi-spin pi-spinner"></i>
                     <i v-else class="pi pi-sparkles"></i>
@@ -427,8 +429,8 @@
                               class="header-variant-input"
                               rows="2"></textarea>
 
-                    <button v-if="currentLang !== 'hu'"
-                            @click="triggerTranslation(v.variantName, 'variantName')"
+                    <button v-if="isLoggedIn"
+                            @click="triggerTranslation(v, 'variantName')"
                             class="magic-btn small-magic" title="Fordítás">
                       <i class="pi pi-sparkles"></i>
                     </button>
@@ -457,7 +459,7 @@
                                   rows="1"></textarea>
                         <span v-else class="name-text">{{ service.name[currentLang] }}</span>
 
-                        <button v-if="isLoggedIn && currentLang !== 'hu'"
+                        <button v-if="isLoggedIn"
                                 @click="triggerTranslation(service, 'name')"
                                 class="magic-btn" title="Fordítás">
                           <i v-if="translatingField === `${service.id}-name-${currentLang}`" class="pi pi-spin pi-spinner"></i>
@@ -505,7 +507,7 @@
                                 :placeholder="$t('services.notePlaceholder')"></textarea>
                       <span v-else class="note-text">{{ service.description[currentLang] }}</span>
 
-                      <button v-if="isLoggedIn && currentLang !== 'hu'"
+                      <button v-if="isLoggedIn"
                               @click="triggerTranslation(service, 'description')"
                               class="magic-btn" title="Fordítás">
                         <i v-if="translatingField === `${service.id}-description-${currentLang}`" class="pi pi-spin pi-spinner"></i>
@@ -533,7 +535,6 @@
 </template>
 
 <style scoped>
-  /* A stílusok nagyrészt változatlanok */
   .smart-container {
     max-width: 1000px;
     margin: 0 auto;
@@ -551,7 +552,6 @@
     letter-spacing: 1px;
   }
 
-  /* MAGIC BTN */
   .input-with-tools {
     position: relative;
     width: 100%;
@@ -560,7 +560,7 @@
   }
 
   .magic-btn {
-    opacity: 0;
+    opacity: 0.3; /* JAVÍTVA 0.3-RA, így mindig halványan látszik */
     background: none;
     border: none;
     color: #d4af37;

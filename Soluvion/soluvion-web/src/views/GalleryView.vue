@@ -30,8 +30,11 @@
   };
 
   const translateField = async (obj, fieldName, targetLang) => {
-    const sourceText = obj[fieldName]['hu'] || obj[fieldName][currentLang.value];
+    const defaultLang = company.value?.defaultLanguage || 'hu';
+    const sourceText = obj[fieldName][defaultLang] || obj[fieldName][currentLang.value];
+
     if (!sourceText || sourceText.trim() === '') return;
+
     const loadingKey = `${obj.id || 'new'}-${fieldName}-${targetLang}`;
     translatingField.value = loadingKey;
     try {
@@ -45,7 +48,11 @@
   };
 
   const triggerTranslation = (obj, fieldName) => {
-    if (currentLang.value === 'hu') { alert("Válts nyelvet fentről!"); return; }
+    const defaultLang = company.value?.defaultLanguage || 'hu';
+    if (currentLang.value === defaultLang) {
+      alert(`A(z) '${defaultLang}' az alapértelmezett nyelv, erről fordítunk a többire! Kérlek, válts egy másik nyelvre a fejlécben.`);
+      return;
+    }
     translateField(obj, fieldName, currentLang.value);
   };
 
