@@ -498,7 +498,7 @@
                     </div>
                   </div>
 
-                  <div v-if="service.description && service.description[currentLang]" class="note-block"
+                  <div v-if="service.description && (service.description[currentLang] || (isLoggedIn && service.description[company?.defaultLanguage || 'hu']))" class="note-block"
                        :draggable="isLoggedIn"
                        @dragstart="(e) => onNoteDragStart(e, service)"
                        @dragend="onNoteDragEnd">
@@ -511,7 +511,7 @@
                                 @change="saveService(service, false)"
                                 @input="autoResize"
                                 class="note-input"
-                                :placeholder="$t('services.notePlaceholder')"></textarea>
+                                :placeholder="(currentLang !== (company?.defaultLanguage || 'hu') && service.description[company?.defaultLanguage || 'hu']) ? service.description[company?.defaultLanguage || 'hu'] : $t('services.notePlaceholder')"></textarea>
                       <span v-else class="note-text">{{ service.description[currentLang] }}</span>
 
                       <button v-if="isLoggedIn"
