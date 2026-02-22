@@ -161,6 +161,23 @@
     return groups;
   };
 
+  const processServices = (serviceList) => {
+    serviceList.forEach(service => {
+      if (service.variants) {
+        service.variants = sortVariants(service.variants);
+        service.variants.forEach(v => {
+          if (v.price === 0) v.price = null;
+          v.variantName = ensureDict(v.variantName, "Extra");
+        });
+      }
+      service.name = ensureDict(service.name, "Névtelen");
+      service.category = ensureDict(service.category, "Egyéb");
+      service.description = ensureDict(service.description, "");
+    });
+    categories.value = buildNestedStructure(serviceList);
+    resizeAllTextareas(); // Méretezés adatbetöltés után!
+  };
+
   /* --- API MŰVELETEK --- */
   const fetchServices = async () => {
     loading.value = true;
@@ -177,23 +194,6 @@
       processServices(rawServices);
     } catch (error) { console.error('Hiba a betolteskor:', error); }
     finally { loading.value = false; }
-  };
-
-  const processServices = (serviceList) => {
-    serviceList.forEach(service => {
-      if (service.variants) {
-        service.variants = sortVariants(service.variants);
-        service.variants.forEach(v => {
-          if (v.price === 0) v.price = null;
-          v.variantName = ensureDict(v.variantName, "Extra");
-        });
-      }
-      service.name = ensureDict(service.name, "Névtelen");
-      service.category = ensureDict(service.category, "Egyéb");
-      service.description = ensureDict(service.description, "");
-    });
-    categories.value = buildNestedStructure(serviceList);
-    resizeAllTextareas(); // Méretezés adatbetöltés után!
   };
 
   watch(() => company?.value?.id, (newId) => { if (newId) fetchServices(); }, { immediate: true });
