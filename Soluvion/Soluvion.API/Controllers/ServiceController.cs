@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
 using Soluvion.API.Models;
-using Soluvion.API.Models.DTOs; // ServiceDto
+using Soluvion.API.Models.DTOs;
 using Soluvion.API.Services;
 
 namespace Soluvion.API.Controllers
@@ -39,62 +39,53 @@ namespace Soluvion.API.Controllers
             var currentCompany = _tenantContext.CurrentCompany;
             if (currentCompany == null) return BadRequest("Tenant Context hiányzik.");
 
-            // Adatbázisból lekérés
             var services = await _context.Services
                 .Include(s => s.Variants)
                 .Where(s => s.CompanyId == currentCompany.Id)
                 .OrderBy(s => s.OrderIndex)
                 .ToListAsync();
 
-            // Mapping Entity -> DTO (Kézi konverzió a biztonságért)
-            var dtos = services.Select(s => new ServiceDto
-            {
-                Id = s.Id,
-                CompanyId = s.CompanyId,
-                Name = s.Name,
-                Category = s.Category,
-                Description = s.Description,
-                DefaultPrice = s.DefaultPrice,
-                DefaultDuration = s.DefaultDuration,
-                OrderIndex = s.OrderIndex,
-                Variants = s.Variants.Select(v => new ServiceVariantDto
-                {
-                    Id = v.Id,
-                    VariantName = v.VariantName,
-                    Price = v.Price,
-                    Duration = v.Duration
-                }).ToList()
-            }).ToList();
-
+            var dtos = services.Select(MapToDto).ToList();
             return Ok(dtos);
         }
 
-        // POST, PUT, DELETE metódusoknál is érdemes DTO-t fogadni, 
-        // de a mostani hiba szempontjából a GET a kritikus. 
-        // A te meglévő POST/PUT kódod működhet, ha a kliens jó JSON-t küld,
-        // de itt hagyom a biztonságos Entity verziót, amit már megírtunk:
-
         [HttpPost]
         [Authorize]
-        public async Task<ActionResult<Service>> PostService(Service service)
+        public async Task<ActionResult<ServiceDto>> PostService([FromBody] ServiceDto dto)
         {
             int userCompanyId = GetUserCompanyId();
             if (userCompanyId == 0) return Unauthorized();
 
-            service.CompanyId = userCompanyId;
-            if (service.Category == null || !service.Category.Any())
-                service.Category = new Dictionary<string, string> { { "hu", "Egyéb" } };
+            // Új Entity létrehozása DTO-ból
+            var service = new Service
+            {
+                CompanyId = userCompanyId,
+                Name = dto.Name ?? new Dictionary<string, string> { { "hu", "Új szolgáltatás" } },
+                Category = dto.Category != null && dto.Category.Any() ? dto.Category : new Dictionary<string, string> { { "hu", "Egyéb" } },
+                Description = dto.Description ?? new Dictionary<string, string>(),
+                DefaultPrice = dto.DefaultPrice ?? 0,
+                DefaultDuration = dto.DefaultDuration,
+                OrderIndex = dto.OrderIndex,
+                Variants = dto.Variants?.Select(v => new ServiceVariant
+                {
+                    VariantName = v.VariantName ?? new Dictionary<string, string> { { "hu", "Normál" } },
+                    Price = v.Price ?? 0,
+                    Duration = v.Duration
+                }).ToList() ?? new List<ServiceVariant>()
+            };
 
             _context.Services.Add(service);
             await _context.SaveChangesAsync();
-            return CreatedAtAction("GetServices", new { id = service.Id }, service);
+
+            // Visszaadjuk az elmentett objektumot DTO-ként (immár a generált DB ID-kkal)
+            return CreatedAtAction(nameof(GetServices), new { id = service.Id }, MapToDto(service));
         }
 
         [HttpPut("{id}")]
         [Authorize]
-        public async Task<IActionResult> PutService(int id, Service service)
+        public async Task<IActionResult> PutService(int id, [FromBody] ServiceDto dto)
         {
-            if (id != service.Id) return BadRequest();
+            if (id != dto.Id) return BadRequest("Az ID nem egyezik.");
             int userCompanyId = GetUserCompanyId();
 
             var existing = await _context.Services
@@ -103,36 +94,52 @@ namespace Soluvion.API.Controllers
 
             if (existing == null || existing.CompanyId != userCompanyId) return NotFound();
 
-            // Update logic
-            existing.Name = service.Name;
-            existing.Category = service.Category;
-            existing.Description = service.Description;
-            existing.DefaultPrice = service.DefaultPrice;
-            existing.DefaultDuration = service.DefaultDuration;
-            existing.OrderIndex = service.OrderIndex;
+            // 1. Alap adatok frissítése
+            existing.Name = dto.Name;
+            existing.Category = dto.Category;
+            existing.Description = dto.Description;
+            existing.DefaultPrice = dto.DefaultPrice ?? 0;
+            existing.DefaultDuration = dto.DefaultDuration;
+            existing.OrderIndex = dto.OrderIndex;
 
-            // Variants merge logic (meglévő kódod alapján)
-            var incomingIds = service.Variants.Select(v => v.Id).ToList();
+            // 2. Variánsok törlése (ami nincs benne az új listában, de az adatbázisban még ott van)
+            var incomingIds = dto.Variants?.Select(v => v.Id).ToList() ?? new List<int>();
             var toDelete = existing.Variants.Where(v => v.Id != 0 && !incomingIds.Contains(v.Id)).ToList();
             _context.ServiceVariants.RemoveRange(toDelete);
 
-            foreach (var v in service.Variants)
+            // 3. Variánsok hozzáadása / frissítése
+            if (dto.Variants != null)
             {
-                if (v.Id == 0) existing.Variants.Add(v);
-                else
+                foreach (var vDto in dto.Variants)
                 {
-                    var existVar = existing.Variants.FirstOrDefault(x => x.Id == v.Id);
-                    if (existVar != null)
+                    if (vDto.Id == 0)
                     {
-                        existVar.VariantName = v.VariantName;
-                        existVar.Price = v.Price;
-                        existVar.Duration = v.Duration;
+                        // BIZTONSÁGOS LÉTREHOZÁS: Új példányt adunk az Entity Framework-nek
+                        existing.Variants.Add(new ServiceVariant
+                        {
+                            VariantName = vDto.VariantName,
+                            Price = vDto.Price ?? 0,
+                            Duration = vDto.Duration
+                        });
+                    }
+                    else
+                    {
+                        // Frissítés
+                        var existVar = existing.Variants.FirstOrDefault(x => x.Id == vDto.Id);
+                        if (existVar != null)
+                        {
+                            existVar.VariantName = vDto.VariantName;
+                            existVar.Price = vDto.Price ?? 0;
+                            existVar.Duration = vDto.Duration;
+                        }
                     }
                 }
             }
 
             await _context.SaveChangesAsync();
-            return Ok(existing);
+
+            // Visszaküldjük a frissített állapotot DTO-ként a Frontennek
+            return Ok(MapToDto(existing));
         }
 
         [HttpDelete("{id}")]
@@ -146,6 +153,29 @@ namespace Soluvion.API.Controllers
             _context.Services.Remove(s);
             await _context.SaveChangesAsync();
             return NoContent();
+        }
+
+        // --- SEGÉDMETÓDUS ---
+        private ServiceDto MapToDto(Service s)
+        {
+            return new ServiceDto
+            {
+                Id = s.Id,
+                CompanyId = s.CompanyId,
+                Name = s.Name,
+                Category = s.Category,
+                Description = s.Description,
+                DefaultPrice = s.DefaultPrice,
+                DefaultDuration = s.DefaultDuration,
+                OrderIndex = s.OrderIndex,
+                Variants = s.Variants?.Select(v => new ServiceVariantDto
+                {
+                    Id = v.Id,
+                    VariantName = v.VariantName,
+                    Price = v.Price,
+                    Duration = v.Duration
+                }).ToList() ?? new List<ServiceVariantDto>()
+            };
         }
     }
 }
