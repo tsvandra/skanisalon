@@ -175,7 +175,6 @@
       service.description = ensureDict(service.description, "");
     });
     categories.value = buildNestedStructure(serviceList);
-    resizeAllTextareas(); // Méretezés adatbetöltés után!
   };
 
   /* --- API MŰVELETEK --- */
@@ -193,7 +192,10 @@
       }
       processServices(rawServices);
     } catch (error) { console.error('Hiba a betolteskor:', error); }
-    finally { loading.value = false; }
+    finally {
+      loading.value = false;
+      resizeAllTextareas();
+    }
   };
 
   watch(() => company?.value?.id, (newId) => { if (newId) fetchServices(); }, { immediate: true });
