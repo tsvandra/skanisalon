@@ -33,12 +33,30 @@
     return val.toLocaleString('hu-HU', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
   };
 
+  // Manuális gépeléskori méretezés
   const autoResize = (event) => {
     if (event && event.target) {
       event.target.style.height = 'auto';
       event.target.style.height = event.target.scrollHeight + 'px';
     }
   };
+
+  // ÚJ: Minden mező automatikus méretezése (Adatbetöltéskor, nyelvváltáskor)
+  const resizeAllTextareas = async () => {
+    await nextTick(); // Megvárjuk, amíg a Vue frissíti a képernyőt (DOM-ot)
+    const textareas = document.querySelectorAll('textarea');
+    textareas.forEach(el => {
+      el.style.height = 'auto';
+      if (el.scrollHeight > 0) {
+        el.style.height = el.scrollHeight + 'px';
+      }
+    });
+  };
+
+  // Ha nyelvet váltunk, méretezzük újra a dobozokat a másik nyelv szöveghosszához
+  watch(currentLang, () => {
+    resizeAllTextareas();
+  });
 
   const ensureDict = (field, defaultValue = "") => {
     if (field && typeof field === 'object' && field !== null) return field;
@@ -47,7 +65,6 @@
 
   /* --- ÚJ TISZTA AI FORDÍTÓ FÜGGVÉNYEK --- */
 
-  // 1. Szolgáltatás mezeje (Név vagy Leírás)
   const translateServiceField = async (service, fieldName) => {
     const defaultLang = company.value?.defaultLanguage || 'hu';
     if (currentLang.value === defaultLang) {
@@ -62,13 +79,13 @@
       const response = await apiClient.post('/api/Translation', { text: sourceText, targetLanguage: currentLang.value });
       if (response.data && response.data.translatedText) {
         service[fieldName][currentLang.value] = response.data.translatedText;
+        resizeAllTextareas(); // Méretezés a fordítás után
         await saveService(service, false);
       }
     } catch (err) { console.error("Fordítási hiba:", err); alert("Nem sikerült a fordítás."); }
     finally { translatingField.value = null; }
   };
 
-  // 2. Kategória neve (Egész csoport mentése)
   const translateCategoryName = async (group) => {
     const defaultLang = company.value?.defaultLanguage || 'hu';
     if (currentLang.value === defaultLang) {
@@ -83,13 +100,12 @@
       const response = await apiClient.post('/api/Translation', { text: sourceText, targetLanguage: currentLang.value });
       if (response.data && response.data.translatedText) {
         group.categoryName[currentLang.value] = response.data.translatedText;
-        await updateCategoryName(group); // Tömeges mentés a kategóriára!
+        await updateCategoryName(group);
       }
     } catch (err) { console.error("Fordítási hiba:", err); alert("Nem sikerült a fordítás."); }
     finally { translatingField.value = null; }
   };
 
-  // 3. Variáns neve (Egész oszlop mentése)
   const translateHeaderVariant = async (group, variant, vIndex) => {
     const defaultLang = company.value?.defaultLanguage || 'hu';
     if (currentLang.value === defaultLang) {
@@ -104,7 +120,8 @@
       const response = await apiClient.post('/api/Translation', { text: sourceText, targetLanguage: currentLang.value });
       if (response.data && response.data.translatedText) {
         variant.variantName[currentLang.value] = response.data.translatedText;
-        await updateGroupVariantName(group, vIndex); // Tömeges mentés a variáns oszlopra!
+        resizeAllTextareas(); // Méretezés a fordítás után
+        await updateGroupVariantName(group, vIndex);
       }
     } catch (err) { console.error("Fordítási hiba:", err); alert("Nem sikerült a fordítás."); }
     finally { translatingField.value = null; }
@@ -176,6 +193,7 @@
       service.description = ensureDict(service.description, "");
     });
     categories.value = buildNestedStructure(serviceList);
+    resizeAllTextareas(); // Méretezés adatbetöltés után!
   };
 
   watch(() => company?.value?.id, (newId) => { if (newId) fetchServices(); }, { immediate: true });
@@ -210,6 +228,7 @@
           updated.category = ensureDict(updated.category);
           updated.description = ensureDict(updated.description);
           Object.assign(serviceItem, updated);
+          resizeAllTextareas(); // Bónusz biztonság visszatéréskor
         }
       } catch (err) { console.error("Hiba a mentesnel:", err); }
     });
@@ -308,12 +327,14 @@
         break;
       }
     }
+    resizeAllTextareas();
     await saveService(targetService, true);
   };
 
   const toggleNote = async (service) => {
     if (!service.description[currentLang.value]) {
       service.description[currentLang.value] = " ";
+      resizeAllTextareas(); // Megjelenés után méretezzük be
     }
   };
 
