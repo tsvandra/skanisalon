@@ -1,8 +1,16 @@
 #!/bin/sh
 
-echo "KÜLDETÉS INDÍTÁSA: Éles adatbázis klónozása a Játszótérre (PROD -> DEV)..."
+TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
+BACKUP_FILE="skanisalon_backup_${TIMESTAMP}.sql"
 
-# Ez a sor letölti az éles adatokat, és azonnal betölti a fejlesztőibe
-pg_dump -d "postgresql://postgres:uelIqQhiDpmmdFoUNVzEitQMbFbEVYsM@yamabiko.proxy.rlwy.net:12946/railway" --clean | psql -d "postgresql://postgres:wIUNlrNDUERNcnKcjSAENsYpEioDqaQW@nozomi.proxy.rlwy.net:36230/railway"
+echo "Mentés indítása: $BACKUP_FILE"
+# Itt figyeld, hogy a $DB_URL pontosan legyen írva
+pg_dump -d "$DB_URL" > "$BACKUP_FILE"
 
-echo "KÜLDETÉS TELJESÍTVE! Minden adat átmásolva!"
+echo "Feltöltés a Backblaze B2-re..."
+aws s3 cp "$BACKUP_FILE" "s3://$S3_BUCKET/$BACKUP_FILE" --endpoint-url "https://$S3_ENDPOINT"
+
+echo "Kész! Takarítás..."
+rm "$BACKUP_FILE"
+
+echo "A mentés sikeresen befejeződött!"
