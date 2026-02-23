@@ -30,11 +30,16 @@
     return { [currentLang.value]: field || defaultValue };
   };
 
+  // --- AI FORDÍTÁS (SaaS DINAMIKUS ALAPNYELVVEL) ---
   const translateField = async (obj, fieldName, targetLang) => {
-    const sourceText = obj[fieldName]['hu'] || obj[fieldName][currentLang.value];
+    const defaultLang = company.value?.defaultLanguage || 'hu';
+    const sourceText = obj[fieldName][defaultLang] || obj[fieldName][currentLang.value];
+
     if (!sourceText || sourceText.trim() === '') return;
+
     const loadingKey = `${obj.id || 'new'}-${fieldName}-${targetLang}`;
     translatingField.value = loadingKey;
+
     try {
       const response = await api.post('/api/Translation', { text: sourceText, targetLanguage: targetLang });
       if (response.data && response.data.translatedText) {
@@ -46,7 +51,11 @@
   };
 
   const triggerTranslation = (obj, fieldName) => {
-    if (currentLang.value === 'hu') { alert("Válts nyelvet fentről!"); return; }
+    const defaultLang = company.value?.defaultLanguage || 'hu';
+    if (currentLang.value === defaultLang) {
+      alert(`A(z) '${defaultLang}' az alapértelmezett nyelv, erről fordítunk a többire! Kérlek, válts egy másik nyelvre a fejlécben, hogy fordítani tudj.`);
+      return;
+    }
     translateField(obj, fieldName, currentLang.value);
   };
 
@@ -63,7 +72,6 @@
 
       categories.value = rawCats.map(c => ({ ...c, name: ensureDict(c.name, "Névtelen galéria") }));
 
-      // MÓDOSÍTÁS: Title is Dictionary!
       images.value = rawImages.map(i => ({
         ...i,
         category: ensureDict(i.category, "Egyéb"),
@@ -164,8 +172,8 @@
     addToQueue(img.id, async () => {
       await api.put(`/api/Gallery/${img.id}`, {
         id: img.id,
-        title: img.title, // Dictionary mentése
-        categoryName: img.category,
+        title: img.title,
+        category: img.category,
         orderIndex: img.orderIndex
       });
     });
@@ -246,8 +254,8 @@
                          placeholder="Új galéria" />
                   <h3 v-else class="cat-title">{{ group.name[currentLang] }}</h3>
 
-                  <button v-if="isLoggedIn && currentLang !== 'hu' && group.id !== -1"
-                          @click="triggerTranslation(group.name, 'name')"
+                  <button v-if="isLoggedIn && group.id !== -1"
+                          @click="triggerTranslation(group, 'name')"
                           class="magic-btn" title="Fordítás">
                     <i v-if="translatingField === `${group.id}-name-${currentLang}`" class="pi pi-spin pi-spinner"></i>
                     <i v-else class="pi pi-sparkles"></i>
@@ -281,8 +289,8 @@
                            placeholder="Cím..."
                            class="caption-input" />
 
-                    <button v-if="currentLang !== 'hu'"
-                            @click="triggerTranslation(img.title, 'title')"
+                    <button v-if="isLoggedIn"
+                            @click="triggerTranslation(img, 'title')"
                             class="magic-btn small-magic" title="Fordítás">
                       <i v-if="translatingField === `${img.id}-title-${currentLang}`" class="pi pi-spin pi-spinner"></i>
                       <i v-else class="pi pi-sparkles"></i>
@@ -319,7 +327,6 @@
 </template>
 
 <style scoped>
-  /* Stílusok maradnak a régiek, csak a magic-btn osztályokat adjuk hozzá */
   .gallery-container {
     max-width: 1200px;
     margin: 0 auto;
@@ -352,7 +359,7 @@
   }
 
   .magic-btn {
-    opacity: 0;
+    opacity: 0.3; /* --- ITT AZ ÁTLÁTSZÓSÁG --- */
     background: none;
     border: none;
     color: #d4af37;
@@ -375,9 +382,6 @@
     transform: scale(1.1);
     text-shadow: 0 0 5px #d4af37;
   }
-
-  /* ... A többi stílus változatlan marad a korábbi verziódból ... */
-  /* (Csak a biztonság kedvéért a korábbi stílusokat ne töröld ki, csak illeszd be a magic-btn-t) */
 
   .btn {
     border: none;

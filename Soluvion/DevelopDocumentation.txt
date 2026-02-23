@@ -304,5 +304,38 @@ A fejlesztés során kivezettük a deprecated komponenseket:
 - Dropdown -> Select
 - AccordionTab -> AccordionPanel
 
+--------------------------------------------------------------------------------
+
+=== FEATURE: DTO KONSZOLIDÁCIÓ ÉS STABILIZÁLÁS (2026.02.18) ===
+
+A gyors fejlesztés során fellépő kódminőség-romlás ("spaghetti code") korrigálása megtörtént.
+
+1.  DTO Struktúra Helyreállítása:
+    - Probléma: A TranslationController-ben inline (fájlon belüli) osztálydefiníciók jelentek meg.
+    - Megoldás: Létrehozva a `Soluvion.API/Models/DTOs/TranslationDto.cs`. Minden fordítással kapcsolatos DTO (Request, Status, Override) ide került átmozgatásra.
+
+2.  Elnevezési Konvenció Fix (Key vs TranslationKey):
+    - Probléma: A Frontend 'Key'-ként küldte, az Adatbázis 'TranslationKey'-ként várta az azonosítót.
+    - [cite_start]Döntés: Az Adatbázis és Modell szinten a `TranslationKey` a mérvadó[cite: 132]. A Controller/DTO réteg végzi a megfeleltetést, ha a Frontend még a régi formátumot küldi.
+
+3.  JSONB Implementáció (Véglegesítés):
+    - Az Entity Framework konverziós hibáinak elhárítása végett a `Program.cs`-ben engedélyezve lett a `EnableDynamicJson()`, ÉS az `AppDbContext`-ben explicit JSON szerializációs konverterek kerültek beépítésre a `Service`, `GalleryImage` és `ServiceVariant` entitásokhoz.
+
+
+--------------------------------------------------------------------------------
+
+=== FEATURE: SaaS LOKALIZÁCIÓ UX ÉS DTO STABILIZÁLÁS (2026.02.23) ===
+
+1. Dinamikus Alapnyelv (Frontend):
+   - A komponensek (ServicesView, GalleryView) nem használhatnak beégetett 'hu' fallbacket.
+   - Minden esetben a `company.value?.defaultLanguage || 'hu'` a forrás (Source of Truth). A AI fordítás is ebből az alapnyelvből dolgozik a célnyelvre.
+   
+2. UI/UX Finomhangolás:
+   - A többnyelvű megjegyzés dobozok (textarea) dinamikusan jelennek meg: ha a célnyelv még üres, háttérszövegként (placeholder) az alapértelmezett nyelv szövegét mutatják.
+   - A textareák automatikus méretezése (autoResize) az aszinkron adatbetöltés és a nyelvváltás Vue életciklus (nextTick) eseményeihez lett kötve, elkerülve a sorcsúszásokat.
+
+3. Entity Framework Core Collection Tracking Fix:
+   - A Service (és Variant) mentéseknél fellépő 400 Bad Request hibák kiküszöbölve. A PUT/POST végpontok kizárólag DTO-kat fogadnak, az al-entitások (Id=0) manuális leképezésével elkerülve az EF Core 'detached entity' hibáit.
 
 ================================================================================
+

@@ -6,6 +6,7 @@ using Soluvion.API.Models;
 using Soluvion.API.Models.DTOs;
 using Soluvion.API.Models.Enums;
 using Soluvion.API.Services;
+using System.Security.Claims;
 
 namespace Soluvion.API.Controllers
 {
@@ -14,17 +15,53 @@ namespace Soluvion.API.Controllers
     public class TranslationController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private readonly IServiceScopeFactory _scopeFactory; // Ez kell a háttérszálhoz!
+        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly ITranslationService _translationService;
 
-        public TranslationController(AppDbContext context, IServiceScopeFactory scopeFactory)
+        public TranslationController(AppDbContext context, IServiceScopeFactory scopeFactory, ITranslationService translationService)
         {
             _context = context;
             _scopeFactory = scopeFactory;
+            _translationService = translationService;
         }
 
-        // 1. Státuszok lekérdezése (Admin felülethez)
+        // --- VARÁZSPÁLCA VÉGPONT ---
+        [HttpPost]
+        [Authorize]
+        public async Task<IActionResult> TranslateSingleText([FromBody] TranslationRequestDto request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Text)) return BadRequest("Nincs szöveg");
+
+            try
+            {
+                var companyIdClaim = User.FindFirst("CompanyId");
+                if (companyIdClaim == null || !int.TryParse(companyIdClaim.Value, out int companyId))
+                {
+                    return Unauthorized("Érvénytelen token: hiányzó CompanyId.");
+                }
+
+                // BIZTONSÁGI JAVÍTÁS: Nem hivatkozunk a company.Type-ra, hogy elkerüljük a Null Reference hibát.
+                string companyType = "General Business";
+
+                string translatedText = await _translationService.TranslateTextAsync(
+                    request.Text,
+                    request.TargetLanguage,
+                    "general",
+                    companyType
+                );
+
+                return Ok(new { translatedText = translatedText });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fordítási hiba: {ex.Message}");
+                return StatusCode(500, "Hiba történt a fordítás során.");
+            }
+        }
+        // ---------------------------------------------------------------
+
         [HttpGet("languages/{companyId}")]
-        [AllowAnonymous] // <--- FONTOS: Vendég is hívhatja!
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<LanguageStatusDto>>> GetCompanyLanguages(int companyId)
         {
             var company = await _context.Companies
@@ -35,21 +72,16 @@ namespace Soluvion.API.Controllers
 
             var result = new List<LanguageStatusDto>();
 
-            // Default nyelv hozzáadása
             result.Add(new LanguageStatusDto
             {
-                LanguageCode = company.DefaultLanguage,
+                LanguageCode = company.DefaultLanguage ?? "hu",
                 Status = TranslationStatus.Published.ToString(),
                 IsDefault = true,
                 Progress = 100
             });
 
-            // Többi nyelv hozzáadása
-            // JAVÍTÁS: Vendégnek is le kell tudnia kérni a listát, 
-            // a szűrést ("csak published") majd a Frontend végzi el (publishedLanguages computed).
             foreach (var lang in company.Languages)
             {
-                // Kerüljük a duplikációt (ha a default nyelv is benne lenne a listában)
                 if (lang.LanguageCode == company.DefaultLanguage) continue;
 
                 result.Add(new LanguageStatusDto
@@ -64,7 +96,6 @@ namespace Soluvion.API.Controllers
             return Ok(result);
         }
 
-        // 2. Új nyelv hozzáadása + AI folyamat indítása
         [HttpPost("add-language")]
         public async Task<IActionResult> AddLanguage([FromBody] AddLanguageDto dto)
         {
@@ -74,18 +105,12 @@ namespace Soluvion.API.Controllers
 
             if (company == null) return NotFound("Cég nem található.");
 
-            // Ha nem kér AI-t, akkor a státusz rögtön "ReviewPending" (hogy szerkeszthesse),
-            // vagy "Created". Legyen ReviewPending, hogy a banner figyelmeztesse: "Hé, ez még üres!"
             var initialStatus = dto.UseAi ? TranslationStatus.Translating : TranslationStatus.ReviewPending;
 
-            if (company.Languages.Any(l => l.LanguageCode == dto.TargetLanguage) || company.DefaultLanguage == dto.TargetLanguage)
+            var existing = company.Languages.FirstOrDefault(l => l.LanguageCode == dto.TargetLanguage);
+            if (existing != null)
             {
-                var existing = company.Languages.FirstOrDefault(l => l.LanguageCode == dto.TargetLanguage);
-                if (existing != null)
-                {
-                    // Ha újraindítjuk, frissítjük a státuszt
-                    existing.Status = initialStatus;
-                }
+                existing.Status = initialStatus;
             }
             else
             {
@@ -101,52 +126,37 @@ namespace Soluvion.API.Controllers
 
             await _context.SaveChangesAsync();
 
-            // CSAK AKKOR indítjuk a jobot, ha kérte az AI-t!
             if (dto.UseAi)
             {
+                // Háttérszál indítása
                 _ = Task.Run(() => PerformBackgroundTranslation(dto.CompanyId, dto.TargetLanguage, dto.BaseUiTranslations));
                 return Accepted(new { message = $"A(z) {dto.TargetLanguage} nyelv hozzáadva. A fordítás elindult." });
             }
             else
             {
-                return Ok(new { message = $"A(z) {dto.TargetLanguage} nyelv hozzáadva (üresen). Kezdheted a kézi fordítást." });
+                return Ok(new { message = $"A(z) {dto.TargetLanguage} nyelv hozzáadva (üresen)." });
             }
         }
 
-        // Nyelv törlése
         [HttpDelete("language/{companyId}/{langCode}")]
         public async Task<IActionResult> DeleteLanguage(int companyId, string langCode)
         {
-            var company = await _context.Companies
-                .Include(c => c.Languages)
-                .FirstOrDefaultAsync(c => c.Id == companyId);
+            var company = await _context.Companies.Include(c => c.Languages).FirstOrDefaultAsync(c => c.Id == companyId);
+            if (company == null) return NotFound();
+            if (company.DefaultLanguage == langCode) return BadRequest("Alapértelmezett nyelv nem törölhető.");
 
-            if (company == null) return NotFound("Cég nem található.");
-            if (company.DefaultLanguage == langCode) return BadRequest("Az alapértelmezett nyelv nem törölhető.");
-
-            // 1. Töröljük a kapcsolatot
             var langEntity = company.Languages.FirstOrDefault(l => l.LanguageCode == langCode);
-            if (langEntity != null)
-            {
-                _context.CompanyLanguages.Remove(langEntity);
-            }
+            if (langEntity != null) _context.CompanyLanguages.Remove(langEntity);
 
-            // 2. Töröljük a UI Overrides bejegyzéseket is ehhez a nyelvhez
             var overrides = await _context.UiTranslationOverrides
                 .Where(o => o.CompanyId == companyId && o.LanguageCode == langCode)
                 .ToListAsync();
-
             _context.UiTranslationOverrides.RemoveRange(overrides);
 
-            // Megjegyzés: A JSONB mezőkből (Service.Name['sk']) NEM töröljük ki a kulcsokat,
-            // mert az nagyon erőforrásigényes lenne, és nem zavar senkit, ha ott marad "szemétként".
-            // Ha újra hozzáadják a nyelvet, felülíródik.
-
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Nyelv sikeresen törölve." });
+            return Ok(new { message = "Nyelv törölve." });
         }
 
-        // 3. Publikálás (Review után)
         [HttpPost("publish")]
         public async Task<IActionResult> PublishLanguage([FromBody] PublishLanguageDto dto)
         {
@@ -159,10 +169,9 @@ namespace Soluvion.API.Controllers
             langEntity.LastUpdated = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Nyelv sikeresen publikálva." });
+            return Ok(new { message = "Nyelv publikálva." });
         }
 
-        // 4. Felülírások lekérése egy adott nyelvhez
         [HttpGet("overrides/{companyId}/{langCode}")]
         public async Task<ActionResult<Dictionary<string, string>>> GetOverrides(int companyId, string langCode)
         {
@@ -173,40 +182,31 @@ namespace Soluvion.API.Controllers
             return Ok(overrides);
         }
 
-        // 5. Felülírás mentése (Upsert)
         [HttpPost("save-override")]
-        public async Task<IActionResult> SaveOverride([FromBody] OverrideDto dto)
+        public async Task<IActionResult> SaveOverride([FromBody] UiTranslationOverrideDto dto)
         {
             var existing = await _context.UiTranslationOverrides
                 .FirstOrDefaultAsync(o => o.CompanyId == dto.CompanyId &&
                                           o.LanguageCode == dto.LanguageCode &&
                                           o.TranslationKey == dto.Key);
 
-            if (existing != null)
-            {
-                // Frissítés
-                existing.TranslatedText = dto.Value;
-            }
+            if (existing != null) existing.TranslatedText = dto.Value;
             else
             {
-                // Új létrehozása
-                var newOverride = new UiTranslationOverride
+                _context.UiTranslationOverrides.Add(new UiTranslationOverride
                 {
                     CompanyId = dto.CompanyId,
                     LanguageCode = dto.LanguageCode,
                     TranslationKey = dto.Key,
                     TranslatedText = dto.Value
-                };
-                _context.UiTranslationOverrides.Add(newOverride);
+                });
             }
 
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Szöveg sikeresen mentve." });
+            return Ok(new { message = "Mentve." });
         }
 
-
-        // --- PRIVATE BACKGROUND WORKER ---
-        // --- PRIVATE BACKGROUND WORKER ---
+        // --- HÁTTÉRFOLYAMAT JAVÍTVA ---
         private async Task PerformBackgroundTranslation(int companyId, string targetLanguage, Dictionary<string, string> uiTranslations)
         {
             using (var scope = _scopeFactory.CreateScope())
@@ -219,111 +219,102 @@ namespace Soluvion.API.Controllers
                     var company = await dbContext.Companies.FindAsync(companyId);
                     if (company == null) return;
 
-                    // 1. Összeszámoljuk, mennyi munka van (Total Items)
-                    // UI elemek + Szolgáltatás mezők (3 per szolgáltatás) + Galéria kategóriák
+                    // BIZTONSÁGI JAVÍTÁS:
+                    string companyType = "General Business";
+
                     int totalItems = (uiTranslations?.Count ?? 0)
                                      + (await dbContext.Services.CountAsync(s => s.CompanyId == companyId) * 3)
                                      + (await dbContext.GalleryCategories.CountAsync(g => g.CompanyId == companyId));
 
-                    if (totalItems == 0) totalItems = 1; // 0 osztás elkerülése
+                    if (totalItems == 0) totalItems = 1;
                     int currentItem = 0;
 
-                    // Helper a frissítéshez
                     async Task UpdateProgress()
                     {
                         currentItem++;
-                        // Csak minden 5. elemnél vagy a végén írjunk DB-t a teljesítmény miatt
                         if (currentItem % 5 == 0 || currentItem == totalItems)
                         {
                             var langToUpdate = await dbContext.CompanyLanguages.FindAsync(companyId, targetLanguage);
                             if (langToUpdate != null)
                             {
                                 langToUpdate.Progress = (int)((double)currentItem / totalItems * 100);
-                                // Biztosítjuk, hogy 100% alatt maradjon amíg nem végzünk teljesen
                                 if (langToUpdate.Progress > 99) langToUpdate.Progress = 99;
                                 await dbContext.SaveChangesAsync();
                             }
                         }
                     }
 
-                    string sourceLang = company.DefaultLanguage;
-                    string companyTypeContext = company.CompanyType?.Name ?? "Beauty Salon";
-
-                    // --- A) UI STATIKUS SZÖVEGEK ---
+                    // A) UI
                     if (uiTranslations != null)
                     {
                         foreach (var kvp in uiTranslations)
                         {
                             if (!string.IsNullOrWhiteSpace(kvp.Value))
                             {
-                                var translatedText = await translationService.TranslateTextAsync(kvp.Value, targetLanguage, "UI button/label", companyTypeContext);
+                                string translated = await translationService.TranslateTextAsync(kvp.Value, targetLanguage, "ui", companyType);
 
-                                var overrideEntity = await dbContext.UiTranslationOverrides
-                                    .FirstOrDefaultAsync(o => o.CompanyId == companyId && o.LanguageCode == targetLanguage && o.TranslationKey == kvp.Key);
-
-                                if (overrideEntity == null)
-                                {
-                                    dbContext.UiTranslationOverrides.Add(new UiTranslationOverride
-                                    {
-                                        CompanyId = companyId,
-                                        LanguageCode = targetLanguage,
-                                        TranslationKey = kvp.Key,
-                                        TranslatedText = translatedText
-                                    });
-                                }
-                                else { overrideEntity.TranslatedText = translatedText; }
+                                var ov = await dbContext.UiTranslationOverrides.FirstOrDefaultAsync(o => o.CompanyId == companyId && o.LanguageCode == targetLanguage && o.TranslationKey == kvp.Key);
+                                if (ov == null) dbContext.UiTranslationOverrides.Add(new UiTranslationOverride { CompanyId = companyId, LanguageCode = targetLanguage, TranslationKey = kvp.Key, TranslatedText = translated });
+                                else ov.TranslatedText = translated;
                             }
                             await UpdateProgress();
                         }
-                        await dbContext.SaveChangesAsync(); // Szakaszos mentés
+                        await dbContext.SaveChangesAsync();
                     }
 
-                    // --- B) SZOLGÁLTATÁSOK ---
-                    var services = await dbContext.Services.Where(s => s.CompanyId == companyId).ToListAsync();
-                    foreach (var service in services)
+                    // B) Services
+                    var services = await dbContext.Services.Include(s => s.Variants).Where(s => s.CompanyId == companyId).ToListAsync();
+                    foreach (var s in services)
                     {
-                        if (service.Name.TryGetValue(sourceLang, out var n))
-                            service.Name[targetLanguage] = await translationService.TranslateTextAsync(n, targetLanguage, "service name", companyTypeContext);
+                        if (s.Name != null && s.Name.ContainsKey("hu") && !string.IsNullOrWhiteSpace(s.Name["hu"]))
+                            s.Name[targetLanguage] = await translationService.TranslateTextAsync(s.Name["hu"], targetLanguage, "service", companyType);
                         await UpdateProgress();
 
-                        if (service.Description.TryGetValue(sourceLang, out var d))
-                            service.Description[targetLanguage] = await translationService.TranslateTextAsync(d, targetLanguage, "service description", companyTypeContext);
+                        if (s.Category != null && s.Category.ContainsKey("hu") && !string.IsNullOrWhiteSpace(s.Category["hu"]))
+                            s.Category[targetLanguage] = await translationService.TranslateTextAsync(s.Category["hu"], targetLanguage, "service", companyType);
                         await UpdateProgress();
 
-                        if (service.Category.TryGetValue(sourceLang, out var c))
-                            service.Category[targetLanguage] = await translationService.TranslateTextAsync(c, targetLanguage, "service category", companyTypeContext);
+                        if (s.Description != null && s.Description.ContainsKey("hu") && !string.IsNullOrWhiteSpace(s.Description["hu"]))
+                            s.Description[targetLanguage] = await translationService.TranslateTextAsync(s.Description["hu"], targetLanguage, "service", companyType);
+                        await UpdateProgress();
+
+                        if (s.Variants != null)
+                        {
+                            foreach (var v in s.Variants)
+                            {
+                                if (v.VariantName != null && v.VariantName.ContainsKey("hu") && !string.IsNullOrWhiteSpace(v.VariantName["hu"]))
+                                {
+                                    v.VariantName[targetLanguage] = await translationService.TranslateTextAsync(v.VariantName["hu"], targetLanguage, "service", companyType);
+                                }
+                            }
+                        }
+                    }
+                    await dbContext.SaveChangesAsync();
+
+                    // C) Gallery
+                    var cats = await dbContext.GalleryCategories.Where(c => c.CompanyId == companyId).ToListAsync();
+                    foreach (var c in cats)
+                    {
+                        if (c.Name != null && c.Name.ContainsKey("hu") && !string.IsNullOrWhiteSpace(c.Name["hu"]))
+                            c.Name[targetLanguage] = await translationService.TranslateTextAsync(c.Name["hu"], targetLanguage, "gallery", companyType);
                         await UpdateProgress();
                     }
                     await dbContext.SaveChangesAsync();
 
-                    // --- C) GALÉRIA ---
-                    var galleryCats = await dbContext.GalleryCategories.Where(g => g.CompanyId == companyId).ToListAsync();
-                    foreach (var cat in galleryCats)
-                    {
-                        if (cat.Name.TryGetValue(sourceLang, out var cn))
-                            cat.Name[targetLanguage] = await translationService.TranslateTextAsync(cn, targetLanguage, "gallery category", companyTypeContext);
-                        await UpdateProgress();
-                    }
-                    await dbContext.SaveChangesAsync();
-
-                    // --- KÉSZ ---
+                    // KÉSZ
                     var finalLang = await dbContext.CompanyLanguages.FindAsync(companyId, targetLanguage);
                     if (finalLang != null)
                     {
                         finalLang.Status = TranslationStatus.ReviewPending;
-                        finalLang.Progress = 100; // Kész
+                        finalLang.Progress = 100;
+                        await dbContext.SaveChangesAsync();
                     }
-                    await dbContext.SaveChangesAsync();
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Translation Error: {ex.Message}");
-                    var langEntity = await dbContext.CompanyLanguages.FindAsync(companyId, targetLanguage);
-                    if (langEntity != null)
-                    {
-                        langEntity.Status = TranslationStatus.Error;
-                        await dbContext.SaveChangesAsync();
-                    }
+                    Console.WriteLine("Háttérfordítási hiba: " + ex.Message + " | StackTrace: " + ex.StackTrace);
+                    var l = await dbContext.CompanyLanguages.FindAsync(companyId, targetLanguage);
+                    if (l != null) { l.Status = TranslationStatus.Error; await dbContext.SaveChangesAsync(); }
                 }
             }
         }
