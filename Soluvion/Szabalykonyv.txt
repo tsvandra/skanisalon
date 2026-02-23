@@ -205,3 +205,12 @@ A "Front Office" (Látogatói oldal) teljes dinamizálása a cél:
 
 2.  ADATBÁZIS ELNEVEZÉSEK
     - Kulcs-érték párokat tároló tábláknál a kulcs mező neve legyen konzisztensen `TranslationKey` (vagy `ConfigKey`), kerüljük a generikus `Key` elnevezést, mert az az Entity Frameworkben és a C# kulcsszavaknál is ütközést okozhat.
+
+--------------------------------------------------------------------------------
+
+3. DTO KÖTELEZETTSÉG MENTÉSKOR (POST/PUT)
+   - SOHA ne várjon egy Controller közvetlenül Adatbázis Entitást (pl. `[FromBody] Service service`) a paraméterekben, különösen, ha az entitás tartalmaz beágyazott listákat (pl. Variants).
+   - Mindig DTO-t kell fogadni, és a Controller (vagy Service) rétegben kell manuálisan, elemenként leképezni az Entity Framework felé. Ezzel elkerülhetőek a 400 Bad Request és az "Entity is already being tracked" hibák.
+
+4. FRONTEND TÖBBNYELVŰSÉG FALLBACK
+   - SOHA ne használj beégetett 'hu' stringet az adatobjektumok kulcsaként a Vue fájlokban! Használd a `const defaultLang = company.value?.defaultLanguage || 'hu'` változót a dinamikus SaaS működés érdekében.
