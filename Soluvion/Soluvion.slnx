@@ -1,12 +1,16 @@
 <Solution>
   <Folder Name="/Solution Items/">
     <File Path=".dockerignore" />
-    <File Path="Soluvion.API/Dockerfile" />
+    <File Path="Dockerfile" />
   </Folder>
   <Folder Name="/Solution Items/DevDoc/">
     <File Path="DevelopDocumentation.txt" />
     <File Path="Szabalykonyv.txt" />
     <File Path="TechnologicalStack.txt" />
+  </Folder>
+  <Folder Name="/soluvion-db-backup/">
+    <File Path="soluvion-db-backup/backup.sh" />
+    <File Path="soluvion-db-backup/Dockerfile" />
   </Folder>
   <Project Path="soluvion-web/" Type="Website" DisplayName="soluvion-web">
     <BuildType Project="Debug" />
