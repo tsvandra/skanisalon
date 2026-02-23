@@ -6,7 +6,7 @@ BACKUP_FILE="skanisalon_backup_${TIMESTAMP}.sql"
 
 echo "Mentés indítása: $BACKUP_FILE"
 # Letölti az adatbázist a megadott URL-ről
-pg_dump $DB_URL > $BACKUP_FILE
+pg_dump -d $DB_URL > $BACKUP_FILE
 
 echo "Feltöltés a Backblaze B2-re..."
 # Átküldi a fájlt a Backblaze tárolóba a megadott kulcsokkal
