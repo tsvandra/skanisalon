@@ -1,5 +1,5 @@
 # Használjuk a hivatalos Postgres képet, amiben benne van a pg_dump eszköz
-FROM postgres:16-alpine
+FROM postgres:17-alpine
 
 # Feltelepítjük az AWS CLI-t (ezzel tudunk a Backblaze S3-ra másolni)
 RUN apk add --no-cache aws-cli
