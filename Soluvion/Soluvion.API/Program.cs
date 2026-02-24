@@ -39,7 +39,8 @@ builder.Services.AddCors(options =>
                                "https://skanisalon.sk", 
                                "https://www.skanisalon.sk", 
                                "https://skanisalon-production.netlify.app",
-                               "https://soluvion.netlify.app")  // Bárhonnan jöhet kérés (Netlify, localhost)
+                               "https://soluvion.netlify.app",
+                               "https://develop--soluvion.netlify.app")  // Bárhonnan jöhet kérés (Netlify, localhost)
                   .AllowAnyMethod()  // GET, POST, PUT, DELETE, OPTIONS
                   .WithHeaders("X-Tenant-ID", "Authorization", "Content-Type"); // Bármilyen fejléc mehet
         });
