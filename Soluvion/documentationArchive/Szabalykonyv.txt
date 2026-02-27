@@ -214,3 +214,24 @@ A "Front Office" (Látogatói oldal) teljes dinamizálása a cél:
 
 4. FRONTEND TÖBBNYELVŰSÉG FALLBACK
    - SOHA ne használj beégetett 'hu' stringet az adatobjektumok kulcsaként a Vue fájlokban! Használd a `const defaultLang = company.value?.defaultLanguage || 'hu'` változót a dinamikus SaaS működés érdekében.
+
+--------------------------------------------------------------------------------
+
+[ 10. DEVOPS ÉS ADATBÁZIS KEZELÉSI SZABÁLYOK (2026.02.25) ]
+
+1. Éles és Teszt (Staging) Környezet Szeparációja
+   - TILOS új fejlesztést vagy kísérletezést egyenesen a `main` ágra tolni.
+   - Minden új funkciót a `develop` ágon kell tesztelni. 
+   - A Netlify automatikusan lefordítja a `develop` ágat egy dedikált teszt URL-re (Branch Deploy: `develop--[app-neve].netlify.app`), amely a Railway Staging adatbázisával kommunikál.
+
+2. Adatbázis Biztonsági Mentések (Backups)
+   - A Railway beépített backup funkciója fizetős, ezért a napi biztonsági mentések automatikusan a **Backblaze B2** felhőtárhelyre kerülnek (egyedi automatizmus révén tömörített `.sql.gz` formátumban).
+
+3. Adatbázis Klónozás (PROD -> STAGING) és Helyreállítás
+   - TILOS a Railway felhős adatbázisára lokális parancssorból (CLI) ráereszteni a `dotnet ef database update` parancsot a szigorú SSL/TCP proxy szabályok miatt.
+   - A mentés (pg_dump) fájlok `COPY` parancsokat tartalmaznak, amit sima SQL szerkesztő nem tud futtatni.
+   - Helyes klónozási folyamat:
+     1. Backblaze B2-ből letölteni a legfrissebb `.sql.gz` fájlt (Cyberduck vagy UI segítségével fájlként, nem zipként).
+     2. DBeaver használatával csatlakozni a Railway TCP Proxy-jához KIZÁRÓLAG JDBC URL formátumban, kikényszerített SSL-lel: `jdbc:postgresql://[HOST]:[PORT]/railway?sslmode=require`
+     3. A kicsomagolt `.sql` fájlból a terminál-specifikus `\restrict` és `\unrestrict` sorokat törölni kell.
+     4. A DBeaverben a "Tools -> Execute Script" (psql háttérmotor) funkciót kell használni a fájl beolvasására, NEM a sima SQL Editor ablakot.
