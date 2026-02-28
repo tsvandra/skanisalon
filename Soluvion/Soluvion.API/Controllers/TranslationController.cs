@@ -40,13 +40,17 @@ namespace Soluvion.API.Controllers
                     return Unauthorized("Érvénytelen token: hiányzó CompanyId.");
                 }
 
+                var company = await _context.Companies
+                    .Include(c => c.CompanyType)
+                    .FirstOrDefaultAsync(c => c.Id == companyId);
+
                 // BIZTONSÁGI JAVÍTÁS: Nem hivatkozunk a company.Type-ra, hogy elkerüljük a Null Reference hibát.
-                string companyType = "General Business";
+                string companyType = company?.CompanyType?.Name ?? "General Business";
 
                 string translatedText = await _translationService.TranslateTextAsync(
                     request.Text,
                     request.TargetLanguage,
-                    "general",
+                    request.Context ?? "general",
                     companyType
                 );
 

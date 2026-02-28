@@ -6,6 +6,11 @@
   const store = useTranslationStore();
   const { locale } = useI18n();
 
+  const changeLanguage = (newLang) => {
+    locale.value = newLang; // Vue-i18n nyelv beállítása
+    localStorage.setItem('user-locale', newLang); // Mentés a böngészőbe!
+  };
+
   // Props
   const props = defineProps({
     adminMode: {

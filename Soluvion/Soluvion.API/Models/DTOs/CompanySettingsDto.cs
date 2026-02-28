@@ -21,10 +21,10 @@
         public string? MapEmbedUrl { get; set; }
 
         // Nyitvatartás
-        public string? OpeningHoursTitle { get; set; }
-        public string? OpeningHoursDescription { get; set; }
-        public string? OpeningTimeSlots { get; set; }
-        public string? OpeningExtraInfo { get; set; }
+        public Dictionary<string, string> OpeningHoursTitle { get; set; } = new();
+        public Dictionary<string, string> OpeningHoursDescription { get; set; } = new();
+        public Dictionary<string, string> OpeningTimeSlots { get; set; } = new();
+        public Dictionary<string, string> OpeningExtraInfo { get; set; } = new();
 
         // Design
         public string? PrimaryColor { get; set; }

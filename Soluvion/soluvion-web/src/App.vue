@@ -31,9 +31,11 @@
           translationStore.initCompany(companyId, defaultLang);
           await translationStore.fetchLanguages(companyId);
 
-          if (defaultLang && defaultLang !== translationStore.currentLanguage) {
-            console.log(`🌍 Induló nyelv beállítása (Admin Default): ${defaultLang}`);
-            await translationStore.setLanguage(defaultLang);
+          const savedLang = localStorage.getItem('user-locale');
+          const targetLang = savedLang || defaultLang;
+          if (targetLang && targetLang !== translationStore.currentLanguage) {
+            console.log(`🌍 Induló nyelv beállítása (Admin): ${targetLang}`);
+            await translationStore.setLanguage(targetLang);
           }
         }
       } catch (e) {
@@ -72,12 +74,19 @@
           await translationStore.fetchLanguages(companyStore.company.id);
 
           // DÖNTÉS: Milyen nyelven induljunk?
-          // A) Ha van a cégnek alapértelmezett nyelve, azt használjuk
-          const targetLang = companyStore.company.defaultLanguage;
+          // 1. Megnézzük, van-e a felhasználónak korábban elmentett nyelve
+          const savedLang = localStorage.getItem('user-locale');
 
-          if (targetLang && targetLang !== 'hu') {
-            console.log(`🌍 Induló nyelv beállítása (Cég Default): ${targetLang}`);
-            // Ez a 'await' a kulcs! Megvárjuk, amíg letölti a szlovák szótárat.
+          // 2. Ha nincs mentett nyelve, akkor használjuk a cég alapértelmezettjét, vagy végül a magyart
+          const targetLang = savedLang || companyStore.company.defaultLanguage || 'hu';
+
+          console.log(`🌍 Induló nyelv beállítása: ${targetLang}`);
+
+          // Várjuk meg, amíg betölti az aktuális nyelv (targetLang) szótárait!
+          if (targetLang !== translationStore.currentLanguage) {
+            await translationStore.setLanguage(targetLang);
+          } else {
+            // Ha már ez a beállított, akkor is biztos ami biztos töltsük le az overrides-t
             await translationStore.setLanguage(targetLang);
           }
         }

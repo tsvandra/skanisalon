@@ -17,10 +17,10 @@ namespace Soluvion.API.DTOs
         public string SecondaryColor { get; set; } = string.Empty;
 
         // Tartalom / Kapcsolat
-        public string? OpeningHoursTitle { get; set; }
-        public string? OpeningHoursDescription { get; set; }
-        public string? OpeningTimeSlots { get; set; }
-        public string? OpeningExtraInfo { get; set; }
+        public Dictionary<string, string> OpeningHoursTitle { get; set; } = new();
+        public Dictionary<string, string> OpeningHoursDescription { get; set; } = new();
+        public Dictionary<string, string> OpeningTimeSlots { get; set; } = new();
+        public Dictionary<string, string> OpeningExtraInfo { get; set; } = new();
 
         public string? Phone { get; set; }
         public string? Email { get; set; }

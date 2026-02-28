@@ -1,7 +1,8 @@
 <script setup>
   import { ref, computed } from 'vue';
-  import { useCompanyStore } from '@/stores/companyStore'; // Store használata
-  import api from '@/services/api'; // API hívás
+  import { useCompanyStore } from '@/stores/companyStore';
+  import { useI18n } from 'vue-i18n'; // Fordítás importálása
+  import api from '@/services/api';
 
   import Card from 'primevue/card';
   import InputText from 'primevue/inputtext';
@@ -9,6 +10,7 @@
   import Button from 'primevue/button';
   import Message from 'primevue/message';
 
+  const { t } = useI18n(); // Fordító fv. inicializálása
   // 1. CÉGADATOK A STORE-BÓL
   const companyStore = useCompanyStore();
   const company = computed(() => companyStore.company);
@@ -21,7 +23,7 @@
 
   const sendMessage = async () => {
     if (!name.value || !email.value || !messageText.value) {
-      alert("Kérlek tölts ki minden mezőt!");
+      alert(t('contact.form.validationError')); // Nyelvesített hiba
       return;
     }
 
@@ -45,7 +47,7 @@
 
     } catch (error) {
       console.error("Hiba az üzenet küldésekor:", error);
-      alert("Hiba történt a küldés során. Kérlek próbáld újra később.");
+      alert(t('contact.form.submitError')); // Nyelvesített hiba
     } finally {
       isLoading.value = false;
     }
@@ -55,8 +57,8 @@
 <template>
   <div class="contact-container">
     <div class="header-section">
-      <h1>Kapcsolat</h1>
-      <p>Kérdésed van? Időpontot foglalnál? Keress fel bizalommal!</p>
+      <h1>{{ $t('contact.title') }}</h1>
+      <p>{{ $t('contact.subtitle') }}</p>
     </div>
 
     <div class="grid-layout">
@@ -65,14 +67,14 @@
 
         <Card style="margin-bottom: 20px;" class="custom-card">
           <template #title>
-            Elérhetőségeim
+            {{ $t('contact.myContacts') }}
           </template>
           <template #content>
             <ul class="contact-list" v-if="company">
               <li v-if="company.city">
                 <i class="pi pi-map-marker icon"></i>
                 <div>
-                  <strong>Cím:</strong><br>
+                  <strong>{{ $t('contact.address') }}:</strong><br>
                   {{ company.postalCode }} {{ company.city }}<br>
                   {{ company.streetName }} {{ company.houseNumber }}.
                 </div>
@@ -80,45 +82,47 @@
               <li v-if="company.phone">
                 <i class="pi pi-phone icon"></i>
                 <div>
-                  <strong>Telefon:</strong><br>
+                  <strong>{{ $t('contact.phone') }}:</strong><br>
                   <a :href="`tel:${company.phone}`">{{ company.phone }}</a>
                 </div>
               </li>
               <li v-if="company.email">
                 <i class="pi pi-envelope icon"></i>
                 <div>
-                  <strong>Email:</strong><br>
+                  <strong>{{ $t('contact.email') }}:</strong><br>
                   <a :href="`mailto:${company.email}`">{{ company.email }}</a>
                 </div>
               </li>
             </ul>
-            <div v-else>Betöltés...</div>
+            <div v-else>{{ $t('common.loading') }}</div>
           </template>
         </Card>
 
         <Card class="custom-card">
           <template #title>
-            Nyitvatartás
+            {{ $t('contact.openingHours') }}
           </template>
           <template #content>
             <div class="opening-info" v-if="company">
 
               <div style="margin-bottom: 20px;">
                 <i class="pi pi-calendar-clock" style="font-size: 2rem; color: var(--primary-color); margin-bottom: 10px;"></i>
-                <h3 style="margin: 0; color: #888;">{{ company.openingHoursTitle || 'Nyitvatartás' }}</h3>
+                <h3 style="margin: 0; color: #888;">
+                  {{ company.openingHoursTitle?.[$i18n.locale] || company.openingHoursTitle?.['hu'] || $t('contact.openingHours') }}
+                </h3>
               </div>
 
-              <p v-if="company.openingHoursDescription" style="line-height: 1.6; color: #888;">
-                {{ company.openingHoursDescription }}
+              <p v-if="company.openingHoursDescription?.[$i18n.locale] || company.openingHoursDescription?.['hu']" style="line-height: 1.6; color: #888;">
+                {{ company.openingHoursDescription?.[$i18n.locale] || company.openingHoursDescription?.['hu'] }}
               </p>
 
-              <div v-if="company.openingTimeSlots"
+              <div v-if="company.openingTimeSlots?.[$i18n.locale] || company.openingTimeSlots?.['hu']"
                    style="background: #f9f9f9; color: #555; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary-color); margin: 15px 0;"
-                   v-html="company.openingTimeSlots">
+                   v-html="company.openingTimeSlots?.[$i18n.locale] || company.openingTimeSlots?.['hu']">
               </div>
 
-              <p v-if="company.openingExtraInfo" style="font-size: 0.9rem; margin-top: 20px;">
-                {{ company.openingExtraInfo }}
+              <p v-if="company.openingExtraInfo?.[$i18n.locale] || company.openingExtraInfo?.['hu']" style="font-size: 0.9rem; margin-top: 20px;">
+                {{ company.openingExtraInfo?.[$i18n.locale] || company.openingExtraInfo?.['hu'] }}
               </p>
 
               <div class="social-buttons" style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
@@ -142,27 +146,27 @@
 
         <Card style="margin-bottom: 20px;" class="custom-card">
           <template #title>
-            Írj bátran!
+            {{ $t('contact.writeUs') }}
           </template>
           <template #content>
             <div v-if="submitted" style="margin-bottom: 15px;">
-              <Message severity="success" :closable="false">Köszönöm! Üzenetedet megkaptam.</Message>
+              <Message severity="success" :closable="false">{{ $t('contact.form.success') }}</Message>
             </div>
 
             <div class="form-group">
-              <label>Név</label>
-              <InputText v-model="name" placeholder="Ide jön a neved" style="width: 100%" class="custom-input" />
+              <label>{{ $t('contact.form.name') }}</label>
+              <InputText v-model="name" :placeholder="$t('contact.form.namePlaceholder')" style="width: 100%" class="custom-input" />
             </div>
             <div class="form-group">
-              <label>Email cím</label>
-              <InputText v-model="email" placeholder="pelda@email.com" style="width: 100%" class="custom-input" />
+              <label>{{ $t('contact.form.email') }}</label>
+              <InputText v-model="email" :placeholder="$t('contact.form.emailPlaceholder')" style="width: 100%" class="custom-input" />
             </div>
             <div class="form-group">
-              <label>Üzenet</label>
-              <Textarea v-model="messageText" rows="4" placeholder="Miben segíthetek?" style="width: 100%" class="custom-input" />
+              <label>{{ $t('contact.form.message') }}</label>
+              <Textarea v-model="messageText" rows="4" :placeholder="$t('contact.form.messagePlaceholder')" style="width: 100%" class="custom-input" />
             </div>
 
-            <Button :label="isLoading ? 'Küldés...' : 'Üzenet küldése'"
+            <Button :label="isLoading ? $t('contact.form.sending') : $t('contact.form.send')"
                     :icon="isLoading ? 'pi pi-spin pi-spinner' : 'pi pi-send'"
                     :disabled="isLoading"
                     @click="sendMessage"
@@ -186,7 +190,7 @@
 </template>
 
 <style scoped>
-  /* A stílusok maradtak a régiek, csak a működés változott */
+  /* A stílusok érintetlenek maradtak */
   .contact-container {
     max-width: 1200px;
     margin: 0 auto;
@@ -271,7 +275,6 @@
     overflow: hidden;
   }
 
-  /* Gombok felülírása - CSS változók használatával */
   :deep(.custom-btn) {
     background: var(--p-primary-color) !important;
     border: 1px solid var(--p-primary-color) !important;

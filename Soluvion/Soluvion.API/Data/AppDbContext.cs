@@ -94,6 +94,38 @@ namespace Soluvion.API.Data
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
                     v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
                     dictionaryComparer);
+
+            modelBuilder.Entity<Company>()
+                .Property(c => c.OpeningHoursTitle)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
+                    dictionaryComparer);
+
+            modelBuilder.Entity<Company>()
+                .Property(c => c.OpeningHoursDescription)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
+                    dictionaryComparer);
+
+            modelBuilder.Entity<Company>()
+                .Property(c => c.OpeningTimeSlots)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
+                    dictionaryComparer);
+
+            modelBuilder.Entity<Company>()
+                .Property(c => c.OpeningExtraInfo)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
+                    dictionaryComparer);
         }
     }
 }
