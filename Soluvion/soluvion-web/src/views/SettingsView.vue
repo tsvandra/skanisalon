@@ -1,9 +1,8 @@
 <script setup>
-  import { ref, onMounted } from 'vue';
+  import { ref, onMounted, computed, nextTick, watch } from 'vue';
   import InputText from 'primevue/inputtext';
   import Textarea from 'primevue/textarea';
   import Button from 'primevue/button';
-  // --- ÚJ IMPORTOK (PrimeVue v4 Tabs) ---
   import Tabs from 'primevue/tabs';
   import TabList from 'primevue/tablist';
   import Tab from 'primevue/tab';
@@ -12,20 +11,55 @@
 
   import api from '@/services/api';
   import { getCompanyIdFromToken } from '@/utils/jwt';
+  import { useI18n } from 'vue-i18n';
 
   import LanguageManager from '@/components/admin/LanguageManager.vue';
   import UiTranslationManager from '@/components/admin/UiTranslationManager.vue';
 
-  const companyData = ref({});
-  const isLoading = ref(false);
+  const { locale } = useI18n();
+  const currentLang = computed(() => locale.value);
+
+  const companyData = ref({
+    // Alapértelmezett struktúra, hogy a Vue sose fusson "undefined" hibára
+    openingHoursTitle: {},
+    openingHoursDescription: {},
+    openingTimeSlots: {},
+    openingExtraInfo: {}
+  });
+  const isLoading = ref(true);
   const isSaving = ref(false);
   const isUploading = ref(false);
   const successMsg = ref('');
   const errorMsg = ref('');
 
+  // --- ÚJ AI ÁLLAPOTOK ---
+  const translatingField = ref(null);
+  const isTranslatingAll = ref(false);
+
   const logoInputRef = ref(null);
   const heroInputRef = ref(null);
   const footerInputRef = ref(null);
+
+  // --- ÚJ: TÖBBNYELVŰ FORMÁZÁS ÉS MÉRETEZÉS ---
+  const ensureDict = (field, defaultValue = "") => {
+    if (field && typeof field === 'object' && field !== null && !Array.isArray(field)) return field;
+    return { [currentLang.value]: field || defaultValue };
+  };
+
+  const autoResize = async () => {
+    await nextTick();
+    const textareas = document.querySelectorAll('textarea');
+    textareas.forEach(el => {
+      el.style.height = 'auto';
+      if (el.scrollHeight > 0) {
+        el.style.height = el.scrollHeight + 'px';
+      }
+    });
+  };
+
+  watch(currentLang, () => {
+    autoResize();
+  });
 
   const loadCompanyData = async () => {
     const companyId = getCompanyIdFromToken();
@@ -38,8 +72,15 @@
     try {
       const res = await api.get(`/api/Company/${companyId}`);
       const data = res.data;
+
       if (!data.logoHeight) data.logoHeight = 50;
       if (!data.footerHeight) data.footerHeight = 250;
+
+      // Többnyelvű mezők biztosítása
+      data.openingHoursTitle = ensureDict(data.openingHoursTitle, "Bejelentkezés alapján");
+      data.openingHoursDescription = ensureDict(data.openingHoursDescription, "");
+      data.openingTimeSlots = ensureDict(data.openingTimeSlots, "");
+      data.openingExtraInfo = ensureDict(data.openingExtraInfo, "");
 
       companyData.value = { ...data };
     } catch (err) {
@@ -47,9 +88,63 @@
       errorMsg.value = "Nem sikerült betölteni a cég adatait.";
     } finally {
       isLoading.value = false;
+      autoResize();
     }
   };
 
+  // --- AI FORDÍTÓ METÓDUSOK ---
+  const translateField = async (fieldName) => {
+    const defaultLang = companyData.value?.defaultLanguage || 'hu';
+    if (currentLang.value === defaultLang) {
+      alert(`A(z) '${defaultLang}' az alapértelmezett nyelv, erről fordítunk a többire! Válts nyelvet fentről.`);
+      return;
+    }
+
+    const sourceText = companyData.value[fieldName][defaultLang] || companyData.value[fieldName]['hu'];
+    if (!sourceText || sourceText.trim() === '') return;
+
+    translatingField.value = fieldName;
+    try {
+      const response = await api.post('/api/Translation', {
+        text: sourceText,
+        targetLanguage: currentLang.value,
+        context: 'company'
+      });
+      if (response.data && response.data.translatedText) {
+        if (!companyData.value[fieldName]) companyData.value[fieldName] = {};
+        companyData.value[fieldName][currentLang.value] = response.data.translatedText;
+        autoResize();
+      }
+    } catch (err) {
+      console.error("Fordítási hiba:", err);
+      alert("Nem sikerült a fordítás.");
+    } finally {
+      translatingField.value = null;
+    }
+  };
+
+  const translateAllSettings = async () => {
+    const defaultLang = companyData.value?.defaultLanguage || 'hu';
+    if (currentLang.value === defaultLang) {
+      alert(`Válts át arra a nyelvre, amire fordítani szeretnél! Jelenleg az alapértelmezett (${defaultLang}) nyelven vagy.`);
+      return;
+    }
+
+    const fieldsToTranslate = [
+      'openingHoursTitle',
+      'openingHoursDescription',
+      'openingTimeSlots',
+      'openingExtraInfo'
+    ];
+
+    isTranslatingAll.value = true;
+    for (const field of fieldsToTranslate) {
+      await translateField(field);
+    }
+    isTranslatingAll.value = false;
+  };
+
+  // --- KÉPFELTÖLTÉS & MENTÉS ---
   const handleUpload = async (event, type) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -64,10 +159,7 @@
     else endpoint = '/api/Company/upload/footer';
 
     try {
-      const res = await api.post(endpoint, formData, {
-        headers: { 'Content-Type': undefined }
-      });
-
+      const res = await api.post(endpoint, formData, { headers: { 'Content-Type': undefined } });
       if (type === 'logo') companyData.value.logoUrl = res.data.url;
       else if (type === 'hero') companyData.value.heroImageUrl = res.data.url;
       else companyData.value.footerImageUrl = res.data.url;
@@ -122,7 +214,7 @@
     <div v-if="errorMsg" class="alert-box error">{{ errorMsg }}</div>
     <div v-if="isLoading" class="alert-box loading">Adatok betöltése...</div>
 
-    <div v-if="!isLoading" class="form-wrapper">
+    <div v-if="!isLoading && companyData" class="form-wrapper">
 
       <Tabs value="0">
         <TabList>
@@ -175,22 +267,56 @@
           </TabPanel>
 
           <TabPanel value="1">
+            <div class="flex-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+              <h3 style="margin: 0;">Nyitvatartási Adatok</h3>
+              <Button v-if="currentLang !== (companyData?.defaultLanguage || 'hu')"
+                      :label="isTranslatingAll ? 'Fordítás folyamatban...' : 'Összes Mező Fordítása AI-val'"
+                      :icon="isTranslatingAll ? 'pi pi-spin pi-spinner' : 'pi pi-sparkles'"
+                      class="p-button-outlined p-button-warning"
+                      :disabled="isTranslatingAll"
+                      @click="translateAllSettings" />
+            </div>
+
             <div class="field">
               <label>Címsor (Pl: Bejelentkezés alapján)</label>
-              <InputText v-model="companyData.openingHoursTitle" class="w-full" />
+              <div class="input-with-tools">
+                <InputText v-model="companyData.openingHoursTitle[currentLang]" class="w-full" />
+                <button @click="translateField('openingHoursTitle')" class="magic-btn" title="Fordítás AI-val">
+                  <i v-if="translatingField === 'openingHoursTitle'" class="pi pi-spin pi-spinner"></i>
+                  <i v-else class="pi pi-sparkles"></i>
+                </button>
+              </div>
             </div>
             <div class="field">
               <label>Leírás (Pl: Jelenleg kizárólag...)</label>
-              <Textarea v-model="companyData.openingHoursDescription" rows="2" class="w-full" />
+              <div class="input-with-tools">
+                <Textarea v-model="companyData.openingHoursDescription[currentLang]" @input="autoResize" rows="2" class="w-full" />
+                <button @click="translateField('openingHoursDescription')" class="magic-btn" title="Fordítás AI-val">
+                  <i v-if="translatingField === 'openingHoursDescription'" class="pi pi-spin pi-spinner"></i>
+                  <i v-else class="pi pi-sparkles"></i>
+                </button>
+              </div>
             </div>
             <div class="field">
               <label>Időpontok (HTML engedélyezett, pl: &lt;br&gt;)</label>
-              <Textarea v-model="companyData.openingTimeSlots" rows="4" class="w-full" />
+              <div class="input-with-tools">
+                <Textarea v-model="companyData.openingTimeSlots[currentLang]" @input="autoResize" rows="4" class="w-full" />
+                <button @click="translateField('openingTimeSlots')" class="magic-btn" title="Fordítás AI-val">
+                  <i v-if="translatingField === 'openingTimeSlots'" class="pi pi-spin pi-spinner"></i>
+                  <i v-else class="pi pi-sparkles"></i>
+                </button>
+              </div>
               <small>Tipp: Használja a &lt;br&gt; kódot új sor kezdéséhez!</small>
             </div>
             <div class="field">
               <label>Extra infó (Pl: Facebookon tesszük közzé...)</label>
-              <Textarea v-model="companyData.openingExtraInfo" rows="2" class="w-full" />
+              <div class="input-with-tools">
+                <Textarea v-model="companyData.openingExtraInfo[currentLang]" @input="autoResize" rows="2" class="w-full" />
+                <button @click="translateField('openingExtraInfo')" class="magic-btn" title="Fordítás AI-val">
+                  <i v-if="translatingField === 'openingExtraInfo'" class="pi pi-spin pi-spinner"></i>
+                  <i v-else class="pi pi-sparkles"></i>
+                </button>
+              </div>
             </div>
           </TabPanel>
 
@@ -312,6 +438,7 @@
 </template>
 
 <style scoped>
+  /* A stílusok a régiek, de hozzáadva az input-with-tools és magic-btn a varázspálcákhoz! */
   .p-3 {
     padding: 1rem;
   }
@@ -511,4 +638,28 @@
     cursor: pointer;
     background: none;
   }
+
+  /* ÚJ STÍLUSOK A VARÁZSPÁLCÁHOZ */
+  .input-with-tools {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .magic-btn {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 5px;
+    transition: transform 0.2s;
+  }
+
+    .magic-btn:hover {
+      transform: scale(1.1);
+      filter: brightness(120%);
+    }
 </style>

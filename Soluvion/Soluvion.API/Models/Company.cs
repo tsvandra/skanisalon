@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Soluvion.API.Models
 {
@@ -47,18 +48,14 @@ namespace Soluvion.API.Models
 
         public string? MapEmbedUrl { get; set; }
 
-
-        [MaxLength(100)]
-        public string OpeningHoursTitle { get; set; } = "Bejelentkezés alapján";
-        // 2. Leírás (Pl: "Jelenleg kizárólag...")
-        [MaxLength(500)]
-        public string? OpeningHoursDescription { get; set; }
-        // 3. Időpontok (HTML-t is engedünk benne a sortörés miatt)
-        [MaxLength(500)]
-        public string? OpeningTimeSlots { get; set; }
-        // 4. Extra infó (Pl: "A hirtelen felszabaduló...")
-        [MaxLength(500)]
-        public string? OpeningExtraInfo { get; set; }
+        [Column(TypeName = "jsonb")]
+        public Dictionary<string, string> OpeningHoursTitle { get; set; } = new();
+        [Column(TypeName = "jsonb")]
+        public Dictionary<string, string> OpeningHoursDescription { get; set; } = new();
+        [Column(TypeName = "jsonb")]
+        public Dictionary<string, string> OpeningTimeSlots { get; set; } = new();
+        [Column(TypeName = "jsonb")]
+        public Dictionary<string, string> OpeningExtraInfo { get; set; } = new();
 
         // Cégadatok (Szlovák specifikus mezők a modelled alapján)
         [MaxLength(8)]
