@@ -132,6 +132,11 @@ export const useTranslationStore = defineStore('translation', () => {
       // Nem használjuk a mergeLocaleMessage-t, hanem saját objektumot építünk, mert ez megbízhatóbb
       Object.keys(overrides).forEach(key => {
         if (overrides[key]) {
+          let safeValue = overrides[key];
+
+          if (typeof safeValue === 'string' && safeValue.includes('@') && !safeValue.includes("{'@'}")) {
+            safeValue = safeValue.replace(/@/g, "{'@'}");
+          }
           setNestedProperty(newMessages, key, overrides[key]);
         }
       });
