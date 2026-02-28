@@ -45,6 +45,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.response && error.response.status === 401) {
+      console.warn("A munkamenet lejárt, vagy nincs jogosultság. Újra be kell jelentkezni.");
+      localStorage.removeItem('salon_token'); // Töröljük a rossz tokent
+      window.location.href = '/login'; // Visszairányítjuk a bejelentkezéshez
+    }
+    // ----------------------------------------------------
     return Promise.reject(error);
   }
 );

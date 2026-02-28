@@ -1,64 +1,66 @@
-# 02. Termék Specifikáció és Üzleti Logika (Product Specification)
+ï»¿# 02. TermÃ©k SpecifikÃ¡ciÃ³ Ã©s Ãœzleti Logika (Product Specification)
 
-**Dátum:** 2026.02.25.
+**DÃ¡tum:** 2026.02.25.
 **Projekt:** Soluvion (Skani Salon)
-**Típus:** Élõ Alkalmazás Dokumentáció (Living App Doc)
+**TÃ­pus:** Ã‰lÃµ AlkalmazÃ¡s DokumentÃ¡ciÃ³ (Living App Doc)
 
-Ez a dokumentum az alkalmazás üzleti logikáját, a SaaS mûködést, a lokalizációs stratégiát és a fõbb modulok funkcionális leírását tartalmazza.
-
----
-
-## 1. Cél és Vízió
-
-[cite_start]A rendszer egy .NET backend alapú, Vue.js frontenddel rendelkezõ webalkalmazás[cite: 50]. [cite_start]A végsõ cél egy Multi-tenant (SaaS) rendszer kialakítása, ahol több különbözõ szalon (vagy más vállalkozás) is használhatja az alkalmazást saját adatbázis adatokkal, de egyetlen közös kódbázison[cite: 52].
-[cite_start]Minden üzleti entitás (Service, Gallery, User, Company) kötelezõen rendelkezik egy `CompanyId` azonosítóval az adatok szeparálása érdekében[cite: 64].
+Ez a dokumentum az alkalmazÃ¡s Ã¼zleti logikÃ¡jÃ¡t, a SaaS mÃ»kÃ¶dÃ©st, a lokalizÃ¡ciÃ³s stratÃ©giÃ¡t Ã©s a fÃµbb modulok funkcionÃ¡lis leÃ­rÃ¡sÃ¡t tartalmazza.
 
 ---
 
-## 2. SaaS és "White-Label" Mûködés
+## 1. CÃ©l Ã©s VÃ­ziÃ³
 
-[cite_start]Az alkalmazás szigorúan a "Zéró Hardcode" elvet követi: soha nem drótozunk be fix cégnevet, logót vagy színeket a forráskódba[cite: 66].
-
-* [cite_start]**Dinamikus Arculat (Style Injection):** A rendszer a látogató beérkezésekor vagy bejelentkezéskor lekéri a cég adatait az adatbázisból, és valós idõben felülírja a globális CSS változókat (pl. `--primary-color`, `--secondary-color`)[cite: 68, 70].
-* **Média és Felhõ:** A vizuális elemek (Logó, Lábléc háttérkép) testreszabhatóak. [cite_start]A felhasználó által feltöltött médiafájlokat szigorúan tilos lokálisan a `wwwroot`-ban tárolni[cite: 201]. [cite_start]Minden ilyen fájlt (arculat és galéria) a Cloudinary skálázható felhõtárhelye kezeli[cite: 99, 202].
+[cite_start]A rendszer egy .NET backend alapÃº, Vue.js frontenddel rendelkezÃµ webalkalmazÃ¡s[cite: 50]. [cite_start]A vÃ©gsÃµ cÃ©l egy Multi-tenant (SaaS) rendszer kialakÃ­tÃ¡sa, ahol tÃ¶bb kÃ¼lÃ¶nbÃ¶zÃµ szalon (vagy mÃ¡s vÃ¡llalkozÃ¡s) is hasznÃ¡lhatja az alkalmazÃ¡st sajÃ¡t adatbÃ¡zis adatokkal, de egyetlen kÃ¶zÃ¶s kÃ³dbÃ¡zison[cite: 52].
+[cite_start]Minden Ã¼zleti entitÃ¡s (Service, Gallery, User, Company) kÃ¶telezÃµen rendelkezik egy `CompanyId` azonosÃ­tÃ³val az adatok szeparÃ¡lÃ¡sa Ã©rdekÃ©ben[cite: 64].
 
 ---
 
-## 3. Hibrid Lokalizáció és AI Fordítás
+## 2. SaaS Ã©s "White-Label" MÃ»kÃ¶dÃ©s
 
-[cite_start]SaaS környezetben nem hozhatunk létre fizikai `.json` fájlokat minden új nyelvhez, amit egy ügyfél bekapcsol[cite: 128]. Erre egy egyedi "Master Template" architektúrát használunk.
+[cite_start]Az alkalmazÃ¡s szigorÃºan a "ZÃ©rÃ³ Hardcode" elvet kÃ¶veti: soha nem drÃ³tozunk be fix cÃ©gnevet, logÃ³t vagy szÃ­neket a forrÃ¡skÃ³dba[cite: 66].
 
-### 3.1. Nyelvkezelés (Runtime Generation)
-* [cite_start]**Master Source:** Kizárólag a `locales/hu.json` létezik fizikai fájlként, ez a rendszer "DNS-e", ami az összes statikus kulcsot tartalmazza[cite: 129, 211].
-* [cite_start]**Memory Cloning & Merge:** Nyelvváltáskor a Vue Store a memóriában leklónozza a Master fájlt, majd letölti a cég-specifikus felülírásokat az `UiTranslationOverrides` adatbázis táblából, és ráolvasztja a klónra [cite: 130-131].
-* **Fallback Logika:** A dinamikus fallback nyelv sosem lehet beégetett `'hu'`, hanem mindig az aktuális cég beállítása: `company.value?.defaultLanguage || [cite_start]'hu'`[cite: 143, 227].
-
-### 3.2. Intelligens AI Fordítás
-[cite_start]A beépített OpenAI modul kontextus-érzékeny, és a System Promptokat dinamikusan rakja össze[cite: 122].
-* [cite_start]Figyelembe veszi a cég típusát (`CompanyType` - pl. tudja, hogy a "vágás" hajat jelent egy fodrászatnál)[cite: 123].
-* [cite_start]Figyelembe veszi az oldal kontextusát (Frontend küldi: 'service' tömörséget kér, 'gallery' kreatív leírást) [cite: 124-125, 209].
-* [cite_start]A fordítás aszinkron háttérszálon fut, a Frontend pedig Progress Barral (Polling) követi a folyamatot[cite: 134, 218].
+* [cite_start]**Dinamikus Arculat (Style Injection):** A rendszer a lÃ¡togatÃ³ beÃ©rkezÃ©sekor vagy bejelentkezÃ©skor lekÃ©ri a cÃ©g adatait az adatbÃ¡zisbÃ³l, Ã©s valÃ³s idÃµben felÃ¼lÃ­rja a globÃ¡lis CSS vÃ¡ltozÃ³kat (pl. `--primary-color`, `--secondary-color`)[cite: 68, 70].
+* **MÃ©dia Ã©s FelhÃµ:** A vizuÃ¡lis elemek (LogÃ³, LÃ¡blÃ©c hÃ¡ttÃ©rkÃ©p) testreszabhatÃ³ak. [cite_start]A felhasznÃ¡lÃ³ Ã¡ltal feltÃ¶ltÃ¶tt mÃ©diafÃ¡jlokat szigorÃºan tilos lokÃ¡lisan a `wwwroot`-ban tÃ¡rolni[cite: 201]. [cite_start]Minden ilyen fÃ¡jlt (arculat Ã©s galÃ©ria) a Cloudinary skÃ¡lÃ¡zhatÃ³ felhÃµtÃ¡rhelye kezeli[cite: 99, 202].
 
 ---
 
-## 4. Fõ Modulok és Mûködés
+## 3. Hibrid LokalizÃ¡ciÃ³ Ã©s AI FordÃ­tÃ¡s
+
+[cite_start]SaaS kÃ¶rnyezetben nem hozhatunk lÃ©tre fizikai `.json` fÃ¡jlokat minden Ãºj nyelvhez, amit egy Ã¼gyfÃ©l bekapcsol[cite: 128]. Erre egy egyedi "Master Template" architektÃºrÃ¡t hasznÃ¡lunk.
+
+### 3.1. NyelvkezelÃ©s (Runtime Generation)
+* [cite_start]**Master Source:** KizÃ¡rÃ³lag a `locales/hu.json` lÃ©tezik fizikai fÃ¡jlkÃ©nt, ez a rendszer "DNS-e", ami az Ã¶sszes statikus kulcsot tartalmazza[cite: 129, 211].
+* [cite_start]**Memory Cloning & Merge:** NyelvvÃ¡ltÃ¡skor a Vue Store a memÃ³riÃ¡ban leklÃ³nozza a Master fÃ¡jlt, majd letÃ¶lti a cÃ©g-specifikus felÃ¼lÃ­rÃ¡sokat az `UiTranslationOverrides` adatbÃ¡zis tÃ¡blÃ¡bÃ³l, Ã©s rÃ¡olvasztja a klÃ³nra [cite: 130-131].
+* **Fallback Logika:** A dinamikus fallback nyelv sosem lehet beÃ©getett `'hu'`, hanem mindig az aktuÃ¡lis cÃ©g beÃ¡llÃ­tÃ¡sa: `company.value?.defaultLanguage || [cite_start]'hu'`[cite: 143, 227].
+
+### 3.2. Intelligens AI FordÃ­tÃ¡s
+[cite_start]A beÃ©pÃ­tett OpenAI modul kontextus-Ã©rzÃ©keny, Ã©s a System Promptokat dinamikusan rakja Ã¶ssze[cite: 122].
+* [cite_start]Figyelembe veszi a cÃ©g tÃ­pusÃ¡t (`CompanyType` - pl. tudja, hogy a "vÃ¡gÃ¡s" hajat jelent egy fodrÃ¡szatnÃ¡l)[cite: 123].
+* [cite_start]Figyelembe veszi az oldal kontextusÃ¡t (Frontend kÃ¼ldi: 'service' tÃ¶mÃ¶rsÃ©get kÃ©r, 'gallery' kreatÃ­v leÃ­rÃ¡st) [cite: 124-125, 209].
+* [cite_start]A fordÃ­tÃ¡s aszinkron hÃ¡ttÃ©rszÃ¡lon fut, a Frontend pedig Progress Barral (Polling) kÃ¶veti a folyamatot[cite: 134, 218].
+
+---
+
+## 4. FÃµ Modulok Ã©s MÃ»kÃ¶dÃ©s
 
 ### 4.1. Publikus Oldalak (Front Office)
-A látogatói nézet egy modern SPA (Single Page Application).
-* [cite_start]**Home & Contact:** Dinamikus bemutatkozás, SQL-bõl betöltött címek, telefonszámok, nyitvatartási idõ és beágyazott Google Maps modul [cite: 74-75]. [cite_start]A nyitvatartási táblázatok is HTML alapú, szerkeszthetõ adatbázis mezõkbõl jönnek[cite: 77].
+A lÃ¡togatÃ³i nÃ©zet egy modern SPA (Single Page Application).
+* [cite_start]**Home & Contact:** Dinamikus bemutatkozÃ¡s, SQL-bÃµl betÃ¶ltÃ¶tt cÃ­mek, telefonszÃ¡mok, nyitvatartÃ¡si idÃµ Ã©s beÃ¡gyazott Google Maps modul [cite: 74-75]. [cite_start]A nyitvatartÃ¡si tÃ¡blÃ¡zatok is HTML alapÃº, szerkeszthetÃµ adatbÃ¡zis mezÃµkbÃµl jÃ¶nnek[cite: 77].
 
-### 4.2. Arculat és Cégbeállítások (Admin)
-[cite_start]A "Site Builder" jellegû funkciók egy dedikált beállítások oldalon érhetõk el a véletlen módosítások elkerülése végett[cite: 119].
-* [cite_start]PrimeVue `Tabs` felület a jobb átláthatóságért[cite: 114].
-* [cite_start]Valós idejû csúszkák (slider) a Logó és a Lábléc magasságának állításához, azonnali vizuális visszajelzéssel[cite: 115, 120].
+### 4.2. Arculat Ã©s CÃ©gbeÃ¡llÃ­tÃ¡sok (Admin)
+[cite_start]A "Site Builder" jellegÃ» funkciÃ³k egy dedikÃ¡lt beÃ¡llÃ­tÃ¡sok oldalon Ã©rhetÃµk el a vÃ©letlen mÃ³dosÃ­tÃ¡sok elkerÃ¼lÃ©se vÃ©gett[cite: 119].
+* [cite_start]PrimeVue `Tabs` felÃ¼let a jobb Ã¡tlÃ¡thatÃ³sÃ¡gÃ©rt[cite: 114].
+* [cite_start]ValÃ³s idejÃ» csÃºszkÃ¡k (slider) a LogÃ³ Ã©s a LÃ¡blÃ©c magassÃ¡gÃ¡nak Ã¡llÃ­tÃ¡sÃ¡hoz, azonnali vizuÃ¡lis visszajelzÃ©ssel[cite: 115, 120].
+* **TÃ¶bbnyelvÅ± CÃ©gadatok:** A nyitvatartÃ¡si informÃ¡ciÃ³k JSONB formÃ¡tumban, nyelvenkÃ©nt szeparÃ¡lva (Dictionary) tÃ¡rolÃ³dnak, biztosÃ­tva a tÃ¶kÃ©letes lokalizÃ¡ciÃ³t.
+* **AI VarÃ¡zspÃ¡lca:** EgykattintÃ¡sos OpenAI fordÃ­tÃ¡si asszisztens a beÃ¡llÃ­tÃ¡si mezÅ‘khÃ¶z, dedikÃ¡lt "Ã–sszes fordÃ­tÃ¡sa" csoportos funkciÃ³val Ã©s dinamikus kontextus-felismerÃ©ssel.
 
-### 4.3. Árlista és Szolgáltatások (Services)
-* [cite_start]**Hierarchikus Adatkezelés:** Az adatok Kategória -> Szolgáltatás -> Variáns (Variant) struktúrában épülnek fel[cite: 94].
-* [cite_start]**Rendezés:** A kategóriák és szolgáltatások vizuális sorrendje Drag-and-Drop módszerrel (`vuedraggable`) állítható be[cite: 92].
-* [cite_start]**UI/UX:** A modul sötét témát (Dark Mode) használ, és támogat többnyelvû megjegyzés (Description) mezõket a szolgáltatások finomhangolásához [cite: 93-94].
+### 4.3. Ãrlista Ã©s SzolgÃ¡ltatÃ¡sok (Services)
+* [cite_start]**Hierarchikus AdatkezelÃ©s:** Az adatok KategÃ³ria -> SzolgÃ¡ltatÃ¡s -> VariÃ¡ns (Variant) struktÃºrÃ¡ban Ã©pÃ¼lnek fel[cite: 94].
+* [cite_start]**RendezÃ©s:** A kategÃ³riÃ¡k Ã©s szolgÃ¡ltatÃ¡sok vizuÃ¡lis sorrendje Drag-and-Drop mÃ³dszerrel (`vuedraggable`) Ã¡llÃ­thatÃ³ be[cite: 92].
+* [cite_start]**UI/UX:** A modul sÃ¶tÃ©t tÃ©mÃ¡t (Dark Mode) hasznÃ¡l, Ã©s tÃ¡mogat tÃ¶bbnyelvÃ» megjegyzÃ©s (Description) mezÃµket a szolgÃ¡ltatÃ¡sok finomhangolÃ¡sÃ¡hoz [cite: 93-94].
 
-### 4.4. Okos Galéria (Smart Gallery)
-[cite_start]A képek fizikai tárolását a Cloudinary végzi[cite: 99].
-* [cite_start]**Nested Drag-and-Drop:** A felhasználók szabadon sorrendezhetik a kategóriákat (függõleges lista) és a képeket a kategóriákon belül is [cite: 104-105]. Képek mozgathatóak kategóriák között is.
-* [cite_start]**Kontextuális Kezelés:** Új kategória létrehozása ("Inline") azonnal megjelenik a tetején fókuszált mezõvel[cite: 106]. [cite_start]A képfeltöltés gombok közvetlenül a kategória fejlécekbe kerültek az egyértelmûségért[cite: 107].
-* [cite_start]**Vizuális megjelenítés:** Egységesített, négyzetes képarány (thumbnail) és kattintásra nyíló Lightbox nagyítás[cite: 108].
+### 4.4. Okos GalÃ©ria (Smart Gallery)
+[cite_start]A kÃ©pek fizikai tÃ¡rolÃ¡sÃ¡t a Cloudinary vÃ©gzi[cite: 99].
+* [cite_start]**Nested Drag-and-Drop:** A felhasznÃ¡lÃ³k szabadon sorrendezhetik a kategÃ³riÃ¡kat (fÃ¼ggÃµleges lista) Ã©s a kÃ©peket a kategÃ³riÃ¡kon belÃ¼l is [cite: 104-105]. KÃ©pek mozgathatÃ³ak kategÃ³riÃ¡k kÃ¶zÃ¶tt is.
+* [cite_start]**KontextuÃ¡lis KezelÃ©s:** Ãšj kategÃ³ria lÃ©trehozÃ¡sa ("Inline") azonnal megjelenik a tetejÃ©n fÃ³kuszÃ¡lt mezÃµvel[cite: 106]. [cite_start]A kÃ©pfeltÃ¶ltÃ©s gombok kÃ¶zvetlenÃ¼l a kategÃ³ria fejlÃ©cekbe kerÃ¼ltek az egyÃ©rtelmÃ»sÃ©gÃ©rt[cite: 107].
+* [cite_start]**VizuÃ¡lis megjelenÃ­tÃ©s:** EgysÃ©gesÃ­tett, nÃ©gyzetes kÃ©parÃ¡ny (thumbnail) Ã©s kattintÃ¡sra nyÃ­lÃ³ Lightbox nagyÃ­tÃ¡s[cite: 108].

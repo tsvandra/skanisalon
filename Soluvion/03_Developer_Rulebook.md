@@ -1,66 +1,67 @@
-# 03. Fejlesztıi J·tÈkszab·lyok (Developer Rulebook)
+Ôªø# 03. Fejleszt√µi J√°t√©kszab√°lyok (Developer Rulebook)
 
-**D·tum:** 2026.02.25.
+**D√°tum:** 2026.02.25.
 **Projekt:** Soluvion (Skani Salon)
-**TÌpus:** KÛdol·si Szab·lyzat Ès Best Practices
+**T√≠pus:** K√≥dol√°si Szab√°lyzat √©s Best Practices
 
-Ez a dokumentum azokat a szigor˙ kÛdol·si elveket Ès konvenciÛkat tartalmazza, amelyeket a rendszer stabilit·s·nak Ès a "Clean Code" fenntart·s·nak ÈrdekÈben minden fejlesztÈs sor·n be kell tartani.
-
----
-
-## 1. Git Branching Ès Munkafolyamat
-
-[cite_start]A kÛd stabilit·s·nak megırzÈse ÈrdekÈben szigor˙ "Feature Branch" modellt kˆvet¸nk[cite: 58].
-
-* [cite_start]**`main` ·g (PRODUCTION):** > Kiz·rÛlag a stabil, Èles verziÛt tartalmazza[cite: 59]. Kˆzvetlen¸l ide pusholni **szigor˙an tilos!**
-* [cite_start]**`develop` ·g (STAGING):** > A kˆzponti fejlesztıi ·g[cite: 60]. A Netlify Ès a Railway ezt figyeli a tesztkˆrnyezet frissÌtÈsÈhez.
-* [cite_start]**`feature/...` ·gak (LOCAL):** > Minden ˙j funkciÛt vagy hibajavÌt·st egy dedik·lt ·gon kell elvÈgezni[cite: 60].
-* [cite_start]**NÈvkonvenciÛ:** > A feature ·gak neve tartalmazza az Issue sz·m·t (pl. `feature/12-arlista-backend`)[cite: 61, 62].
+Ez a dokumentum azokat a szigor√∫ k√≥dol√°si elveket √©s konvenci√≥kat tartalmazza, amelyeket a rendszer stabilit√°s√°nak √©s a "Clean Code" fenntart√°s√°nak √©rdek√©ben minden fejleszt√©s sor√°n be kell tartani.
 
 ---
 
-## 2. Backend KÛdol·si Szab·lyok (.NET)
+## 1. Git Branching √©s Munkafolyamat
 
-### 2.1. Controller HigiÈnia Ès DTO-k (Strict Mode)
-* [cite_start]**Nincs inline DTO:** > Tilos DTO oszt·lyokat, Enumokat vagy segÈdoszt·lyokat a Controller f·jlon bel¸l defini·lni[cite: 219]. [cite_start]Minden ˙j adatstrukt˙r·nak azonnal lÈtre kell hozni a saj·t f·jlj·t a `Models/DTOs` mapp·ban[cite: 194, 220].
-* [cite_start]**Thin Controllers:** > Ha egy Controller meghaladja a 200 sort, vagy t˙l sok felelıssÈge van, a logik·t **ki kell szervezni** egy Service oszt·lyba[cite: 221].
-* [cite_start]**DTO KˆtelezettsÈg MentÈskor:** > SOHA ne v·rjon egy Controller kˆzvetlen¸l Adatb·zis Entit·st a paramÈterekben (POST/PUT kÈrÈseknÈl)[cite: 223]. [cite_start]Mindig DTO-t kell fogadni, Ès manu·lisan lekÈpezni az EF Core felÈ, elker¸lve az adatb·zis hib·kat[cite: 224, 225].
+[cite_start]A k√≥d stabilit√°s√°nak meg√µrz√©se √©rdek√©ben szigor√∫ "Feature Branch" modellt k√∂vet√ºnk[cite: 58].
 
-### 2.2. API Ès Adatb·zis KonvenciÛk
-* [cite_start]**Tenant Isolation:** > Minden lekÈrdezÈst sz˚rni kell a Multi-tenancy miatt (pl. `.Where(x => x.CompanyId == currentCompanyId)`)[cite: 164]. [cite_start]Az azonosÌt·shoz a JWT Tokenben lÈvı `CompanyId` az ir·nyadÛ[cite: 162].
-* [cite_start]**Adatb·zis ElnevezÈsek:** > Kulcs-ÈrtÈk p·rokat t·rolÛ t·bl·kn·l a kulcs mezı neve legyen konzisztensen `TranslationKey` (vagy `ConfigKey`)[cite: 222]. [cite_start]Ker¸lj¸k a generikus `Key` elnevezÈst az EF Core ¸tkˆzÈsek miatt[cite: 222].
+* [cite_start]**`main` √°g (PRODUCTION):** > Kiz√°r√≥lag a stabil, √©les verzi√≥t tartalmazza[cite: 59]. K√∂zvetlen√ºl ide pusholni **szigor√∫an tilos!**
+* [cite_start]**`develop` √°g (STAGING):** > A k√∂zponti fejleszt√µi √°g[cite: 60]. A Netlify √©s a Railway ezt figyeli a tesztk√∂rnyezet friss√≠t√©s√©hez.
+* [cite_start]**`feature/...` √°gak (LOCAL):** > Minden √∫j funkci√≥t vagy hibajav√≠t√°st egy dedik√°lt √°gon kell elv√©gezni[cite: 60].
+* [cite_start]**N√©vkonvenci√≥:** > A feature √°gak neve tartalmazza az Issue sz√°m√°t (pl. `feature/12-arlista-backend`)[cite: 61, 62].
 
 ---
 
-## 3. Frontend KÛdol·si Szab·lyok (Vue 3)
+## 2. Backend K√≥dol√°si Szab√°lyok (.NET)
 
-### 3.1. Aszinkron ¡llapotkezelÈs Ès Race Condition VÈdelem
-* [cite_start]**A `useAutoSaveQueue` kˆtelezı:** > Olyan funkciÛkn·l, amelyek gyors, egym·s ut·ni API hÌv·sokat gener·lnak (pl. Drag-and-Drop rendezÈs, Cs˙szk·k h˙z·sa), kˆtelezı a `useAutoSaveQueue` composable haszn·lata[cite: 196]. 
-* [cite_start]**P·rhuzamos hÌv·sok tilalma:** > Sose engedj¸nk p·rhuzamos API hÌv·sokat ugyanarra az erıforr·sra, ezzel elker¸lve a "Race Condition" adatvesztÈst[cite: 197].
-* [cite_start]**Input KezelÈs:** > PrimeVue beviteli mezıknÈl a biztos mentÈs ÈrdekÈben az `@update:modelValue` Ès `@blur` esemÈnyeket egy¸tt kell haszn·lni[cite: 172].
+### 2.1. Controller Higi√©nia √©s DTO-k (Strict Mode)
+* [cite_start]**Nincs inline DTO:** > Tilos DTO oszt√°lyokat, Enumokat vagy seg√©doszt√°lyokat a Controller f√°jlon bel√ºl defini√°lni[cite: 219]. [cite_start]Minden √∫j adatstrukt√∫r√°nak azonnal l√©tre kell hozni a saj√°t f√°jlj√°t a `Models/DTOs` mapp√°ban[cite: 194, 220].
+* [cite_start]**Thin Controllers:** > Ha egy Controller meghaladja a 200 sort, vagy t√∫l sok felel√µss√©ge van, a logik√°t **ki kell szervezni** egy Service oszt√°lyba[cite: 221].
+* [cite_start]**DTO K√∂telezetts√©g Ment√©skor:** > SOHA ne v√°rjon egy Controller k√∂zvetlen√ºl Adatb√°zis Entit√°st a param√©terekben (POST/PUT k√©r√©sekn√©l)[cite: 223]. [cite_start]Mindig DTO-t kell fogadni, √©s manu√°lisan lek√©pezni az EF Core fel√©, elker√ºlve az adatb√°zis hib√°kat[cite: 224, 225].
 
-### 3.2. PrimeVue v4 Kompatibilit·s
-[cite_start]⁄j komponensek Ìr·sakor vagy refaktor·l·skor **TILOS** a rÈgi PrimeVue v3 elnevezÈseket haszn·lni[cite: 214].
-* [cite_start]**Kˆtelezı haszn·lni:** `<Select>`, `<Tabs>`, `<AccordionPanel>`[cite: 215].
-* [cite_start]**Tilos haszn·lni:** `<Dropdown>`, `<TabView>`, `<AccordionTab>`[cite: 215].
+### 2.2. API √©s Adatb√°zis Konvenci√≥k
+* [cite_start]**Tenant Isolation:** > Minden lek√©rdez√©st sz√ªrni kell a Multi-tenancy miatt (pl. `.Where(x => x.CompanyId == currentCompanyId)`)[cite: 164]. [cite_start]Az azonos√≠t√°shoz a JWT Tokenben l√©v√µ `CompanyId` az ir√°nyad√≥[cite: 162].
+* [cite_start]**Adatb√°zis Elnevez√©sek:** > Kulcs-√©rt√©k p√°rokat t√°rol√≥ t√°bl√°kn√°l a kulcs mez√µ neve legyen konzisztensen `TranslationKey` (vagy `ConfigKey`)[cite: 222]. [cite_start]Ker√ºlj√ºk a generikus `Key` elnevez√©st az EF Core √ºtk√∂z√©sek miatt[cite: 222].
 
-### 3.3. API Kommunik·ciÛ (Axios)
-* [cite_start]**Fetch API tilalma:** > TILOS a natÌv `fetch` API haszn·lata manu·lis header ÈpÌtÈssel[cite: 164].
-* [cite_start]**Axios haszn·lata:** > Kiz·rÛlag a `src/services/api.js` Axios pÈld·ny haszn·lhatÛ, mert az automatikusan kezeli a BaseURL-t Ès a JWT Bearer tokent[cite: 165].
+---
+
+## 3. Frontend K√≥dol√°si Szab√°lyok (Vue 3)
+
+### 3.1. Aszinkron √Ållapotkezel√©s √©s Race Condition V√©delem
+* [cite_start]**A `useAutoSaveQueue` k√∂telez√µ:** > Olyan funkci√≥kn√°l, amelyek gyors, egym√°s ut√°ni API h√≠v√°sokat gener√°lnak (pl. Drag-and-Drop rendez√©s, Cs√∫szk√°k h√∫z√°sa), k√∂telez√µ a `useAutoSaveQueue` composable haszn√°lata[cite: 196]. 
+* [cite_start]**P√°rhuzamos h√≠v√°sok tilalma:** > Sose engedj√ºnk p√°rhuzamos API h√≠v√°sokat ugyanarra az er√µforr√°sra, ezzel elker√ºlve a "Race Condition" adatveszt√©st[cite: 197].
+* [cite_start]**Input Kezel√©s:** > PrimeVue beviteli mez√µkn√©l a biztos ment√©s √©rdek√©ben az `@update:modelValue` √©s `@blur` esem√©nyeket egy√ºtt kell haszn√°lni[cite: 172].
+
+### 3.2. PrimeVue v4 Kompatibilit√°s
+[cite_start]√öj komponensek √≠r√°sakor vagy refaktor√°l√°skor **TILOS** a r√©gi PrimeVue v3 elnevez√©seket haszn√°lni[cite: 214].
+* [cite_start]**K√∂telez√µ haszn√°lni:** `<Select>`, `<Tabs>`, `<AccordionPanel>`[cite: 215].
+* [cite_start]**Tilos haszn√°lni:** `<Dropdown>`, `<TabView>`, `<AccordionTab>`[cite: 215].
+
+### 3.3. API Kommunik√°ci√≥ (Axios)
+* [cite_start]**Fetch API tilalma:** > TILOS a nat√≠v `fetch` API haszn√°lata manu√°lis header √©p√≠t√©ssel[cite: 164].
+* [cite_start]**Axios haszn√°lata:** > Kiz√°r√≥lag a `src/services/api.js` Axios p√©ld√°ny haszn√°lhat√≥, mert az automatikusan kezeli a BaseURL-t √©s a JWT Bearer tokent[cite: 165].
 
 ### 3.4. Separation of Concerns (Admin UI)
-* [cite_start]**Be·llÌt·sok helye:** > A "Site Builder" jelleg˚ funkciÛk (LogÛ feltˆltÈs, Layout mÛdosÌt·s) helye a `SettingsView`-ban van[cite: 198].
-* [cite_start]**Tiszta Layout:** > Ker¸lj¸k a szerkesztı gombok elhelyezÈsÈt kˆzvetlen¸l a glob·lis layout komponenseken (Header/Footer), hogy a felhaszn·lÛi fel¸let tiszta maradjon[cite: 199]. [cite_start]Haszn·ljuk a `provide/inject` mint·t a be·llÌt·sok ÈrvÈnyesÌtÈsÈhez[cite: 200].
+* [cite_start]**Be√°ll√≠t√°sok helye:** > A "Site Builder" jelleg√ª funkci√≥k (Log√≥ felt√∂lt√©s, Layout m√≥dos√≠t√°s) helye a `SettingsView`-ban van[cite: 198].
+* [cite_start]**Tiszta Layout:** > Ker√ºlj√ºk a szerkeszt√µ gombok elhelyez√©s√©t k√∂zvetlen√ºl a glob√°lis layout komponenseken (Header/Footer), hogy a felhaszn√°l√≥i fel√ºlet tiszta maradjon[cite: 199]. [cite_start]Haszn√°ljuk a `provide/inject` mint√°t a be√°ll√≠t√°sok √©rv√©nyes√≠t√©s√©hez[cite: 200].
 
 ---
 
-## 4. MestersÈges Intelligencia (AI) Ès Felhı Szab·lyok
+## 4. Mesters√©ges Intelligencia (AI) √©s Felh√µ Szab√°lyok
 
-### 4.1. AI Integr·ciÛ
-* [cite_start]**API Kulcs Biztons·g:** > Szigor˙an TILOS API kulcsot (`sk-...`) a forr·skÛdban vagy config f·jlban commitolni[cite: 204]. [cite_start]Ha vÈletlen¸l megtˆrtÈnik, azonnal vissza kell vonni[cite: 205].
-* [cite_start]**Prompt Logika (SaaS Rule):** > Tilos hard-coded ¸zleti tÌpusokat (pl. "Fodr·szat") Ìrni a System Promptba[cite: 206]. [cite_start]Mindig a `CompanyType` v·ltozÛt kell behelyettesÌteni[cite: 207].
-* [cite_start]**Frontend HÌv·s:** > A Frontendnek K÷TELEZ’ k¸ldenie a `context` paramÈtert ('service', 'gallery', stb.), k¸lˆnben a backend "general" mÛdban fordÌt[cite: 209]. [cite_start]A fordÌt·s mindig gombnyom·sra tˆrtÈnik, sosem a h·ttÈrben automatikusan[cite: 208].
+### 4.1. AI Integr√°ci√≥
+* **API Kulcs Biztons√°g:** > Szigor√∫an TILOS API kulcsot (`sk-...`) a forr√°sk√≥dban vagy config f√°jlban commitolni. Helyi fejleszt√©s sor√°n az `OpenAI:ApiKey` t√°rol√°s√°ra K√ñTELEZ≈ê a .NET `User Secrets` (dotnet user-secrets) haszn√°lata. Ha v√©letlen√ºl kiker√ºl a Gitre, azonnal vissza kell vonni a kulcsot.
+* **Vue-i18n Speci√°lis Karakterek:** > Az AI √°ltal ford√≠tott vagy manu√°lisan be√≠rt `@` (kukac) karaktereket (pl. e-mail c√≠mekn√©l) K√ñTELEZ≈ê `{'@'}` form√°tumban escape-elni a JSON f√°jlokban √©s a Store bet√∂lt≈ë logik√°j√°ban, k√ºl√∂nben a Vue-i18n fatal errort dob √©s az alkalmaz√°s √∂sszeomlik.
+* [cite_start]**Prompt Logika (SaaS Rule):** > Tilos hard-coded √ºzleti t√≠pusokat (pl. "Fodr√°szat") √≠rni a System Promptba[cite: 206]. [cite_start]Mindig a `CompanyType` v√°ltoz√≥t kell behelyettes√≠teni[cite: 207].
+* [cite_start]**Frontend H√≠v√°s:** > A Frontendnek K√ñTELEZ√ï k√ºldenie a `context` param√©tert ('service', 'gallery', stb.), k√ºl√∂nben a backend "general" m√≥dban ford√≠t[cite: 209]. [cite_start]A ford√≠t√°s mindig gombnyom√°sra t√∂rt√©nik, sosem a h√°tt√©rben automatikusan[cite: 208].
 
-### 4.2. Felhı T·rol·s (Cloud Storage)
-* [cite_start]**Lok·lis t·rol·s tilalma:** > Felhaszn·lÛ ·ltal feltˆltˆtt mÈdiaf·jlokat TILOS lok·lisan a `wwwroot`-ban t·rolni[cite: 201].
-* [cite_start]**Cloudinary haszn·lata:** > Minden mÈdiaf·jlt a Cloudinary-ba kell feltˆlteni[cite: 202]. [cite_start]Az adatb·zisban a `PublicId`-t is t·rolni kell az `Url` mellett a tˆrˆlhetısÈg ÈrdekÈben[cite: 203].
+### 4.2. Felh√µ T√°rol√°s (Cloud Storage)
+* [cite_start]**Lok√°lis t√°rol√°s tilalma:** > Felhaszn√°l√≥ √°ltal felt√∂lt√∂tt m√©diaf√°jlokat TILOS lok√°lisan a `wwwroot`-ban t√°rolni[cite: 201].
+* [cite_start]**Cloudinary haszn√°lata:** > Minden m√©diaf√°jlt a Cloudinary-ba kell felt√∂lteni[cite: 202]. [cite_start]Az adatb√°zisban a `PublicId`-t is t√°rolni kell az `Url` mellett a t√∂r√∂lhet√µs√©g √©rdek√©ben[cite: 203].
