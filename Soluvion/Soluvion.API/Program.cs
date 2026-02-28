@@ -91,6 +91,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    try
+    {
+        Console.WriteLine("Adatbázis migrációk ellenőrzése és futtatása...");
+        db.Database.Migrate(); // Automatikusan lefuttatja a hiányzó migrációkat a Railway-en!
+        Console.WriteLine("Adatbázis sikeresen frissítve!");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Hiba az adatbázis migráció során: {ex.Message}");
+    }
+}
+
 // --- 2. MIDDLEWARE (SORREND A LÉNYEG!) ---
 
 // 1. KÉZI HIBAKEZELÉS (Hogy lássuk, ha baj van, ne csak CORS hibát kapjunk)
