@@ -164,6 +164,8 @@ export const useTranslationStore = defineStore('translation', () => {
     i18n.global.locale.value = langCode;
     currentLanguage.value = langCode;
     document.querySelector('html').setAttribute('lang', langCode);
+
+    localStorage.setItem('user-locale', langCode);
   };
 
   return {

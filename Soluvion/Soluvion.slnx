@@ -4,9 +4,15 @@
     <File Path="Dockerfile" />
   </Folder>
   <Folder Name="/Solution Items/DevDoc/">
-    <File Path="DevelopDocumentation.txt" />
-    <File Path="Szabalykonyv.txt" />
-    <File Path="TechnologicalStack.txt" />
+    <File Path="01_Architecture_and_DevOps.md" />
+    <File Path="02_Product_Specification.md" />
+    <File Path="03_Developer_Rulebook.md" />
+    <File Path="04_Changelog.md" />
+  </Folder>
+  <Folder Name="/Solution Items/documentationArchive/">
+    <File Path="documentationArchive/DevelopDocumentation.txt" />
+    <File Path="documentationArchive/Szabalykonyv.txt" />
+    <File Path="documentationArchive/TechnologicalStack.txt" />
   </Folder>
   <Folder Name="/soluvion-db-backup/">
     <File Path="soluvion-db-backup/backup.sh" />

@@ -33,11 +33,11 @@ Dependency Injection (DI):
 [ 2. ADATBÁZIS RÉTEG ]
 
 A rendszer relációs adatbázist használ, amely a Railway felhõjében fut.
-
 - Motor:          PostgreSQL 16+
-- Hosting:        Railway (Dockerizált környezet)
-- Kapcsolat:      Connection String (Környezeti változóból injektálva)
-- Migrációk:      EF Core Migrations (dotnet ef migrations add/update)
+- Hosting:        Railway (Dockerizált környezet, külön PROD és STAGING)
+- Kapcsolat:      TCP Proxy keresztül (DBeaver esetén jdbc URL + sslmode=require)
+- Migrációk:      EF Core Migrations (Automatikus migráció futásidőben: db.Database.Migrate())
+- Biztonsági Mentés: Backblaze B2 Cloud Storage (Automatizált napi mentések pg_dump formátumban, titkosítva).
 
 Adatmodell Struktúra (Részlet):
   - Companies:    A bérlõk (szalonok) adatai. (PK: Id)
@@ -109,22 +109,18 @@ API Kommunikáció:
 
 [ 5. INFRASTRUKTÚRA ÉS DEVOPS ]
 
-A rendszer CI/CD (Continuous Integration / Deployment) alapokon mûködik.
+A rendszer haladó CI/CD (Continuous Integration / Deployment) alapokon mûködik, éles (Production) és teszt (Staging) környezetekkel.
 
 Backend Pipeline (Railway):
-  - Trigger: Git Push a main ágra.
-  - Folyamat: Docker Image építése -> Konténer indítása -> Portok megnyitása.
-  - Környezeti Változók: Adatbázis URL, JWT Secret Key (Titkosítva tárolva).
+  - Környezetek: Külön 'production' és 'staging' environment.
+  - Trigger: Git Push a `main` ágra (PROD), vagy a `develop` ágra (STAGING).
+  - Folyamat: Docker Image építése -> Konténer indítása -> Automatikus EF Core migráció lefutása.
 
-Frontend Pipeline (Netlify):
+Frontend Pipeline (Netlify - Branch Deploys):
   - Trigger: Git Push.
-  - Build Parancs: `npm run build`
-  - Output: `/dist` mappa tartalmának publikálása CDN-re.
-  - Routing Config: `netlify.toml` (SPA redirect szabályok).
-
-Környezeti Változók (.env kezelés):
-  - Fejlesztés (Local): .env fájlban (VITE_API_URL=https://skanisalon...).
-  - Éles (Production): A szolgáltatók Dashboardján beállítva.
+  - Production: A `main` ág frissíti a fő domaint (pl. skanisalon.sk).
+  - Staging / Branch Deploy: A `develop` ág automatikusan egy dedikált teszt linkre fordul (develop--soluvion.netlify.app).
+  - Környezeti Változók: A Netlify UI-on "Different value for each deploy context" beállítással külön VITE_API_URL mutat a PROD és a STAGING backendre.
 
   --------------------------------------------------------------------------------
 

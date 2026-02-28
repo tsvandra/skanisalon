@@ -56,12 +56,14 @@
       "name": "Név",
       "namePlaceholder": "Ide jön a neved",
       "email": "Email cím",
-      "emailPlaceholder": "pelda@email.com",
+      "emailPlaceholder": "pelda{'@'}email.com",
       "message": "Üzenet",
       "messagePlaceholder": "Miben segíthetek?",
       "send": "Üzenet küldése",
       "sending": "Küldés...",
-      "success": "Köszönöm! Üzenetedet megkaptam."
+      "success": "Köszönöm! Üzenetedet megkaptam.",
+      "validationError": "Kérlek tölts ki minden mezőt!",
+      "submitError": "Hiba történt a küldés során. Kérlek próbáld újra később."
     }
   },
   "settings": {

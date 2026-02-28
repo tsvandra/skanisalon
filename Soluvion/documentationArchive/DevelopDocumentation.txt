@@ -337,5 +337,29 @@ A gyors fejlesztés során fellépő kódminőség-romlás ("spaghetti code") ko
 3. Entity Framework Core Collection Tracking Fix:
    - A Service (és Variant) mentéseknél fellépő 400 Bad Request hibák kiküszöbölve. A PUT/POST végpontok kizárólag DTO-kat fogadnak, az al-entitások (Id=0) manuális leképezésével elkerülve az EF Core 'detached entity' hibáit.
 
+--------------------------------------------------------------------------------
+
+=== BEFEJEZVE - INFRASTRUKTÚRA: STAGING KÖRNYEZET ÉS CI/CD PIPELINE (2026.02.25) ===
+Státusz: Kész, Stabilizálva
+
+Áttekintés:
+A fejlesztési folyamat biztonságossá tétele érdekében a "develop" ág leválasztásra került az éles (main) rendszerről, teljes értékű Staging (teszt) infrastruktúrát kapott.
+
+Backend Változtatások (Railway):
+- Létrehozva a dedikált 'staging' környezet új PostgreSQL adatbázissal és .NET Web API konténerrel.
+- CORS Policy frissítve a Staging frontend domainek elfogadására.
+
+Frontend Változtatások (Netlify):
+- 'Branch Deploys' funkció aktiválva a `develop` ágra.
+- 'Deploy Contexts' környezeti változók konfigurálva: a `main` ág az éles Railway URL-t, a `develop` ág a staging Railway URL-t hívja meg automatikusan.
+
+Adatbázis Migráció és Klónozás:
+- Megoldva az ingyenes/hobby Railway tier CLI csatlakozási korlátozása (forcibly closed by remote host).
+- A PROD adatbázis adatai a napi Backblaze B2 mentésből (.sql) lettek átemelve a Staging adatbázisba.
+- A klónozás DBeaver adatbáziskezelővel, JDBC proxy URL használatával (`sslmode=require`), és a beépített "Execute Script" eszközzel (pg_restore / psql) történt, sikeresen feldolgozva a PostgreSQL `COPY` parancsait.
+
+Eredmény: 
+Bármilyen új kód pusholása a `develop` ágra automatikusan frissíti a biztonságos tesztkörnyezetet anélkül, hogy az éles szalon alkalmazás működését veszélyeztetné.
+
 ================================================================================
 
