@@ -1,13 +1,24 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking; // FONTOS: Ez kell az összehasonlításhoz
 using Soluvion.API.Models;
+using Soluvion.API.Services; // FONTOS: ITenantContext miatt
 using System.Text.Json; // FONTOS: Ez kell a JSON kezeléshez
 
 namespace Soluvion.API.Data
 {
     public class AppDbContext : DbContext
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+        private readonly ITenantContext? _tenantContext;
+
+        // FONTOS: Injektáljuk a TenantContext-et (opcionálisként, hogy a migrációk hibátlanul lefussanak)
+        public AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext? tenantContext = null) : base(options)
+        {
+            _tenantContext = tenantContext;
+        }
+
+        // Segédtulajdonság az EF Core dinamikus lekérdezéseihez
+        // Ha nincs tenant (pl. háttérfolyamat vagy migráció), akkor 0-t ad vissza.
+        public int CurrentTenantId => _tenantContext?.CurrentCompany?.Id ?? 0;
 
         public DbSet<User> Users { get; set; }
         public DbSet<Company> Companies { get; set; }
@@ -26,6 +37,15 @@ namespace Soluvion.API.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Entity<Company>().HasQueryFilter(c => CurrentTenantId == 0 || c.Id == CurrentTenantId);
+            modelBuilder.Entity<CompanyLanguage>().HasQueryFilter(cl => CurrentTenantId == 0 || cl.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<Service>().HasQueryFilter(s => CurrentTenantId == 0 || s.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<GalleryCategory>().HasQueryFilter(gc => CurrentTenantId == 0 || gc.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<UiTranslationOverride>().HasQueryFilter(u => CurrentTenantId == 0 || u.CompanyId == CurrentTenantId);
+
+            modelBuilder.Entity<GalleryImage>().HasQueryFilter(gi => CurrentTenantId == 0 || gi.Category!.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<ServiceVariant>().HasQueryFilter(sv => CurrentTenantId == 0 || sv.Service!.CompanyId == CurrentTenantId);
+
             // --- 1. ÖSSZETETT KULCSOK ---
             modelBuilder.Entity<CompanyLanguage>()
                 .HasKey(cl => new { cl.CompanyId, cl.LanguageCode });
@@ -36,8 +56,6 @@ namespace Soluvion.API.Data
 
             // --- 2. JSONB KONVERZIÓK (MANUÁLIS) ---
             // Ez oldja meg a "Reading as Dictionary is not supported" hibát!
-
-            // Segédváltozó az összehasonlításhoz (hogy az EF lássa, ha változott a Dictionary tartalma)
             var dictionaryComparer = new ValueComparer<Dictionary<string, string>>(
                 (c1, c2) => c1.SequenceEqual(c2),
                 c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),

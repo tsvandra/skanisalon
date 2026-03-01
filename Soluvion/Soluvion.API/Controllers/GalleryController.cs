@@ -1,13 +1,10 @@
-﻿using CloudinaryDotNet;
-using CloudinaryDotNet.Actions;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
 using Soluvion.API.Models;
-using Soluvion.API.Models.DTOs; // Itt vannak az új DTO-k
-using Soluvion.API.Services;    // ITenantContext
-using System.Security.Claims;
+using Soluvion.API.Models.DTOs;
+using Soluvion.API.Services;
 
 namespace Soluvion.API.Controllers
 {
@@ -16,17 +13,16 @@ namespace Soluvion.API.Controllers
     public class GalleryController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private readonly Cloudinary _cloudinary;
-        private readonly ITenantContext _tenantContext; // ÚJ
+        private readonly IImageService _imageService; // ÚJ Szerviz
+        private readonly ITenantContext _tenantContext;
 
-        public GalleryController(AppDbContext context, Cloudinary cloudinary, ITenantContext tenantContext)
+        public GalleryController(AppDbContext context, IImageService imageService, ITenantContext tenantContext)
         {
             _context = context;
-            _cloudinary = cloudinary;
+            _imageService = imageService;
             _tenantContext = tenantContext;
         }
 
-        // Segéd: Admin műveleteknél a bejelentkezett felhasználó cégét nézzük
         private int GetUserCompanyId()
         {
             var companyClaim = User.FindFirst("CompanyId");
@@ -37,14 +33,10 @@ namespace Soluvion.API.Controllers
             return 0;
         }
 
-        // --- KÉPEK KEZELÉSE ---
-
-        // GET: api/Gallery (Publikus lista)
         [HttpGet]
-        [AllowAnonymous] // Vendég is láthatja!
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<GalleryImageDto>>> GetImages()
         {
-            // 1. Tenant Contextből olvassuk ki a céget
             var currentCompany = _tenantContext.CurrentCompany;
             if (currentCompany == null) return BadRequest("Nem sikerült azonosítani a szalont.");
 
@@ -55,13 +47,11 @@ namespace Soluvion.API.Controllers
                 .ThenByDescending(i => i.UploadDate)
                 .ToListAsync();
 
-            // 2. Mapping DTO-ba (így elkerüljük a körkörös hivatkozást)
             var result = images.Select(i => new GalleryImageDto
             {
                 Id = i.Id,
                 ImageUrl = i.ImagePath,
                 CategoryId = i.CategoryId,
-                // Ha nincs kategória, egy default dictionary-t adunk vissza
                 Category = i.Category != null ? i.Category.Name : new Dictionary<string, string> { { "hu", "Egyéb" } },
                 Title = i.Title,
                 OrderIndex = i.OrderIndex
@@ -70,7 +60,6 @@ namespace Soluvion.API.Controllers
             return Ok(result);
         }
 
-        // POST: api/Gallery (Kép feltöltés)
         [HttpPost]
         [Authorize]
         public async Task<ActionResult<GalleryImageDto>> UploadImage(IFormFile file, [FromForm] string category)
@@ -80,31 +69,14 @@ namespace Soluvion.API.Controllers
             int companyId = GetUserCompanyId();
             if (companyId == 0) return Unauthorized("Érvénytelen token.");
 
-            // 1. Cloudinary feltöltés
-            var uploadResult = new ImageUploadResult();
-            using (var stream = file.OpenReadStream())
-            {
-                var uploadParams = new ImageUploadParams()
-                {
-                    File = new FileDescription(file.FileName, stream),
-                    Folder = $"soluvion/company_{companyId}/gallery",
-                    Transformation = new Transformation().Width(1920).Crop("limit")
-                };
-                uploadResult = await _cloudinary.UploadAsync(uploadParams);
-            }
-
-            if (uploadResult.Error != null)
-                return BadRequest($"Hiba a feltöltés során: {uploadResult.Error.Message}");
+            // 1. Feltöltés az ImageService segítségével (1920px limit)
+            var uploadResult = await _imageService.UploadImageAsync(file, $"soluvion/company_{companyId}/gallery", 1920);
+            if (uploadResult == null) return BadRequest("Hiba a feltöltés során.");
 
             // 2. Kategória kezelés
             string categoryNameString = category?.Trim() ?? "Egyéb";
-
-            var existingCategories = await _context.GalleryCategories
-                .Where(c => c.CompanyId == companyId)
-                .ToListAsync();
-
-            var galleryCategory = existingCategories
-                .FirstOrDefault(c => c.Name.ContainsKey("hu") && c.Name["hu"] == categoryNameString);
+            var existingCategories = await _context.GalleryCategories.Where(c => c.CompanyId == companyId).ToListAsync();
+            var galleryCategory = existingCategories.FirstOrDefault(c => c.Name.ContainsKey("hu") && c.Name["hu"] == categoryNameString);
 
             if (galleryCategory == null)
             {
@@ -120,8 +92,8 @@ namespace Soluvion.API.Controllers
             // 3. Mentés DB-be
             var galleryImage = new GalleryImage
             {
-                ImagePath = uploadResult.SecureUrl.ToString(),
-                PublicId = uploadResult.PublicId,
+                ImagePath = uploadResult.Value.Url, // <-- Új szerviz adata
+                PublicId = uploadResult.Value.PublicId, // <-- Új szerviz adata
                 CategoryId = galleryCategory.Id,
                 Title = new Dictionary<string, string> { { "hu", file.FileName } },
                 UploadDate = DateTime.UtcNow,
@@ -131,7 +103,6 @@ namespace Soluvion.API.Controllers
             _context.GalleryImages.Add(galleryImage);
             await _context.SaveChangesAsync();
 
-            // DTO válasz
             return Ok(new GalleryImageDto
             {
                 Id = galleryImage.Id,
@@ -143,42 +114,30 @@ namespace Soluvion.API.Controllers
             });
         }
 
-        // PUT: api/Gallery/5
         [HttpPut("{id}")]
         [Authorize]
         public async Task<IActionResult> UpdateImage(int id, [FromBody] GalleryImageUpdateDto dto)
         {
+            // ... (Ez a rész változatlan marad az előző kódodhoz képest)
             if (id != dto.Id) return BadRequest();
             int companyId = GetUserCompanyId();
             if (companyId == 0) return Unauthorized();
 
-            var image = await _context.GalleryImages
-                .Include(i => i.Category)
-                .FirstOrDefaultAsync(i => i.Id == id);
-
+            var image = await _context.GalleryImages.Include(i => i.Category).FirstOrDefaultAsync(i => i.Id == id);
             if (image == null) return NotFound();
             if (image.Category != null && image.Category.CompanyId != companyId) return Forbid();
 
-            if (dto.Title != null)
-            {
-                image.Title = dto.Title;
-            }
+            if (dto.Title != null) image.Title = dto.Title;
             image.OrderIndex = dto.OrderIndex;
 
-            // Kategória váltás logika
             bool categoryChanged = false;
             if (dto.CategoryName != null && dto.CategoryName.Any())
             {
-                if (image.Category == null)
-                {
-                    categoryChanged = true;
-                }
+                if (image.Category == null) categoryChanged = true;
                 else
                 {
-                    var dict1 = image.Category.Name;
-                    var dict2 = dto.CategoryName;
-                    string name1 = dict1.ContainsKey("hu") ? dict1["hu"] : "";
-                    string name2 = dict2.ContainsKey("hu") ? dict2["hu"] : "";
+                    string name1 = image.Category.Name.ContainsKey("hu") ? image.Category.Name["hu"] : "";
+                    string name2 = dto.CategoryName.ContainsKey("hu") ? dto.CategoryName["hu"] : "";
                     if (name1 != name2) categoryChanged = true;
                 }
             }
@@ -186,20 +145,12 @@ namespace Soluvion.API.Controllers
             if (categoryChanged)
             {
                 string targetHuName = dto.CategoryName.ContainsKey("hu") ? dto.CategoryName["hu"] : "Egyéb";
-                var existingCategories = await _context.GalleryCategories
-                    .Where(c => c.CompanyId == companyId)
-                    .ToListAsync();
-
-                var newCategory = existingCategories
-                    .FirstOrDefault(c => c.Name.ContainsKey("hu") && c.Name["hu"] == targetHuName);
+                var existingCategories = await _context.GalleryCategories.Where(c => c.CompanyId == companyId).ToListAsync();
+                var newCategory = existingCategories.FirstOrDefault(c => c.Name.ContainsKey("hu") && c.Name["hu"] == targetHuName);
 
                 if (newCategory == null)
                 {
-                    newCategory = new GalleryCategory
-                    {
-                        Name = dto.CategoryName,
-                        CompanyId = companyId
-                    };
+                    newCategory = new GalleryCategory { Name = dto.CategoryName, CompanyId = companyId };
                     _context.GalleryCategories.Add(newCategory);
                 }
                 image.Category = newCategory;
@@ -220,9 +171,10 @@ namespace Soluvion.API.Controllers
             if (image == null) return NotFound();
             if (image.Category != null && image.Category.CompanyId != companyId) return Forbid();
 
+            // Törlés a felhőből az új Szervizzel
             if (!string.IsNullOrEmpty(image.PublicId))
             {
-                await _cloudinary.DestroyAsync(new DeletionParams(image.PublicId));
+                await _imageService.DeleteImageAsync(image.PublicId);
             }
 
             _context.GalleryImages.Remove(image);
