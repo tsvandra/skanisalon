@@ -30,6 +30,8 @@ builder.Services.AddScoped<ICompanyService, CompanyService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<ITranslationService, OpenAiTranslationService>();
 builder.Services.AddScoped<ITenantContext, TenantContext>();
+builder.Services.AddScoped<IGalleryService, GalleryService>();
+builder.Services.AddScoped<ICatalogService, CatalogService>();
 
 builder.Services.AddCors(options =>
 {

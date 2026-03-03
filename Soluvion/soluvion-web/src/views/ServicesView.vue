@@ -5,9 +5,11 @@
   import { DEFAULT_COMPANY_ID } from '@/config';
   import draggable from 'vuedraggable';
   import { useI18n } from 'vue-i18n';
+  import { useCompanyStore } from '@/stores/companyStore'; // ÚJ: Company Store importálása
 
   const { locale } = useI18n();
   const isLoggedIn = inject('isLoggedIn');
+  const companyStore = useCompanyStore(); // ÚJ: Store példányosítása
 
   const services = ref([]);
   const categories = ref([]);
@@ -33,7 +35,6 @@
     return val.toLocaleString('hu-HU', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
   };
 
-  // Manuális gépeléskori méretezés
   const autoResize = (event) => {
     if (event && event.target) {
       event.target.style.height = 'auto';
@@ -41,9 +42,8 @@
     }
   };
 
-  // ÚJ: Minden mező automatikus méretezése (Adatbetöltéskor, nyelvváltáskor)
   const resizeAllTextareas = async () => {
-    await nextTick(); // Megvárjuk, amíg a Vue frissíti a képernyőt (DOM-ot)
+    await nextTick();
     const textareas = document.querySelectorAll('textarea');
     textareas.forEach(el => {
       el.style.height = 'auto';
@@ -53,7 +53,6 @@
     });
   };
 
-  // Ha nyelvet váltunk, méretezzük újra a dobozokat a másik nyelv szöveghosszához
   watch(currentLang, () => {
     resizeAllTextareas();
   });
@@ -64,7 +63,6 @@
   };
 
   /* --- ÚJ TISZTA AI FORDÍTÓ FÜGGVÉNYEK --- */
-
   const translateServiceField = async (service, fieldName) => {
     const defaultLang = company.value?.defaultLanguage || 'hu';
     if (currentLang.value === defaultLang) {
@@ -79,7 +77,7 @@
       const response = await apiClient.post('/api/Translation', { text: sourceText, targetLanguage: currentLang.value });
       if (response.data && response.data.translatedText) {
         service[fieldName][currentLang.value] = response.data.translatedText;
-        resizeAllTextareas(); // Méretezés a fordítás után
+        resizeAllTextareas();
         await saveService(service, false);
       }
     } catch (err) { console.error("Fordítási hiba:", err); alert("Nem sikerült a fordítás."); }
@@ -120,7 +118,7 @@
       const response = await apiClient.post('/api/Translation', { text: sourceText, targetLanguage: currentLang.value });
       if (response.data && response.data.translatedText) {
         variant.variantName[currentLang.value] = response.data.translatedText;
-        resizeAllTextareas(); // Méretezés a fordítás után
+        resizeAllTextareas();
         await updateGroupVariantName(group, vIndex);
       }
     } catch (err) { console.error("Fordítási hiba:", err); alert("Nem sikerült a fordítás."); }
@@ -230,7 +228,7 @@
           updated.category = ensureDict(updated.category);
           updated.description = ensureDict(updated.description);
           Object.assign(serviceItem, updated);
-          resizeAllTextareas(); // Bónusz biztonság visszatéréskor
+          resizeAllTextareas();
         }
       } catch (err) { console.error("Hiba a mentesnel:", err); }
     });
@@ -336,7 +334,7 @@
   const toggleNote = async (service) => {
     if (!service.description[currentLang.value]) {
       service.description[currentLang.value] = " ";
-      resizeAllTextareas(); // Megjelenés után méretezzük be
+      resizeAllTextareas();
     }
   };
 
@@ -411,7 +409,10 @@
 </script>
 
 <template>
-  <div class="smart-container dark-theme">
+  <div class="smart-container dark-theme" :style="{
+    '--primary-color': company?.primaryColor || '#d4af37',
+    '--secondary-color': company?.secondaryColor || '#1a1a1a'
+  }">
     <div class="header-actions">
       <h2>{{ isLoggedIn ? $t('services.editorTitle') : $t('services.title') }}</h2>
 
@@ -590,10 +591,10 @@
   }
 
   .magic-btn {
-    opacity: 0.3; /* JAVÍTVA 0.3-RA, így mindig halványan látszik */
+    opacity: 0.3;
     background: none;
     border: none;
-    color: #d4af37;
+    color: var(--primary-color); /* ÚJ: Változó használata */
     cursor: pointer;
     margin-left: 5px;
     font-size: 1rem;
@@ -611,7 +612,7 @@
 
   .magic-btn:hover {
     transform: scale(1.1);
-    text-shadow: 0 0 5px #d4af37;
+    text-shadow: 0 0 5px var(--primary-color); /* ÚJ: Változó használata */
   }
 
   .services-wrapper {
@@ -619,7 +620,7 @@
   }
 
   .main-add-btn {
-    background-color: #d4af37;
+    background-color: var(--primary-color); /* ÚJ: Változó használata */
     color: #000;
     border: none;
     padding: 10px 20px;
@@ -629,10 +630,11 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    transition: filter 0.2s; /* ÚJ: Lágy átmenet */
   }
 
     .main-add-btn:hover {
-      background-color: #b5952f;
+      filter: brightness(0.85); /* ÚJ: Fix szín helyett árnyalás */
     }
 
   .group-footer {
@@ -657,7 +659,7 @@
 
     .add-row-btn:hover {
       background: #111;
-      color: #d4af37;
+      color: var(--primary-color); /* ÚJ: Változó használata */
       border-color: #666;
     }
 
@@ -676,7 +678,7 @@
   .category-input {
     font-size: 1.2rem;
     font-weight: bold;
-    color: #d4af37;
+    color: var(--primary-color); /* ÚJ: Változó használata */
     border: none;
     background: transparent;
     width: 100%;
@@ -686,7 +688,7 @@
 
     .category-input:focus {
       outline: none;
-      border-bottom: 1px solid #d4af37;
+      border-bottom: 1px solid var(--primary-color); /* ÚJ: Változó használata */
     }
 
   .category-display {
@@ -713,7 +715,7 @@
 
     .header-variant-input:focus {
       background: #111;
-      outline: 1px solid #d4af37;
+      outline: 1px solid var(--primary-color); /* ÚJ: Változó használata */
       color: #fff;
     }
 
@@ -736,15 +738,15 @@
   }
 
     .service-drop-zone.drag-over {
-      border-color: #d4af37;
-      background-color: #1a1a1a;
+      border-color: var(--primary-color); /* ÚJ: Változó használata */
+      background-color: var(--secondary-color); /* ÚJ: Változó használata */
     }
 
   .data-row {
     display: flex;
     align-items: center;
     padding: 10px 0;
-    border-bottom: 1px solid #1a1a1a;
+    border-bottom: 1px solid var(--secondary-color); /* ÚJ: Változó használata */
   }
 
     .data-row:hover {
@@ -775,7 +777,7 @@
 
     .name-input:focus {
       outline: none;
-      border-bottom: 1px solid #d4af37;
+      border-bottom: 1px solid var(--primary-color); /* ÚJ: Változó használata */
     }
 
   .name-text {
@@ -809,7 +811,7 @@
   }
 
     .note-drag-handle:hover {
-      color: #d4af37;
+      color: var(--primary-color); /* ÚJ: Változó használata */
     }
 
   .note-content {
@@ -849,7 +851,7 @@
   .drag-handle-cat {
     cursor: grab;
     font-size: 1.5rem;
-    color: #d4af37;
+    color: var(--primary-color); /* ÚJ: Változó használata */
     margin-right: 15px;
   }
 
@@ -920,7 +922,7 @@
     }
 
     .icon-btn.note-toggle:hover {
-      color: #d4af37;
+      color: var(--primary-color); /* ÚJ: Változó használata */
     }
 
   .tool-separator {
@@ -968,7 +970,7 @@
 
       .price-input :deep(input):focus {
         background: #111;
-        box-shadow: 0 0 0 1px #d4af37;
+        box-shadow: 0 0 0 1px var(--primary-color); /* ÚJ: Változó használata */
         color: #fff;
       }
 

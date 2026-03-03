@@ -1,65 +1,42 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
 using Soluvion.API.Models;
 using Soluvion.API.Models.DTOs;
-using Soluvion.API.Services;
 
-namespace Soluvion.API.Controllers
+namespace Soluvion.API.Services
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class ServiceController : ControllerBase
+    public class CatalogService : ICatalogService
     {
         private readonly AppDbContext _context;
         private readonly ITenantContext _tenantContext;
 
-        public ServiceController(AppDbContext context, ITenantContext tenantContext)
+        public CatalogService(AppDbContext context, ITenantContext tenantContext)
         {
             _context = context;
             _tenantContext = tenantContext;
         }
 
-        private int GetUserCompanyId()
-        {
-            var companyClaim = User.FindFirst("CompanyId");
-            if (companyClaim != null && int.TryParse(companyClaim.Value, out int companyId))
-            {
-                return companyId;
-            }
-            return 0;
-        }
+        private int GetCurrentCompanyId() => _tenantContext.CurrentCompany?.Id ?? 0;
 
-        // GET: api/Service (Publikus lista)
-        [HttpGet]
-        [AllowAnonymous]
-        public async Task<ActionResult<IEnumerable<ServiceDto>>> GetServices()
+        public async Task<IEnumerable<CatalogDto>> GetCatalogAsync()
         {
-            var currentCompany = _tenantContext.CurrentCompany;
-            if (currentCompany == null) return BadRequest("Tenant Context hiányzik.");
-
+            // A Global Query Filter automatikusan szűr a bérlőre!
             var services = await _context.Services
                 .Include(s => s.Variants)
-                .Where(s => s.CompanyId == currentCompany.Id)
                 .OrderBy(s => s.OrderIndex)
                 .ToListAsync();
 
-            var dtos = services.Select(MapToDto).ToList();
-            return Ok(dtos);
+            return services.Select(MapToDto).ToList();
         }
 
-        [HttpPost]
-        [Authorize]
-        public async Task<ActionResult<ServiceDto>> PostService([FromBody] ServiceDto dto)
+        public async Task<CatalogDto?> CreateCatalogItemAsync(CatalogDto dto)
         {
-            int userCompanyId = GetUserCompanyId();
-            if (userCompanyId == 0) return Unauthorized();
+            int companyId = GetCurrentCompanyId();
+            if (companyId == 0) return null;
 
-            // Új Entity létrehozása DTO-ból
             var service = new Service
             {
-                CompanyId = userCompanyId,
+                CompanyId = companyId,
                 Name = dto.Name ?? new Dictionary<string, string> { { "hu", "Új szolgáltatás" } },
                 Category = dto.Category != null && dto.Category.Any() ? dto.Category : new Dictionary<string, string> { { "hu", "Egyéb" } },
                 Description = dto.Description ?? new Dictionary<string, string>(),
@@ -77,22 +54,16 @@ namespace Soluvion.API.Controllers
             _context.Services.Add(service);
             await _context.SaveChangesAsync();
 
-            // Visszaadjuk az elmentett objektumot DTO-ként (immár a generált DB ID-kkal)
-            return CreatedAtAction(nameof(GetServices), new { id = service.Id }, MapToDto(service));
+            return MapToDto(service);
         }
 
-        [HttpPut("{id}")]
-        [Authorize]
-        public async Task<IActionResult> PutService(int id, [FromBody] ServiceDto dto)
+        public async Task<CatalogDto?> UpdateCatalogItemAsync(int id, CatalogDto dto)
         {
-            if (id != dto.Id) return BadRequest("Az ID nem egyezik.");
-            int userCompanyId = GetUserCompanyId();
-
             var existing = await _context.Services
                 .Include(s => s.Variants)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
-            if (existing == null || existing.CompanyId != userCompanyId) return NotFound();
+            if (existing == null) return null; // A szűrő miatt csak a sajátját találja meg
 
             // 1. Alap adatok frissítése
             existing.Name = dto.Name;
@@ -102,7 +73,7 @@ namespace Soluvion.API.Controllers
             existing.DefaultDuration = dto.DefaultDuration;
             existing.OrderIndex = dto.OrderIndex;
 
-            // 2. Variánsok törlése (ami nincs benne az új listában, de az adatbázisban még ott van)
+            // 2. Variánsok törlése
             var incomingIds = dto.Variants?.Select(v => v.Id).ToList() ?? new List<int>();
             var toDelete = existing.Variants.Where(v => v.Id != 0 && !incomingIds.Contains(v.Id)).ToList();
             _context.ServiceVariants.RemoveRange(toDelete);
@@ -114,7 +85,6 @@ namespace Soluvion.API.Controllers
                 {
                     if (vDto.Id == 0)
                     {
-                        // BIZTONSÁGOS LÉTREHOZÁS: Új példányt adunk az Entity Framework-nek
                         existing.Variants.Add(new ServiceVariant
                         {
                             VariantName = vDto.VariantName,
@@ -124,7 +94,6 @@ namespace Soluvion.API.Controllers
                     }
                     else
                     {
-                        // Frissítés
                         var existVar = existing.Variants.FirstOrDefault(x => x.Id == vDto.Id);
                         if (existVar != null)
                         {
@@ -137,28 +106,23 @@ namespace Soluvion.API.Controllers
             }
 
             await _context.SaveChangesAsync();
-
-            // Visszaküldjük a frissített állapotot DTO-ként a Frontennek
-            return Ok(MapToDto(existing));
+            return MapToDto(existing);
         }
 
-        [HttpDelete("{id}")]
-        [Authorize]
-        public async Task<IActionResult> DeleteService(int id)
+        public async Task<bool> DeleteCatalogItemAsync(int id)
         {
-            var s = await _context.Services.FindAsync(id);
-            if (s == null) return NotFound();
-            if (s.CompanyId != GetUserCompanyId()) return Forbid();
+            var s = await _context.Services.FirstOrDefaultAsync(x => x.Id == id);
+            if (s == null) return false;
 
             _context.Services.Remove(s);
             await _context.SaveChangesAsync();
-            return NoContent();
+            return true;
         }
 
         // --- SEGÉDMETÓDUS ---
-        private ServiceDto MapToDto(Service s)
+        private CatalogDto MapToDto(Service s)
         {
-            return new ServiceDto
+            return new CatalogDto
             {
                 Id = s.Id,
                 CompanyId = s.CompanyId,
@@ -168,13 +132,13 @@ namespace Soluvion.API.Controllers
                 DefaultPrice = s.DefaultPrice,
                 DefaultDuration = s.DefaultDuration,
                 OrderIndex = s.OrderIndex,
-                Variants = s.Variants?.Select(v => new ServiceVariantDto
+                Variants = s.Variants?.Select(v => new CatalogVariantDto
                 {
                     Id = v.Id,
                     VariantName = v.VariantName,
                     Price = v.Price,
                     Duration = v.Duration
-                }).ToList() ?? new List<ServiceVariantDto>()
+                }).ToList() ?? new List<CatalogVariantDto>()
             };
         }
     }
