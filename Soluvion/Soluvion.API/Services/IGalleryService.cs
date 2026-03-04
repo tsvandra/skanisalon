@@ -6,7 +6,7 @@ namespace Soluvion.API.Services
     public interface IGalleryService
     {
         Task<IEnumerable<GalleryImageDto>> GetImagesAsync();
-        Task<(GalleryImageDto? Image, string? ErrorMessage)> UploadImageAsync(IFormFile file, string category);
+        Task<(GalleryImageDto? Image, string? ErrorMessage)> UploadImageAsync(IFormFile file, int categoryId);
         Task<bool> UpdateImageAsync(int id, GalleryImageUpdateDto dto);
         Task<bool> DeleteImageAsync(int id);
 

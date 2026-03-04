@@ -205,12 +205,12 @@
     const files = event.target.files;
     if (!files || files.length === 0 || !currentUploadCategory.value) return;
 
-    const targetCatName = currentUploadCategory.value.name['hu'] || "Új galéria";
+    const targetCatId = currentUploadCategory.value.id;
 
     // Feltöltjük a képeket a Composable-n keresztül
     for (let i = 0; i < files.length; i++) {
       try {
-        await uploadImage(files[i], '/api/Gallery', { category: targetCatName });
+        await uploadImage(files[i], '/api/Gallery', { categoryId: targetCatId });
       } catch (err) {
         console.error("Hiba az egyik kép feltöltésekor:", err);
       }

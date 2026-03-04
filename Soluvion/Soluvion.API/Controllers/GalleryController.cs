@@ -28,16 +28,28 @@ namespace Soluvion.API.Controllers
 
         [HttpPost]
         [Authorize]
-        public async Task<ActionResult<GalleryImageDto>> UploadImage(IFormFile file, [FromForm] string category)
+        public async Task<ActionResult<GalleryImageDto>> UploadImage(IFormFile file, [FromForm] int categoryId)
         {
             if (file == null || file.Length == 0) return BadRequest("Nem választottál ki képet!");
 
-            var (imageDto, errorMessage) = await _galleryService.UploadImageAsync(file, category);
-
-            if (errorMessage != null) return BadRequest(errorMessage);
-            if (imageDto == null) return BadRequest();
-
-            return Ok(imageDto);
+            try
+            {
+                // A tényleges feltöltést és adatbázis mentést a Service végzi!
+                var result = await _galleryService.UploadImageAsync(file, categoryId);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ex.Message);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Hiba a feltöltés során: {ex.Message}");
+            }
         }
 
         [HttpPut("{id}")]

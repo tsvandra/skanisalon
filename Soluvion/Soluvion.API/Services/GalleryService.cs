@@ -24,8 +24,9 @@ namespace Soluvion.API.Services
 
         public async Task<IEnumerable<GalleryImageDto>> GetImagesAsync()
         {
-            // A Global Query Filter automatikusan szűr a bérlőre!
+            // AsNoTracking() hozzáadva a teljesítmény optimalizálása érdekében!
             var images = await _context.GalleryImages
+                .AsNoTracking()
                 .Include(i => i.Category)
                 .OrderBy(i => i.OrderIndex)
                 .ThenByDescending(i => i.UploadDate)
@@ -42,30 +43,19 @@ namespace Soluvion.API.Services
             });
         }
 
-        public async Task<(GalleryImageDto? Image, string? ErrorMessage)> UploadImageAsync(IFormFile file, string category)
+        public async Task<(GalleryImageDto? Image, string? ErrorMessage)> UploadImageAsync(IFormFile file, int categoryId)
         {
             int companyId = GetCurrentCompanyId();
             if (companyId == 0) return (null, "Érvénytelen szalon azonosító.");
 
+            // Kategória kikeresése ID alapján név helyett
+            var galleryCategory = await _context.GalleryCategories
+                .FirstOrDefaultAsync(c => c.Id == categoryId);
+
+            if (galleryCategory == null) return (null, "A megadott kategória nem létezik.");
+
             var uploadResult = await _imageService.UploadImageAsync(file, $"soluvion/company_{companyId}/gallery", 1920);
             if (uploadResult == null) return (null, "Hiba a feltöltés során.");
-
-            string categoryNameString = category?.Trim() ?? "Egyéb";
-
-            // Itt sem kell a Where(CompanyId), az EF megoldja a háttérben
-            var existingCategories = await _context.GalleryCategories.ToListAsync();
-            var galleryCategory = existingCategories.FirstOrDefault(c => c.Name.ContainsKey("hu") && c.Name["hu"] == categoryNameString);
-
-            if (galleryCategory == null)
-            {
-                galleryCategory = new GalleryCategory
-                {
-                    Name = new Dictionary<string, string> { { "hu", categoryNameString } },
-                    CompanyId = companyId // Új létrehozásánál meg kell adni
-                };
-                _context.GalleryCategories.Add(galleryCategory);
-                await _context.SaveChangesAsync();
-            }
 
             var galleryImage = new GalleryImage
             {
@@ -154,7 +144,9 @@ namespace Soluvion.API.Services
 
         public async Task<IEnumerable<GalleryCategoryDto>> GetCategoriesAsync()
         {
+            // AsNoTracking() hozzáadva a teljesítmény optimalizálása érdekében!
             var categories = await _context.GalleryCategories
+                .AsNoTracking()
                 .OrderBy(c => c.OrderIndex)
                 .ToListAsync();
 
@@ -219,6 +211,7 @@ namespace Soluvion.API.Services
                 return (false, "A kategória nem törölhető, mert képeket tartalmaz! Előbb töröld vagy mozgasd át a képeket.");
             }
 
+            _context.GalleryImages.RemoveRange(cat.Images); // Biztos ami biztos alapon, de elvileg ezen a ponton nincs benne kép
             _context.GalleryCategories.Remove(cat);
             await _context.SaveChangesAsync();
             return (true, null);
