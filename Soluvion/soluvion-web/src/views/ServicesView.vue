@@ -5,20 +5,24 @@
   import { DEFAULT_COMPANY_ID } from '@/config';
   import draggable from 'vuedraggable';
   import { useI18n } from 'vue-i18n';
-  import { useCompanyStore } from '@/stores/companyStore'; // ÚJ: Company Store importálása
+  import { useCompanyStore } from '@/stores/companyStore';
+  import { useDragAndDrop } from '@/composables/useDragAndDrop';
+  import { useTranslation } from '@/composables/useTranslation'; // ÚJ
 
   const { locale } = useI18n();
   const isLoggedIn = inject('isLoggedIn');
-  const companyStore = useCompanyStore(); // ÚJ: Store példányosítása
+  const companyStore = useCompanyStore();
 
   const services = ref([]);
   const categories = ref([]);
   const loading = ref(true);
 
   const currentLang = computed(() => locale.value);
-  const translatingField = ref(null);
   const company = inject('company', ref(null));
   const saveQueues = new Map();
+
+  const { reorderNestedItems } = useDragAndDrop();
+  const { translatingField, translateField } = useTranslation(); // ÚJ: Itt jön be az állapot is!
 
   const sortVariants = (variants) => {
     if (!variants) return [];
@@ -62,70 +66,26 @@
     return { [currentLang.value]: field || defaultValue };
   };
 
-  /* --- ÚJ TISZTA AI FORDÍTÓ FÜGGVÉNYEK --- */
-  const translateServiceField = async (service, fieldName) => {
-    const defaultLang = company.value?.defaultLanguage || 'hu';
-    if (currentLang.value === defaultLang) {
-      alert(`A(z) '${defaultLang}' az alapértelmezett nyelv, erről fordítunk a többire! Válts nyelvet fentről.`);
-      return;
-    }
-    const sourceText = service[fieldName][defaultLang] || service[fieldName][currentLang.value];
-    if (!sourceText || sourceText.trim() === '') return;
-
-    translatingField.value = `${service.id}-${fieldName}-${currentLang.value}`;
-    try {
-      const response = await apiClient.post('/api/Translation', { text: sourceText, targetLanguage: currentLang.value });
-      if (response.data && response.data.translatedText) {
-        service[fieldName][currentLang.value] = response.data.translatedText;
+  /* --- REFAKTORÁLT AI FORDÍTÁS --- */
+  const doTranslate = async (obj, fieldName, loadingKey, saveAction) => {
+    await translateField({
+      obj,
+      fieldName,
+      targetLang: currentLang.value,
+      defaultLang: company.value?.defaultLanguage || 'hu',
+      loadingKey,
+      onSuccess: async (updatedObj) => {
         resizeAllTextareas();
-        await saveService(service, false);
+        await saveAction(updatedObj);
       }
-    } catch (err) { console.error("Fordítási hiba:", err); alert("Nem sikerült a fordítás."); }
-    finally { translatingField.value = null; }
+    });
   };
 
-  const translateCategoryName = async (group) => {
-    const defaultLang = company.value?.defaultLanguage || 'hu';
-    if (currentLang.value === defaultLang) {
-      alert(`A(z) '${defaultLang}' az alapértelmezett nyelv, erről fordítunk a többire! Válts nyelvet fentről.`);
-      return;
-    }
-    const sourceText = group.categoryName[defaultLang] || group.categoryName[currentLang.value];
-    if (!sourceText || sourceText.trim() === '') return;
+  const translateServiceField = (service, fieldName) => doTranslate(service, fieldName, `${service.id}-${fieldName}-${currentLang.value}`, (s) => saveService(s, false));
+  const translateCategoryName = (group) => doTranslate(group, 'categoryName', `${group.id || 'cat'}-categoryName-${currentLang.value}`, updateCategoryName);
+  const translateHeaderVariant = (group, variant, vIndex) => doTranslate(variant, 'variantName', `header-${vIndex}-variantName-${currentLang.value}`, () => updateGroupVariantName(group, vIndex));
 
-    translatingField.value = `${group.id || 'cat'}-categoryName-${currentLang.value}`;
-    try {
-      const response = await apiClient.post('/api/Translation', { text: sourceText, targetLanguage: currentLang.value });
-      if (response.data && response.data.translatedText) {
-        group.categoryName[currentLang.value] = response.data.translatedText;
-        await updateCategoryName(group);
-      }
-    } catch (err) { console.error("Fordítási hiba:", err); alert("Nem sikerült a fordítás."); }
-    finally { translatingField.value = null; }
-  };
-
-  const translateHeaderVariant = async (group, variant, vIndex) => {
-    const defaultLang = company.value?.defaultLanguage || 'hu';
-    if (currentLang.value === defaultLang) {
-      alert(`A(z) '${defaultLang}' az alapértelmezett nyelv, erről fordítunk a többire! Válts nyelvet fentről.`);
-      return;
-    }
-    const sourceText = variant.variantName[defaultLang] || variant.variantName[currentLang.value];
-    if (!sourceText || sourceText.trim() === '') return;
-
-    translatingField.value = `header-${vIndex}-variantName-${currentLang.value}`;
-    try {
-      const response = await apiClient.post('/api/Translation', { text: sourceText, targetLanguage: currentLang.value });
-      if (response.data && response.data.translatedText) {
-        variant.variantName[currentLang.value] = response.data.translatedText;
-        resizeAllTextareas();
-        await updateGroupVariantName(group, vIndex);
-      }
-    } catch (err) { console.error("Fordítási hiba:", err); alert("Nem sikerült a fordítás."); }
-    finally { translatingField.value = null; }
-  };
-
-  /* --- ADATTRANSZFORMÁCIÓ --- */
+  /* --- ADATTRANSZFORMÁCIÓ ÉS API ... (Minden más marad az eredeti) --- */
   const buildNestedStructure = (flatServices) => {
     const groups = [];
     const defaultLang = company.value?.defaultLanguage || 'hu';
@@ -175,7 +135,6 @@
     categories.value = buildNestedStructure(serviceList);
   };
 
-  /* --- API MŰVELETEK --- */
   const fetchServices = async () => {
     loading.value = true;
     try {
@@ -236,33 +195,25 @@
     return newPromise;
   };
 
-  /* --- EVENT HANDLERS --- */
-  const onServiceDragChange = async (event, group) => {
-    if (event.added) {
-      const item = event.added.element;
-      item.category = JSON.parse(JSON.stringify(group.categoryName));
-    }
-    await reorderAll();
-  };
-  const onCategoryDragChange = async () => { await reorderAll(); };
-
   const reorderAll = async () => {
-    let counter = 10;
-    const promises = [];
-    categories.value.forEach(group => {
-      group.items.forEach(item => {
+    await reorderNestedItems(
+      categories.value,
+      'items',
+      saveService,
+      (item, group) => {
         const itemCatName = item.category['hu'];
         const groupCatName = group.categoryName['hu'];
-        if (item.orderIndex !== counter || itemCatName !== groupCatName) {
-          item.orderIndex = counter;
+        if (itemCatName !== groupCatName) {
           item.category = JSON.parse(JSON.stringify(group.categoryName));
-          promises.push(saveService(item, false));
+          return true;
         }
-        counter += 10;
-      });
-    });
-    if (promises.length > 0) await Promise.all(promises);
+        return false;
+      }
+    );
   };
+
+  const onServiceDragChange = async () => { await reorderAll(); };
+  const onCategoryDragChange = async () => { await reorderAll(); };
 
   const updateCategoryName = async (group) => {
     const promises = group.items.map(service => {

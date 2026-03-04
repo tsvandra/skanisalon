@@ -67,3 +67,9 @@ Ez a dokumentum kronológiai sorrendben (a legújabbtól visszafelé) rögzíti 
 * [cite_start]**Autentikáció:** JWT token alapú beléptetés és BCrypt jelszó titkosítás[cite: 178].
 * [cite_start]**Publikus Oldal:** Dinamikus SPA routing, SQL-bõl töltött céginformációkkal (Home és Contact)[cite: 73, 74].
 * [cite_start]**Alap Beállítások:** Color Picker a dinamikus CSS változókhoz, nyitvatartás és közösségi média linkek kezelése[cite: 76, 77].
+
+## [2026-03-04] Refactoring: Backend Hibakezelés és Frontend API Réteg (Phase 1 & 2)
+**Státusz:** Kész (Galéria UI bugfix folyamatban)
+* **Backend (Middleware):** Bevezetésre került a `GlobalExceptionHandlerMiddleware`, kiváltva a `Program.cs` inline hibakezelését. Egységes JSON hibaüzenetek biztosítása.
+* **Frontend (API Layer):** Szigorú SRP (Single Responsibility Principle) bevezetése. A Pinia Store-okból kiszervezésre kerültek az Axios hívások új, dedikált API fájlokba (`companyApi.js`, `translationApi.js`).
+* **Frontend (Composables):** Újrafelhasználható `useImageUpload.js` létrehozása a FormData és fájlfeltöltések (Cloudinary) egységesítésére. A `SettingsView` és `GalleryView` átállítva az új composable használatára.

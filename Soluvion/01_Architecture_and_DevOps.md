@@ -29,6 +29,7 @@
 * [cite_start]**Állapotkezelés & Routing:** Lokális/Globális State (provide/inject), Vue Router. [cite: 25, 26, 181]
 * [cite_start]**API Kliens:** Axios (Környezeti változókból vezérelt BaseURL-lel). [cite: 26, 165]
 * [cite_start]**Extra könyvtárak:** `vuedraggable` (Drag & Drop funkciókhoz). [cite: 24, 189]
+* [cite_start]**API Kommunikáció:** Dedikált hálózati réteg (`src/services/*Api.js`) az Axios köré építve, elválasztva az állapotkezeléstől (Pinia) a jobb tesztelhetőség és karbantarthatóság érdekében.
 
 ---
 
@@ -78,3 +79,4 @@
 * [cite_start]**Jelszó Hashing:** A rendszer a **BCrypt** algoritmust (Blowfish cipher) használja. [cite: 14, 15] [cite_start]Regisztrációkor a rendszer egy véletlenszerû "Salt"-ot generál, a jelszót ezzel összefûzi, többszörösen hash-eli, és csak ezt a hasht menti az adatbázisba. [cite: 15, 16] [cite_start]Ez védelmet nyújt a Rainbow Table és Brute Force támadások ellen. [cite: 17]
 * [cite_start]**Autentikáció:** Stateless JWT (JSON Web Token) Bearer Token alapokon. [cite: 18, 53] [cite_start]A token HMACSHA512 algoritmussal van aláírva, és payloadként tartalmazza a felhasználó azonosítóját (User ID) és a `CompanyId`-t (Multi-tenancy kulcs). [cite: 19]
 * [cite_start]**Hálózati Biztonság (CORS & HTTPS):** A CORS házirend szigorúan szabályozott, csak a Netlify domain és a Localhost engedélyezett a kérésekhez. [cite: 19, 20, 71] [cite_start]A kommunikáció kizárólag kötelezõ HTTPS titkosított csatornán történik (amit a Railway és a Netlify automatikusan kezel). [cite: 20]
+* [cite_start]**Központi Hibakezelés (Global Exception Handling):** A backend egy dedikált Middleware segítségével kapja el a felmerülő kivételeket (Exceptions), elrejtve a stack trace-t a kliens elől, és szabványos HTTP 500 JSON válaszokat generálva (SaaS biztonsági alapelv).

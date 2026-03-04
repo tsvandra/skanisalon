@@ -2,73 +2,58 @@
   import { ref, inject, watch, nextTick, computed } from 'vue';
   import api from '@/services/api';
   import { useAutoSaveQueue } from '@/composables/useAutoSaveQueue';
-  // ÚJ: Behozzuk a képfeltöltő composable-t
   import { useImageUpload } from '@/composables/useImageUpload';
+  import { useDragAndDrop } from '@/composables/useDragAndDrop';
+  import { useTranslation } from '@/composables/useTranslation'; // ÚJ
   import draggable from 'vuedraggable';
   import { useI18n } from 'vue-i18n';
 
   const { locale } = useI18n();
   const isLoggedIn = inject('isLoggedIn');
 
-  // Globális nyelv
   const currentLang = computed(() => locale.value);
 
   const images = ref([]);
   const categories = ref([]);
   const groupedImages = ref([]);
   const isLoading = ref(false);
-  const translatingField = ref(null);
   const showPreview = ref(false);
   const previewImage = ref(null);
   const fileInputRef = ref(null);
   const currentUploadCategory = ref(null);
   const categoryInputRefs = ref({});
   const company = inject('company', ref(null));
-  const { addToQueue } = useAutoSaveQueue();
 
-  // ÚJ: Használjuk a composable-t
+  const { addToQueue } = useAutoSaveQueue();
   const { isUploading, uploadImage } = useImageUpload();
+  const { reorderNestedItems, reorderFlatItems } = useDragAndDrop();
+  const { translatingField, translateField } = useTranslation(); // ÚJ: Szintén innen jön a spinner állapot!
 
   const ensureDict = (field, defaultValue = "") => {
     if (field && typeof field === 'object' && field !== null) return field;
     return { [currentLang.value]: field || defaultValue };
   };
 
-  // --- AI FORDÍTÁS ---
-  const translateField = async (obj, fieldName, targetLang) => {
-    const defaultLang = company.value?.defaultLanguage || 'hu';
-    const sourceText = obj[fieldName][defaultLang] || obj[fieldName][currentLang.value];
-
-    if (!sourceText || sourceText.trim() === '') return;
-
-    const loadingKey = `${obj.id || 'new'}-${fieldName}-${targetLang}`;
-    translatingField.value = loadingKey;
-
-    try {
-      const response = await api.post('/api/Translation', { text: sourceText, targetLanguage: targetLang });
-      if (response.data && response.data.translatedText) {
-        obj[fieldName][targetLang] = response.data.translatedText;
-        if (obj.items) saveCategory(obj); else saveImage(obj);
+  /* --- REFAKTORÁLT AI FORDÍTÁS --- */
+  const triggerTranslation = async (obj, fieldName) => {
+    await translateField({
+      obj,
+      fieldName,
+      targetLang: currentLang.value,
+      defaultLang: company.value?.defaultLanguage || 'hu',
+      loadingKey: `${obj.id || 'new'}-${fieldName}-${currentLang.value}`,
+      onSuccess: (updatedObj) => {
+        if (updatedObj.items) saveCategory(updatedObj);
+        else saveImage(updatedObj);
       }
-    } catch (err) { console.error("Fordítási hiba:", err); }
-    finally { translatingField.value = null; }
+    });
   };
 
-  const triggerTranslation = (obj, fieldName) => {
-    const defaultLang = company.value?.defaultLanguage || 'hu';
-    if (currentLang.value === defaultLang) {
-      alert(`A(z) '${defaultLang}' az alapértelmezett nyelv, erről fordítunk a többire! Kérlek, válts egy másik nyelvre a fejlécben, hogy fordítani tudj.`);
-      return;
-    }
-    translateField(obj, fieldName, currentLang.value);
-  };
-
+  /* --- TOVÁBBI LOGIKA (Érintetlen) --- */
   const fetchData = async () => {
     isLoading.value = true;
     try {
-
       const timestamp = new Date().getTime();
-
       const [resCats, resImages] = await Promise.all([
         api.get(`/api/Gallery/categories?t=${timestamp}`),
         api.get(`/api/Gallery?t=${timestamp}`)
@@ -133,17 +118,6 @@
     } catch (err) { console.error(err); }
   };
 
-  const onCategoryDragChange = (event) => {
-    if (event.moved) {
-      groupedImages.value.forEach((group, index) => {
-        if (group.id !== -1 && group.orderIndex !== index) {
-          group.orderIndex = index;
-          saveCategory(group);
-        }
-      });
-    }
-  };
-
   const saveCategory = (group) => {
     if (!group.id || group.id === -1) return;
     const currentName = group.name[currentLang.value]?.trim();
@@ -161,20 +135,6 @@
     } catch (err) { alert("Nem sikerült törölni."); }
   };
 
-  const onImageDragChange = (event, group) => {
-    if (event.added || event.moved) {
-      group.items.forEach((img, index) => {
-        const newOrder = index + 1;
-        if (img.orderIndex !== newOrder || img.categoryId !== group.id) {
-          img.orderIndex = newOrder;
-          img.categoryId = group.id;
-          img.category = JSON.parse(JSON.stringify(group.name));
-          saveImage(img);
-        }
-      });
-    }
-  };
-
   const saveImage = (img) => {
     addToQueue(img.id, async () => {
       await api.put(`/api/Gallery/${img.id}`, {
@@ -184,6 +144,27 @@
         orderIndex: img.orderIndex
       });
     });
+  };
+
+  const onCategoryDragChange = async () => {
+    const validGroups = groupedImages.value.filter(g => g.id !== -1);
+    await reorderFlatItems(validGroups, saveCategory);
+  };
+
+  const onImageDragChange = async () => {
+    await reorderNestedItems(
+      groupedImages.value,
+      'items',
+      saveImage,
+      (img, group) => {
+        if (img.categoryId !== group.id) {
+          img.categoryId = group.id;
+          img.category = JSON.parse(JSON.stringify(group.name));
+          return true;
+        }
+        return false;
+      }
+    );
   };
 
   const deleteImage = async (id) => {
@@ -200,14 +181,12 @@
     if (fileInputRef.value) fileInputRef.value.click();
   };
 
-  // REFAKTORÁLT FELTÖLTÉS A COMPOSABLE HASZNÁLATÁVAL
   const handleFiles = async (event) => {
     const files = event.target.files;
     if (!files || files.length === 0 || !currentUploadCategory.value) return;
 
     const targetCatId = currentUploadCategory.value.id;
 
-    // Feltöltjük a képeket a Composable-n keresztül
     for (let i = 0; i < files.length; i++) {
       try {
         await uploadImage(files[i], '/api/Gallery', { categoryId: targetCatId });
@@ -216,7 +195,6 @@
       }
     }
 
-    // JAVÍTÁS: Újra letöltjük a teljes szerkezetet az adatbázisból, így garantáltan frissül a UI!
     await fetchData();
     currentUploadCategory.value = null;
     event.target.value = "";

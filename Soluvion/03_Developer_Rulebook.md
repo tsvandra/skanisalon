@@ -48,7 +48,12 @@ Ez a dokumentum azokat a szigorú kódolási elveket és konvenciókat tartalmaz
 * [cite_start]**Fetch API tilalma:** > TILOS a natív `fetch` API használata manuális header építéssel[cite: 164].
 * [cite_start]**Axios használata:** > Kizárólag a `src/services/api.js` Axios példány használható, mert az automatikusan kezeli a BaseURL-t és a JWT Bearer tokent[cite: 165].
 
-### 3.4. Separation of Concerns (Admin UI)
+### 3.4. API Hívások és Hálózati Réteg (Strict SRP)
+* **Szigorúan TILOS:** Közvetlen `axios.get()`, `axios.post()` stb. hívásokat írni a Vue komponensekbe (View-k) vagy a Pinia Store-okba.
+* **KÖTELEZŐ:** Minden hálózati kommunikációnak egy dedikált API szolgáltatásban (pl. `src/services/companyApi.js`) kell helyet kapnia. A Store-ok és Komponensek csak ezeket a dedikált API metódusokat hívhatják meg.
+* **Composables:** Az olyan összetett, hálózattal is kommunikáló és lokális állapotot is kezelő logikákat, mint a fájlfeltöltés (pl. állapotok: `isUploading`, `uploadError`), külön Vue Composable-be (pl. `useImageUpload.js`) kell kiszervezni.
+
+### 3.5. Separation of Concerns (Admin UI)
 * [cite_start]**Beállítások helye:** > A "Site Builder" jellegû funkciók (Logó feltöltés, Layout módosítás) helye a `SettingsView`-ban van[cite: 198].
 * [cite_start]**Tiszta Layout:** > Kerüljük a szerkesztõ gombok elhelyezését közvetlenül a globális layout komponenseken (Header/Footer), hogy a felhasználói felület tiszta maradjon[cite: 199]. [cite_start]Használjuk a `provide/inject` mintát a beállítások érvényesítéséhez[cite: 200].
 
