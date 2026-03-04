@@ -13,6 +13,9 @@
   import { getCompanyIdFromToken } from '@/utils/jwt';
   import { useI18n } from 'vue-i18n';
 
+  // ÚJ IMPORT: A létrehozott Composable
+  import { useImageUpload } from '@/composables/useImageUpload';
+
   import LanguageManager from '@/components/admin/LanguageManager.vue';
   import UiTranslationManager from '@/components/admin/UiTranslationManager.vue';
 
@@ -20,7 +23,6 @@
   const currentLang = computed(() => locale.value);
 
   const companyData = ref({
-    // Alapértelmezett struktúra, hogy a Vue sose fusson "undefined" hibára
     openingHoursTitle: {},
     openingHoursDescription: {},
     openingTimeSlots: {},
@@ -28,7 +30,6 @@
   });
   const isLoading = ref(true);
   const isSaving = ref(false);
-  const isUploading = ref(false);
   const successMsg = ref('');
   const errorMsg = ref('');
 
@@ -39,6 +40,10 @@
   const logoInputRef = ref(null);
   const heroInputRef = ref(null);
   const footerInputRef = ref(null);
+
+  // --- COMPOSABLE BEKÖTÉSE ---
+  // Kiszedtük az isUploading ref-et a fő fájlból, mert most már a useImageUpload biztosítja
+  const { isUploading, uploadImage } = useImageUpload();
 
   // --- ÚJ: TÖBBNYELVŰ FORMÁZÁS ÉS MÉRETEZÉS ---
   const ensureDict = (field, defaultValue = "") => {
@@ -76,7 +81,6 @@
       if (!data.logoHeight) data.logoHeight = 50;
       if (!data.footerHeight) data.footerHeight = 250;
 
-      // Többnyelvű mezők biztosítása
       data.openingHoursTitle = ensureDict(data.openingHoursTitle, "Bejelentkezés alapján");
       data.openingHoursDescription = ensureDict(data.openingHoursDescription, "");
       data.openingTimeSlots = ensureDict(data.openingTimeSlots, "");
@@ -144,33 +148,34 @@
     isTranslatingAll.value = false;
   };
 
-  // --- KÉPFELTÖLTÉS & MENTÉS ---
+  // --- KÉPFELTÖLTÉS & MENTÉS REFAKTORÁLVA ---
   const handleUpload = async (event, type) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    isUploading.value = true;
-    const formData = new FormData();
-    formData.append('file', file);
-
+    // Végpont meghatározása a típus alapján
     let endpoint = '';
     if (type === 'logo') endpoint = '/api/Company/upload/logo';
     else if (type === 'hero') endpoint = '/api/Company/upload/hero';
     else endpoint = '/api/Company/upload/footer';
 
     try {
-      const res = await api.post(endpoint, formData, { headers: { 'Content-Type': undefined } });
-      if (type === 'logo') companyData.value.logoUrl = res.data.url;
-      else if (type === 'hero') companyData.value.heroImageUrl = res.data.url;
-      else companyData.value.footerImageUrl = res.data.url;
+      // Hívjuk a Composable-t a feltöltéshez
+      const uploadedUrl = await uploadImage(file, endpoint);
 
-      successMsg.value = "Kép sikeresen feltöltve!";
-      setTimeout(() => successMsg.value = '', 3000);
+      // Ha sikeres, elmentjük a kapott URL-t a megfelelő helyre
+      if (uploadedUrl && uploadedUrl.url) {
+        if (type === 'logo') companyData.value.logoUrl = uploadedUrl.url;
+        else if (type === 'hero') companyData.value.heroImageUrl = uploadedUrl.url;
+        else companyData.value.footerImageUrl = uploadedUrl.url;
+
+        successMsg.value = "Kép sikeresen feltöltve!";
+        setTimeout(() => successMsg.value = '', 3000);
+      }
     } catch (err) {
-      console.error(err);
+      // A belső hibát már logoltuk a composable-ben
       errorMsg.value = "Hiba a feltöltés során.";
-    } finally {
-      isUploading.value = false;
+      setTimeout(() => errorMsg.value = '', 4000);
     }
   };
 

@@ -1,6 +1,7 @@
 // src/stores/companyStore.js
 import { defineStore } from 'pinia';
-import api from '@/services/api';
+// FIGYELEM: Kicseréltük az importot az új API rétegre!
+import { companyApi } from '@/services/companyApi';
 
 export const useCompanyStore = defineStore('company', {
   state: () => ({
@@ -19,8 +20,8 @@ export const useCompanyStore = defineStore('company', {
       this.loading = true;
       this.error = null;
       try {
-        // Most már az api.js automatikusan kezeli a headereket (URL-ből vagy .env-ből)
-        const response = await api.get('/api/Company/public-config');
+        // ITT A VÁLTOZÁS: Közvetlen api.get helyett a dedikált szervizt hívjuk
+        const response = await companyApi.getPublicConfig();
 
         this.company = response.data;
 
@@ -52,7 +53,6 @@ export const useCompanyStore = defineStore('company', {
       root.style.setProperty('--p-primary-emphasis-color', primaryHex);
 
       // 2. LEGACY VÁLTOZÓK (Hogy a régi dizájn is megjavuljon!)
-      // Ez volt a hiba oka: a régi gombok ezt keresték, de nem találták.
       root.style.setProperty('--primary-color', primaryHex);
 
       if (secondaryHex) {
@@ -62,7 +62,7 @@ export const useCompanyStore = defineStore('company', {
         root.style.setProperty('--secondary-color', '#1a1a1a');
       }
 
-      // Font (opcionális, ha dinamikus lenne)
+      // Font
       root.style.setProperty('--font-family', "'Playfair Display', serif");
     }
   }

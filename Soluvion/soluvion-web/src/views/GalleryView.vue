@@ -2,6 +2,8 @@
   import { ref, inject, watch, nextTick, computed } from 'vue';
   import api from '@/services/api';
   import { useAutoSaveQueue } from '@/composables/useAutoSaveQueue';
+  // ÚJ: Behozzuk a képfeltöltő composable-t
+  import { useImageUpload } from '@/composables/useImageUpload';
   import draggable from 'vuedraggable';
   import { useI18n } from 'vue-i18n';
 
@@ -15,7 +17,6 @@
   const categories = ref([]);
   const groupedImages = ref([]);
   const isLoading = ref(false);
-  const isUploading = ref(false);
   const translatingField = ref(null);
   const showPreview = ref(false);
   const previewImage = ref(null);
@@ -25,12 +26,15 @@
   const company = inject('company', ref(null));
   const { addToQueue } = useAutoSaveQueue();
 
+  // ÚJ: Használjuk a composable-t
+  const { isUploading, uploadImage } = useImageUpload();
+
   const ensureDict = (field, defaultValue = "") => {
     if (field && typeof field === 'object' && field !== null) return field;
     return { [currentLang.value]: field || defaultValue };
   };
 
-  // --- AI FORDÍTÁS (SaaS DINAMIKUS ALAPNYELVVEL) ---
+  // --- AI FORDÍTÁS ---
   const translateField = async (obj, fieldName, targetLang) => {
     const defaultLang = company.value?.defaultLanguage || 'hu';
     const sourceText = obj[fieldName][defaultLang] || obj[fieldName][currentLang.value];
@@ -62,9 +66,12 @@
   const fetchData = async () => {
     isLoading.value = true;
     try {
+
+      const timestamp = new Date().getTime();
+
       const [resCats, resImages] = await Promise.all([
-        api.get('/api/Gallery/categories'),
-        api.get('/api/Gallery')
+        api.get(`/api/Gallery/categories?t=${timestamp}`),
+        api.get(`/api/Gallery?t=${timestamp}`)
       ]);
 
       const rawCats = Array.isArray(resCats.data) ? resCats.data : [];
@@ -193,20 +200,24 @@
     if (fileInputRef.value) fileInputRef.value.click();
   };
 
+  // REFAKTORÁLT FELTÖLTÉS A COMPOSABLE HASZNÁLATÁVAL
   const handleFiles = async (event) => {
     const files = event.target.files;
     if (!files || files.length === 0 || !currentUploadCategory.value) return;
-    isUploading.value = true;
+
     const targetCatName = currentUploadCategory.value.name['hu'] || "Új galéria";
+
+    // Feltöltjük a képeket a Composable-n keresztül
     for (let i = 0; i < files.length; i++) {
-      const formData = new FormData();
-      formData.append('file', files[i]);
-      formData.append('category', targetCatName);
-      try { await api.post('/api/Gallery', formData, { headers: { 'Content-Type': undefined } }); }
-      catch (err) { console.error(err); }
+      try {
+        await uploadImage(files[i], '/api/Gallery', { category: targetCatName });
+      } catch (err) {
+        console.error("Hiba az egyik kép feltöltésekor:", err);
+      }
     }
+
+    // JAVÍTÁS: Újra letöltjük a teljes szerkezetet az adatbázisból, így garantáltan frissül a UI!
     await fetchData();
-    isUploading.value = false;
     currentUploadCategory.value = null;
     event.target.value = "";
   };
