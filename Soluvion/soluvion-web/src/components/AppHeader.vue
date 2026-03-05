@@ -1,10 +1,9 @@
 <script setup>
-  import { ref, onMounted, inject, computed } from 'vue';
+  import { ref, inject, computed } from 'vue';
   import { useRouter } from 'vue-router';
-  import LanguageSwitcher from './LanguageSwitcher.vue'; // <--- ÚJ IMPORT
+  import LanguageSwitcher from './LanguageSwitcher.vue';
 
   const company = inject('company');
-  // Az isLoggedIn-t most már az App.vue-ból injectáljuk, hogy szinkronban legyen
   const isLoggedIn = inject('isLoggedIn');
   const router = useRouter();
   const isMenuOpen = ref(false);
@@ -34,164 +33,82 @@
 </script>
 
 <template>
-  <header class="app-header">
-    <div class="container">
+  <header class="bg-surface text-text sticky top-0 z-[1000] shadow-md border-b-2 border-primary transition-colors duration-300">
+    <div class="max-w-7xl mx-auto px-4 py-2 flex justify-between items-center relative min-h-[64px]">
 
-      <div class="logo-area">
-        <router-link to="/" class="logo-link">
-          <img v-if="company?.logoUrl"
-               :src="getLogoUrl(company.logoUrl)"
-               :alt="company?.name"
-               :style="logoStyle" />
-          <span v-else class="text-logo">{{ company?.name || 'Szalon' }}</span>
+      <div class="flex items-center">
+        <router-link to="/" class="no-underline block hover:opacity-80 transition-opacity flex-shrink-0 min-h-[44px] flex items-center">
+          <img v-if="company?.logoUrl" :src="getLogoUrl(company?.logoUrl)" alt="Logo" :style="logoStyle" />
+          <span v-else class="text-2xl font-bold text-primary tracking-wider">{{ company?.name || 'Skani Salon' }}</span>
         </router-link>
       </div>
 
-      <button class="menu-toggle" @click="toggleMenu">☰</button>
+      <button @click="toggleMenu"
+              class="md:hidden flex items-center justify-center min-w-[44px] min-h-[44px] text-text hover:text-primary transition-colors"
+              aria-label="Menü megnyitása">
+        <i :class="isMenuOpen ? 'pi pi-times' : 'pi pi-bars'" class="text-2xl"></i>
+      </button>
 
-      <nav :class="{ 'is-open': isMenuOpen }">
-        <router-link to="/" @click="isMenuOpen = false">{{ $t('nav.home') }}</router-link>
-        <router-link to="/szolgaltatasok" @click="isMenuOpen = false">{{ $t('nav.services') }}</router-link>
-        <router-link to="/galeria" @click="isMenuOpen = false">{{ $t('nav.gallery') }}</router-link>
-        <router-link to="/kapcsolat" @click="isMenuOpen = false">{{ $t('nav.contact') }}</router-link>
-
-        <div class="lang-wrapper">
-          <LanguageSwitcher :adminMode="isLoggedIn" />
-        </div>
-
-        <router-link v-if="isLoggedIn" to="/beallitasok" @click="isMenuOpen = false" class="settings-link" :title="$t('common.settings')">
-          <i class="pi pi-cog" style="font-size: 1.2rem;"></i>
+      <nav class="hidden md:flex items-center gap-6">
+        <router-link to="/szolgaltatasok" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-medium min-h-[44px] flex items-center">
+          {{ $t('nav.services') }}
         </router-link>
 
-        <button v-if="isLoggedIn" @click="handleLogout" class="auth-btn logout">{{ $t('common.logout') }}</button>
-        <router-link v-else to="/login" @click="isMenuOpen = false" class="auth-btn login">{{ $t('common.login') }}</router-link>
+        <router-link to="/galeria" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-medium min-h-[44px] flex items-center">
+          {{ $t('nav.gallery') }}
+        </router-link>
+
+        <router-link to="/kapcsolat" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-medium min-h-[44px] flex items-center">
+          {{ $t('nav.contact') }}
+        </router-link>
+
+        <LanguageSwitcher :adminMode="isLoggedIn" />
+
+        <router-link v-if="isLoggedIn" to="/beallitasok" class="text-primary hover:rotate-90 transition-transform duration-300 flex items-center justify-center min-w-[44px] min-h-[44px]" :title="$t('common.settings')">
+          <i class="pi pi-cog text-xl"></i>
+        </router-link>
+
+        <button v-if="isLoggedIn" @click="handleLogout"
+                class="px-5 py-2 min-h-[44px] rounded-lg text-sm border border-primary text-primary hover:bg-primary/10 transition-colors font-bold tracking-wide">
+          {{ $t('common.logout') }}
+        </button>
+
+        <router-link v-else to="/login" class="px-5 py-2 min-h-[44px] rounded-lg text-sm bg-primary text-white hover:bg-primary-emphasis transition-colors font-bold tracking-wide flex items-center">
+          {{ $t('common.login') }}
+        </router-link>
       </nav>
     </div>
+
+    <nav v-show="isMenuOpen" class="md:hidden absolute top-full left-0 right-0 bg-surface border-b border-primary/20 shadow-xl flex flex-col p-4 gap-2 z-[999]">
+      <router-link to="/szolgaltatasok" @click="isMenuOpen = false" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-bold text-lg p-3 rounded-lg hover:bg-text/5">
+        {{ $t('nav.services') }}
+      </router-link>
+
+      <router-link to="/galeria" @click="isMenuOpen = false" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-bold text-lg p-3 rounded-lg hover:bg-text/5">
+        {{ $t('nav.gallery') }}
+      </router-link>
+
+      <router-link to="/kapcsolat" @click="isMenuOpen = false" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-bold text-lg p-3 rounded-lg hover:bg-text/5">
+        {{ $t('nav.contact') }}
+      </router-link>
+
+      <div class="h-px bg-text/10 my-2"></div>
+
+      <div class="flex justify-between items-center p-3">
+        <LanguageSwitcher :adminMode="isLoggedIn" />
+
+        <router-link v-if="isLoggedIn" to="/beallitasok" @click="isMenuOpen = false" class="text-primary p-2">
+          <i class="pi pi-cog text-2xl"></i>
+        </router-link>
+      </div>
+
+      <button v-if="isLoggedIn" @click="handleLogout" class="w-full mt-2 min-h-[44px] rounded-lg text-lg border border-primary text-primary font-bold">
+        {{ $t('common.logout') }}
+      </button>
+
+      <router-link v-else to="/login" @click="isMenuOpen = false" class="w-full mt-2 min-h-[44px] flex items-center justify-center rounded-lg text-lg bg-primary text-white font-bold">
+        {{ $t('common.login') }}
+      </router-link>
+    </nav>
   </header>
 </template>
-
-<style scoped>
-  .app-header {
-    background-color: var(--secondary-color);
-    color: #fff;
-    padding: 0.5rem 0;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-    border-bottom: 2px solid var(--primary-color);
-  }
-
-  .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 1rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .logo-area {
-    display: flex;
-    align-items: center;
-  }
-
-  .logo-link {
-    text-decoration: none;
-    display: block;
-  }
-
-  .text-logo {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: var(--primary-color);
-    font-family: var(--font-family);
-  }
-
-  nav {
-    display: flex;
-    gap: 1.5rem;
-    align-items: center;
-  }
-
-    nav a {
-      color: #fff;
-      text-decoration: none;
-      font-size: 1rem;
-      transition: color 0.3s;
-    }
-
-      nav a:hover, nav a.router-link-active {
-        color: var(--primary-color);
-      }
-
-  /* ÚJ: Kis margó a nyelvváltónak */
-  .lang-wrapper {
-    margin-left: 10px;
-    margin-right: 10px;
-  }
-
-  .settings-link {
-    color: var(--primary-color) !important;
-    transition: transform 0.3s !important;
-  }
-
-    .settings-link:hover {
-      transform: rotate(90deg);
-    }
-
-  .auth-btn {
-    text-decoration: none;
-    padding: 5px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    border: 1px solid var(--primary-color);
-    background: transparent;
-    color: var(--primary-color);
-  }
-
-    .auth-btn.login {
-      background: var(--primary-color);
-      color: var(--secondary-color);
-      font-weight: bold;
-    }
-
-  .menu-toggle {
-    display: none;
-    background: none;
-    border: none;
-    color: white;
-    font-size: 1.5rem;
-    cursor: pointer;
-  }
-
-  @media (max-width: 768px) {
-    .menu-toggle {
-      display: block;
-    }
-
-    nav {
-      display: none;
-      flex-direction: column;
-      position: absolute;
-      top: 100%;
-      left: 0;
-      width: 100%;
-      background-color: var(--secondary-color);
-      padding: 1rem 0;
-      text-align: center;
-      border-bottom: 1px solid var(--primary-color);
-    }
-
-      nav.is-open {
-        display: flex;
-      }
-
-    .lang-wrapper {
-      margin: 15px 0;
-      display: flex;
-      justify-content: center;
-    }
-  }
-</style>

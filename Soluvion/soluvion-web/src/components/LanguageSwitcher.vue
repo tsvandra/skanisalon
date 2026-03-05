@@ -6,12 +6,6 @@
   const store = useTranslationStore();
   const { locale } = useI18n();
 
-  const changeLanguage = (newLang) => {
-    locale.value = newLang; // Vue-i18n nyelv beállítása
-    localStorage.setItem('user-locale', newLang); // Mentés a böngészőbe!
-  };
-
-  // Props
   const props = defineProps({
     adminMode: {
       type: Boolean,
@@ -19,9 +13,7 @@
     }
   });
 
-  // Mely nyelvek jeleníthetőek meg?
   const availableLanguages = computed(() => {
-    // Biztonsági ellenőrzés: ha a store még üres, ne omoljon össze
     const list = props.adminMode ? store.languages : store.publishedLanguages;
     return list || [];
   });
@@ -29,97 +21,46 @@
   const currentLang = computed(() => locale.value);
 
   const switchLang = async (code) => {
-    console.log(`[LanguageSwitcher] Gomb megnyomva: ${code}`);
-
-    if (!code) {
-      console.error("Hiba: Érvénytelen nyelvkód!");
-      return;
-    }
-
+    if (!code) return;
     try {
       await store.setLanguage(code);
-      console.log(`[LanguageSwitcher] Sikeres váltás: ${code}`);
     } catch (err) {
       console.error("[LanguageSwitcher] Hiba a váltáskor:", err);
-      // Ha hiba van (pl. nem töltődnek be az override-ok),
-      // akkor is kényszerítsük át a nyelvet a UI-on, hogy ne tűnjön halottnak a gomb
       locale.value = code;
     }
   };
 </script>
 
 <template>
-  <div class="language-switcher">
+  <div class="flex items-center gap-1.5">
+
     <template v-if="availableLanguages.length > 0">
       <button v-for="lang in availableLanguages"
               :key="lang.languageCode"
               @click="switchLang(lang.languageCode)"
-              class="lang-btn"
-              :class="{ active: currentLang === lang.languageCode }"
+              :class="[
+                'px-2 py-1 rounded-md text-xs font-bold border transition-all duration-200 relative min-w-[32px] flex items-center justify-center shadow-sm',
+                currentLang === lang.languageCode
+                  ? '!bg-primary !border-primary !text-black scale-105'
+                  : 'bg-transparent border-text/30 text-text hover:bg-text/10 hover:!border-primary hover:text-primary'
+              ]"
               :title="lang.status !== 'Published' ? `Státusz: ${lang.status}` : ''">
 
         {{ lang.languageCode ? lang.languageCode.toUpperCase() : '?' }}
 
         <span v-if="adminMode && lang.status !== 'Published'"
-              class="status-dot"
-              :class="lang.status === 'Error' ? 'error' : 'pending'">
+              :class="[
+                'absolute -top-1.5 -right-1.5 text-[10px] leading-none drop-shadow-md',
+                lang.status === 'Error' ? 'text-red-500' : 'text-orange-400'
+              ]">
           ●
         </span>
       </button>
     </template>
 
-    <div v-else-if="adminMode" style="font-size: 0.7rem; color: #888;">
+    <div v-else-if="adminMode" class="text-xs text-text-muted italic">
       (Nincs adat)
     </div>
+
   </div>
 </template>
-
-<style scoped>
-  .language-switcher {
-    display: flex;
-    gap: 5px;
-    align-items: center;
-  }
-
-  .lang-btn {
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.3);
-    color: #fff;
-    padding: 4px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    font-weight: bold;
-    transition: all 0.2s;
-    position: relative;
-    min-width: 32px; /* Hogy biztosan kattintható legyen */
-  }
-
-    .lang-btn:hover {
-      background: rgba(255,255,255,0.1);
-      border-color: var(--primary-color);
-      color: var(--primary-color);
-    }
-
-    .lang-btn.active {
-      background: var(--primary-color);
-      color: var(--secondary-color);
-      border-color: var(--primary-color);
-    }
-
-  .status-dot {
-    position: absolute;
-    top: -3px;
-    right: -3px;
-    font-size: 10px;
-    line-height: 1;
-  }
-
-    .status-dot.pending {
-      color: orange;
-    }
-
-    .status-dot.error {
-      color: red;
-    }
-</style>

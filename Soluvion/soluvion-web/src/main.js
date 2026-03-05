@@ -6,6 +6,7 @@ import i18n from './i18n';
 import PrimeVue from 'primevue/config';
 import Aura from '@primevue/themes/aura';
 import 'primeicons/primeicons.css';
+import '@/assets/main.css';
 import ToastService from 'primevue/toastservice';
 import { useCompanyStore } from '@/stores/companyStore'; // Importáljuk a store-t
 

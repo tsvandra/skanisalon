@@ -19,10 +19,10 @@
       // Az API controller Query paramétereket vár (url?username=...&password=...)
       // Az axios ezt a 'params' objektummal kezeli elegánsan
       const res = await api.post('/api/Auth/login', {
-          username: username.value,
-          password: password.value
+        username: username.value,
+        password: password.value
       });
-      // A backend sima szövegként (string) adja vissza a tokent, 
+      // A backend sima szövegként (string) adja vissza a tokent,
       // az axios ezt is a .data-ba teszi
       console.log("Sikeres válasz:", res.data);
       const token = res.data;
@@ -42,123 +42,47 @@
 </script>
 
 <template>
-  <div class="login-container">
-    <div class="login-card">
-      <h2>Admin Belépés</h2>
-      <p class="subtitle">Skani Salon Management</p>
+  <div class="min-h-[80vh] flex justify-center items-center bg-background p-4">
+
+    <div class="bg-surface p-8 rounded-xl shadow-xl w-full max-w-md text-center border-t-4 border-primary">
+      <h2 class="text-text text-2xl font-bold mb-2">Admin Belépés</h2>
+      <p class="text-text-muted text-sm mb-8">Skani Salon Management</p>
 
       <form @submit.prevent="handleLogin">
-        <div class="form-group">
-          <label for="username">Felhasználónév</label>
+
+        <div class="mb-6 text-left">
+          <label for="username" class="block mb-2 font-bold text-text">Felhasználónév</label>
           <input id="username"
                  name="username"
                  type="text"
                  v-model="username"
                  required
-                 placeholder="Írd be a neved..." />
+                 placeholder="Írd be a neved..."
+                 class="w-full p-3 border border-text/20 rounded-lg text-base bg-background text-text focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors" />
         </div>
 
-        <div class="form-group">
-          <label for="password">Jelszó</label>
+        <div class="mb-6 text-left">
+          <label for="password" class="block mb-2 font-bold text-text">Jelszó</label>
           <input id="password"
                  name="password"
                  type="password"
                  v-model="password"
                  required
-                 placeholder="••••••••" />
+                 placeholder="••••••••"
+                 class="w-full p-3 border border-text/20 rounded-lg text-base bg-background text-text focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors" />
         </div>
 
-        <p v-if="errorMsg" class="error">{{ errorMsg }}</p>
+        <p v-if="errorMsg" class="text-red-500 mb-4 text-sm font-medium">{{ errorMsg }}</p>
 
-        <button type="submit" :disabled="isLoading">
+        <button type="submit"
+                :disabled="isLoading"
+                class="w-full p-3 bg-primary text-black font-bold rounded-lg cursor-pointer transition-all duration-300 hover:brightness-90 disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md">
+          <i v-if="isLoading" class="pi pi-spin pi-spinner mr-2"></i>
           {{ isLoading ? 'Belépés folyamatban...' : 'Belépés' }}
         </button>
+
       </form>
     </div>
+
   </div>
 </template>
-
-<style scoped>
-  .login-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 80vh; /* Majdnem teljes képernyő magasság */
-    background-color: #f8f9fa;
-  }
-
-  .login-card {
-    background: white;
-    padding: 2rem;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    width: 100%;
-    max-width: 400px;
-    text-align: center;
-    border-top: 5px solid #d4af37; /* Arany csík a tetején */
-  }
-
-  h2 {
-    color: #333;
-    margin-bottom: 0.5rem;
-  }
-
-  .subtitle {
-    color: #666;
-    margin-bottom: 2rem;
-    font-size: 0.9rem;
-  }
-
-  .form-group {
-    margin-bottom: 1.5rem;
-    text-align: left;
-  }
-
-  label {
-    display: block;
-    margin-bottom: 0.5rem;
-    color: #333;
-    font-weight: bold;
-  }
-
-  input {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 1rem;
-  }
-
-    input:focus {
-      outline: none;
-      border-color: #d4af37; /* Arany keret fókuszkor */
-    }
-
-  button {
-    width: 100%;
-    padding: 12px;
-    background-color: #d4af37; /* Arany gomb */
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 1rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background 0.3s;
-  }
-
-    button:hover {
-      background-color: #b5952f; /* Sötétebb arany */
-    }
-
-    button:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
-    }
-
-  .error {
-    color: red;
-    margin-bottom: 1rem;
-    font-size: 0.9rem;
-  }
-</style>

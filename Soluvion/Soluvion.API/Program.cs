@@ -25,10 +25,13 @@ var dataSource = dataSourceBuilder.Build();
 builder.Services.AddDbContext<AppDbContext>(options =>
    options.UseNpgsql(connectionString));
 
-
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ICompanyService, CompanyService>();
+builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<ITranslationService, OpenAiTranslationService>();
 builder.Services.AddScoped<ITenantContext, TenantContext>();
+builder.Services.AddScoped<IGalleryService, GalleryService>();
+builder.Services.AddScoped<ICatalogService, CatalogService>();
 
 builder.Services.AddCors(options =>
 {
@@ -106,40 +109,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// --- 2. MIDDLEWARE (SORREND A LÉNYEG!) ---
-
-// 1. KÉZI HIBAKEZELÉS (Hogy lássuk, ha baj van, ne csak CORS hibát kapjunk)
-app.Use(async (context, next) =>
-{
-    try
-    {
-        await next();
-    }
-    catch (Exception ex)
-    {
-        // Ha hiba van, akkor is próbáljuk meg válaszolni valamit, ne haljon meg némán
-        Console.WriteLine($"KRITIKUS HIBA: {ex.Message}");
-        context.Response.StatusCode = 500;
-        await context.Response.WriteAsync("Szerver hiba történt. Nézd meg a Railway logokat!");
-    }
-});
-
-//// 2. KÉZI OPTIONS KEZELÉS (Preflight Fix)
-//// Ez "átveri" a böngészőt: ha OPTIONS kérés jön, azonnal rávágjuk, hogy "OK",
-//// még mielőtt a bonyolult logika elhasalhatna.
-//app.Use(async (context, next) =>
-//{
-//    if (context.Request.Method == "OPTIONS")
-//    {
-//        context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
-//        context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-//        context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tenant-ID");
-//        context.Response.StatusCode = (int)HttpStatusCode.OK;
-//        return; // Itt meg is állunk, nem engedjük tovább a hibás részhez
-//    }
-//    await next();
-//});
-
+app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 
 app.UseCors("AllowAll");
 
@@ -147,7 +117,7 @@ app.UseMiddleware<TenantResolutionMiddleware>();
 
 AppContext.SetSwitch("Npqsql.EnableLegacyTimestampBehavior", true);
 
-app.MapGet("/api/ping", () => "PONG! A szerver el es mukodik.");
+//app.MapGet("/api/ping", () => "PONG! A szerver el es mukodik.");
 
 // Scalar Dokumentáció (Fejlesztői módban, vagy mindig)
 if (app.Environment.IsDevelopment() || true)
