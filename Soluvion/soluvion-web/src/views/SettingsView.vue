@@ -1,7 +1,5 @@
 <script setup>
-  import { ref, onMounted, computed, nextTick, watch } from 'vue';
-  import InputText from 'primevue/inputtext';
-  import Textarea from 'primevue/textarea';
+  import { ref, onMounted } from 'vue';
   import Button from 'primevue/button';
   import Tabs from 'primevue/tabs';
   import TabList from 'primevue/tablist';
@@ -11,55 +9,18 @@
 
   import api from '@/services/api';
   import { getCompanyIdFromToken } from '@/utils/jwt';
-  import { useI18n } from 'vue-i18n';
 
-  import LanguageManager from '@/components/admin/LanguageManager.vue';
-  import UiTranslationManager from '@/components/admin/UiTranslationManager.vue';
+  import SettingsOpeningHours from '@/components/admin/settings/SettingsOpeningHours.vue';
+  import SettingsContact from '@/components/admin/settings/SettingsContact.vue';
+  import SettingsSocial from '@/components/admin/settings/SettingsSocial.vue';
+  import SettingsAppearance from '@/components/admin/settings/SettingsAppearance.vue';
+  import SettingsTranslations from '@/components/admin/settings/SettingsTranslations.vue';
 
-  const { locale } = useI18n();
-  const currentLang = computed(() => locale.value);
-
-  const companyData = ref({
-    // Alapértelmezett struktúra, hogy a Vue sose fusson "undefined" hibára
-    openingHoursTitle: {},
-    openingHoursDescription: {},
-    openingTimeSlots: {},
-    openingExtraInfo: {}
-  });
-  const isLoading = ref(true);
+  const companyData = ref({});
+  const isLoading = ref(false);
   const isSaving = ref(false);
-  const isUploading = ref(false);
   const successMsg = ref('');
   const errorMsg = ref('');
-
-  // --- ÚJ AI ÁLLAPOTOK ---
-  const translatingField = ref(null);
-  const isTranslatingAll = ref(false);
-
-  const logoInputRef = ref(null);
-  const heroInputRef = ref(null);
-  const footerInputRef = ref(null);
-
-  // --- ÚJ: TÖBBNYELVŰ FORMÁZÁS ÉS MÉRETEZÉS ---
-  const ensureDict = (field, defaultValue = "") => {
-    if (field && typeof field === 'object' && field !== null && !Array.isArray(field)) return field;
-    return { [currentLang.value]: field || defaultValue };
-  };
-
-  const autoResize = async () => {
-    await nextTick();
-    const textareas = document.querySelectorAll('textarea');
-    textareas.forEach(el => {
-      el.style.height = 'auto';
-      if (el.scrollHeight > 0) {
-        el.style.height = el.scrollHeight + 'px';
-      }
-    });
-  };
-
-  watch(currentLang, () => {
-    autoResize();
-  });
 
   const loadCompanyData = async () => {
     const companyId = getCompanyIdFromToken();
@@ -72,15 +33,8 @@
     try {
       const res = await api.get(`/api/Company/${companyId}`);
       const data = res.data;
-
       if (!data.logoHeight) data.logoHeight = 50;
       if (!data.footerHeight) data.footerHeight = 250;
-
-      // Többnyelvű mezők biztosítása
-      data.openingHoursTitle = ensureDict(data.openingHoursTitle, "Bejelentkezés alapján");
-      data.openingHoursDescription = ensureDict(data.openingHoursDescription, "");
-      data.openingTimeSlots = ensureDict(data.openingTimeSlots, "");
-      data.openingExtraInfo = ensureDict(data.openingExtraInfo, "");
 
       companyData.value = { ...data };
     } catch (err) {
@@ -88,89 +42,6 @@
       errorMsg.value = "Nem sikerült betölteni a cég adatait.";
     } finally {
       isLoading.value = false;
-      autoResize();
-    }
-  };
-
-  // --- AI FORDÍTÓ METÓDUSOK ---
-  const translateField = async (fieldName) => {
-    const defaultLang = companyData.value?.defaultLanguage || 'hu';
-    if (currentLang.value === defaultLang) {
-      alert(`A(z) '${defaultLang}' az alapértelmezett nyelv, erről fordítunk a többire! Válts nyelvet fentről.`);
-      return;
-    }
-
-    const sourceText = companyData.value[fieldName][defaultLang] || companyData.value[fieldName]['hu'];
-    if (!sourceText || sourceText.trim() === '') return;
-
-    translatingField.value = fieldName;
-    try {
-      const response = await api.post('/api/Translation', {
-        text: sourceText,
-        targetLanguage: currentLang.value,
-        context: 'company'
-      });
-      if (response.data && response.data.translatedText) {
-        if (!companyData.value[fieldName]) companyData.value[fieldName] = {};
-        companyData.value[fieldName][currentLang.value] = response.data.translatedText;
-        autoResize();
-      }
-    } catch (err) {
-      console.error("Fordítási hiba:", err);
-      alert("Nem sikerült a fordítás.");
-    } finally {
-      translatingField.value = null;
-    }
-  };
-
-  const translateAllSettings = async () => {
-    const defaultLang = companyData.value?.defaultLanguage || 'hu';
-    if (currentLang.value === defaultLang) {
-      alert(`Válts át arra a nyelvre, amire fordítani szeretnél! Jelenleg az alapértelmezett (${defaultLang}) nyelven vagy.`);
-      return;
-    }
-
-    const fieldsToTranslate = [
-      'openingHoursTitle',
-      'openingHoursDescription',
-      'openingTimeSlots',
-      'openingExtraInfo'
-    ];
-
-    isTranslatingAll.value = true;
-    for (const field of fieldsToTranslate) {
-      await translateField(field);
-    }
-    isTranslatingAll.value = false;
-  };
-
-  // --- KÉPFELTÖLTÉS & MENTÉS ---
-  const handleUpload = async (event, type) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    isUploading.value = true;
-    const formData = new FormData();
-    formData.append('file', file);
-
-    let endpoint = '';
-    if (type === 'logo') endpoint = '/api/Company/upload/logo';
-    else if (type === 'hero') endpoint = '/api/Company/upload/hero';
-    else endpoint = '/api/Company/upload/footer';
-
-    try {
-      const res = await api.post(endpoint, formData, { headers: { 'Content-Type': undefined } });
-      if (type === 'logo') companyData.value.logoUrl = res.data.url;
-      else if (type === 'hero') companyData.value.heroImageUrl = res.data.url;
-      else companyData.value.footerImageUrl = res.data.url;
-
-      successMsg.value = "Kép sikeresen feltöltve!";
-      setTimeout(() => successMsg.value = '', 3000);
-    } catch (err) {
-      console.error(err);
-      errorMsg.value = "Hiba a feltöltés során.";
-    } finally {
-      isUploading.value = false;
     }
   };
 
@@ -186,10 +57,12 @@
       await api.put(`/api/Company/${companyId}`, companyData.value);
 
       successMsg.value = "A változtatások sikeresen mentve!";
+
       if (companyData.value.primaryColor) {
         document.documentElement.style.setProperty('--primary-color', companyData.value.primaryColor);
         document.documentElement.style.setProperty('--secondary-color', companyData.value.secondaryColor);
       }
+
       setTimeout(() => successMsg.value = '', 3000);
 
     } catch (err) {
@@ -206,18 +79,36 @@
 </script>
 
 <template>
-  <div class="settings-container">
-    <h1>Cégbeállítások</h1>
-    <p class="intro">Itt módosíthatja a weboldalán megjelenő adatokat és a dizájnt.</p>
+  <div class="max-w-[1000px] mx-auto p-4 md:p-8 text-text">
 
-    <div v-if="successMsg" class="alert-box success">{{ successMsg }}</div>
-    <div v-if="errorMsg" class="alert-box error">{{ errorMsg }}</div>
-    <div v-if="isLoading" class="alert-box loading">Adatok betöltése...</div>
+    <div class="mb-8">
+      <h1 class="text-3xl font-light tracking-wide text-primary m-0 mb-2">Cégbeállítások</h1>
+      <p class="text-text-muted m-0">Itt módosíthatja a weboldalán megjelenő adatokat és a dizájnt.</p>
+    </div>
 
-    <div v-if="!isLoading && companyData" class="form-wrapper">
+    <div v-if="successMsg" class="p-4 rounded-lg mb-6 text-center font-bold bg-green-500/10 text-green-400 border border-green-500/30 flex items-center justify-center gap-2 shadow-sm">
+      <i class="pi pi-check-circle"></i> {{ successMsg }}
+    </div>
 
-      <Tabs value="0">
-        <TabList>
+    <div v-if="errorMsg" class="p-4 rounded-lg mb-6 text-center font-bold bg-red-500/10 text-red-400 border border-red-500/30 flex items-center justify-center gap-2 shadow-sm">
+      <i class="pi pi-times-circle"></i> {{ errorMsg }}
+    </div>
+
+    <div v-if="isLoading" class="p-4 rounded-lg mb-6 text-center font-bold bg-text/5 text-text-muted border border-text/10 flex items-center justify-center gap-2 shadow-sm">
+      <i class="pi pi-spin pi-spinner"></i> Adatok betöltése...
+    </div>
+
+    <div v-if="!isLoading && companyData" class="bg-text/5 border border-text/10 p-4 md:p-6 rounded-2xl shadow-xl backdrop-blur-sm">
+
+      <Tabs value="0" class="w-full
+        [&_.p-tablist]:bg-transparent
+        [&_.p-tablist-tab-list]:bg-transparent [&_.p-tablist-tab-list]:border-b [&_.p-tablist-tab-list]:border-text/20
+        [&_.p-tab]:bg-transparent [&_.p-tab]:text-text-muted [&_.p-tab]:font-medium [&_.p-tab]:transition-all [&_.p-tab]:px-4 [&_.p-tab]:py-3
+        [&_.p-tab:hover]:text-text [&_.p-tab:hover]:bg-text/5 [&_.p-tab:hover]:border-text/30
+        [&_.p-tab-active]:!text-primary [&_.p-tab-active]:!border-primary [&_.p-tab-active]:!bg-primary/10
+        [&_.p-tabpanels]:bg-transparent [&_.p-tabpanels]:text-text [&_.p-tabpanels]:p-0 [&_.p-tabpanels]:pt-6">
+
+        <TabList class="mb-2">
           <Tab value="0">Elérhetőségek</Tab>
           <Tab value="1">Nyitvatartás</Tab>
           <Tab value="2">Közösségi & Térkép</Tab>
@@ -226,440 +117,36 @@
         </TabList>
 
         <TabPanels>
-
           <TabPanel value="0">
-            <div class="form-grid">
-              <div class="field">
-                <label>Cégnév (Weboldalon megjelenő)</label>
-                <InputText v-model="companyData.name" class="w-full" />
-              </div>
-              <div class="field">
-                <label>Email</label>
-                <InputText v-model="companyData.email" class="w-full" />
-              </div>
-              <div class="field">
-                <label>Telefonszám</label>
-                <InputText v-model="companyData.phone" class="w-full" />
-              </div>
-
-              <h3>Cím</h3>
-              <div class="field-group">
-                <div class="field">
-                  <label>Irányítószám</label>
-                  <InputText v-model="companyData.postalCode" class="w-full" />
-                </div>
-                <div class="field">
-                  <label>Város</label>
-                  <InputText v-model="companyData.city" class="w-full" />
-                </div>
-              </div>
-              <div class="field-group">
-                <div class="field">
-                  <label>Utca</label>
-                  <InputText v-model="companyData.streetName" class="w-full" />
-                </div>
-                <div class="field">
-                  <label>Házszám</label>
-                  <InputText v-model="companyData.houseNumber" class="w-full" />
-                </div>
-              </div>
-            </div>
+            <SettingsContact :companyData="companyData" />
           </TabPanel>
 
           <TabPanel value="1">
-            <div class="flex-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-              <h3 style="margin: 0;">Nyitvatartási Adatok</h3>
-              <Button v-if="currentLang !== (companyData?.defaultLanguage || 'hu')"
-                      :label="isTranslatingAll ? 'Fordítás folyamatban...' : 'Összes Mező Fordítása AI-val'"
-                      :icon="isTranslatingAll ? 'pi pi-spin pi-spinner' : 'pi pi-sparkles'"
-                      class="p-button-outlined p-button-warning"
-                      :disabled="isTranslatingAll"
-                      @click="translateAllSettings" />
-            </div>
-
-            <div class="field">
-              <label>Címsor (Pl: Bejelentkezés alapján)</label>
-              <div class="input-with-tools">
-                <InputText v-model="companyData.openingHoursTitle[currentLang]" class="w-full" />
-                <button @click="translateField('openingHoursTitle')" class="magic-btn" title="Fordítás AI-val">
-                  <i v-if="translatingField === 'openingHoursTitle'" class="pi pi-spin pi-spinner"></i>
-                  <i v-else class="pi pi-sparkles"></i>
-                </button>
-              </div>
-            </div>
-            <div class="field">
-              <label>Leírás (Pl: Jelenleg kizárólag...)</label>
-              <div class="input-with-tools">
-                <Textarea v-model="companyData.openingHoursDescription[currentLang]" @input="autoResize" rows="2" class="w-full" />
-                <button @click="translateField('openingHoursDescription')" class="magic-btn" title="Fordítás AI-val">
-                  <i v-if="translatingField === 'openingHoursDescription'" class="pi pi-spin pi-spinner"></i>
-                  <i v-else class="pi pi-sparkles"></i>
-                </button>
-              </div>
-            </div>
-            <div class="field">
-              <label>Időpontok (HTML engedélyezett, pl: &lt;br&gt;)</label>
-              <div class="input-with-tools">
-                <Textarea v-model="companyData.openingTimeSlots[currentLang]" @input="autoResize" rows="4" class="w-full" />
-                <button @click="translateField('openingTimeSlots')" class="magic-btn" title="Fordítás AI-val">
-                  <i v-if="translatingField === 'openingTimeSlots'" class="pi pi-spin pi-spinner"></i>
-                  <i v-else class="pi pi-sparkles"></i>
-                </button>
-              </div>
-              <small>Tipp: Használja a &lt;br&gt; kódot új sor kezdéséhez!</small>
-            </div>
-            <div class="field">
-              <label>Extra infó (Pl: Facebookon tesszük közzé...)</label>
-              <div class="input-with-tools">
-                <Textarea v-model="companyData.openingExtraInfo[currentLang]" @input="autoResize" rows="2" class="w-full" />
-                <button @click="translateField('openingExtraInfo')" class="magic-btn" title="Fordítás AI-val">
-                  <i v-if="translatingField === 'openingExtraInfo'" class="pi pi-spin pi-spinner"></i>
-                  <i v-else class="pi pi-sparkles"></i>
-                </button>
-              </div>
-            </div>
+            <SettingsOpeningHours :companyData="companyData" />
           </TabPanel>
 
           <TabPanel value="2">
-            <div class="field">
-              <label>Facebook Link (Teljes URL)</label>
-              <InputText v-model="companyData.facebookUrl" class="w-full" />
-            </div>
-            <div class="field">
-              <label>Instagram Link</label>
-              <InputText v-model="companyData.instagramUrl" class="w-full" />
-            </div>
-            <div class="field">
-              <label>TikTok Link</label>
-              <InputText v-model="companyData.tikTokUrl" class="w-full" />
-            </div>
-            <div class="field">
-              <label>Google Maps Embed URL (Beágyazási link)</label>
-              <InputText v-model="companyData.mapEmbedUrl" class="w-full" />
-              <small>Másolja be a Google Maps "Megosztás -> Beágyazás" src linkjét.</small>
-            </div>
+            <SettingsSocial :companyData="companyData" />
           </TabPanel>
 
           <TabPanel value="3">
-            <div class="design-section">
-              <h3>Logó beállítások</h3>
-              <div class="design-controls">
-                <div class="preview-box logo-preview">
-                  <img v-if="companyData.logoUrl" :src="companyData.logoUrl" :style="{ height: companyData.logoHeight + 'px' }" />
-                  <span v-else>Nincs logó feltöltve</span>
-                </div>
-                <div class="control-group">
-                  <Button label="Logó feltöltése" icon="pi pi-upload" @click="logoInputRef.click()" class="p-button-outlined" :loading="isUploading" />
-                  <input type="file" ref="logoInputRef" hidden @change="(e) => handleUpload(e, 'logo')" accept="image/*" />
-                  <div class="slider-container">
-                    <label>Logó mérete: {{ companyData.logoHeight }}px</label>
-                    <input type="range" v-model="companyData.logoHeight" min="30" max="150" step="2" class="custom-range" />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <hr class="separator" />
-            <div class="design-section">
-              <h3>Kezdőoldal Borítókép (Hero)</h3>
-              <div class="design-controls">
-                <div class="preview-box hero-preview"
-                     :style="{ backgroundImage: `url(${companyData.heroImageUrl || 'https://via.placeholder.com/400x200?text=Alapertelmezett'})` }">
-                  <span v-if="!companyData.heroImageUrl" style="color:white; z-index:2; text-shadow: 0 0 5px black;">Nincs egyedi kép</span>
-                  <div class="overlay"></div>
-                </div>
-                <div class="control-group">
-                  <Button label="Borítókép cseréje" icon="pi pi-image" @click="heroInputRef.click()" class="p-button-outlined" :loading="isUploading" />
-                  <input type="file" ref="heroInputRef" hidden @change="(e) => handleUpload(e, 'hero')" accept="image/*" />
-                  <small style="display:block; margin-top:5px; color:#888;">Ajánlott méret: 1920x400px</small>
-                </div>
-              </div>
-            </div>
-            <hr class="separator" />
-            <div class="design-section">
-              <h3>Lábléc Háttérkép</h3>
-              <div class="design-controls">
-                <div class="preview-box footer-preview"
-                     :style="{ backgroundImage: `url(${companyData.footerImageUrl})` }">
-                  <span v-if="!companyData.footerImageUrl" style="color:white; z-index:2;">Nincs háttérkép</span>
-                  <div class="overlay"></div>
-                </div>
-                <div class="control-group">
-                  <Button label="Lábléc cseréje" icon="pi pi-image" @click="footerInputRef.click()" class="p-button-outlined" :loading="isUploading" />
-                  <input type="file" ref="footerInputRef" hidden @change="(e) => handleUpload(e, 'footer')" accept="image/*" />
-                  <div class="slider-container">
-                    <label>Lábléc magassága: {{ companyData.footerHeight }}px</label>
-                    <input type="range" v-model="companyData.footerHeight" min="50" max="600" step="10" class="custom-range" />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <hr class="separator" />
-            <div class="design-section">
-              <h3>Színek</h3>
-              <div class="color-grid">
-                <div class="field">
-                  <label>Elsődleges Szín</label>
-                  <div class="color-input-wrapper">
-                    <input type="color" v-model="companyData.primaryColor" />
-                    <span>{{ companyData.primaryColor }}</span>
-                  </div>
-                </div>
-                <div class="field">
-                  <label>Másodlagos Szín</label>
-                  <div class="color-input-wrapper">
-                    <input type="color" v-model="companyData.secondaryColor" />
-                    <span>{{ companyData.secondaryColor }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <SettingsAppearance :companyData="companyData" />
           </TabPanel>
 
           <TabPanel value="4">
-            <div class="p-3">
-              <LanguageManager />
-              <hr class="separator" style="margin: 3rem 0;" />
-              <UiTranslationManager />
-            </div>
+            <SettingsTranslations />
           </TabPanel>
-
         </TabPanels>
       </Tabs>
 
-      <div class="actions">
+      <div class="mt-10 flex justify-end border-t border-text/10 pt-6">
         <Button :label="isSaving ? 'Mentés folyamatban...' : 'Beállítások Mentése'"
-                icon="pi pi-check"
+                :icon="isSaving ? 'pi pi-spin pi-spinner' : 'pi pi-check'"
                 :disabled="isSaving"
                 @click="saveSettings"
-                class="save-btn" />
+                class="!bg-primary !text-black font-bold !border-none !px-8 !py-3.5 !rounded-xl hover:!scale-105 transition-transform shadow-md" />
       </div>
+
     </div>
   </div>
 </template>
-
-<style scoped>
-  /* A stílusok a régiek, de hozzáadva az input-with-tools és magic-btn a varázspálcákhoz! */
-  .p-3 {
-    padding: 1rem;
-  }
-
-  .settings-container {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 2rem;
-  }
-
-  h1 {
-    color: var(--primary-color);
-  }
-
-  h3 {
-    margin-top: 1.5rem;
-    margin-bottom: 0.5rem;
-    color: #555;
-  }
-
-  .intro {
-    margin-bottom: 2rem;
-    color: #666;
-  }
-
-  .form-wrapper {
-    background: white;
-    padding: 1rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  }
-
-  .field {
-    margin-bottom: 1.5rem;
-  }
-
-    .field label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: bold;
-      color: #333;
-    }
-
-  :deep(.p-inputtext), :deep(.p-inputtextarea) {
-    width: 100%;
-  }
-
-  .w-full {
-    width: 100%;
-  }
-
-  .field-group {
-    display: flex;
-    gap: 1rem;
-  }
-
-    .field-group .field {
-      flex: 1;
-    }
-
-  .alert-box {
-    padding: 1rem;
-    border-radius: 4px;
-    margin-bottom: 1rem;
-    text-align: center;
-    font-weight: bold;
-  }
-
-  .success {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-  }
-
-  .error {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-  }
-
-  .loading {
-    background: #e2e3e5;
-    color: #383d41;
-  }
-
-  .actions {
-    margin-top: 2rem;
-    text-align: right;
-  }
-
-  .save-btn {
-    background-color: var(--primary-color) !important;
-    border: none !important;
-    padding: 10px 20px;
-  }
-
-    .save-btn:hover {
-      filter: brightness(90%);
-    }
-
-  .design-section {
-    margin-bottom: 20px;
-  }
-
-  .design-controls {
-    display: flex;
-    gap: 20px;
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .preview-box {
-    width: 100%;
-    max-width: 300px;
-    height: 120px;
-    border: 1px dashed #ccc;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #f9f9f9;
-    overflow: hidden;
-    position: relative;
-    border-radius: 4px;
-  }
-
-  .logo-preview img {
-    height: 50px;
-    width: auto;
-  }
-
-  .footer-preview {
-    background-size: auto 100%;
-    background-repeat: repeat-x;
-    background-position: center bottom;
-  }
-
-  .hero-preview {
-    background-size: cover;
-    background-position: center;
-  }
-
-  .overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.5), transparent);
-  }
-
-  .control-group {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-  }
-
-  .slider-container {
-    margin-top: 10px;
-  }
-
-    .slider-container label {
-      display: block;
-      margin-bottom: 5px;
-      font-weight: bold;
-      color: #666;
-    }
-
-  .custom-range {
-    width: 100%;
-    cursor: pointer;
-    accent-color: var(--primary-color);
-  }
-
-  .separator {
-    border: 0;
-    border-top: 1px solid #eee;
-    margin: 20px 0;
-  }
-
-  .color-grid {
-    display: flex;
-    gap: 20px;
-  }
-
-  .color-input-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    border: 1px solid #ddd;
-    padding: 5px;
-    border-radius: 4px;
-    width: fit-content;
-  }
-
-  input[type="color"] {
-    width: 50px;
-    height: 40px;
-    border: none;
-    cursor: pointer;
-    background: none;
-  }
-
-  /* ÚJ STÍLUSOK A VARÁZSPÁLCÁHOZ */
-  .input-with-tools {
-    position: relative;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .magic-btn {
-    background: none;
-    border: none;
-    color: var(--primary-color);
-    cursor: pointer;
-    font-size: 1.2rem;
-    padding: 5px;
-    transition: transform 0.2s;
-  }
-
-    .magic-btn:hover {
-      transform: scale(1.1);
-      filter: brightness(120%);
-    }
-</style>

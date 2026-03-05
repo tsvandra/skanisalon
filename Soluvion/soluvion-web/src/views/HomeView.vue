@@ -3,136 +3,66 @@
   import Button from 'primevue/button';
   import Card from 'primevue/card';
   import { useRouter } from 'vue-router';
-  import { useCompanyStore } from '@/stores/companyStore'; // Store használata inject helyett
+  import { useCompanyStore } from '@/stores/companyStore';
 
   const router = useRouter();
-  const companyStore = useCompanyStore(); // Store példány
+  const companyStore = useCompanyStore();
 
-  // Computed a cégadatokra a store-ból
   const company = computed(() => companyStore.company);
 
-  // Ha van a DB-ben kép, azt használjuk, ha nincs, akkor a default képet.
   const heroImageUrl = computed(() => {
     return company.value?.heroImageUrl || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80';
   });
 
   const goToServices = () => { router.push('/szolgaltatasok'); }
   const goToContact = () => { router.push('/kapcsolat'); }
+  const goToGallery = () => { router.push('/galeria'); } // ÚJ: Navigáció a galériába
 </script>
 
 <template>
-  <div class="home-container">
+  <div class="w-full">
 
-    <div class="hero-section" :style="{ backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${heroImageUrl})` }">
-      <div class="hero-content">
-        <!--<h1 v-if="company">{{ company.name }}</h1>-->
-        <div class="hero-buttons">
-          <Button :label="$t('home.viewServices')" icon="pi pi-list" class="p-button-raised p-button-warning action-btn" @click="goToServices" />
-          <Button :label="$t('home.bookAppointment')" icon="pi pi-calendar" class="p-button-outlined p-button-secondary action-btn-secondary" @click="goToContact" />
+    <div class="bg-cover bg-center h-[350px] md:h-[450px] flex items-center justify-center text-center text-white rounded-b-2xl mb-10 shadow-lg"
+         :style="{ backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${heroImageUrl})` }">
+      <div class="px-4 w-full">
+        <div class="mt-5 flex flex-col md:flex-row justify-center gap-4">
+          <Button :label="$t('home.viewServices')"
+                  icon="pi pi-list"
+                  class="!bg-primary !border-none !text-black font-bold !px-8 !py-3.5 !rounded-xl hover:!scale-105 transition-transform shadow-md"
+                  @click="goToServices" />
+
+          <Button :label="$t('home.bookAppointment')"
+                  icon="pi pi-calendar"
+                  class="!bg-white !text-gray-900 !border-none font-bold !px-8 !py-3.5 !rounded-xl hover:!scale-105 transition-transform shadow-md"
+                  @click="goToContact" />
         </div>
       </div>
     </div>
 
-    <div class="content-section">
-      <Card style="width: 100%; margin-bottom: 2rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+    <div class="max-w-[900px] mx-auto p-5">
+      <Card class="w-full mb-8 !bg-text/5 !border !border-text/10 shadow-md !rounded-2xl overflow-hidden text-text">
         <template #title>
-          {{ $t('home.welcome', { company: company?.name || 'Szalon' }) }}
+          <span class="text-primary text-3xl font-light tracking-wide block pt-2 px-2">
+            {{ $t('home.welcome', { company: company?.name || 'Szalon' }) }}
+          </span>
         </template>
         <template #content>
-          <div class="intro-text">
-            <p class="intro-lead"><strong>{{ $t('home.introTitle') }}</strong></p>
-            {{ $t('home.introText') }}
+          <div class="px-2 pb-2">
+            <div class="leading-relaxed text-lg text-text-muted">
+              <p class="text-primary text-xl mb-4 font-bold">{{ $t('home.introTitle') }}</p>
+              {{ $t('home.introText') }}
+            </div>
+
+            <div @click="goToGallery"
+                 class="mt-6 p-4 bg-text/5 rounded-lg border-l-4 border-primary text-text-muted cursor-pointer transition-all duration-200 hover:bg-text/10 hover:text-text hover:shadow-sm flex items-center">
+              <i class="pi pi-camera mr-3 text-primary text-xl"></i>
+              <span class="font-medium">{{ $t('home.checkGallery') }}</span>
+              <i class="pi pi-arrow-right ml-auto text-primary/50"></i>
+            </div>
           </div>
-          <p style="margin-top: 1rem;">
-            {{ $t('home.checkGallery') }}
-          </p>
         </template>
       </Card>
-
     </div>
 
   </div>
 </template>
-
-<style scoped>
-  .home-container {
-    width: 100%;
-  }
-
-  .hero-section {
-    background-size: cover;
-    background-position: center;
-    height: 450px; /* Kicsit magasabb */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    color: white;
-    border-radius: 0 0 20px 20px;
-    margin-bottom: 40px;
-  }
-
-  h1 {
-    font-size: 3.5rem;
-    margin-bottom: 1.5rem;
-    color: white; /* Hero képen a fehér jobban látszik */
-    text-shadow: 0 2px 10px rgba(0,0,0,0.7);
-    font-family: var(--font-family);
-  }
-
-  .hero-buttons {
-    margin-top: 20px;
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-  }
-
-  /* Gombok stílusa - A CSS változókat használja */
-  .action-btn {
-    background-color: var(--p-primary-color) !important;
-    border: none !important;
-    color: var(--p-primary-contrast-color, #000) !important;
-    font-weight: bold;
-    padding: 10px 20px;
-  }
-
-  .action-btn-secondary {
-    background-color: white !important;
-    color: #333 !important;
-    border: none !important;
-    font-weight: bold;
-    padding: 10px 20px;
-  }
-
-  .content-section {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 20px;
-  }
-
-  .intro-text {
-    line-height: 1.8;
-    font-size: 1.1rem;
-    color: #ccc; /* Sötét témához igazítva */
-  }
-
-  .intro-lead {
-    color: var(--p-primary-color);
-    font-size: 1.2rem;
-    margin-bottom: 10px;
-  }
-
-  @media (max-width: 768px) {
-    .hero-section {
-      height: 350px;
-    }
-
-    h1 {
-      font-size: 2.2rem;
-    }
-
-    .hero-buttons {
-      flex-direction: column;
-    }
-  }
-</style>

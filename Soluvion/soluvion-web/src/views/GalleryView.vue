@@ -2,69 +2,59 @@
   import { ref, inject, watch, nextTick, computed } from 'vue';
   import api from '@/services/api';
   import { useAutoSaveQueue } from '@/composables/useAutoSaveQueue';
+  import { useImageUpload } from '@/composables/useImageUpload';
+  import { useDragAndDrop } from '@/composables/useDragAndDrop';
+  import { useTranslation } from '@/composables/useTranslation';
   import draggable from 'vuedraggable';
   import { useI18n } from 'vue-i18n';
 
   const { locale } = useI18n();
   const isLoggedIn = inject('isLoggedIn');
 
-  // Globális nyelv
   const currentLang = computed(() => locale.value);
 
   const images = ref([]);
   const categories = ref([]);
   const groupedImages = ref([]);
   const isLoading = ref(false);
-  const isUploading = ref(false);
-  const translatingField = ref(null);
   const showPreview = ref(false);
   const previewImage = ref(null);
   const fileInputRef = ref(null);
   const currentUploadCategory = ref(null);
   const categoryInputRefs = ref({});
   const company = inject('company', ref(null));
+
   const { addToQueue } = useAutoSaveQueue();
+  const { isUploading, uploadImage } = useImageUpload();
+  const { reorderNestedItems, reorderFlatItems } = useDragAndDrop();
+  const { translatingField, translateField } = useTranslation();
 
   const ensureDict = (field, defaultValue = "") => {
     if (field && typeof field === 'object' && field !== null) return field;
     return { [currentLang.value]: field || defaultValue };
   };
 
-  // --- AI FORDÍTÁS (SaaS DINAMIKUS ALAPNYELVVEL) ---
-  const translateField = async (obj, fieldName, targetLang) => {
-    const defaultLang = company.value?.defaultLanguage || 'hu';
-    const sourceText = obj[fieldName][defaultLang] || obj[fieldName][currentLang.value];
-
-    if (!sourceText || sourceText.trim() === '') return;
-
-    const loadingKey = `${obj.id || 'new'}-${fieldName}-${targetLang}`;
-    translatingField.value = loadingKey;
-
-    try {
-      const response = await api.post('/api/Translation', { text: sourceText, targetLanguage: targetLang });
-      if (response.data && response.data.translatedText) {
-        obj[fieldName][targetLang] = response.data.translatedText;
-        if (obj.items) saveCategory(obj); else saveImage(obj);
+  const triggerTranslation = async (obj, fieldName) => {
+    await translateField({
+      obj,
+      fieldName,
+      targetLang: currentLang.value,
+      defaultLang: company.value?.defaultLanguage || 'hu',
+      loadingKey: `${obj.id || 'new'}-${fieldName}-${currentLang.value}`,
+      onSuccess: (updatedObj) => {
+        if (updatedObj.items) saveCategory(updatedObj);
+        else saveImage(updatedObj);
       }
-    } catch (err) { console.error("Fordítási hiba:", err); }
-    finally { translatingField.value = null; }
-  };
-
-  const triggerTranslation = (obj, fieldName) => {
-    const defaultLang = company.value?.defaultLanguage || 'hu';
-    if (currentLang.value === defaultLang) {
-      alert(`A(z) '${defaultLang}' az alapértelmezett nyelv, erről fordítunk a többire! Kérlek, válts egy másik nyelvre a fejlécben, hogy fordítani tudj.`);
-      return;
-    }
-    translateField(obj, fieldName, currentLang.value);
+    });
   };
 
   const fetchData = async () => {
     isLoading.value = true;
     try {
+      const timestamp = new Date().getTime();
       const [resCats, resImages] = await Promise.all([
-        api.get('/api/Gallery/categories'),
-        api.get('/api/Gallery')
+        api.get(`/api/Gallery/categories?t=${timestamp}`),
+        api.get(`/api/Gallery?t=${timestamp}`)
       ]);
 
       const rawCats = Array.isArray(resCats.data) ? resCats.data : [];
@@ -126,17 +116,6 @@
     } catch (err) { console.error(err); }
   };
 
-  const onCategoryDragChange = (event) => {
-    if (event.moved) {
-      groupedImages.value.forEach((group, index) => {
-        if (group.id !== -1 && group.orderIndex !== index) {
-          group.orderIndex = index;
-          saveCategory(group);
-        }
-      });
-    }
-  };
-
   const saveCategory = (group) => {
     if (!group.id || group.id === -1) return;
     const currentName = group.name[currentLang.value]?.trim();
@@ -154,20 +133,6 @@
     } catch (err) { alert("Nem sikerült törölni."); }
   };
 
-  const onImageDragChange = (event, group) => {
-    if (event.added || event.moved) {
-      group.items.forEach((img, index) => {
-        const newOrder = index + 1;
-        if (img.orderIndex !== newOrder || img.categoryId !== group.id) {
-          img.orderIndex = newOrder;
-          img.categoryId = group.id;
-          img.category = JSON.parse(JSON.stringify(group.name));
-          saveImage(img);
-        }
-      });
-    }
-  };
-
   const saveImage = (img) => {
     addToQueue(img.id, async () => {
       await api.put(`/api/Gallery/${img.id}`, {
@@ -177,6 +142,27 @@
         orderIndex: img.orderIndex
       });
     });
+  };
+
+  const onCategoryDragChange = async () => {
+    const validGroups = groupedImages.value.filter(g => g.id !== -1);
+    await reorderFlatItems(validGroups, saveCategory);
+  };
+
+  const onImageDragChange = async () => {
+    await reorderNestedItems(
+      groupedImages.value,
+      'items',
+      saveImage,
+      (img, group) => {
+        if (img.categoryId !== group.id) {
+          img.categoryId = group.id;
+          img.category = JSON.parse(JSON.stringify(group.name));
+          return true;
+        }
+        return false;
+      }
+    );
   };
 
   const deleteImage = async (id) => {
@@ -196,17 +182,18 @@
   const handleFiles = async (event) => {
     const files = event.target.files;
     if (!files || files.length === 0 || !currentUploadCategory.value) return;
-    isUploading.value = true;
-    const targetCatName = currentUploadCategory.value.name['hu'] || "Új galéria";
+
+    const targetCatId = currentUploadCategory.value.id;
+
     for (let i = 0; i < files.length; i++) {
-      const formData = new FormData();
-      formData.append('file', files[i]);
-      formData.append('category', targetCatName);
-      try { await api.post('/api/Gallery', formData, { headers: { 'Content-Type': undefined } }); }
-      catch (err) { console.error(err); }
+      try {
+        await uploadImage(files[i], '/api/Gallery', { categoryId: targetCatId });
+      } catch (err) {
+        console.error("Hiba az egyik kép feltöltésekor:", err);
+      }
     }
+
     await fetchData();
-    isUploading.value = false;
     currentUploadCategory.value = null;
     event.target.value = "";
   };
@@ -215,18 +202,18 @@
 </script>
 
 <template>
-  <div class="gallery-container">
-    <div class="header-actions">
-      <h2>{{ $t('gallery.title') }}</h2>
+  <div class="max-w-screen-xl mx-auto p-8 text-text">
+    <div class="flex justify-between items-center mb-8 border-b border-text/10 pb-4">
+      <h2 class="text-primary m-0 font-light tracking-widest text-3xl">{{ $t('gallery.title') }}</h2>
 
-      <button v-if="isLoggedIn" @click="createCategory" class="btn primary-btn big-btn">
+      <button v-if="isLoggedIn" @click="createCategory" class="bg-primary text-black font-bold flex items-center gap-2 rounded transition-transform duration-200 hover:scale-105 px-6 py-3 text-lg border-none cursor-pointer shadow-md">
         <i class="pi pi-plus-circle"></i> {{ $t('gallery.newGallery') }}
       </button>
 
-      <input type="file" ref="fileInputRef" @change="handleFiles" multiple accept="image/*" style="display: none;" />
+      <input type="file" ref="fileInputRef" @change="handleFiles" multiple accept="image/*" class="hidden" />
     </div>
 
-    <div v-if="isLoading" class="loading-state">
+    <div v-if="isLoading" class="text-text-muted">
       <i class="pi pi-spin pi-spinner"></i> {{ $t('common.loading') }}
     </div>
 
@@ -238,69 +225,69 @@
                @change="onCategoryDragChange"
                :disabled="!isLoggedIn">
       <template #item="{ element: group }">
-        <div class="category-section">
+        <div class="mb-8 bg-text/5 border border-text/10 rounded-xl p-4 shadow-sm">
 
-          <div class="cat-header">
-            <div class="cat-left">
-              <div v-if="isLoggedIn && group.id !== -1" class="drag-handle-cat" title="Galéria mozgatása">⋮⋮</div>
+          <div class="flex justify-between items-center mb-4 px-4 py-2 bg-text/5 rounded-lg shadow-sm border border-text/5">
+            <div class="flex items-center gap-4 flex-grow">
+              <div v-if="isLoggedIn && group.id !== -1" class="cursor-grab text-2xl text-text-muted px-1 hover:text-primary drag-handle-cat transition-colors" title="Galéria mozgatása">⋮⋮</div>
 
-              <div class="cat-title-wrapper">
-                <div class="input-with-tools">
+              <div class="flex items-center gap-3 flex-grow">
+                <div class="relative flex items-center w-auto flex-grow group">
                   <input v-if="isLoggedIn && group.id !== -1"
                          :ref="el => categoryInputRefs[group.id] = el"
                          v-model="group.name[currentLang]"
                          @change="saveCategory(group)"
-                         class="cat-input"
+                         class="bg-transparent border-none border-b border-dashed border-text/30 text-primary text-xl font-bold py-1 w-full max-w-[400px] focus:outline-none focus:border-solid focus:border-primary focus:bg-text/10 placeholder-text/50 transition-all rounded-t-sm px-1"
                          placeholder="Új galéria" />
-                  <h3 v-else class="cat-title">{{ group.name[currentLang] }}</h3>
+                  <h3 v-else class="text-primary text-xl font-bold py-1 m-0">{{ group.name[currentLang] }}</h3>
 
                   <button v-if="isLoggedIn && group.id !== -1"
                           @click="triggerTranslation(group, 'name')"
-                          class="magic-btn" title="Fordítás">
+                          class="opacity-30 bg-transparent border-none text-primary cursor-pointer ml-2 text-base transition-all duration-200 group-hover:opacity-100 hover:scale-110 hover:drop-shadow-[0_0_5px_rgba(212,175,55,0.8)]" title="Fordítás">
                     <i v-if="translatingField === `${group.id}-name-${currentLang}`" class="pi pi-spin pi-spinner"></i>
                     <i v-else class="pi pi-sparkles"></i>
                   </button>
                 </div>
-                <span class="count">({{ group.items.length }})</span>
+                <span class="text-text-muted font-bold">({{ group.items.length }})</span>
               </div>
             </div>
 
-            <div v-if="isLoggedIn && group.id !== -1" class="cat-actions">
-              <button @click="triggerCategoryUpload(group)" class="btn upload-sm-btn" :disabled="isUploading">
+            <div v-if="isLoggedIn && group.id !== -1" class="flex items-center gap-3">
+              <button @click="triggerCategoryUpload(group)" class="bg-text/5 text-text-muted border border-text/20 px-4 py-2 text-sm rounded flex items-center gap-2 cursor-pointer transition-colors duration-200 hover:bg-primary hover:text-black hover:border-primary shadow-sm" :disabled="isUploading">
                 <i v-if="isUploading && currentUploadCategory?.id === group.id" class="pi pi-spin pi-spinner"></i>
                 <i v-else class="pi pi-cloud-upload"></i> {{ $t('gallery.uploadHere') }}
               </button>
-              <button v-if="group.items.length === 0" @click="deleteCategory(group)" class="cat-delete-btn"><i class="pi pi-trash"></i></button>
+              <button v-if="group.items.length === 0" @click="deleteCategory(group)" class="bg-transparent border-none text-text-muted cursor-pointer p-2 transition-colors duration-200 hover:text-red-500"><i class="pi pi-trash text-lg"></i></button>
             </div>
           </div>
 
-          <draggable v-model="group.items" group="gallery-images" item-key="id" class="image-grid" @change="(e) => onImageDragChange(e, group)" :disabled="!isLoggedIn" ghost-class="ghost-card">
+          <draggable v-model="group.items" group="gallery-images" item-key="id" class="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4 min-h-[100px] p-4 bg-text/5 border border-text/5 rounded-lg shadow-inner" @change="(e) => onImageDragChange(e, group)" :disabled="!isLoggedIn" ghost-class="opacity-50">
             <template #item="{ element: img }">
-              <div class="gallery-card">
-                <div class="img-wrapper" @click="openPreview(img)">
-                  <img :src="img.imageUrl" loading="lazy" :alt="img.title[currentLang]" />
-                  <div class="overlay"><i class="pi pi-eye"></i></div>
+              <div class="bg-surface rounded-md overflow-hidden shadow-md border border-text/10 flex flex-col">
+                <div class="w-full aspect-square relative cursor-pointer overflow-hidden group/img" @click="openPreview(img)">
+                  <img :src="img.imageUrl" loading="lazy" :alt="img.title[currentLang]" class="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-110" />
+                  <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 transition-opacity duration-200 text-white text-3xl group-hover/img:opacity-100"><i class="pi pi-search-plus"></i></div>
                 </div>
 
-                <div v-if="isLoggedIn" class="edit-bar">
-                  <div class="input-with-tools" style="width: auto; flex-grow: 1;">
+                <div v-if="isLoggedIn" class="p-2 bg-surface flex gap-2 items-center border-t border-text/10">
+                  <div class="relative flex items-center w-auto flex-grow group/tools">
                     <input v-model="img.title[currentLang]"
                            @change="saveImage(img)"
                            placeholder="Cím..."
-                           class="caption-input" />
+                           class="w-full bg-text/5 border border-transparent text-text p-1.5 text-xs rounded focus:outline-none focus:border-primary focus:bg-text/10 transition-all" />
 
                     <button v-if="isLoggedIn"
                             @click="triggerTranslation(img, 'title')"
-                            class="magic-btn small-magic" title="Fordítás">
+                            class="opacity-30 bg-transparent border-none text-primary cursor-pointer ml-1 text-sm transition-all duration-200 group-hover/tools:opacity-100 hover:scale-110 hover:drop-shadow-[0_0_5px_rgba(212,175,55,0.8)]" title="Fordítás">
                       <i v-if="translatingField === `${img.id}-title-${currentLang}`" class="pi pi-spin pi-spinner"></i>
                       <i v-else class="pi pi-sparkles"></i>
                     </button>
                   </div>
 
-                  <button @click="deleteImage(img.id)" class="del-btn"><i class="pi pi-trash"></i></button>
+                  <button @click="deleteImage(img.id)" class="bg-text/5 text-red-500 border border-transparent w-7 h-7 p-0 cursor-pointer rounded flex justify-center items-center transition-colors duration-200 hover:bg-red-500 hover:text-white"><i class="pi pi-trash text-sm"></i></button>
                 </div>
 
-                <div v-else-if="img.title && img.title[currentLang]" class="caption-display">
+                <div v-else-if="img.title && img.title[currentLang]" class="p-2 text-center text-sm text-text-muted bg-surface">
                   {{ img.title[currentLang] }}
                 </div>
 
@@ -312,324 +299,16 @@
       </template>
     </draggable>
 
-    <div v-if="!isLoading && groupedImages.length === 0" class="empty-state">
+    <div v-if="!isLoading && groupedImages.length === 0" class="text-text-muted text-center mt-10 text-lg">
       {{ $t('gallery.emptyState') }}
     </div>
 
-    <div v-if="showPreview" class="lightbox" @click="showPreview = false">
-      <div class="lightbox-content" @click.stop>
-        <img :src="previewImage?.imageUrl" />
-        <p v-if="previewImage?.title" class="lightbox-caption">{{ previewImage.title[currentLang] }}</p>
-        <button class="close-btn" @click="showPreview = false">×</button>
+    <div v-if="showPreview" class="fixed inset-0 bg-black/95 z-[9999] flex justify-center items-center backdrop-blur-sm" @click="showPreview = false">
+      <div class="relative" @click.stop>
+        <img :src="previewImage?.imageUrl" class="max-w-[95vw] max-h-[85vh] shadow-[0_0_40px_rgba(0,0,0,0.8)] rounded-md border border-white/10" />
+        <p v-if="previewImage?.title" class="text-white mt-4 text-2xl text-center font-light tracking-wide">{{ previewImage.title[currentLang] }}</p>
+        <button class="absolute -top-12 -right-6 bg-transparent border-none text-white/50 text-5xl cursor-pointer hover:text-primary transition-colors duration-200" @click="showPreview = false">&times;</button>
       </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-  .gallery-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 2rem;
-    color: #fff;
-  }
-
-  h2 {
-    color: var(--primary-color, #d4af37);
-    margin: 0;
-    font-weight: 300;
-    letter-spacing: 2px;
-  }
-
-  .header-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-    border-bottom: 1px solid #333;
-    padding-bottom: 1rem;
-  }
-
-  .input-with-tools {
-    position: relative;
-    display: flex;
-    align-items: center;
-    width: auto;
-    flex-grow: 1;
-  }
-
-  .magic-btn {
-    opacity: 0.3; /* --- ITT AZ ÁTLÁTSZÓSÁG --- */
-    background: none;
-    border: none;
-    color: #d4af37;
-    cursor: pointer;
-    margin-left: 5px;
-    font-size: 1rem;
-    transition: opacity 0.2s;
-  }
-
-  .small-magic {
-    font-size: 0.8rem;
-    margin-left: 2px;
-  }
-
-  .input-with-tools:hover .magic-btn {
-    opacity: 1;
-  }
-
-  .magic-btn:hover {
-    transform: scale(1.1);
-    text-shadow: 0 0 5px #d4af37;
-  }
-
-  .btn {
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: transform 0.2s, background 0.2s;
-  }
-
-  .primary-btn {
-    background-color: var(--primary-color, #d4af37);
-    color: #000;
-  }
-
-  .big-btn {
-    padding: 12px 24px;
-    font-size: 1.1rem;
-  }
-
-  .upload-sm-btn {
-    background-color: #333;
-    color: #ddd;
-    border: 1px solid #555;
-    padding: 6px 12px;
-    font-size: 0.9rem;
-  }
-
-    .upload-sm-btn:hover {
-      background-color: #444;
-      color: #fff;
-      border-color: var(--primary-color);
-    }
-
-  .btn:hover:not(:disabled) {
-    transform: scale(1.03);
-  }
-
-  .category-section {
-    margin-bottom: 2rem;
-    background: #111;
-    border-radius: 8px;
-    padding: 10px;
-    border: 1px solid #222;
-  }
-
-  .cat-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-    padding: 5px 10px;
-    background: #1a1a1a;
-    border-radius: 6px;
-  }
-
-  .cat-left {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    flex-grow: 1;
-  }
-
-  .drag-handle-cat {
-    cursor: grab;
-    font-size: 1.5rem;
-    color: #666;
-    padding: 0 5px;
-  }
-
-    .drag-handle-cat:hover {
-      color: var(--primary-color);
-    }
-
-  .cat-title-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-grow: 1;
-  }
-
-  .cat-input {
-    background: transparent;
-    border: none;
-    border-bottom: 1px dashed #555;
-    color: var(--primary-color, #d4af37);
-    font-size: 1.2rem;
-    font-weight: bold;
-    padding: 5px 0;
-    width: 100%;
-    max-width: 400px;
-  }
-
-    .cat-input:focus {
-      outline: none;
-      border-bottom: 1px solid var(--primary-color);
-      background: #000;
-    }
-
-    .cat-input::placeholder {
-      color: #555;
-      font-style: italic;
-    }
-
-  .cat-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .cat-delete-btn {
-    background: none;
-    border: none;
-    color: #555;
-    cursor: pointer;
-    padding: 5px;
-  }
-
-    .cat-delete-btn:hover {
-      color: #ff4444;
-    }
-
-  .image-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 1rem;
-    min-height: 80px;
-    padding: 10px;
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: 6px;
-  }
-
-  .gallery-card {
-    background: #222;
-    border-radius: 6px;
-    overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  }
-
-  .img-wrapper {
-    width: 100%;
-    aspect-ratio: 1 / 1;
-    position: relative;
-    cursor: pointer;
-    overflow: hidden;
-  }
-
-    .img-wrapper img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transition: transform 0.3s;
-    }
-
-    .img-wrapper:hover img {
-      transform: scale(1.1);
-    }
-
-  .overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: opacity 0.2s;
-    color: #fff;
-    font-size: 1.5rem;
-  }
-
-  .img-wrapper:hover .overlay {
-    opacity: 1;
-  }
-
-  .edit-bar {
-    padding: 5px;
-    background: #1a1a1a;
-    display: flex;
-    gap: 5px;
-  }
-
-  .caption-input {
-    width: 100%;
-    background: #333;
-    border: none;
-    color: #fff;
-    padding: 4px;
-    font-size: 0.8rem;
-    border-radius: 3px;
-  }
-
-  .del-btn {
-    background: #333;
-    color: #ff4444;
-    border: 1px solid #ff4444;
-    width: 24px;
-    cursor: pointer;
-    border-radius: 3px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-
-    .del-btn:hover {
-      background: #ff4444;
-      color: white;
-    }
-
-  .caption-display {
-    padding: 5px;
-    text-align: center;
-    font-size: 0.8rem;
-    color: #999;
-  }
-
-  .lightbox {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.95);
-    z-index: 9999;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-
-  .lightbox-content img {
-    max-width: 95vw;
-    max-height: 85vh;
-    box-shadow: 0 0 30px rgba(0,0,0,0.5);
-  }
-
-  .lightbox-caption {
-    color: #fff;
-    margin-top: 10px;
-    font-size: 1.2rem;
-  }
-
-  .close-btn {
-    position: absolute;
-    top: -40px;
-    right: -20px;
-    background: none;
-    border: none;
-    color: #fff;
-    font-size: 2.5rem;
-    cursor: pointer;
-  }
-</style>

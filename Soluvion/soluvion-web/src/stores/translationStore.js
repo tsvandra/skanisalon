@@ -1,6 +1,8 @@
+// src/stores/translationStore.js
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import api from '@/services/api';
+// Cseréljük az API importot a dedikált szervizre!
+import { translationApi } from '@/services/translationApi';
 import i18n from '@/i18n';
 import masterMessages from '@/locales/hu.json'; // A HU az alap (Master Template)
 
@@ -61,7 +63,8 @@ export const useTranslationStore = defineStore('translation', () => {
 
   const fetchLanguages = async (companyId) => {
     try {
-      const response = await api.get(`/api/Translation/languages/${companyId}`);
+      // API hívás kiszervezve
+      const response = await translationApi.getLanguages(companyId);
       languages.value = response.data;
     } catch (error) {
       console.error('Hiba a nyelvek betöltésekor:', error);
@@ -77,7 +80,8 @@ export const useTranslationStore = defineStore('translation', () => {
 
       const flattenedUi = flattenObject(sourceMessages);
 
-      await api.post('/api/Translation/add-language', {
+      // API hívás kiszervezve
+      await translationApi.addLanguage({
         companyId,
         targetLanguage: targetLang,
         baseUiTranslations: flattenedUi,
@@ -95,7 +99,8 @@ export const useTranslationStore = defineStore('translation', () => {
 
   const publishLanguage = async (companyId, langCode) => {
     try {
-      await api.post('/api/Translation/publish', { companyId, languageCode: langCode });
+      // API hívás kiszervezve
+      await translationApi.publishLanguage(companyId, langCode);
       const lang = languages.value.find(l => l.languageCode === langCode);
       if (lang) lang.status = 'Published';
     } catch (error) {
@@ -105,7 +110,8 @@ export const useTranslationStore = defineStore('translation', () => {
 
   const deleteLanguage = async (companyId, langCode) => {
     try {
-      await api.delete(`/api/Translation/language/${companyId}/${langCode}`);
+      // API hívás kiszervezve
+      await translationApi.deleteLanguage(companyId, langCode);
       languages.value = languages.value.filter(l => l.languageCode !== langCode);
     } catch (error) {
       console.error('Hiba a törléskor:', error);
@@ -118,18 +124,16 @@ export const useTranslationStore = defineStore('translation', () => {
     try {
       console.log(`[Store] Overrides betöltése ehhez: ${langCode}...`);
 
-      // 1. Letöltjük az overrides-t az adatbázisból (pl. { "nav.home": "Kezdőlap" })
-      const response = await api.get(`/api/Translation/overrides/${companyId}/${langCode}`);
+      // 1. Letöltjük az overrides-t az adatbázisból (API hívás kiszervezve)
+      const response = await translationApi.getOverrides(companyId, langCode);
       const overrides = response.data || {};
 
       console.log(`[Store] Talált felülírások száma: ${Object.keys(overrides).length}`);
 
       // 2. Létrehozunk egy tiszta másolatot a MASTER (hu) struktúrából
-      // Ezzel garantáljuk, hogy MINDEN kulcs megvan, az is, ami nincs a DB-ben.
       const newMessages = JSON.parse(JSON.stringify(masterMessages));
 
       // 3. Manuálisan felülírjuk az értékeket az objektumban
-      // Nem használjuk a mergeLocaleMessage-t, hanem saját objektumot építünk, mert ez megbízhatóbb
       Object.keys(overrides).forEach(key => {
         if (overrides[key]) {
           let safeValue = overrides[key];
@@ -142,30 +146,24 @@ export const useTranslationStore = defineStore('translation', () => {
       });
 
       // 4. Beállítjuk a kész objektumot az i18n-be
-      // a setLocaleMessage teljesen lecseréli az üzeneteket az adott nyelvre
       i18n.global.setLocaleMessage(langCode, newMessages);
 
       console.log(`[Store] A(z) ${langCode} nyelv sikeresen beállítva.`);
-      // Debug: Ellenőrizzük, hogy van-e érték
-      console.log(`[Check] nav.home értéke:`, i18n.global.getLocaleMessage(langCode)?.nav?.home);
 
     } catch (error) {
       console.warn('Hiba a felülírások betöltésekor:', error);
-      // Fallback: hiba esetén is beállítjuk a mastert, hogy a UI ne haljon meg (ne legyenek kulcsok)
+      // Fallback: hiba esetén is beállítjuk a mastert, hogy a UI ne haljon meg
       i18n.global.setLocaleMessage(langCode, JSON.parse(JSON.stringify(masterMessages)));
     }
   };
 
   const setLanguage = async (langCode) => {
-    // 1. Először betöltjük és előkészítjük az adatokat
     if (activeCompanyId.value > 0) {
       await loadOverrides(activeCompanyId.value, langCode);
     } else {
-      // Fallback vendég számára ID nélkül (Master betöltése)
       i18n.global.setLocaleMessage(langCode, JSON.parse(JSON.stringify(masterMessages)));
     }
 
-    // 2. Csak ezután váltunk nyelvet
     i18n.global.locale.value = langCode;
     currentLanguage.value = langCode;
     document.querySelector('html').setAttribute('lang', langCode);

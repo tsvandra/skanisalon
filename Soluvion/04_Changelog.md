@@ -1,59 +1,82 @@
-# 04. Fejlesztési Napló (Changelog & Release Notes)
+ï»¿# 04. FejlesztÃ©si NaplÃ³ (Changelog & Release Notes)
 
-**Dátum:** 2026.02.25.
+**DÃ¡tum:** 2026.02.25.
 **Projekt:** Soluvion (Skani Salon)
-**Típus:** Verziótörténet és Funkció Napló
+**TÃ­pus:** VerziÃ³tÃ¶rtÃ©net Ã©s FunkciÃ³ NaplÃ³
 
-Ez a dokumentum kronológiai sorrendben (a legújabbtól visszafelé) rögzíti a befejezett funkciókat, infrastrukturális változásokat és a kritikus hibajavításokat.
+Ez a dokumentum kronolÃ³giai sorrendben (a legÃºjabbtÃ³l visszafelÃ©) rÃ¶gzÃ­ti a befejezett funkciÃ³kat, infrastrukturÃ¡lis vÃ¡ltozÃ¡sokat Ã©s a kritikus hibajavÃ­tÃ¡sokat.
 
 ---
 
-## [2026-02-25] Infrastruktúra: Staging Környezet és CI/CD Pipeline
-[cite_start]**Státusz:** Kész, Stabilizálva [cite: 149]
-* [cite_start]**Backend (Railway):** Dedikált 'staging' környezet létrehozása új PostgreSQL adatbázissal és .NET Web API konténerrel[cite: 150]. [cite_start]CORS Policy frissítve a teszt domainekhez[cite: 151].
-* [cite_start]**Frontend (Netlify):** 'Branch Deploys' aktiválva a `develop` ágra[cite: 151]. [cite_start]Deploy Context környezeti változók beállítva a dinamikus API hívásokhoz[cite: 152].
-* [cite_start]**Adatbázis:** Sikeres adatbázis klónozás a Backblaze B2 napi mentésbõl a Staging adatbázisba (DBeaver JDBC proxy és `COPY` parancsok feldolgozásával)[cite: 154, 155].
+## [2026-02-28] Feature 14: CÃ©gbeÃ¡llÃ­tÃ¡sok LokalizÃ¡ciÃ³ja Ã©s AI VarÃ¡zspÃ¡lca IntegrÃ¡ciÃ³
+**StÃ¡tusz:** KÃ©sz, Ã‰lesÃ­tve
+* **AdatbÃ¡zis & Backend:** A cÃ©g nyitvatartÃ¡si adatai (`OpeningHoursTitle`, `OpeningHoursDescription`, `OpeningTimeSlots`, `OpeningExtraInfo`) `jsonb` tÃ­pusÃº tÃ¶bbnyelvÅ± szÃ³tÃ¡rrÃ¡ (Dictionary) lettek alakÃ­tva az Entity Frameworkben.
+* **Auto-MigrÃ¡ciÃ³:** A `Program.cs` felkÃ©szÃ­tve a hiÃ¡nyzÃ³ adatbÃ¡zis migrÃ¡ciÃ³k automatikus futtatÃ¡sÃ¡ra indulÃ¡skor, megkÃ¶nnyÃ­tve a Railway deploymentet.
+* **AI IntegrÃ¡ciÃ³:** "VarÃ¡zspÃ¡lca" gombok Ã©s "Ã–sszes MezÅ‘ FordÃ­tÃ¡sa AI-val" funkciÃ³ hozzÃ¡adva a `SettingsView.vue` NyitvatartÃ¡s fÃ¼lÃ©hez.
+* **OpenAI FrissÃ­tÃ©s:** Az AI szolgÃ¡ltatÃ¡s Ã¡tÃ¡llÃ­tva a modern Ã©s gyors `gpt-5.2` modellre. A `context` Ã©s `CompanyType` paramÃ©terek dinamikus, szabÃ¡lyos Ã¡tadÃ¡sa a frontendtÅ‘l az AI promptig.
+* **UI/UX & HibajavÃ­tÃ¡sok:** * 401 Unauthorized hiba esetÃ©n automatikus kijelentkeztetÃ©s Ã©s Ã¡tirÃ¡nyÃ­tÃ¡s a login oldalra (`api.js` interceptor).
+  * A kivÃ¡lasztott nyelv tartÃ³s mentÃ©se `localStorage`-be a megbÃ­zhatÃ³ nyelvvÃ¡ltÃ¡s Ã©s navigÃ¡ciÃ³ Ã©rdekÃ©ben (`translationStore.js`, `App.vue`).
+  * BiztonsÃ¡gi javÃ­tÃ¡s a Vue-i18n `@` (kukac) szimbÃ³lum okozta tokenizÃ¡ciÃ³s Ã¶sszeomlÃ¡sÃ¡nak elkerÃ¼lÃ©sÃ©re (dinamikus escape-elÃ©s `{'@'}`).
 
-## [2026-02-23] SaaS Lokalizáció UX és DTO Stabilizálás
-**Státusz:** Kész
-* [cite_start]**Dinamikus Alapnyelv:** A komponensek (Services, Gallery) már a `company.defaultLanguage` beállítást használják a beégetett 'hu' helyett[cite: 142, 143].
-* [cite_start]**UX Finomhangolás:** Többnyelvû megjegyzés dobozoknál dinamikus placeholder (az alapnyelv szövege jelenik meg, ha a célnyelv üres)[cite: 145]. [cite_start]Textareák automatikus méretezése Vue életciklus eseményekhez kötve[cite: 146].
-* **EF Core Fix:** 400 Bad Request hibák kiküszöbölése. [cite_start]A végpontok kizárólag DTO-kat fogadnak, manuális leképezéssel elkerülve az EF Core collection tracking hibáit[cite: 147, 148].
+## [2026-02-25] InfrastruktÃºra: Staging KÃ¶rnyezet Ã©s CI/CD Pipeline
+[cite_start]**StÃ¡tusz:** KÃ©sz, StabilizÃ¡lva [cite: 149]
+* [cite_start]**Backend (Railway):** DedikÃ¡lt 'staging' kÃ¶rnyezet lÃ©trehozÃ¡sa Ãºj PostgreSQL adatbÃ¡zissal Ã©s .NET Web API kontÃ©nerrel[cite: 150]. [cite_start]CORS Policy frissÃ­tve a teszt domainekhez[cite: 151].
+* [cite_start]**Frontend (Netlify):** 'Branch Deploys' aktivÃ¡lva a `develop` Ã¡gra[cite: 151]. [cite_start]Deploy Context kÃ¶rnyezeti vÃ¡ltozÃ³k beÃ¡llÃ­tva a dinamikus API hÃ­vÃ¡sokhoz[cite: 152].
+* [cite_start]**AdatbÃ¡zis:** Sikeres adatbÃ¡zis klÃ³nozÃ¡s a Backblaze B2 napi mentÃ©sbÃµl a Staging adatbÃ¡zisba (DBeaver JDBC proxy Ã©s `COPY` parancsok feldolgozÃ¡sÃ¡val)[cite: 154, 155].
 
-## [2026-02-18] DTO Konszolidáció és Stabilizálás
-**Státusz:** Kész
-* [cite_start]**DTO Struktúra:** A Controller-beli inline definíciók megszüntetése, minden DTO a `Models/DTOs` mappába került (pl. `TranslationDto.cs`)[cite: 136, 137].
-* [cite_start]**Kulcs Elnevezések:** A Fordításoknál az adatbázis és modell szinten a `TranslationKey` lett a mérvadó az egyszerû `Key` helyett[cite: 138, 139].
-* [cite_start]**JSONB Implementáció:** `EnableDynamicJson()` és explicit konverterek beépítése a `Service`, `GalleryImage` és `ServiceVariant` entitásokhoz[cite: 141].
+## [2026-02-23] SaaS LokalizÃ¡ciÃ³ UX Ã©s DTO StabilizÃ¡lÃ¡s
+**StÃ¡tusz:** KÃ©sz
+* [cite_start]**Dinamikus Alapnyelv:** A komponensek (Services, Gallery) mÃ¡r a `company.defaultLanguage` beÃ¡llÃ­tÃ¡st hasznÃ¡ljÃ¡k a beÃ©getett 'hu' helyett[cite: 142, 143].
+* [cite_start]**UX FinomhangolÃ¡s:** TÃ¶bbnyelvÃ» megjegyzÃ©s dobozoknÃ¡l dinamikus placeholder (az alapnyelv szÃ¶vege jelenik meg, ha a cÃ©lnyelv Ã¼res)[cite: 145]. [cite_start]TextareÃ¡k automatikus mÃ©retezÃ©se Vue Ã©letciklus esemÃ©nyekhez kÃ¶tve[cite: 146].
+* **EF Core Fix:** 400 Bad Request hibÃ¡k kikÃ¼szÃ¶bÃ¶lÃ©se. [cite_start]A vÃ©gpontok kizÃ¡rÃ³lag DTO-kat fogadnak, manuÃ¡lis lekÃ©pezÃ©ssel elkerÃ¼lve az EF Core collection tracking hibÃ¡it[cite: 147, 148].
 
-## [2026-02-16] Hibrid SaaS Lokalizáció
-**Státusz:** Kész
-* **Nyelvkezelés:** Master Source (`hu.json`) alapú mûködés. [cite_start]Runtime klónozás és adatbázisból érkezõ felülírások (Overrides) beolvasztása [cite: 129-131].
-* [cite_start]**Fordítási Folyamat:** Admin nyelv hozzáadásakor a Backend Fire-and-Forget háttérszálon elindítja a fordítást, amit a Frontend Polling-gal (Progress Bar) figyel [cite: 132-134].
-* [cite_start]**Tech Debt:** PrimeVue v4-es komponensek (`Tabs`, `Select`, `AccordionPanel`) kötelezõ bevezetése a deprecated elemek helyett[cite: 135].
+## [2026-02-18] DTO KonszolidÃ¡ciÃ³ Ã©s StabilizÃ¡lÃ¡s
+**StÃ¡tusz:** KÃ©sz
+* [cite_start]**DTO StruktÃºra:** A Controller-beli inline definÃ­ciÃ³k megszÃ¼ntetÃ©se, minden DTO a `Models/DTOs` mappÃ¡ba kerÃ¼lt (pl. `TranslationDto.cs`)[cite: 136, 137].
+* [cite_start]**Kulcs ElnevezÃ©sek:** A FordÃ­tÃ¡soknÃ¡l az adatbÃ¡zis Ã©s modell szinten a `TranslationKey` lett a mÃ©rvadÃ³ az egyszerÃ» `Key` helyett[cite: 138, 139].
+* [cite_start]**JSONB ImplementÃ¡ciÃ³:** `EnableDynamicJson()` Ã©s explicit konverterek beÃ©pÃ­tÃ©se a `Service`, `GalleryImage` Ã©s `ServiceVariant` entitÃ¡sokhoz[cite: 141].
 
-## [2026-02-12] Intelligens AI Fordítás
-**Státusz:** Kész
-* **SaaS Logika:** OpenAI integráció dinamikus System Message injektálással. [cite_start]Fix promptok helyett a `CompanyType` és a Frontend által küldött `context` ('service', 'gallery') alapján fordít [cite: 122-125].
+## [2026-02-16] Hibrid SaaS LokalizÃ¡ciÃ³
+**StÃ¡tusz:** KÃ©sz
+* **NyelvkezelÃ©s:** Master Source (`hu.json`) alapÃº mÃ»kÃ¶dÃ©s. [cite_start]Runtime klÃ³nozÃ¡s Ã©s adatbÃ¡zisbÃ³l Ã©rkezÃµ felÃ¼lÃ­rÃ¡sok (Overrides) beolvasztÃ¡sa [cite: 129-131].
+* [cite_start]**FordÃ­tÃ¡si Folyamat:** Admin nyelv hozzÃ¡adÃ¡sakor a Backend Fire-and-Forget hÃ¡ttÃ©rszÃ¡lon elindÃ­tja a fordÃ­tÃ¡st, amit a Frontend Polling-gal (Progress Bar) figyel [cite: 132-134].
+* [cite_start]**Tech Debt:** PrimeVue v4-es komponensek (`Tabs`, `Select`, `AccordionPanel`) kÃ¶telezÃµ bevezetÃ©se a deprecated elemek helyett[cite: 135].
 
-## [2026-02-10] Feature 14: Arculat Kezelés & Beállítások Refaktor
-**Státusz:** Kész
-* [cite_start]**Dinamikus Arculat:** Logó, Lábléc, Színek és Magasságok testreszabása [cite: 110-111]. [cite_start]Cloudinary feltöltõ végpontok (`/upload/logo`, `/upload/footer`) bevezetése[cite: 112].
-* **UI/UX:** PrimeVue `Tabs` bevezetése a Beállításokban. [cite_start]Valós idejû csúszkák (sliders) az azonnali vizuális frissítéshez[cite: 114, 115, 120].
+## [2026-02-12] Intelligens AI FordÃ­tÃ¡s
+**StÃ¡tusz:** KÃ©sz
+* **SaaS Logika:** OpenAI integrÃ¡ciÃ³ dinamikus System Message injektÃ¡lÃ¡ssal. [cite_start]Fix promptok helyett a `CompanyType` Ã©s a Frontend Ã¡ltal kÃ¼ldÃ¶tt `context` ('service', 'gallery') alapjÃ¡n fordÃ­t [cite: 122-125].
+
+## [2026-02-10] Feature 14: Arculat KezelÃ©s & BeÃ¡llÃ­tÃ¡sok Refaktor
+**StÃ¡tusz:** KÃ©sz
+* [cite_start]**Dinamikus Arculat:** LogÃ³, LÃ¡blÃ©c, SzÃ­nek Ã©s MagassÃ¡gok testreszabÃ¡sa [cite: 110-111]. [cite_start]Cloudinary feltÃ¶ltÃµ vÃ©gpontok (`/upload/logo`, `/upload/footer`) bevezetÃ©se[cite: 112].
+* **UI/UX:** PrimeVue `Tabs` bevezetÃ©se a BeÃ¡llÃ­tÃ¡sokban. [cite_start]ValÃ³s idejÃ» csÃºszkÃ¡k (sliders) az azonnali vizuÃ¡lis frissÃ­tÃ©shez[cite: 114, 115, 120].
 
 ## [2026-02-09] Feature 13: Smart Gallery & Cloudinary
-**Státusz:** Kész
-* [cite_start]**Cloud Storage:** Cloudinary integráció, helyi fájltárolás kivezetése[cite: 99].
-* [cite_start]**UI/UX:** Nested Drag-and-Drop implementálása a Kategóriák és Képek rendezéséhez[cite: 104, 105]. [cite_start]Inline kategória létrehozás és kontextuális képfeltöltés a fejlécekben[cite: 106, 107].
-* [cite_start]**Queueing:** `useAutoSaveQueue.js` composable létrehozása a Race Condition elkerülésére aszinkron mentéseknél[cite: 109].
+**StÃ¡tusz:** KÃ©sz
+* [cite_start]**Cloud Storage:** Cloudinary integrÃ¡ciÃ³, helyi fÃ¡jltÃ¡rolÃ¡s kivezetÃ©se[cite: 99].
+* [cite_start]**UI/UX:** Nested Drag-and-Drop implementÃ¡lÃ¡sa a KategÃ³riÃ¡k Ã©s KÃ©pek rendezÃ©sÃ©hez[cite: 104, 105]. [cite_start]Inline kategÃ³ria lÃ©trehozÃ¡s Ã©s kontextuÃ¡lis kÃ©pfeltÃ¶ltÃ©s a fejlÃ©cekben[cite: 106, 107].
+* [cite_start]**Queueing:** `useAutoSaveQueue.js` composable lÃ©trehozÃ¡sa a Race Condition elkerÃ¼lÃ©sÃ©re aszinkron mentÃ©seknÃ©l[cite: 109].
 
 ## [2026-02-09] Feature 12: ServicesView Refactoring & Drag-and-Drop
-**Státusz:** Kész
-* [cite_start]**Kategória Kezelés:** Hierarchikus adatkezelés és `vuedraggable` implementálása [cite: 92-94].
-* [cite_start]**UI:** Dark Mode bevezetése, vendég nézet arany kiemelésekkel[cite: 93, 98].
-* [cite_start]**Fix:** Race Condition hiba javítva Promise Chain Request Queue-val[cite: 96, 97].
+**StÃ¡tusz:** KÃ©sz
+* [cite_start]**KategÃ³ria KezelÃ©s:** Hierarchikus adatkezelÃ©s Ã©s `vuedraggable` implementÃ¡lÃ¡sa [cite: 92-94].
+* [cite_start]**UI:** Dark Mode bevezetÃ©se, vendÃ©g nÃ©zet arany kiemelÃ©sekkel[cite: 93, 98].
+* [cite_start]**Fix:** Race Condition hiba javÃ­tva Promise Chain Request Queue-val[cite: 96, 97].
 
-## [MVP Alapok] Kezdeti Fejlesztések
-* [cite_start]**Autentikáció:** JWT token alapú beléptetés és BCrypt jelszó titkosítás[cite: 178].
-* [cite_start]**Publikus Oldal:** Dinamikus SPA routing, SQL-bõl töltött céginformációkkal (Home és Contact)[cite: 73, 74].
-* [cite_start]**Alap Beállítások:** Color Picker a dinamikus CSS változókhoz, nyitvatartás és közösségi média linkek kezelése[cite: 76, 77].
+## [MVP Alapok] Kezdeti FejlesztÃ©sek
+* [cite_start]**AutentikÃ¡ciÃ³:** JWT token alapÃº belÃ©ptetÃ©s Ã©s BCrypt jelszÃ³ titkosÃ­tÃ¡s[cite: 178].
+* [cite_start]**Publikus Oldal:** Dinamikus SPA routing, SQL-bÃµl tÃ¶ltÃ¶tt cÃ©ginformÃ¡ciÃ³kkal (Home Ã©s Contact)[cite: 73, 74].
+* [cite_start]**Alap BeÃ¡llÃ­tÃ¡sok:** Color Picker a dinamikus CSS vÃ¡ltozÃ³khoz, nyitvatartÃ¡s Ã©s kÃ¶zÃ¶ssÃ©gi mÃ©dia linkek kezelÃ©se[cite: 76, 77].
+
+## [2026-03-04] Refactoring: Backend HibakezelÃ©s Ã©s Frontend API RÃ©teg (Phase 1 & 2)
+**StÃ¡tusz:** KÃ©sz (GalÃ©ria UI bugfix folyamatban)
+* **Backend (Middleware):** BevezetÃ©sre kerÃ¼lt a `GlobalExceptionHandlerMiddleware`, kivÃ¡ltva a `Program.cs` inline hibakezelÃ©sÃ©t. EgysÃ©ges JSON hibaÃ¼zenetek biztosÃ­tÃ¡sa.
+* **Frontend (API Layer):** SzigorÃº SRP (Single Responsibility Principle) bevezetÃ©se. A Pinia Store-okbÃ³l kiszervezÃ©sre kerÃ¼ltek az Axios hÃ­vÃ¡sok Ãºj, dedikÃ¡lt API fÃ¡jlokba (`companyApi.js`, `translationApi.js`).
+* **Frontend (Composables):** ÃšjrafelhasznÃ¡lhatÃ³ `useImageUpload.js` lÃ©trehozÃ¡sa a FormData Ã©s fÃ¡jlfeltÃ¶ltÃ©sek (Cloudinary) egysÃ©gesÃ­tÃ©sÃ©re. A `SettingsView` Ã©s `GalleryView` Ã¡tÃ¡llÃ­tva az Ãºj composable hasznÃ¡latÃ¡ra.
+
+## [2026-03-05] Feature 15: Frontend CSS Refactoring & SaaS Theming
+**StÃ¡tusz:** KÃ©sz (Settings, Header, Footer)
+* **SaaS Theming Engine:** Az `App.vue`-ban implementÃ¡lva lett egy valÃ³s idejÅ± CSS vÃ¡ltozÃ³ injektÃ¡lÃ³ (`watchEffect`), amely a cÃ©gadatok alapjÃ¡n dinamikusan felÃ¼lÃ­rja a Tailwind `bg-surface`, `bg-background` Ã©s `text-primary` szÃ­neket.
+* **PrimeVue v4 Passthrough (PT):** A PrimeVue komponensek (DataTable, Dialog, Select, Accordion, Tabs) alapÃ©rtelmezett stÃ­lusainak felÃ¼lÃ­rÃ¡sa Tailwind Deep Selectors (`[&_.p-*]`) Ã©s a `pt` attribÃºtumok segÃ­tsÃ©gÃ©vel, biztosÃ­tva a tÃ¶kÃ©letes SÃ¶tÃ©t/VilÃ¡gos tÃ©ma kompatibilitÃ¡st.
+* **Clean Code & Tailwind:** Szinte az Ã¶sszes globÃ¡lis Ã©s beÃ¡llÃ­tÃ¡sokhoz tartozÃ³ komponensbÅ‘l (`Settings*.vue`, `AppHeader.vue`, `TheFooter.vue`) eltÃ¡volÃ­tÃ¡sra kerÃ¼ltek a `<style scoped>` blokkok. Az elrendezÃ©sek modern Tailwind CSS Grid Ã©s Flexbox alapokra lettek helyezve (pl. Mobile-first hamburger menÃ¼ a navigÃ¡ciÃ³ban).
+* **UX JavÃ­tÃ¡sok:** ÃttetszÅ‘ Ã©rtesÃ­tÅ‘ dobozok, jobb hover effektek a varÃ¡zspÃ¡lca (AI fordÃ­tÃ¡s) gombokon, egyedi stÃ­lusÃº Checkboxok Ã©s Color Pickerek.

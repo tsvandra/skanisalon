@@ -1,79 +1,83 @@
-# 01. Architektúra és DevOps (Architecture & DevOps)
+ï»¿# 01. ArchitektÃºra Ã©s DevOps (Architecture & DevOps)
 
-[cite_start]**Dátum:** 2026.02.25. [cite: 1]
+[cite_start]**DÃ¡tum:** 2026.02.25. [cite: 1]
 [cite_start]**Projekt:** Soluvion (Skani Salon) [cite: 1]
-[cite_start]**Státusz:** MVP Stabilizálva, Staging infrastruktúra kiépítve. [cite: 149, 158]
+[cite_start]**StÃ¡tusz:** MVP StabilizÃ¡lva, Staging infrastruktÃºra kiÃ©pÃ­tve. [cite: 149, 158]
 
-[cite_start]Ez a dokumentum a rendszer technikai alapjait, a felhõs infrastruktúrát, a telepítési folyamatokat (CI/CD) és a biztonsági protokollokat írja le. [cite: 2]
+[cite_start]Ez a dokumentum a rendszer technikai alapjait, a felhÃµs infrastruktÃºrÃ¡t, a telepÃ­tÃ©si folyamatokat (CI/CD) Ã©s a biztonsÃ¡gi protokollokat Ã­rja le. [cite: 2]
 
 ---
 
-## 1. Technológiai Stack (Tech Stack)
+## 1. TechnolÃ³giai Stack (Tech Stack)
 
-[cite_start]A rendszer egy modern, szétválasztott architektúrára (Backend API + SPA Frontend) épül. [cite: 50]
+[cite_start]A rendszer egy modern, szÃ©tvÃ¡lasztott architektÃºrÃ¡ra (Backend API + SPA Frontend) Ã©pÃ¼l. [cite: 50]
 
 ### 1.1. Backend Ecosystem
 * [cite_start]**Keretrendszer:** .NET 10 (ASP.NET Core Web API). [cite: 3, 53]
 * [cite_start]**Nyelv:** C# 14. [cite: 3]
-* [cite_start]**Adatelérés (ORM):** Entity Framework Core (Code-First megközelítés). [cite: 3, 53]
-* **Külsõ integrációk (NuGet):**
-    * [cite_start]`Npgsql.EntityFrameworkCore.PostgreSQL`: Adatbázis meghajtó. [cite: 3]
-    * [cite_start]`BCrypt.Net-Next`: Kriptográfiai jelszókezelés. [cite: 4]
-    * [cite_start]`CloudinaryDotNet`: Felhõ alapú képtároláshoz és manipulációhoz. [cite: 6]
-    * [cite_start]Hivatalos `OpenAI` .NET kliens a dinamikus SaaS lokalizációhoz (gpt-5.2 modell). [cite: 37, 38]
+* [cite_start]**AdatelÃ©rÃ©s (ORM):** Entity Framework Core (Code-First megkÃ¶zelÃ­tÃ©s). [cite: 3, 53]
+* **KÃ¼lsÃµ integrÃ¡ciÃ³k (NuGet):**
+    * [cite_start]`Npgsql.EntityFrameworkCore.PostgreSQL`: AdatbÃ¡zis meghajtÃ³. [cite: 3]
+    * [cite_start]`BCrypt.Net-Next`: KriptogrÃ¡fiai jelszÃ³kezelÃ©s. [cite: 4]
+    * [cite_start]`CloudinaryDotNet`: FelhÃµ alapÃº kÃ©ptÃ¡rolÃ¡shoz Ã©s manipulÃ¡ciÃ³hoz. [cite: 6]
+    * [cite_start]Hivatalos `OpenAI` .NET kliens a dinamikus SaaS lokalizÃ¡ciÃ³hoz (gpt-5.2 modell). [cite: 37, 38]
 
 ### 1.2. Frontend Ecosystem
 * [cite_start]**Keretrendszer:** Vue 3 (Composition API, `<script setup>` szintaxis). [cite: 22, 53]
 * [cite_start]**Build Tool:** Vite. [cite: 22, 53]
-* [cite_start]**UI Komponensek:** PrimeVue (v4 szabványok) és PrimeIcons. [cite: 22, 23, 45, 53]
-* [cite_start]**Állapotkezelés & Routing:** Lokális/Globális State (provide/inject), Vue Router. [cite: 25, 26, 181]
-* [cite_start]**API Kliens:** Axios (Környezeti változókból vezérelt BaseURL-lel). [cite: 26, 165]
-* [cite_start]**Extra könyvtárak:** `vuedraggable` (Drag & Drop funkciókhoz). [cite: 24, 189]
+* [cite_start]**UI Komponensek:** PrimeVue (v4 szabvÃ¡nyok) Ã©s PrimeIcons. [cite: 22, 23, 45, 53]
+* [cite_start]**ÃllapotkezelÃ©s & Routing:** LokÃ¡lis/GlobÃ¡lis State (provide/inject), Vue Router. [cite: 25, 26, 181]
+* [cite_start]**API Kliens:** Axios (KÃ¶rnyezeti vÃ¡ltozÃ³kbÃ³l vezÃ©relt BaseURL-lel). [cite: 26, 165]
+* [cite_start]**Extra kÃ¶nyvtÃ¡rak:** `vuedraggable` (Drag & Drop funkciÃ³khoz). [cite: 24, 189]
+* [cite_start]**API KommunikÃ¡ciÃ³:** DedikÃ¡lt hÃ¡lÃ³zati rÃ©teg (`src/services/*Api.js`) az Axios kÃ¶rÃ© Ã©pÃ­tve, elvÃ¡lasztva az Ã¡llapotkezelÃ©stÅ‘l (Pinia) a jobb tesztelhetÅ‘sÃ©g Ã©s karbantarthatÃ³sÃ¡g Ã©rdekÃ©ben.
+* [cite_start]**CSS Keretrendszer:** Tailwind CSS v4. GlobÃ¡lis CSS vÃ¡ltozÃ³kra (`var(--primary-color)`, stb.) Ã©pÃ­tve, amelyeket a Vue `App.vue` komponense valÃ³s idÅ‘ben, a backendrÅ‘l Ã©rkezÅ‘ cÃ©gadatok alapjÃ¡n injektÃ¡l a DOM gyÃ¶kerÃ©be (`:root`), biztosÃ­tva az azonnali SaaS "White-Label" megjelenÃ©st.
 
 ---
 
-## 2. Infrastruktúra és Hosting
+## 2. InfrastruktÃºra Ã©s Hosting
 
-[cite_start]A rendszer felhõalapú megoldásokat használ, különválasztva az éles (Production) és a teszt (Staging) környezeteket. [cite: 28, 52]
+[cite_start]A rendszer felhÃµalapÃº megoldÃ¡sokat hasznÃ¡l, kÃ¼lÃ¶nvÃ¡lasztva az Ã©les (Production) Ã©s a teszt (Staging) kÃ¶rnyezeteket. [cite: 28, 52]
 
-* **Backend Hosting:** Railway felhõ. [cite_start]Külön 'production' és 'staging' dockerizált környezet. [cite: 8, 29, 53]
-* [cite_start]**Frontend Hosting:** Netlify (Static site hosting SPA konfigurációval). [cite: 53]
-* [cite_start]**Környezeti Változók:** A Netlify UI-n a "Different value for each deploy context" beállítás biztosítja, hogy a megfelelõ `VITE_API_URL` mutasson a PROD, illetve a STAGING backendre. [cite: 35, 152]
-
----
-
-## 3. CI/CD Pipeline (Élesítés és Tesztelés)
-
-[cite_start]Szigorúan tilos új fejlesztést vagy kísérletezést egyenesen a `main` ágra tolni. [cite: 228] [cite_start]A telepítési folyamat a Git ágak (branches) alapján automatizált. [cite: 59]
-
-* **Éles Környezet (Production):**
-    * [cite_start]**Trigger:** Git Push a `main` ágra. [cite: 30]
-    * [cite_start]**Folyamat:** A Railway frissíti a fõ konténert, a Netlify pedig frissíti a fõ domaint (pl. `skanisalon.sk`). [cite: 31, 33]
-* **Teszt Környezet (Staging):**
-    * [cite_start]**Trigger:** Git Push a `develop` ágra. [cite: 30, 229]
-    * [cite_start]**Folyamat:** A Netlify automatikusan egy dedikált teszt linket generál (Branch Deploy: `develop--[app-neve].netlify.app`). [cite: 34, 151, 229] [cite_start]Ez a verzió a Railway elkülönített Staging adatbázisával és API-jával kommunikál. [cite: 150, 229]
+* **Backend Hosting:** Railway felhÃµ. [cite_start]KÃ¼lÃ¶n 'production' Ã©s 'staging' dockerizÃ¡lt kÃ¶rnyezet. [cite: 8, 29, 53]
+* [cite_start]**Frontend Hosting:** Netlify (Static site hosting SPA konfigurÃ¡ciÃ³val). [cite: 53]
+* [cite_start]**KÃ¶rnyezeti VÃ¡ltozÃ³k:** A Netlify UI-n a "Different value for each deploy context" beÃ¡llÃ­tÃ¡s biztosÃ­tja, hogy a megfelelÃµ `VITE_API_URL` mutasson a PROD, illetve a STAGING backendre. [cite: 35, 152]
 
 ---
 
-## 4. Adatbázis és Biztonsági Mentés (Database & Backup)
+## 3. CI/CD Pipeline (Ã‰lesÃ­tÃ©s Ã©s TesztelÃ©s)
 
-[cite_start]A rendszer relációs adatbázist használ. [cite: 7] [cite_start]A Railway beépített mentéseinek fizetõs korlátai miatt egyedi mentési stratégiát alkalmazunk. [cite: 230]
+[cite_start]SzigorÃºan tilos Ãºj fejlesztÃ©st vagy kÃ­sÃ©rletezÃ©st egyenesen a `main` Ã¡gra tolni. [cite: 228] [cite_start]A telepÃ­tÃ©si folyamat a Git Ã¡gak (branches) alapjÃ¡n automatizÃ¡lt. [cite: 59]
+
+* **Ã‰les KÃ¶rnyezet (Production):**
+    * [cite_start]**Trigger:** Git Push a `main` Ã¡gra. [cite: 30]
+    * [cite_start]**Folyamat:** A Railway frissÃ­ti a fÃµ kontÃ©nert, a Netlify pedig frissÃ­ti a fÃµ domaint (pl. `skanisalon.sk`). [cite: 31, 33]
+* **Auto-MigrÃ¡ciÃ³:** Az alkalmazÃ¡s indulÃ¡skor (`Program.cs`) automatikusan ellenÅ‘rzi Ã©s lefuttatja a hiÃ¡nyzÃ³ Entity Framework migrÃ¡ciÃ³kat (`db.Database.Migrate()`), Ã­gy a sÃ©mafrissÃ­tÃ©sek (pl. Ãºj jsonb mezÅ‘k) manuÃ¡lis beavatkozÃ¡s nÃ©lkÃ¼l, biztonsÃ¡gosan megtÃ¶rtÃ©nnek az Ã©les kÃ¶rnyezetben is.
+* **Teszt KÃ¶rnyezet (Staging):**
+    * [cite_start]**Trigger:** Git Push a `develop` Ã¡gra. [cite: 30, 229]
+    * [cite_start]**Folyamat:** A Netlify automatikusan egy dedikÃ¡lt teszt linket generÃ¡l (Branch Deploy: `develop--[app-neve].netlify.app`). [cite: 34, 151, 229] [cite_start]Ez a verziÃ³ a Railway elkÃ¼lÃ¶nÃ­tett Staging adatbÃ¡zisÃ¡val Ã©s API-jÃ¡val kommunikÃ¡l. [cite: 150, 229]
+
+---
+
+## 4. AdatbÃ¡zis Ã©s BiztonsÃ¡gi MentÃ©s (Database & Backup)
+
+[cite_start]A rendszer relÃ¡ciÃ³s adatbÃ¡zist hasznÃ¡l. [cite: 7] [cite_start]A Railway beÃ©pÃ­tett mentÃ©seinek fizetÃµs korlÃ¡tai miatt egyedi mentÃ©si stratÃ©giÃ¡t alkalmazunk. [cite: 230]
 
 * [cite_start]**Motor:** PostgreSQL 16+. [cite: 8]
-* **Adatbázis Kapcsolat:** A külvilág felé TCP Proxy-n keresztül kommunikál. [cite_start]DBeaver esetén kötelezõ a JDBC URL formátum és a kikényszerített SSL: `jdbc:postgresql://[HOST]:[PORT]/railway?sslmode=require`. [cite: 8, 155, 234]
-* [cite_start]**Biztonsági Mentés (Backup):** Automatizált napi mentések futnak a **Backblaze B2 Cloud Storage** tárhelyre, tömörített `.sql.gz` formátumban (pg_dump). [cite: 8, 230]
-* **Klónozás és Helyreállítás (PROD -> STAGING):**
-    1.  [cite_start]A Railway felhõs adatbázisára lokális parancssorból (CLI) ráereszteni a `dotnet ef database update` parancsot tilos a szigorú TCP proxy szabályok miatt. [cite: 153, 231]
-    2.  [cite_start]A Backblaze B2-bõl letöltött `.sql.gz` fájlt ki kell csomagolni (nem a webes UI zip letöltésével, hanem pl. Cyberduck segítségével). [cite: 233]
-    3.  [cite_start]A fájlból a terminál-specifikus `\restrict` és `\unrestrict` sorokat törölni kell. [cite: 234]
-    4.  [cite_start]A klónozást DBeaver-ben a "Tools -> Execute Script" (psql háttérmotor) funkcióval kell futtatni, mert a sima SQL Editor nem tudja kezelni a PostgreSQL `COPY` parancsait. [cite: 155, 232, 235]
+* **AdatbÃ¡zis Kapcsolat:** A kÃ¼lvilÃ¡g felÃ© TCP Proxy-n keresztÃ¼l kommunikÃ¡l. [cite_start]DBeaver esetÃ©n kÃ¶telezÃµ a JDBC URL formÃ¡tum Ã©s a kikÃ©nyszerÃ­tett SSL: `jdbc:postgresql://[HOST]:[PORT]/railway?sslmode=require`. [cite: 8, 155, 234]
+* [cite_start]**BiztonsÃ¡gi MentÃ©s (Backup):** AutomatizÃ¡lt napi mentÃ©sek futnak a **Backblaze B2 Cloud Storage** tÃ¡rhelyre, tÃ¶mÃ¶rÃ­tett `.sql.gz` formÃ¡tumban (pg_dump). [cite: 8, 230]
+* **KlÃ³nozÃ¡s Ã©s HelyreÃ¡llÃ­tÃ¡s (PROD -> STAGING):**
+    1.  [cite_start]A Railway felhÃµs adatbÃ¡zisÃ¡ra lokÃ¡lis parancssorbÃ³l (CLI) rÃ¡ereszteni a `dotnet ef database update` parancsot tilos a szigorÃº TCP proxy szabÃ¡lyok miatt. [cite: 153, 231]
+    2.  [cite_start]A Backblaze B2-bÃµl letÃ¶ltÃ¶tt `.sql.gz` fÃ¡jlt ki kell csomagolni (nem a webes UI zip letÃ¶ltÃ©sÃ©vel, hanem pl. Cyberduck segÃ­tsÃ©gÃ©vel). [cite: 233]
+    3.  [cite_start]A fÃ¡jlbÃ³l a terminÃ¡l-specifikus `\restrict` Ã©s `\unrestrict` sorokat tÃ¶rÃ¶lni kell. [cite: 234]
+    4.  [cite_start]A klÃ³nozÃ¡st DBeaver-ben a "Tools -> Execute Script" (psql hÃ¡ttÃ©rmotor) funkciÃ³val kell futtatni, mert a sima SQL Editor nem tudja kezelni a PostgreSQL `COPY` parancsait. [cite: 155, 232, 235]
 
 ---
 
-## 5. Biztonság és Autentikáció (Security Stack)
+## 5. BiztonsÃ¡g Ã©s AutentikÃ¡ciÃ³ (Security Stack)
 
-[cite_start]A rendszer nem tárol nyílt szöveges jelszavakat és szigorú hálózati házirendeket alkalmaz. [cite: 13]
+[cite_start]A rendszer nem tÃ¡rol nyÃ­lt szÃ¶veges jelszavakat Ã©s szigorÃº hÃ¡lÃ³zati hÃ¡zirendeket alkalmaz. [cite: 13]
 
-* [cite_start]**Jelszó Hashing:** A rendszer a **BCrypt** algoritmust (Blowfish cipher) használja. [cite: 14, 15] [cite_start]Regisztrációkor a rendszer egy véletlenszerû "Salt"-ot generál, a jelszót ezzel összefûzi, többszörösen hash-eli, és csak ezt a hasht menti az adatbázisba. [cite: 15, 16] [cite_start]Ez védelmet nyújt a Rainbow Table és Brute Force támadások ellen. [cite: 17]
-* [cite_start]**Autentikáció:** Stateless JWT (JSON Web Token) Bearer Token alapokon. [cite: 18, 53] [cite_start]A token HMACSHA512 algoritmussal van aláírva, és payloadként tartalmazza a felhasználó azonosítóját (User ID) és a `CompanyId`-t (Multi-tenancy kulcs). [cite: 19]
-* [cite_start]**Hálózati Biztonság (CORS & HTTPS):** A CORS házirend szigorúan szabályozott, csak a Netlify domain és a Localhost engedélyezett a kérésekhez. [cite: 19, 20, 71] [cite_start]A kommunikáció kizárólag kötelezõ HTTPS titkosított csatornán történik (amit a Railway és a Netlify automatikusan kezel). [cite: 20]
+* [cite_start]**JelszÃ³ Hashing:** A rendszer a **BCrypt** algoritmust (Blowfish cipher) hasznÃ¡lja. [cite: 14, 15] [cite_start]RegisztrÃ¡ciÃ³kor a rendszer egy vÃ©letlenszerÃ» "Salt"-ot generÃ¡l, a jelszÃ³t ezzel Ã¶sszefÃ»zi, tÃ¶bbszÃ¶rÃ¶sen hash-eli, Ã©s csak ezt a hasht menti az adatbÃ¡zisba. [cite: 15, 16] [cite_start]Ez vÃ©delmet nyÃºjt a Rainbow Table Ã©s Brute Force tÃ¡madÃ¡sok ellen. [cite: 17]
+* [cite_start]**AutentikÃ¡ciÃ³:** Stateless JWT (JSON Web Token) Bearer Token alapokon. [cite: 18, 53] [cite_start]A token HMACSHA512 algoritmussal van alÃ¡Ã­rva, Ã©s payloadkÃ©nt tartalmazza a felhasznÃ¡lÃ³ azonosÃ­tÃ³jÃ¡t (User ID) Ã©s a `CompanyId`-t (Multi-tenancy kulcs). [cite: 19]
+* [cite_start]**HÃ¡lÃ³zati BiztonsÃ¡g (CORS & HTTPS):** A CORS hÃ¡zirend szigorÃºan szabÃ¡lyozott, csak a Netlify domain Ã©s a Localhost engedÃ©lyezett a kÃ©rÃ©sekhez. [cite: 19, 20, 71] [cite_start]A kommunikÃ¡ciÃ³ kizÃ¡rÃ³lag kÃ¶telezÃµ HTTPS titkosÃ­tott csatornÃ¡n tÃ¶rtÃ©nik (amit a Railway Ã©s a Netlify automatikusan kezel). [cite: 20]
+* [cite_start]**KÃ¶zponti HibakezelÃ©s (Global Exception Handling):** A backend egy dedikÃ¡lt Middleware segÃ­tsÃ©gÃ©vel kapja el a felmerÃ¼lÅ‘ kivÃ©teleket (Exceptions), elrejtve a stack trace-t a kliens elÅ‘l, Ã©s szabvÃ¡nyos HTTP 500 JSON vÃ¡laszokat generÃ¡lva (SaaS biztonsÃ¡gi alapelv).

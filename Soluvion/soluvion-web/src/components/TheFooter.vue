@@ -19,69 +19,28 @@
         backgroundSize: 'auto 100%'
       };
     }
-    return { ...baseStyle, background: '#2c2c2c' };
+
+    // Eltávolítottuk a fix #2c2c2c-t, hogy a Tailwind bg-surface érvényesüljön!
+    return baseStyle;
   });
 </script>
 
 <template>
-  <footer class="app-footer" :style="footerStyle">
-    <div class="overlay"></div>
+  <footer class="relative flex items-end justify-center mt-auto overflow-hidden bg-surface text-text shadow-inner" :style="footerStyle">
 
-    <div class="content">
-      <div class="footer-info">
-        <h3>{{ company?.name || 'Skani Salon' }}</h3>
+    <div class="absolute inset-0 bg-gradient-to-t from-black/95 to-black/10 pointer-events-none"></div>
 
-        <p>
+    <div class="relative z-10 text-center w-full p-6 h-full flex flex-col justify-end items-center">
+      <div>
+        <h3 class="text-primary mb-1 text-2xl font-bold drop-shadow-md tracking-wide m-0">
+          {{ company?.name || 'Skani Salon' }}
+        </h3>
+
+        <p class="text-text-muted text-sm font-medium tracking-wider m-0">
           &copy; {{ new Date().getFullYear() }} {{ $t('footer.rights') }}
         </p>
       </div>
     </div>
+
   </footer>
 </template>
-
-<style scoped>
-  .app-footer {
-    position: relative;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    color: #fff;
-    margin-top: auto;
-    background-color: #2c2c2c;
-    overflow: hidden;
-  }
-
-  .overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.1));
-    pointer-events: none;
-  }
-
-  .content {
-    position: relative;
-    z-index: 2;
-    text-align: center;
-    width: 100%;
-    padding: 1.5rem;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    align-items: center;
-  }
-
-  .footer-info h3 {
-    color: var(--primary-color, #d4af37);
-    margin-bottom: 0.3rem;
-    font-size: 1.4rem;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-    margin-top: 0;
-  }
-
-  .footer-info p {
-    color: #aaa;
-    font-size: 0.85rem;
-    margin: 0;
-  }
-</style>
