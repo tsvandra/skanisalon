@@ -30,17 +30,16 @@
 
     <div class="absolute inset-0 bg-gradient-to-t from-black/95 to-black/10 pointer-events-none"></div>
 
-    <div class="relative z-10 text-center w-full p-6 h-full flex flex-col justify-end items-center">
+    <div class="relative z-10 text-center w-full px-4 pt-6 pb-24 md:pb-6 h-full flex flex-col justify-end items-center">
       <div>
-        <h3 class="text-primary mb-1 text-2xl font-bold drop-shadow-md tracking-wide m-0">
+        <h3 class="text-primary mb-2 text-2xl font-bold drop-shadow-md tracking-wide m-0">
           {{ company?.name || 'Skani Salon' }}
         </h3>
 
         <p class="text-text-muted text-sm font-medium tracking-wider m-0">
-          &copy; {{ new Date().getFullYear() }} {{ $t('footer.rights') }}
+          &copy; {{ new Date().getFullYear() }} {{ company?.name || 'Skani Salon' }}. {{ $t('footer.rights') || 'Minden jog fenntartva.' }}
         </p>
       </div>
     </div>
-
   </footer>
 </template>

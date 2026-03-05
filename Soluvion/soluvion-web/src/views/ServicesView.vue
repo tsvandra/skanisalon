@@ -2,7 +2,6 @@
   import { ref, inject, watch, computed, nextTick } from 'vue';
   import InputNumber from 'primevue/inputnumber';
   import apiClient from '@/services/api';
-  import { DEFAULT_COMPANY_ID } from '@/config';
   import draggable from 'vuedraggable';
   import { useI18n } from 'vue-i18n';
   import { useCompanyStore } from '@/stores/companyStore';
@@ -247,22 +246,22 @@
     draggedNoteContent.value = null;
     draggedFromServiceId.value = null;
     document.querySelectorAll('.service-drop-zone').forEach(el => {
-      el.classList.remove('!border-primary', '!bg-text/5');
+      el.classList.remove('!border-primary', '!bg-primary/5');
     });
   };
 
   const onNoteDragOver = (event) => {
     event.preventDefault();
-    event.currentTarget.classList.add('!border-primary', '!bg-text/5');
+    event.currentTarget.classList.add('!border-primary', '!bg-primary/5');
   };
 
   const onNoteDragLeave = (event) => {
-    event.currentTarget.classList.remove('!border-primary', '!bg-text/5');
+    event.currentTarget.classList.remove('!border-primary', '!bg-primary/5');
   };
 
   const onNoteDrop = async (event, targetService) => {
     event.preventDefault();
-    event.currentTarget.classList.remove('!border-primary', '!bg-text/5');
+    event.currentTarget.classList.remove('!border-primary', '!bg-primary/5');
 
     if (!draggedNoteContent.value || draggedFromServiceId.value === targetService.id) return;
 
@@ -363,20 +362,21 @@
 </script>
 
 <template>
-  <div class="max-w-[1000px] mx-auto p-5 box-border bg-background text-text min-h-screen" :style="{
+  <div class="max-w-5xl w-full mx-auto px-4 py-6 md:p-8 box-border bg-background text-text min-h-screen" :style="{
     '--primary-color': company?.primaryColor || '#d4af37',
     '--secondary-color': company?.secondaryColor || '#1a1a1a'
   }">
-    <div class="flex justify-between items-center mb-8">
+
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
       <h2 class="font-light text-text m-0 tracking-wide text-3xl">{{ isLoggedIn ? $t('services.editorTitle') : $t('services.title') }}</h2>
 
-      <button v-if="isLoggedIn" @click="createNewCategory" class="bg-primary text-black border-none px-5 py-2.5 rounded-md cursor-pointer font-bold flex items-center gap-2 transition-all hover:brightness-90 shadow-sm">
+      <button v-if="isLoggedIn" @click="createNewCategory" class="bg-primary text-black border-none px-5 py-2 min-h-[44px] rounded-lg cursor-pointer font-bold flex items-center justify-center gap-2 transition-all hover:brightness-90 shadow-sm w-full sm:w-auto">
         <i class="pi pi-folder-open"></i> {{ $t('services.newCategory') }}
       </button>
     </div>
 
-    <div v-if="loading" class="text-text-muted">
-      <i class="pi pi-spin pi-spinner mr-2"></i>{{ $t('common.loading') }}
+    <div v-if="loading" class="text-text-muted flex items-center min-h-[44px]">
+      <i class="pi pi-spin pi-spinner mr-2 text-xl"></i>{{ $t('common.loading') }}
     </div>
 
     <div v-else class="pb-12">
@@ -384,137 +384,147 @@
       <draggable v-model="categories" item-key="id" handle=".drag-handle-cat" @change="onCategoryDragChange" :disabled="!isLoggedIn">
         <template #item="{ element: group }">
 
-          <div class="mb-10 bg-text/10 border border-text/10 rounded-2xl p-4 md:p-6 shadow-xl">
+          <div class="mb-10 bg-surface border border-text/10 rounded-2xl shadow-md overflow-hidden flex flex-col">
 
-            <div class="flex items-end border-b border-text/20 pb-4 mb-5">
-              <div v-if="isLoggedIn" class="cursor-grab text-2xl text-primary mr-4 drag-handle-cat transition-colors hover:text-primary/80" title="Kategória mozgatása">⋮⋮</div>
+            <div class="bg-text/5 p-3 md:p-4 border-b border-text/10 flex items-center justify-between gap-4">
+              <div class="flex items-center flex-grow">
+                <div v-if="isLoggedIn" class="cursor-grab text-2xl text-primary flex items-center justify-center min-w-[40px] min-h-[40px] drag-handle-cat transition-colors hover:text-primary/80" title="Kategória mozgatása">⋮⋮</div>
 
-              <div class="flex-grow flex items-center pr-4 min-w-[180px] overflow-hidden">
-                <div class="relative w-full flex items-center group/tools">
+                <div class="relative w-full flex items-center group/tools flex-grow">
                   <input v-if="isLoggedIn"
                          v-model="group.categoryName[currentLang]"
                          @change="updateCategoryName(group)"
-                         class="text-xl font-bold text-primary border-none bg-transparent w-full uppercase tracking-widest focus:outline-none focus:border-b focus:border-primary transition-colors"
+                         class="text-lg md:text-xl font-bold text-primary border-none bg-transparent w-full uppercase tracking-widest focus:outline-none focus:border-b focus:border-primary transition-colors py-1 px-2"
                          :placeholder="$t('services.categoryNamePlaceholder')" />
-                  <span v-else class="text-xl font-bold text-primary uppercase tracking-widest">{{ group.categoryName[currentLang] }}</span>
+                  <span v-else class="text-lg md:text-xl font-bold text-primary uppercase tracking-widest py-1 px-2">{{ group.categoryName[currentLang] }}</span>
 
                   <button v-if="isLoggedIn"
                           @click="translateCategoryName(group)"
-                          class="opacity-30 bg-transparent border-none text-primary cursor-pointer ml-1.5 text-base transition-opacity duration-200 group-hover/tools:opacity-100 hover:scale-110" title="Fordítás">
+                          class="opacity-100 md:opacity-0 bg-transparent border-none text-primary cursor-pointer flex items-center justify-center min-w-[40px] min-h-[40px] text-lg transition-opacity duration-200 md:group-hover/tools:opacity-100 hover:scale-110 shrink-0" title="Fordítás">
                     <i v-if="translatingField === `${group.id || 'cat'}-categoryName-${currentLang}`" class="pi pi-spin pi-spinner"></i>
                     <i v-else class="pi pi-sparkles"></i>
                   </button>
                 </div>
               </div>
-
-              <div class="flex justify-end gap-4 shrink-0">
-                <div v-for="(v, vIndex) in group.headerVariants" :key="vIndex" class="w-[130px] flex items-end justify-center relative text-center min-h-[40px] pb-0">
-
-                  <div v-if="isLoggedIn" class="relative w-full flex items-center group/tools">
-                    <textarea v-model="v.variantName[currentLang]"
-                              @change="updateGroupVariantName(group, vIndex)"
-                              class="w-full text-center border-none bg-transparent font-semibold text-text-muted text-sm uppercase resize-none overflow-hidden focus:bg-text/5 focus:outline focus:outline-1 focus:outline-primary focus:text-text rounded transition-colors"
-                              rows="2"></textarea>
-
-                    <button v-if="isLoggedIn"
-                            @click="translateHeaderVariant(group, v, vIndex)"
-                            class="opacity-30 bg-transparent border-none text-primary cursor-pointer ml-1 text-xs transition-opacity duration-200 group-hover/tools:opacity-100 hover:scale-110" title="Fordítás">
-                      <i v-if="translatingField === `header-${vIndex}-variantName-${currentLang}`" class="pi pi-spin pi-spinner"></i>
-                      <i v-else class="pi pi-sparkles"></i>
-                    </button>
-                  </div>
-
-                  <span v-else class="font-semibold text-text-muted text-sm uppercase text-center block w-full whitespace-normal break-words">{{ v.variantName[currentLang] }}</span>
-
-                </div>
-              </div>
             </div>
 
-            <draggable v-model="group.items" item-key="id" group="services" handle=".drag-handle-item" @change="(e) => onServiceDragChange(e, group)" :disabled="!isLoggedIn">
-              <template #item="{ element: service }">
+            <div class="w-full overflow-x-auto bg-background [&::-webkit-scrollbar]:h-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-text-muted/50 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-primary">
+              <div class="min-w-[500px] md:min-w-0 flex flex-col w-full">
 
-                <div class="service-drop-zone bg-background border border-text/10 rounded-xl mb-3 shadow-sm transition-all duration-200 hover:border-primary/40 hover:shadow-md overflow-hidden" @dragover="onNoteDragOver" @dragleave="onNoteDragLeave" @drop="(e) => onNoteDrop(e, service)">
+                <div class="flex items-end border-b border-text/10 px-2 pt-3 pb-2 bg-text/5">
+                  <div class="flex-grow pl-[45px] md:pl-[50px] text-xs font-bold text-text-muted uppercase tracking-widest pb-1 opacity-70">
+                    {{ $t('nav.services') }}
+                  </div>
 
-                  <div class="flex items-center p-3 sm:p-4 group/row transition-colors relative">
-                    <div v-if="isLoggedIn" class="cursor-grab text-text-muted mr-2.5 text-lg flex items-center h-full hover:text-primary drag-handle-item transition-colors">⋮⋮</div>
-
-                    <div class="flex-grow flex items-center pr-4 min-w-[180px] overflow-hidden">
-                      <div class="relative w-full flex items-center group/tools">
+                  <div class="flex justify-end gap-2 md:gap-4 shrink-0 pr-2">
+                    <div v-for="(v, vIndex) in group.headerVariants" :key="vIndex" class="w-[90px] md:w-[120px] flex items-end justify-center relative text-center">
+                      <div class="relative w-full flex items-center justify-center group/tools">
                         <textarea v-if="isLoggedIn"
-                                  v-model="service.name[currentLang]"
-                                  @change="saveService(service, false)"
-                                  @input="autoResize"
-                                  class="w-full border-none bg-transparent text-base text-text resize-none overflow-hidden leading-snug p-0 focus:outline-none focus:border-b focus:border-primary transition-colors"
+                                  v-model="v.variantName[currentLang]"
+                                  @change="updateGroupVariantName(group, vIndex)"
+                                  class="w-full text-center border-none bg-transparent font-bold text-text-muted text-xs md:text-sm uppercase resize-none overflow-hidden focus:bg-text/5 focus:outline focus:outline-1 focus:outline-primary focus:text-text rounded transition-colors py-1"
                                   rows="1"></textarea>
-                        <span v-else class="text-base text-text whitespace-normal break-words leading-snug block w-full group-hover/row:text-primary transition-colors">{{ service.name[currentLang] }}</span>
+                        <span v-else class="font-bold text-text-muted text-xs md:text-sm uppercase text-center block w-full whitespace-normal break-words py-1">{{ v.variantName[currentLang] }}</span>
 
                         <button v-if="isLoggedIn"
-                                @click="translateServiceField(service, 'name')"
-                                class="opacity-30 bg-transparent border-none text-primary cursor-pointer ml-1.5 text-base transition-opacity duration-200 group-hover/tools:opacity-100 hover:scale-110" title="Fordítás">
-                          <i v-if="translatingField === `${service.id}-name-${currentLang}`" class="pi pi-spin pi-spinner"></i>
+                                @click="translateHeaderVariant(group, v, vIndex)"
+                                class="absolute -top-6 md:-top-5 right-0 opacity-100 md:opacity-0 bg-transparent border-none text-primary cursor-pointer flex items-center justify-center w-[24px] h-[24px] text-xs transition-opacity duration-200 md:group-hover/tools:opacity-100 hover:scale-110" title="Fordítás">
+                          <i v-if="translatingField === `header-${vIndex}-variantName-${currentLang}`" class="pi pi-spin pi-spinner"></i>
                           <i v-else class="pi pi-sparkles"></i>
                         </button>
                       </div>
-
-                      <div v-if="isLoggedIn" class="flex items-center gap-1.5 ml-4 opacity-0 transition-opacity duration-200 group-hover/row:opacity-100">
-                        <button @click="toggleNote(service)" class="border-none bg-transparent cursor-pointer text-text-muted text-base hover:text-primary transition-colors"><i class="pi pi-comment"></i></button>
-                        <span class="text-text/30 mx-1">|</span>
-                        <button @click="addVariantToService(service, group)" class="border-none bg-transparent cursor-pointer text-text-muted text-lg font-bold hover:text-text transition-colors">+</button>
-                        <button @click="deleteService(service.id)" class="border-none bg-transparent cursor-pointer text-text-muted text-base hover:text-red-500 transition-colors">🗑</button>
-                      </div>
-                    </div>
-
-                    <div class="flex justify-end gap-4 shrink-0">
-                      <div v-for="(variant, vIndex) in service.variants" :key="variant.id || vIndex" class="w-[130px] flex items-start justify-center relative text-center group/variant">
-
-                        <div class="w-full">
-                          <InputNumber v-if="isLoggedIn"
-                                       v-model="variant.price"
-                                       mode="currency" currency="EUR" locale="hu-HU" :minFractionDigits="0"
-                                       class="w-[100px] [&_input]:border-none [&_input]:bg-transparent [&_input]:text-center [&_input]:text-text-muted [&_input]:p-0 [&_input]:focus:bg-text/10 [&_input]:focus:ring-1 [&_input]:focus:ring-primary [&_input]:focus:text-text [&_input]:transition-all [&_input]:rounded"
-                                       @update:modelValue="saveService(service, false)"
-                                       @blur="saveService(service, false)" />
-                          <span v-else class="text-text-muted font-inherit group-hover/row:text-text group-hover/row:font-medium transition-colors">{{ formatCurrency(variant.price) }}</span>
-                        </div>
-
-                        <button v-if="isLoggedIn" @click="removeVariant(service, vIndex, group)" class="absolute -top-2 right-0 border-none bg-transparent text-red-500 opacity-0 cursor-pointer group-hover/variant:opacity-100 transition-opacity text-lg font-bold hover:scale-110">&times;</button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div v-if="service.description && (service.description[currentLang] || (isLoggedIn && service.description[company?.defaultLanguage || 'hu']))"
-                       class="flex items-start p-3 sm:p-4 pl-12 sm:pl-14 bg-text/5 border-t border-text/5 relative group/note"
-                       :draggable="isLoggedIn"
-                       @dragstart="(e) => onNoteDragStart(e, service)"
-                       @dragend="onNoteDragEnd">
-
-                    <div v-if="isLoggedIn" class="absolute left-4 top-4 cursor-grab text-text-muted text-sm hover:text-primary transition-colors"><i class="pi pi-arrows-alt"></i></div>
-
-                    <div class="flex-grow border-l-2 border-text/20 pl-3 relative flex items-center group/tools">
-                      <textarea v-if="isLoggedIn"
-                                v-model="service.description[currentLang]"
-                                @change="saveService(service, false)"
-                                @input="autoResize"
-                                class="w-full border-none bg-transparent italic text-text-muted resize-none overflow-hidden leading-relaxed focus:outline-none focus:bg-background focus:text-text p-2 rounded transition-colors"
-                                :placeholder="(currentLang !== (company?.defaultLanguage || 'hu') && service.description[company?.defaultLanguage || 'hu']) ? service.description[company?.defaultLanguage || 'hu'] : $t('services.notePlaceholder')"></textarea>
-                      <span v-else class="block w-full whitespace-pre-wrap break-words leading-relaxed italic text-text-muted group-hover/note:text-text transition-colors">{{ service.description[currentLang] }}</span>
-
-                      <button v-if="isLoggedIn"
-                              @click="translateServiceField(service, 'description')"
-                              class="opacity-30 bg-transparent border-none text-primary cursor-pointer ml-2 text-base transition-opacity duration-200 group-hover/tools:opacity-100 hover:scale-110" title="Fordítás">
-                        <i v-if="translatingField === `${service.id}-description-${currentLang}`" class="pi pi-spin pi-spinner"></i>
-                        <i v-else class="pi pi-sparkles"></i>
-                      </button>
                     </div>
                   </div>
                 </div>
 
-              </template>
-            </draggable>
+                <draggable v-model="group.items" item-key="id" group="services" handle=".drag-handle-item" @change="(e) => onServiceDragChange(e, group)" :disabled="!isLoggedIn" class="flex flex-col">
+                  <template #item="{ element: service }">
 
-            <div v-if="isLoggedIn" class="flex gap-2.5 mt-4">
-              <button @click="addServiceToGroupEnd(group)" class="bg-transparent border border-dashed border-text/30 text-text-muted w-full p-2.5 cursor-pointer rounded-lg text-sm transition-all duration-200 hover:bg-background hover:text-primary hover:border-primary/50 shadow-sm">
-                {{ $t('services.addService') }}
+                    <div class="service-drop-zone flex flex-col border-b border-text/10 last:border-0 hover:bg-text/5 transition-colors relative group/row" @dragover="onNoteDragOver" @dragleave="onNoteDragLeave" @drop="(e) => onNoteDrop(e, service)">
+
+                      <div class="flex items-center px-2 py-2 md:py-3 w-full">
+
+                        <div class="flex-grow flex items-center gap-1 pr-4 min-w-[200px]">
+                          <div v-if="isLoggedIn" class="cursor-grab text-text-muted text-lg flex items-center justify-center min-w-[40px] min-h-[44px] hover:text-primary drag-handle-item transition-colors">⋮⋮</div>
+
+                          <div class="relative w-full flex items-center group/tools flex-grow">
+                            <textarea v-if="isLoggedIn"
+                                      v-model="service.name[currentLang]"
+                                      @change="saveService(service, false)"
+                                      @input="autoResize"
+                                      class="w-full border-none bg-transparent font-medium text-base text-text resize-none overflow-hidden leading-snug py-2 px-1 focus:outline-none focus:bg-background rounded transition-colors"
+                                      rows="1"></textarea>
+                            <span v-else class="text-base font-medium text-text whitespace-normal break-words leading-snug block w-full group-hover/row:text-primary transition-colors py-2 px-1">{{ service.name[currentLang] }}</span>
+
+                            <button v-if="isLoggedIn"
+                                    @click="translateServiceField(service, 'name')"
+                                    class="opacity-100 md:opacity-0 bg-transparent border-none text-primary cursor-pointer flex items-center justify-center min-w-[40px] min-h-[44px] text-lg transition-opacity duration-200 md:group-hover/tools:opacity-100 hover:scale-110 shrink-0" title="Fordítás">
+                              <i v-if="translatingField === `${service.id}-name-${currentLang}`" class="pi pi-spin pi-spinner"></i>
+                              <i v-else class="pi pi-sparkles"></i>
+                            </button>
+                          </div>
+
+                          <div v-if="isLoggedIn" class="flex items-center gap-1 opacity-100 md:opacity-0 transition-opacity duration-200 md:group-hover/row:opacity-100 shrink-0">
+                            <button @click="toggleNote(service)" class="border-none bg-transparent cursor-pointer flex items-center justify-center w-[36px] h-[44px] text-text-muted text-base hover:text-primary transition-colors"><i class="pi pi-comment"></i></button>
+                            <button @click="addVariantToService(service, group)" class="border-none bg-transparent cursor-pointer flex items-center justify-center w-[36px] h-[44px] text-text-muted text-xl font-bold hover:text-text transition-colors">+</button>
+                            <button @click="deleteService(service.id)" class="border-none bg-transparent cursor-pointer flex items-center justify-center w-[36px] h-[44px] text-text-muted text-lg hover:text-red-500 transition-colors">🗑</button>
+                          </div>
+                        </div>
+
+                        <div class="flex justify-end gap-2 md:gap-4 shrink-0 pr-2">
+                          <div v-for="(variant, vIndex) in service.variants" :key="variant.id || vIndex" class="w-[90px] md:w-[120px] flex items-center justify-center relative text-center group/variant min-h-[44px] shrink-0">
+
+                            <div class="w-full flex justify-center">
+                              <InputNumber v-if="isLoggedIn"
+                                           v-model="variant.price"
+                                           mode="currency" currency="EUR" locale="hu-HU" :minFractionDigits="0"
+                                           class="w-full max-w-[90px] md:max-w-[100px] [&_input]:border-none [&_input]:bg-background [&_input]:text-center [&_input]:text-text [&_input]:min-h-[38px] [&_input]:w-full [&_input]:focus:ring-1 [&_input]:focus:ring-primary [&_input]:transition-all [&_input]:rounded-md [&_input]:shadow-inner"
+                                           @update:modelValue="saveService(service, false)"
+                                           @blur="saveService(service, false)" />
+                              <span v-else class="text-text font-inherit transition-colors">{{ formatCurrency(variant.price) }}</span>
+                            </div>
+
+                            <button v-if="isLoggedIn" @click="removeVariant(service, vIndex, group)" class="absolute -top-2 md:-top-3 right-0 border-none bg-transparent text-red-500 opacity-100 md:opacity-0 cursor-pointer flex items-center justify-center w-[24px] h-[24px] md:group-hover/variant:opacity-100 transition-opacity text-xl font-bold hover:scale-110 bg-surface rounded-full shadow-sm">&times;</button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div v-if="service.description && (service.description[currentLang] || (isLoggedIn && service.description[company?.defaultLanguage || 'hu']))"
+                           class="flex items-start pl-[40px] md:pl-[50px] pr-2 pb-3 w-full relative group/note"
+                           :draggable="isLoggedIn"
+                           @dragstart="(e) => onNoteDragStart(e, service)"
+                           @dragend="onNoteDragEnd">
+
+                        <div v-if="isLoggedIn" class="absolute left-2 top-1 cursor-grab text-text-muted/50 text-xs flex items-center justify-center w-[24px] h-[24px] hover:text-primary transition-colors"><i class="pi pi-arrows-alt"></i></div>
+
+                        <div class="flex-grow border-l-[3px] border-primary/30 pl-3 relative flex items-center group/tools bg-background rounded-r-md">
+                          <textarea v-if="isLoggedIn"
+                                    v-model="service.description[currentLang]"
+                                    @change="saveService(service, false)"
+                                    @input="autoResize"
+                                    class="w-full border-none bg-transparent italic text-sm text-text-muted resize-none overflow-hidden leading-relaxed focus:outline-none focus:text-text py-2 px-1 min-h-[40px] transition-colors"
+                                    :placeholder="(currentLang !== (company?.defaultLanguage || 'hu') && service.description[company?.defaultLanguage || 'hu']) ? service.description[company?.defaultLanguage || 'hu'] : $t('services.notePlaceholder')"></textarea>
+                          <span v-else class="block w-full whitespace-pre-wrap break-words leading-relaxed italic text-sm text-text-muted group-hover/note:text-text transition-colors py-2 px-1">{{ service.description[currentLang] }}</span>
+
+                          <button v-if="isLoggedIn"
+                                  @click="translateServiceField(service, 'description')"
+                                  class="opacity-100 md:opacity-0 bg-transparent border-none text-primary cursor-pointer flex items-center justify-center min-w-[40px] min-h-[40px] text-lg transition-opacity duration-200 md:group-hover/tools:opacity-100 hover:scale-110 shrink-0" title="Fordítás">
+                            <i v-if="translatingField === `${service.id}-description-${currentLang}`" class="pi pi-spin pi-spinner"></i>
+                            <i v-else class="pi pi-sparkles"></i>
+                          </button>
+                        </div>
+                      </div>
+
+                    </div>
+                  </template>
+                </draggable>
+
+              </div>
+            </div>
+
+            <div v-if="isLoggedIn" class="bg-background border-t border-text/10 p-2 md:p-3">
+              <button @click="addServiceToGroupEnd(group)" class="bg-transparent border border-dashed border-text/30 text-text-muted w-full min-h-[44px] cursor-pointer rounded-lg text-sm transition-all duration-200 hover:bg-text/5 hover:text-primary hover:border-primary/50 flex items-center justify-center font-medium">
+                <i class="pi pi-plus mr-2"></i> {{ $t('services.addService') }}
               </button>
             </div>
 
