@@ -57,10 +57,12 @@
       await api.put(`/api/Company/${companyId}`, companyData.value);
 
       successMsg.value = "A változtatások sikeresen mentve!";
+
       if (companyData.value.primaryColor) {
         document.documentElement.style.setProperty('--primary-color', companyData.value.primaryColor);
         document.documentElement.style.setProperty('--secondary-color', companyData.value.secondaryColor);
       }
+
       setTimeout(() => successMsg.value = '', 3000);
 
     } catch (err) {
@@ -77,18 +79,36 @@
 </script>
 
 <template>
-  <div class="settings-container">
-    <h1>Cégbeállítások</h1>
-    <p class="intro">Itt módosíthatja a weboldalán megjelenő adatokat és a dizájnt.</p>
+  <div class="max-w-[1000px] mx-auto p-4 md:p-8 text-text">
 
-    <div v-if="successMsg" class="alert-box success">{{ successMsg }}</div>
-    <div v-if="errorMsg" class="alert-box error">{{ errorMsg }}</div>
-    <div v-if="isLoading" class="alert-box loading">Adatok betöltése...</div>
+    <div class="mb-8">
+      <h1 class="text-3xl font-light tracking-wide text-primary m-0 mb-2">Cégbeállítások</h1>
+      <p class="text-text-muted m-0">Itt módosíthatja a weboldalán megjelenő adatokat és a dizájnt.</p>
+    </div>
 
-    <div v-if="!isLoading && companyData" class="form-wrapper">
+    <div v-if="successMsg" class="p-4 rounded-lg mb-6 text-center font-bold bg-green-500/10 text-green-400 border border-green-500/30 flex items-center justify-center gap-2 shadow-sm">
+      <i class="pi pi-check-circle"></i> {{ successMsg }}
+    </div>
 
-      <Tabs value="0">
-        <TabList>
+    <div v-if="errorMsg" class="p-4 rounded-lg mb-6 text-center font-bold bg-red-500/10 text-red-400 border border-red-500/30 flex items-center justify-center gap-2 shadow-sm">
+      <i class="pi pi-times-circle"></i> {{ errorMsg }}
+    </div>
+
+    <div v-if="isLoading" class="p-4 rounded-lg mb-6 text-center font-bold bg-text/5 text-text-muted border border-text/10 flex items-center justify-center gap-2 shadow-sm">
+      <i class="pi pi-spin pi-spinner"></i> Adatok betöltése...
+    </div>
+
+    <div v-if="!isLoading && companyData" class="bg-text/5 border border-text/10 p-4 md:p-6 rounded-2xl shadow-xl backdrop-blur-sm">
+
+      <Tabs value="0" class="w-full
+        [&_.p-tablist]:bg-transparent
+        [&_.p-tablist-tab-list]:bg-transparent [&_.p-tablist-tab-list]:border-b [&_.p-tablist-tab-list]:border-text/20
+        [&_.p-tab]:bg-transparent [&_.p-tab]:text-text-muted [&_.p-tab]:font-medium [&_.p-tab]:transition-all [&_.p-tab]:px-4 [&_.p-tab]:py-3
+        [&_.p-tab:hover]:text-text [&_.p-tab:hover]:bg-text/5 [&_.p-tab:hover]:border-text/30
+        [&_.p-tab-active]:!text-primary [&_.p-tab-active]:!border-primary [&_.p-tab-active]:!bg-primary/10
+        [&_.p-tabpanels]:bg-transparent [&_.p-tabpanels]:text-text [&_.p-tabpanels]:p-0 [&_.p-tabpanels]:pt-6">
+
+        <TabList class="mb-2">
           <Tab value="0">Elérhetőségek</Tab>
           <Tab value="1">Nyitvatartás</Tab>
           <Tab value="2">Közösségi & Térkép</Tab>
@@ -97,7 +117,6 @@
         </TabList>
 
         <TabPanels>
-
           <TabPanel value="0">
             <SettingsContact :companyData="companyData" />
           </TabPanel>
@@ -117,88 +136,17 @@
           <TabPanel value="4">
             <SettingsTranslations />
           </TabPanel>
-
         </TabPanels>
       </Tabs>
 
-      <div class="actions">
+      <div class="mt-10 flex justify-end border-t border-text/10 pt-6">
         <Button :label="isSaving ? 'Mentés folyamatban...' : 'Beállítások Mentése'"
-                icon="pi pi-check"
+                :icon="isSaving ? 'pi pi-spin pi-spinner' : 'pi pi-check'"
                 :disabled="isSaving"
                 @click="saveSettings"
-                class="save-btn" />
+                class="!bg-primary !text-black font-bold !border-none !px-8 !py-3.5 !rounded-xl hover:!scale-105 transition-transform shadow-md" />
       </div>
+
     </div>
   </div>
 </template>
-
-<style scoped>
-  
-  .settings-container {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 2rem;
-  }
-
-  h1 {
-    color: var(--primary-color);
-  }
-
-  .intro {
-    margin-bottom: 2rem;
-    color: #666;
-  }
-
-  .form-wrapper {
-    background: white;
-    padding: 1rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  }
-
-  .alert-box {
-    padding: 1rem;
-    border-radius: 4px;
-    margin-bottom: 1rem;
-    text-align: center;
-    font-weight: bold;
-  }
-
-  .success {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-  }
-
-  .error {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-  }
-
-  .loading {
-    background: #e2e3e5;
-    color: #383d41;
-  }
-
-  .actions {
-    margin-top: 2rem;
-    text-align: right;
-  }
-
-  .save-btn {
-    background-color: var(--primary-color) !important;
-    border: none !important;
-    padding: 10px 20px;
-  }
-
-    .save-btn:hover {
-      filter: brightness(90%);
-    }
-
-  .separator {
-    border: 0;
-    border-top: 1px solid #eee;
-    margin: 20px 0;
-  }
-</style>

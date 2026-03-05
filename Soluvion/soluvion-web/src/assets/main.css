@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+/* Dinamikus SaaS színek és betűtípus a Tailwind v4-hez */
+@theme {
+  --color-primary: var(--primary-color, #3b82f6);
+  --color-secondary: var(--secondary-color, #10b981);
+  --color-accent: var(--accent-color, #f59e0b);
+  --color-background: var(--background-color, #ffffff);
+  --color-surface: var(--surface-color, #f3f4f6);
+  --color-text: var(--text-color, #1f2937);
+  --color-text-muted: var(--text-muted-color, #6b7280);
+  --font-custom: var(--font-family, 'Inter', sans-serif);
+}
+
+/* Alapértelmezett (fallback) értékek, amíg a backend adat be nem töltődik */
+@layer base {
+  :root {
+    --primary-color: #3b82f6;
+    --secondary-color: #10b981;
+    --accent-color: #f59e0b;
+    --background-color: #ffffff;
+    --surface-color: #f3f4f6;
+    --text-color: #1f2937;
+    --text-muted-color: #6b7280;
+    --font-family: 'Inter', sans-serif;
+  }
+}

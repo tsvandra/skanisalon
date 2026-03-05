@@ -73,3 +73,10 @@ Ez a dokumentum kronológiai sorrendben (a legújabbtól visszafelé) rögzíti 
 * **Backend (Middleware):** Bevezetésre került a `GlobalExceptionHandlerMiddleware`, kiváltva a `Program.cs` inline hibakezelését. Egységes JSON hibaüzenetek biztosítása.
 * **Frontend (API Layer):** Szigorú SRP (Single Responsibility Principle) bevezetése. A Pinia Store-okból kiszervezésre kerültek az Axios hívások új, dedikált API fájlokba (`companyApi.js`, `translationApi.js`).
 * **Frontend (Composables):** Újrafelhasználható `useImageUpload.js` létrehozása a FormData és fájlfeltöltések (Cloudinary) egységesítésére. A `SettingsView` és `GalleryView` átállítva az új composable használatára.
+
+## [2026-03-05] Feature 15: Frontend CSS Refactoring & SaaS Theming
+**Státusz:** Kész (Settings, Header, Footer)
+* **SaaS Theming Engine:** Az `App.vue`-ban implementálva lett egy valós idejű CSS változó injektáló (`watchEffect`), amely a cégadatok alapján dinamikusan felülírja a Tailwind `bg-surface`, `bg-background` és `text-primary` színeket.
+* **PrimeVue v4 Passthrough (PT):** A PrimeVue komponensek (DataTable, Dialog, Select, Accordion, Tabs) alapértelmezett stílusainak felülírása Tailwind Deep Selectors (`[&_.p-*]`) és a `pt` attribútumok segítségével, biztosítva a tökéletes Sötét/Világos téma kompatibilitást.
+* **Clean Code & Tailwind:** Szinte az összes globális és beállításokhoz tartozó komponensből (`Settings*.vue`, `AppHeader.vue`, `TheFooter.vue`) eltávolításra kerültek a `<style scoped>` blokkok. Az elrendezések modern Tailwind CSS Grid és Flexbox alapokra lettek helyezve (pl. Mobile-first hamburger menü a navigációban).
+* **UX Javítások:** Áttetsző értesítő dobozok, jobb hover effektek a varázspálca (AI fordítás) gombokon, egyedi stílusú Checkboxok és Color Pickerek.

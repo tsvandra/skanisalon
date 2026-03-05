@@ -4,21 +4,11 @@
 </script>
 
 <template>
-  <div class="settings-translations p-3">
+  <div class="p-2 md:p-4">
     <LanguageManager />
-    <hr class="separator" />
+
+    <hr class="border-0 border-t border-text/10 my-12" />
+
     <UiTranslationManager />
   </div>
 </template>
-
-<style scoped>
-  .p-3 {
-    padding: 1rem;
-  }
-
-  .separator {
-    border: 0;
-    border-top: 1px solid #eee;
-    margin: 3rem 0;
-  }
-</style>

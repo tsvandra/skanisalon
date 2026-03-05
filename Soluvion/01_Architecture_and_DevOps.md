@@ -30,6 +30,7 @@
 * [cite_start]**API Kliens:** Axios (Környezeti változókból vezérelt BaseURL-lel). [cite: 26, 165]
 * [cite_start]**Extra könyvtárak:** `vuedraggable` (Drag & Drop funkciókhoz). [cite: 24, 189]
 * [cite_start]**API Kommunikáció:** Dedikált hálózati réteg (`src/services/*Api.js`) az Axios köré építve, elválasztva az állapotkezeléstől (Pinia) a jobb tesztelhetőség és karbantarthatóság érdekében.
+* [cite_start]**CSS Keretrendszer:** Tailwind CSS v4. Globális CSS változókra (`var(--primary-color)`, stb.) építve, amelyeket a Vue `App.vue` komponense valós időben, a backendről érkező cégadatok alapján injektál a DOM gyökerébe (`:root`), biztosítva az azonnali SaaS "White-Label" megjelenést.
 
 ---
 

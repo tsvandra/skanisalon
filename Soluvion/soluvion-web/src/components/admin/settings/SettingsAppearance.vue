@@ -15,7 +15,6 @@
   const heroInputRef = ref(null);
   const footerInputRef = ref(null);
 
-  // A feltöltési logika most már kizárólag ebben a komponensben él!
   const handleUpload = async (event, type) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -34,220 +33,120 @@
         headers: { 'Content-Type': undefined }
       });
 
-      // A props.companyData reaktív, így a szülőben is frissülni fog!
       if (type === 'logo') props.companyData.logoUrl = res.data.url;
       else if (type === 'hero') props.companyData.heroImageUrl = res.data.url;
       else props.companyData.footerImageUrl = res.data.url;
 
-      // Opcionális: sikeres üzenet (ha van globális toast/értesítő rendszered, ide teheted)
     } catch (err) {
       console.error(err);
       alert("Hiba a feltöltés során.");
     } finally {
       isUploading.value = false;
-      event.target.value = ""; // Input törlése, hogy ugyanazt a fájlt újra lehessen választani hiba esetén
+      event.target.value = "";
     }
   };
 </script>
 
 <template>
-  <div class="settings-appearance">
-    <div class="design-section">
-      <h3>Logó beállítások</h3>
-      <div class="design-controls">
-        <div class="preview-box logo-preview">
-          <img v-if="companyData.logoUrl" :src="companyData.logoUrl" :style="{ height: companyData.logoHeight + 'px' }" />
-          <span v-else>Nincs logó feltöltve</span>
+  <div class="p-2 md:p-4 animate-fade-in text-text">
+
+    <div class="mb-10">
+      <h3 class="text-lg font-light text-primary mb-6 uppercase tracking-widest border-b border-text/10 pb-2">Logó beállítások</h3>
+
+      <div class="flex flex-col md:flex-row gap-6 items-start">
+        <div class="w-full md:w-64 h-32 border border-dashed border-text/20 bg-text/5 rounded-xl flex items-center justify-center overflow-hidden relative shadow-inner">
+          <img v-if="companyData.logoUrl" :src="companyData.logoUrl" :style="{ height: companyData.logoHeight + 'px' }" class="object-contain" />
+          <span v-else class="text-text-muted text-sm font-medium tracking-wide">Nincs logó feltöltve</span>
         </div>
-        <div class="control-group">
-          <Button label="Logó feltöltése" icon="pi pi-upload" @click="logoInputRef.click()" class="p-button-outlined" :loading="isUploading" />
+
+        <div class="flex-1 flex flex-col gap-4 w-full">
+          <Button label="Logó feltöltése" icon="pi pi-upload" @click="logoInputRef.click()"
+                  class="!bg-transparent !text-text !border !border-text/30 hover:!border-primary hover:!text-primary !rounded-lg !px-6 !py-2.5 transition-colors w-fit" :loading="isUploading" />
           <input type="file" ref="logoInputRef" hidden @change="(e) => handleUpload(e, 'logo')" accept="image/*" />
-          <div class="slider-container">
-            <label>Logó mérete: {{ companyData.logoHeight }}px</label>
-            <input type="range" v-model="companyData.logoHeight" min="30" max="150" step="2" class="custom-range" />
+
+          <div class="mt-2 w-full max-w-xs">
+            <div class="flex justify-between items-center mb-2">
+              <label class="font-bold text-text-muted text-xs uppercase tracking-wider">Logó mérete</label>
+              <span class="text-primary font-bold text-sm">{{ companyData.logoHeight }}px</span>
+            </div>
+            <input type="range" v-model="companyData.logoHeight" min="30" max="150" step="2" class="w-full cursor-pointer accent-primary" />
           </div>
         </div>
       </div>
     </div>
 
-    <hr class="separator" />
+    <hr class="border-0 border-t border-text/10 my-10" />
 
-    <div class="design-section">
-      <h3>Kezdőoldal Borítókép (Hero)</h3>
-      <div class="design-controls">
-        <div class="preview-box hero-preview"
+    <div class="mb-10">
+      <h3 class="text-lg font-light text-primary mb-6 uppercase tracking-widest border-b border-text/10 pb-2">Kezdőoldal Borítókép (Hero)</h3>
+
+      <div class="flex flex-col md:flex-row gap-6 items-start">
+        <div class="w-full md:w-80 h-40 border border-text/10 bg-text/5 rounded-xl flex items-center justify-center relative overflow-hidden shadow-sm bg-cover bg-center"
              :style="{ backgroundImage: `url(${companyData.heroImageUrl || 'https://via.placeholder.com/400x200?text=Alapertelmezett'})` }">
-          <span v-if="!companyData.heroImageUrl" style="color:white; z-index:2; text-shadow: 0 0 5px black;">Nincs egyedi kép</span>
-          <div class="overlay"></div>
+          <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+          <span v-if="!companyData.heroImageUrl" class="text-white z-10 font-bold tracking-wide drop-shadow-md">Nincs egyedi kép</span>
         </div>
-        <div class="control-group">
-          <Button label="Borítókép cseréje" icon="pi pi-image" @click="heroInputRef.click()" class="p-button-outlined" :loading="isUploading" />
+
+        <div class="flex-1 flex flex-col gap-2 w-full">
+          <Button label="Borítókép cseréje" icon="pi pi-image" @click="heroInputRef.click()"
+                  class="!bg-transparent !text-text !border !border-text/30 hover:!border-primary hover:!text-primary !rounded-lg !px-6 !py-2.5 transition-colors w-fit" :loading="isUploading" />
           <input type="file" ref="heroInputRef" hidden @change="(e) => handleUpload(e, 'hero')" accept="image/*" />
-          <small style="display:block; margin-top:5px; color:#888;">Ajánlott méret: 1920x400px</small>
+          <small class="text-xs text-text-muted mt-1 italic">Ajánlott méret: 1920x400px</small>
         </div>
       </div>
     </div>
 
-    <hr class="separator" />
+    <hr class="border-0 border-t border-text/10 my-10" />
 
-    <div class="design-section">
-      <h3>Lábléc Háttérkép</h3>
-      <div class="design-controls">
-        <div class="preview-box footer-preview"
+    <div class="mb-10">
+      <h3 class="text-lg font-light text-primary mb-6 uppercase tracking-widest border-b border-text/10 pb-2">Lábléc Háttérkép</h3>
+
+      <div class="flex flex-col md:flex-row gap-6 items-start">
+        <div class="w-full md:w-80 h-32 border border-text/10 bg-text/5 rounded-xl flex items-center justify-center relative overflow-hidden shadow-sm bg-repeat-x bg-bottom bg-auto"
              :style="{ backgroundImage: `url(${companyData.footerImageUrl})` }">
-          <span v-if="!companyData.footerImageUrl" style="color:white; z-index:2;">Nincs háttérkép</span>
-          <div class="overlay"></div>
+          <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+          <span v-if="!companyData.footerImageUrl" class="text-white z-10 font-bold tracking-wide drop-shadow-md">Nincs háttérkép</span>
         </div>
-        <div class="control-group">
-          <Button label="Lábléc cseréje" icon="pi pi-image" @click="footerInputRef.click()" class="p-button-outlined" :loading="isUploading" />
+
+        <div class="flex-1 flex flex-col gap-4 w-full">
+          <Button label="Lábléc cseréje" icon="pi pi-image" @click="footerInputRef.click()"
+                  class="!bg-transparent !text-text !border !border-text/30 hover:!border-primary hover:!text-primary !rounded-lg !px-6 !py-2.5 transition-colors w-fit" :loading="isUploading" />
           <input type="file" ref="footerInputRef" hidden @change="(e) => handleUpload(e, 'footer')" accept="image/*" />
-          <div class="slider-container">
-            <label>Lábléc magassága: {{ companyData.footerHeight }}px</label>
-            <input type="range" v-model="companyData.footerHeight" min="50" max="600" step="10" class="custom-range" />
+
+          <div class="mt-2 w-full max-w-xs">
+            <div class="flex justify-between items-center mb-2">
+              <label class="font-bold text-text-muted text-xs uppercase tracking-wider">Lábléc magassága</label>
+              <span class="text-primary font-bold text-sm">{{ companyData.footerHeight }}px</span>
+            </div>
+            <input type="range" v-model="companyData.footerHeight" min="50" max="600" step="10" class="w-full cursor-pointer accent-primary" />
           </div>
         </div>
       </div>
     </div>
 
-    <hr class="separator" />
+    <hr class="border-0 border-t border-text/10 my-10" />
 
-    <div class="design-section">
-      <h3>Színek</h3>
-      <div class="color-grid">
-        <div class="field">
-          <label>Elsődleges Szín</label>
-          <div class="color-input-wrapper">
-            <input type="color" v-model="companyData.primaryColor" />
-            <span>{{ companyData.primaryColor }}</span>
+    <div>
+      <h3 class="text-lg font-light text-primary mb-6 uppercase tracking-widest border-b border-text/10 pb-2">Színek (SaaS Téma)</h3>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
+        <div>
+          <label class="block mb-3 font-bold text-text-muted text-xs uppercase tracking-wider">Elsődleges Szín (Primary)</label>
+          <div class="flex items-center gap-3 border border-text/20 bg-background rounded-lg p-2 w-fit shadow-sm hover:border-primary transition-colors">
+            <input type="color" v-model="companyData.primaryColor" class="w-10 h-10 p-0 border-none rounded cursor-pointer bg-transparent" />
+            <span class="font-mono text-text pr-3 tracking-widest">{{ companyData.primaryColor }}</span>
           </div>
         </div>
-        <div class="field">
-          <label>Másodlagos Szín</label>
-          <div class="color-input-wrapper">
-            <input type="color" v-model="companyData.secondaryColor" />
-            <span>{{ companyData.secondaryColor }}</span>
+
+        <div>
+          <label class="block mb-3 font-bold text-text-muted text-xs uppercase tracking-wider">Másodlagos Szín / Háttér (Secondary)</label>
+          <div class="flex items-center gap-3 border border-text/20 bg-background rounded-lg p-2 w-fit shadow-sm hover:border-primary transition-colors">
+            <input type="color" v-model="companyData.secondaryColor" class="w-10 h-10 p-0 border-none rounded cursor-pointer bg-transparent" />
+            <span class="font-mono text-text pr-3 tracking-widest">{{ companyData.secondaryColor }}</span>
           </div>
         </div>
       </div>
     </div>
+
   </div>
 </template>
-
-<style scoped>
-  h3 {
-    margin-top: 1.5rem;
-    margin-bottom: 0.5rem;
-    color: #555;
-  }
-
-  .design-section {
-    margin-bottom: 20px;
-  }
-
-  .design-controls {
-    display: flex;
-    gap: 20px;
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .preview-box {
-    width: 100%;
-    max-width: 300px;
-    height: 120px;
-    border: 1px dashed #ccc;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #f9f9f9;
-    overflow: hidden;
-    position: relative;
-    border-radius: 4px;
-  }
-
-  .logo-preview img {
-    height: 50px;
-    width: auto;
-  }
-
-  .footer-preview {
-    background-size: auto 100%;
-    background-repeat: repeat-x;
-    background-position: center bottom;
-  }
-
-  .hero-preview {
-    background-size: cover;
-    background-position: center;
-  }
-
-  .overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.5), transparent);
-  }
-
-  .control-group {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-  }
-
-  .slider-container {
-    margin-top: 10px;
-  }
-
-    .slider-container label {
-      display: block;
-      margin-bottom: 5px;
-      font-weight: bold;
-      color: #666;
-    }
-
-  .custom-range {
-    width: 100%;
-    cursor: pointer;
-    accent-color: var(--primary-color);
-  }
-
-  .separator {
-    border: 0;
-    border-top: 1px solid #eee;
-    margin: 20px 0;
-  }
-
-  .color-grid {
-    display: flex;
-    gap: 20px;
-  }
-
-  .field {
-    margin-bottom: 1.5rem;
-  }
-
-    .field label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: bold;
-      color: #333;
-    }
-
-  .color-input-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    border: 1px solid #ddd;
-    padding: 5px;
-    border-radius: 4px;
-    width: fit-content;
-  }
-
-  input[type="color"] {
-    width: 50px;
-    height: 40px;
-    border: none;
-    cursor: pointer;
-    background: none;
-  }
-</style>

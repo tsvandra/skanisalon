@@ -10,74 +10,57 @@
 </script>
 
 <template>
-  <div class="settings-contact">
-    <div class="form-grid">
-      <div class="field">
-        <label>Cégnév (Weboldalon megjelenő)</label>
-        <InputText v-model="companyData.name" class="w-full" />
-      </div>
-      <div class="field">
-        <label>Email</label>
-        <InputText v-model="companyData.email" class="w-full" />
-      </div>
-      <div class="field">
-        <label>Telefonszám</label>
-        <InputText v-model="companyData.phone" class="w-full" />
+  <div class="p-2 md:p-4 animate-fade-in">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="md:col-span-2">
+        <label class="block mb-2 font-bold text-text-muted text-xs uppercase tracking-wider">Cégnév (Weboldalon megjelenő)</label>
+        <InputText v-model="companyData.name"
+                   class="w-full !bg-background !border-text/20 !text-text hover:!border-primary focus:!border-primary focus:!ring-1 focus:!ring-primary transition-colors rounded-lg p-3 shadow-sm" />
       </div>
 
-      <h3>Cím</h3>
-      <div class="field-group">
-        <div class="field">
-          <label>Irányítószám</label>
-          <InputText v-model="companyData.postalCode" class="w-full" />
-        </div>
-        <div class="field">
-          <label>Város</label>
-          <InputText v-model="companyData.city" class="w-full" />
-        </div>
+      <div>
+        <label class="block mb-2 font-bold text-text-muted text-xs uppercase tracking-wider">Email cím</label>
+        <InputText v-model="companyData.email"
+                   type="email"
+                   class="w-full !bg-background !border-text/20 !text-text hover:!border-primary focus:!border-primary focus:!ring-1 focus:!ring-primary transition-colors rounded-lg p-3 shadow-sm" />
       </div>
-      <div class="field-group">
-        <div class="field">
-          <label>Utca</label>
-          <InputText v-model="companyData.streetName" class="w-full" />
+
+      <div>
+        <label class="block mb-2 font-bold text-text-muted text-xs uppercase tracking-wider">Telefonszám</label>
+        <InputText v-model="companyData.phone"
+                   class="w-full !bg-background !border-text/20 !text-text hover:!border-primary focus:!border-primary focus:!ring-1 focus:!ring-primary transition-colors rounded-lg p-3 shadow-sm" />
+      </div>
+    </div>
+
+    <h3 class="text-lg font-light text-primary mb-6 mt-10 uppercase tracking-widest border-b border-text/10 pb-2">Címadatok</h3>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label class="block mb-2 font-bold text-text-muted text-xs uppercase tracking-wider">Irányítószám</label>
+        <InputText v-model="companyData.postalCode"
+                   class="w-full !bg-background !border-text/20 !text-text hover:!border-primary focus:!border-primary focus:!ring-1 focus:!ring-primary transition-colors rounded-lg p-3 shadow-sm" />
+      </div>
+
+      <div>
+        <label class="block mb-2 font-bold text-text-muted text-xs uppercase tracking-wider">Város</label>
+        <InputText v-model="companyData.city"
+                   class="w-full !bg-background !border-text/20 !text-text hover:!border-primary focus:!border-primary focus:!ring-1 focus:!ring-primary transition-colors rounded-lg p-3 shadow-sm" />
+      </div>
+
+      <div class="md:col-span-2 grid grid-cols-4 gap-6">
+        <div class="col-span-3">
+          <label class="block mb-2 font-bold text-text-muted text-xs uppercase tracking-wider">Utca</label>
+          <InputText v-model="companyData.streetName"
+                     class="w-full !bg-background !border-text/20 !text-text hover:!border-primary focus:!border-primary focus:!ring-1 focus:!ring-primary transition-colors rounded-lg p-3 shadow-sm" />
         </div>
-        <div class="field">
-          <label>Házszám</label>
-          <InputText v-model="companyData.houseNumber" class="w-full" />
+        <div class="col-span-1">
+          <label class="block mb-2 font-bold text-text-muted text-xs uppercase tracking-wider">Házszám</label>
+          <InputText v-model="companyData.houseNumber"
+                     class="w-full !bg-background !border-text/20 !text-text hover:!border-primary focus:!border-primary focus:!ring-1 focus:!ring-primary transition-colors rounded-lg p-3 shadow-sm" />
         </div>
       </div>
     </div>
+
   </div>
 </template>
-
-<style scoped>
-  h3 {
-    margin-top: 1.5rem;
-    margin-bottom: 0.5rem;
-    color: #555;
-  }
-
-  .field {
-    margin-bottom: 1.5rem;
-  }
-
-    .field label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: bold;
-      color: #333;
-    }
-
-  .w-full {
-    width: 100%;
-  }
-
-  .field-group {
-    display: flex;
-    gap: 1rem;
-  }
-
-    .field-group .field {
-      flex: 1;
-    }
-</style>
