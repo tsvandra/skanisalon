@@ -52,92 +52,96 @@
 </script>
 
 <template>
-  <div class="max-w-screen-xl mx-auto p-5">
+  <div class="max-w-screen-xl w-full mx-auto px-4 py-8 md:p-8">
 
     <div class="text-center mb-10">
-      <h1 class="text-4xl text-primary mb-2.5">{{ $t('contact.title') }}</h1>
-      <p class="text-text-muted">{{ $t('contact.subtitle') }}</p>
+      <h1 class="text-3xl md:text-4xl text-primary mb-3 font-light tracking-wide">{{ $t('contact.title') }}</h1>
+      <p class="text-text-muted text-lg">{{ $t('contact.subtitle') }}</p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-[1fr_1.5fr] gap-8">
+    <div class="grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-6 md:gap-8">
 
-      <div class="flex flex-col gap-5">
+      <div class="flex flex-col gap-6">
 
-        <Card class="mb-5 shadow-sm">
+        <Card class="shadow-md !bg-surface !border !border-text/10 !rounded-2xl">
           <template #title>
-            {{ $t('contact.myContacts') }}
+            <span class="text-primary font-bold text-xl">{{ $t('contact.myContacts') }}</span>
           </template>
           <template #content>
             <ul class="list-none p-0 m-0" v-if="company">
-              <li v-if="company.city" class="flex items-start mb-5 text-lg">
-                <i class="pi pi-map-marker text-2xl text-primary mr-4 mt-1"></i>
-                <div>
-                  <strong class="text-text-muted">{{ $t('contact.address') }}:</strong><br>
-                  <span class="text-gray-500">
+
+              <li v-if="company.city" class="flex items-start gap-4 mb-5 text-lg">
+                <i class="pi pi-map-marker text-2xl text-primary mt-1 shrink-0"></i>
+                <div class="flex-grow">
+                  <strong class="text-text block mb-1">{{ $t('contact.address') }}:</strong>
+                  <span class="text-text-muted leading-relaxed block py-1">
                     {{ company.postalCode }} {{ company.city }}<br>
                     {{ company.streetName }} {{ company.houseNumber }}.
                   </span>
                 </div>
               </li>
-              <li v-if="company.phone" class="flex items-start mb-5 text-lg">
-                <i class="pi pi-phone text-2xl text-primary mr-4 mt-1"></i>
-                <div>
-                  <strong class="text-text-muted">{{ $t('contact.phone') }}:</strong><br>
-                  <a :href="`tel:${company.phone}`" class="text-gray-500 no-underline transition-colors duration-200 hover:text-primary">
+
+              <li v-if="company.phone" class="flex items-start gap-4 mb-5 text-lg">
+                <i class="pi pi-phone text-2xl text-primary mt-1 shrink-0"></i>
+                <div class="flex-grow">
+                  <strong class="text-text block mb-1">{{ $t('contact.phone') }}:</strong>
+                  <a :href="`tel:${company.phone}`" class="text-text-muted no-underline transition-colors duration-200 hover:text-primary block py-2 md:py-1 min-h-[44px] flex items-center md:min-h-0">
                     {{ company.phone }}
                   </a>
                 </div>
               </li>
-              <li v-if="company.email" class="flex items-start mb-5 text-lg">
-                <i class="pi pi-envelope text-2xl text-primary mr-4 mt-1"></i>
-                <div>
-                  <strong class="text-text-muted">{{ $t('contact.email') }}:</strong><br>
-                  <a :href="`mailto:${company.email}`" class="text-gray-500 no-underline transition-colors duration-200 hover:text-primary">
+
+              <li v-if="company.email" class="flex items-start gap-4 mb-2 text-lg">
+                <i class="pi pi-envelope text-2xl text-primary mt-1 shrink-0"></i>
+                <div class="flex-grow">
+                  <strong class="text-text block mb-1">{{ $t('contact.email') }}:</strong>
+                  <a :href="`mailto:${company.email}`" class="text-text-muted no-underline transition-colors duration-200 hover:text-primary block py-2 md:py-1 min-h-[44px] flex items-center md:min-h-0 break-all">
                     {{ company.email }}
                   </a>
                 </div>
               </li>
+
             </ul>
-            <div v-else class="text-gray-500">{{ $t('common.loading') }}</div>
+            <div v-else class="text-text-muted flex items-center min-h-[44px]"><i class="pi pi-spin pi-spinner mr-2"></i>{{ $t('common.loading') }}</div>
           </template>
         </Card>
 
-        <Card class="shadow-sm">
+        <Card class="shadow-md !bg-surface !border !border-text/10 !rounded-2xl">
           <template #title>
-            {{ $t('contact.openingHours') }}
+            <span class="text-primary font-bold text-xl">{{ $t('contact.openingHours') }}</span>
           </template>
           <template #content>
             <div class="text-center" v-if="company">
 
-              <div class="mb-5">
-                <i class="pi pi-calendar-clock text-4xl text-primary mb-2.5"></i>
-                <h3 class="m-0 text-gray-500 font-bold">
+              <div class="mb-4">
+                <i class="pi pi-calendar-clock text-4xl text-primary mb-3"></i>
+                <h3 class="m-0 text-text font-bold text-lg">
                   {{ company.openingHoursTitle?.[$i18n.locale] || company.openingHoursTitle?.['hu'] || $t('contact.openingHours') }}
                 </h3>
               </div>
 
-              <p v-if="company.openingHoursDescription?.[$i18n.locale] || company.openingHoursDescription?.['hu']" class="leading-relaxed text-gray-500">
+              <p v-if="company.openingHoursDescription?.[$i18n.locale] || company.openingHoursDescription?.['hu']" class="leading-relaxed text-text-muted mb-4">
                 {{ company.openingHoursDescription?.[$i18n.locale] || company.openingHoursDescription?.['hu'] }}
               </p>
 
               <div v-if="company.openingTimeSlots?.[$i18n.locale] || company.openingTimeSlots?.['hu']"
-                   class="bg-surface text-text my-4 p-4 rounded-lg border-l-4 border-primary"
+                   class="bg-background text-text my-4 p-4 rounded-xl border-l-4 border-primary shadow-sm text-left"
                    v-html="company.openingTimeSlots?.[$i18n.locale] || company.openingTimeSlots?.['hu']">
               </div>
 
-              <p v-if="company.openingExtraInfo?.[$i18n.locale] || company.openingExtraInfo?.['hu']" class="text-sm mt-5 text-gray-500">
+              <p v-if="company.openingExtraInfo?.[$i18n.locale] || company.openingExtraInfo?.['hu']" class="text-sm mt-5 text-text-muted italic">
                 {{ company.openingExtraInfo?.[$i18n.locale] || company.openingExtraInfo?.['hu'] }}
               </p>
 
-              <div class="mt-4 flex gap-2.5 flex-wrap justify-center">
-                <a v-if="company.facebookUrl" :href="company.facebookUrl" target="_blank" class="no-underline flex-1 min-w-[120px]">
-                  <Button label="Facebook" icon="pi pi-facebook" class="w-full !text-primary !border-primary hover:!bg-primary/10 !py-2 !rounded-lg transition-all" outlined />
+              <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+                <a v-if="company.facebookUrl" :href="company.facebookUrl" target="_blank" class="no-underline flex-1">
+                  <Button label="Facebook" icon="pi pi-facebook" class="w-full !text-primary !border-primary hover:!bg-primary/10 !py-2 !min-h-[44px] !rounded-xl transition-all font-bold" outlined />
                 </a>
-                <a v-if="company.instagramUrl" :href="company.instagramUrl" target="_blank" class="no-underline flex-1 min-w-[120px]">
-                  <Button label="Instagram" icon="pi pi-instagram" class="w-full !text-primary !border-primary hover:!bg-primary/10 !py-2 !rounded-lg transition-all" outlined />
+                <a v-if="company.instagramUrl" :href="company.instagramUrl" target="_blank" class="no-underline flex-1">
+                  <Button label="Instagram" icon="pi pi-instagram" class="w-full !text-primary !border-primary hover:!bg-primary/10 !py-2 !min-h-[44px] !rounded-xl transition-all font-bold" outlined />
                 </a>
-                <a v-if="company.tikTokUrl" :href="company.tikTokUrl" target="_blank" class="no-underline flex-1 min-w-[120px]">
-                  <Button label="TikTok" icon="pi pi-video" class="w-full !text-primary !border-primary hover:!bg-primary/10 !py-2 !rounded-lg transition-all" outlined />
+                <a v-if="company.tikTokUrl" :href="company.tikTokUrl" target="_blank" class="no-underline flex-1">
+                  <Button label="TikTok" icon="pi pi-video" class="w-full !text-primary !border-primary hover:!bg-primary/10 !py-2 !min-h-[44px] !rounded-xl transition-all font-bold" outlined />
                 </a>
               </div>
             </div>
@@ -146,47 +150,48 @@
 
       </div>
 
-      <div class="flex flex-col gap-5">
+      <div class="flex flex-col gap-6">
 
-        <Card class="shadow-sm">
+        <Card class="shadow-md !bg-surface !border !border-text/10 !rounded-2xl">
           <template #title>
-            {{ $t('contact.writeUs') }}
+            <span class="text-primary font-bold text-xl">{{ $t('contact.writeUs') }}</span>
           </template>
           <template #content>
-            <div v-if="submitted" class="mb-4">
-              <Message severity="success" :closable="false">{{ $t('contact.form.success') }}</Message>
+            <div v-if="submitted" class="mb-5">
+              <Message severity="success" :closable="false" class="!rounded-xl">{{ $t('contact.form.success') }}</Message>
             </div>
 
             <div class="mb-5">
-              <label class="block mb-2 font-bold text-gray-500">{{ $t('contact.form.name') }}</label>
-              <InputText v-model="name" :placeholder="$t('contact.form.namePlaceholder')" class="w-full focus:!border-primary focus:!ring-1 focus:!ring-primary" />
+              <label class="block mb-2 font-bold text-text text-sm">{{ $t('contact.form.name') }}</label>
+              <InputText v-model="name" :placeholder="$t('contact.form.namePlaceholder')" class="w-full !min-h-[44px] !rounded-xl !bg-background !border-text/20 !text-text focus:!border-primary focus:!ring-1 focus:!ring-primary transition-colors" />
             </div>
 
             <div class="mb-5">
-              <label class="block mb-2 font-bold text-gray-500">{{ $t('contact.form.email') }}</label>
-              <InputText v-model="email" :placeholder="$t('contact.form.emailPlaceholder')" class="w-full focus:!border-primary focus:!ring-1 focus:!ring-primary" />
+              <label class="block mb-2 font-bold text-text text-sm">{{ $t('contact.form.email') }}</label>
+              <InputText v-model="email" type="email" :placeholder="$t('contact.form.emailPlaceholder')" class="w-full !min-h-[44px] !rounded-xl !bg-background !border-text/20 !text-text focus:!border-primary focus:!ring-1 focus:!ring-primary transition-colors" />
             </div>
 
-            <div class="mb-5">
-              <label class="block mb-2 font-bold text-gray-500">{{ $t('contact.form.message') }}</label>
-              <Textarea v-model="messageText" rows="4" :placeholder="$t('contact.form.messagePlaceholder')" class="w-full focus:!border-primary focus:!ring-1 focus:!ring-primary" />
+            <div class="mb-6">
+              <label class="block mb-2 font-bold text-text text-sm">{{ $t('contact.form.message') }}</label>
+              <Textarea v-model="messageText" rows="5" :placeholder="$t('contact.form.messagePlaceholder')" class="w-full !rounded-xl !bg-background !border-text/20 !text-text focus:!border-primary focus:!ring-1 focus:!ring-primary transition-colors p-3" />
             </div>
 
             <Button :label="isLoading ? $t('contact.form.sending') : $t('contact.form.send')"
                     :icon="isLoading ? 'pi pi-spin pi-spinner' : 'pi pi-send'"
                     :disabled="isLoading"
                     @click="sendMessage"
-                    class="!bg-primary !border-primary !text-white hover:!brightness-90 font-bold !px-6 !py-3 !rounded-lg shadow-md transition-all" />
+                    class="w-full sm:w-auto !bg-primary !border-primary hover:!bg-primary-emphasis !text-white font-bold !px-8 !py-3 !min-h-[48px] !rounded-xl shadow-md transition-transform hover:!scale-[1.02]" />
           </template>
         </Card>
 
-        <div class="shadow-md rounded-xl overflow-hidden" v-if="company?.mapEmbedUrl">
+        <div class="shadow-md rounded-2xl overflow-hidden border border-text/10 bg-surface" v-if="company?.mapEmbedUrl">
           <iframe :src="company.mapEmbedUrl"
                   width="100%"
-                  height="300"
-                  class="border-0"
+                  height="350"
+                  class="border-0 w-full"
                   allowfullscreen=""
-                  loading="lazy">
+                  loading="lazy"
+                  title="Térkép">
           </iframe>
         </div>
 

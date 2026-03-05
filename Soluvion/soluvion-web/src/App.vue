@@ -20,24 +20,7 @@
   watchEffect(() => {
     const c = companyStore.company;
     if (c) {
-      const primary = c.primaryColor || '#14b8a6'; // Türkiz
-      const secondary = c.secondaryColor || '#1a1a1a'; // Sötétszürke / Fekete
-
-      const root = document.documentElement;
-      root.style.setProperty('--primary-color', primary);
-      root.style.setProperty('--secondary-color', secondary);
-
-      // Ideiglenes "trükk": a secondary színt használjuk a háttérnek, amíg nem bővítjük a DB-t!
-      // Ha a secondary nagyon sötétszürke (#1a1a1a), a fő háttér legyen egy fokkal sötétebb (#0a0a0a).
-      const bg = secondary.toLowerCase() === '#1a1a1a' ? '#0a0a0a' : secondary;
-      root.style.setProperty('--background-color', bg);
-      root.style.setProperty('--surface-color', secondary);
-      root.style.setProperty('--text-color', '#ffffff');
-      root.style.setProperty('--text-muted-color', '#9ca3af');
-
-      // A body szintű felülírás, hogy a PrimeVue alapértelmezett fehérje eltűnjön:
-      document.body.style.backgroundColor = 'var(--background-color)';
-      document.body.style.color = 'var(--text-color)';
+      companyStore.applyTheme(c);
     }
   });
 
