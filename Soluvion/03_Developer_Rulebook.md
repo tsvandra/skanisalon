@@ -57,9 +57,10 @@ Ez a dokumentum azokat a szigorú kódolási elveket és konvenciókat tartalmaz
 * [cite_start]**Beállítások helye:** > A "Site Builder" jellegû funkciók (Logó feltöltés, Layout módosítás) helye a `SettingsView`-ban van[cite: 198].
 * [cite_start]**Tiszta Layout:** > Kerüljük a szerkesztõ gombok elhelyezését közvetlenül a globális layout komponenseken (Header/Footer), hogy a felhasználói felület tiszta maradjon[cite: 199]. [cite_start]Használjuk a `provide/inject` mintát a beállítások érvényesítéséhez[cite: 200].
 
-### 3.6. CSS és Stílus Konvenciók (Tailwind & PrimeVue)
-* **SaaS Színváltozók (Zéró Hardcode):** Szigorúan TILOS fix színkódokat (pl. `#ffffff`, `#1a1a1a`) használni a template-ekben vagy a CSS-ben. Kizárólag a Tailwind témához kötött szemantikus osztályok használhatóak: `bg-background`, `bg-surface`, `text-text`, `text-text-muted`, `text-primary`.
-* **`<style scoped>` Tilalma:** Az új vagy refaktorált komponensekben a `<style scoped>` használata kerülendő. A megjelenést 100%-ban Tailwind utility osztályokkal kell megoldani a Clean Code érdekében.
+### 3.6. CSS, UX és Stílus Konvenciók (Tailwind & Touch-First)
+* **Touch-First Elv (UX):** Mobileszközök miatt minden kattintható elemnek (gombok, linkek, inputok, ikonok) kötelezően el kell érnie a minimum `min-h-[44px]` és `min-w-[44px]` kattintási felületet. Hardcoded pici gombok használata szigorúan tilos!
+* **SaaS Színváltozók (Zéró Hardcode):** Szigorúan TILOS fix színkódokat (pl. `#ffffff`, `#1a1a1a`) használni a template-ekben vagy a CSS-ben. Kizárólag a Tailwind témához kötött szemantikus osztályok használhatóak: `bg-background`, `bg-surface`, `text-text`, `text-primary`.
+* **`<style scoped>` Tilalma:** Az új vagy refaktorált komponensekben a `<style scoped>` használata Szigorúan Tilos. A megjelenést 100%-ban Tailwind utility osztályokkal kell megoldani (pl. egyedi görgetősávoknál: `[&::-webkit-scrollbar]`).
 * **PrimeVue Komponensek Témázása:** Mivel a PrimeVue alapértelmezett témája "kilóghat" a mi SaaS dizájnunkból, a komponensek formázásához a PrimeVue **Passthrough (PT)** attribútumát (pl. `pt:root:class="!bg-surface"`) vagy a Tailwind Deep Selectorait (pl. `[&_.p-datatable-thead]:bg-transparent`) KÖTELEZŐ használni.
 
 ---

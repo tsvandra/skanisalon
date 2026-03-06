@@ -60,7 +60,8 @@ A látogatói nézet egy modern SPA (Single Page Application).
 * [cite_start]**UI/UX:** A modul sötét témát (Dark Mode) használ, és támogat többnyelvû megjegyzés (Description) mezõket a szolgáltatások finomhangolásához [cite: 93-94].
 
 ### 4.4. Okos Galéria (Smart Gallery)
-[cite_start]A képek fizikai tárolását a Cloudinary végzi[cite: 99].
-* [cite_start]**Nested Drag-and-Drop:** A felhasználók szabadon sorrendezhetik a kategóriákat (függõleges lista) és a képeket a kategóriákon belül is [cite: 104-105]. Képek mozgathatóak kategóriák között is.
-* [cite_start]**Kontextuális Kezelés:** Új kategória létrehozása ("Inline") azonnal megjelenik a tetején fókuszált mezõvel[cite: 106]. [cite_start]A képfeltöltés gombok közvetlenül a kategória fejlécekbe kerültek az egyértelmûségért[cite: 107].
-* [cite_start]**Vizuális megjelenítés:** Egységesített, négyzetes képarány (thumbnail) és kattintásra nyíló Lightbox nagyítás[cite: 108].
+A képek fizikai tárolását a Cloudinary végzi.
+* **Teljesítmény (Cloudinary):** A rendszer automatikusan beinjektálja a sávszélesség-kímélő paramétereket (`f_auto`, `q_auto`, `w_500`), így drasztikusan csökkentve a betöltési időt és a mobil adatforgalmat.
+* **Nested Drag-and-Drop:** Az Admin felhasználók szabadon sorrendezhetik a kategóriákat (függõleges lista) és a képeket a kategóriákon belül is. Képek mozgathatóak kategóriák között is.
+* **Vendég UI (Accordion & Swipe):** A látogatók számára a galéria letisztult Harmonika (Accordion) elrendezést használ, nyitáskor automatikus fókuszba görgetéssel. A Lightbox (képnézegető) asztali gépen nyilakkal, mobilon natív "Swipe" (húzás) gesztussal lapozható.
+* **Micro-Interactions:** Lightbox bezárásakor a rendszer automatikusan visszagörget ahhoz az indexképhez, aminél a látogató tartott, és egy vizuális kerettel ki is emeli azt az orientáció segítésére.
