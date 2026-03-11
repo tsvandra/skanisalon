@@ -1,6 +1,6 @@
-﻿using Soluvion.API.Models.DTOs;
+﻿using Soluvion.API.DTOs;
 
-namespace Soluvion.API.Services
+namespace Soluvion.API.Interfaces
 {
     public interface ICatalogService
     {

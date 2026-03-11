@@ -1,4 +1,4 @@
-﻿namespace Soluvion.API.Services
+﻿namespace Soluvion.API.Interfaces
 {
     public interface ITranslationService
     {

@@ -1,6 +1,6 @@
-﻿using Soluvion.API.Models;
+﻿using Soluvion.Domain.Models;
 
-namespace Soluvion.API.Services
+namespace Soluvion.API.Interfaces
 {
     public interface ITenantContext
     {

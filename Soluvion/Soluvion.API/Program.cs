@@ -12,6 +12,7 @@ using Soluvion.API.Middleware;
 using Microsoft.AspNetCore.Authentication;
 using CloudinaryDotNet;
 using Npgsql;
+using Soluvion.API.Interfaces;
 
 
 var builder = WebApplication.CreateBuilder(args);

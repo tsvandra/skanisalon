@@ -1,7 +1,7 @@
 ﻿using Soluvion.API.Data;
 using Soluvion.API.DTOs;
-using Soluvion.API.Models.DTOs;
-using Soluvion.API.Models.Enums;
+using Soluvion.API.Interfaces;
+using Soluvion.Domain.Models.Enums;
 
 namespace Soluvion.API.Services
 {

@@ -1,7 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
-using Soluvion.API.Models;
-using Soluvion.API.Models.DTOs;
+using Soluvion.Domain.Models;
+using Soluvion.API.DTOs;
+using Soluvion.API.Interfaces;
 
 namespace Soluvion.API.Services
 {

@@ -1,4 +1,5 @@
 ﻿using OpenAI.Chat;
+using Soluvion.API.Interfaces;
 using System.ClientModel;
 
 namespace Soluvion.API.Services

@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 
-namespace Soluvion.API.Services
+namespace Soluvion.API.Interfaces
 {
     public interface IImageService
     {

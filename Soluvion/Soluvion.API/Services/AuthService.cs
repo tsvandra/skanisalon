@@ -1,11 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Soluvion.API.Data;
-using Soluvion.API.Models;
+using Soluvion.Domain.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using BCrypt.Net;
+using Soluvion.API.Interfaces;
 
 namespace Soluvion.API.Services
 {

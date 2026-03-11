@@ -489,7 +489,11 @@
                         </div>
                       </div>
 
-                      <div v-if="service.description && (service.description[currentLang] || (isLoggedIn && service.description[company?.defaultLanguage || 'hu']))"
+                      <div v-if="service.description && (
+                              isLoggedIn ?
+                              (service.description[currentLang] != null || service.description[company?.defaultLanguage || 'hu']) :
+                              (service.description[currentLang] && service.description[currentLang].trim() !== '')
+                           )"
                            class="flex items-start pl-[40px] md:pl-[50px] pr-2 pb-3 w-full relative group/note"
                            :draggable="isLoggedIn"
                            @dragstart="(e) => onNoteDragStart(e, service)"

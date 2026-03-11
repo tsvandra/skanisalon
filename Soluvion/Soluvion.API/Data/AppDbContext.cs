@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking; // FONTOS: Ez kell az összehasonlításhoz
-using Soluvion.API.Models;
-using Soluvion.API.Services; // FONTOS: ITenantContext miatt
-using System.Text.Json; // FONTOS: Ez kell a JSON kezeléshez
+using Soluvion.Domain.Models;
+using System.Text.Json;
+using Soluvion.API.Interfaces; // FONTOS: Ez kell a JSON kezeléshez
 
 namespace Soluvion.API.Data
 {

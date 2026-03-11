@@ -1,7 +1,6 @@
 ﻿using Soluvion.API.DTOs;
-using Soluvion.API.Models.DTOs;
 
-namespace Soluvion.API.Services
+namespace Soluvion.API.Interfaces
 {
     public interface ICompanyService
     {

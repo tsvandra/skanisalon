@@ -2,11 +2,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
-using Soluvion.API.Models;
-using Soluvion.API.Models.DTOs;
-using Soluvion.API.Models.Enums;
-using Soluvion.API.Services;
+using Soluvion.Domain.Models;
+using Soluvion.API.DTOs;
+using Soluvion.Domain.Models.Enums;
 using System.Security.Claims;
+using Soluvion.API.Interfaces;
 
 namespace Soluvion.API.Controllers
 {

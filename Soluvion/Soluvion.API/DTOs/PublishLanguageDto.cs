@@ -1,6 +1,7 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Soluvion.API.DTOs;
+using System.ComponentModel.DataAnnotations;
 
-namespace Soluvion.Domain.Models.DTOs
+namespace Soluvion.API.DTOs
 {
     public class PublishLanguageDto
     {
