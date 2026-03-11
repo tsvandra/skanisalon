@@ -33,6 +33,8 @@ builder.Services.AddScoped<ITranslationService, OpenAiTranslationService>();
 builder.Services.AddScoped<ITenantContext, TenantContext>();
 builder.Services.AddScoped<IGalleryService, GalleryService>();
 builder.Services.AddScoped<ICatalogService, CatalogService>();
+builder.Services.AddScoped<ISmartBookingEngine, SmartBookingEngine>();
+builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 
 builder.Services.AddCors(options =>
 {
