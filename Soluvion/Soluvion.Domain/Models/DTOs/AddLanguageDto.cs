@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Soluvion.API.Models.DTOs
+namespace Soluvion.Domain.Models.DTOs
 {
     public class AddLanguageDto
     {

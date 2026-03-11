@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Soluvion.API.Models
+namespace Soluvion.Domain.Models
 {
     public class UiTranslationOverride
     {

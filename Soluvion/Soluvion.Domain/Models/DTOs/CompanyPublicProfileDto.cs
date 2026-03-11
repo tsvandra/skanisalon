@@ -1,6 +1,6 @@
-﻿using Soluvion.API.Models;
+﻿using Soluvion.Domain.Models;
 
-namespace Soluvion.API.DTOs
+namespace Soluvion.Domain.DTOs
 {
     public class CompanyPublicProfileDto
     {

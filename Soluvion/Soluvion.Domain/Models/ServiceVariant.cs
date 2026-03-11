@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
-namespace Soluvion.API.Models
+namespace Soluvion.Domain.Models
 {
     public class ServiceVariant
     {

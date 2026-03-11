@@ -1,4 +1,4 @@
-﻿namespace Soluvion.API.Models.Enums
+﻿namespace Soluvion.Domain.Models.Enums
 {
     public enum TranslationStatus
     {

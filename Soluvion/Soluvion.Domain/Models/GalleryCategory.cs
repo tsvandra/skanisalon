@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
-namespace Soluvion.API.Models
+namespace Soluvion.Domain.Models
 {
     public class GalleryCategory
     {

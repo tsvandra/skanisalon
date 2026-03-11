@@ -1,4 +1,4 @@
-﻿namespace Soluvion.API.Models.DTOs
+﻿namespace Soluvion.Domain.Models.DTOs
 {
     /// <summary>
     /// A "Varázspálca" (egyszeri szövegfordítás) kéréséhez használt DTO

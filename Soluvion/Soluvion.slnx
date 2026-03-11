@@ -40,4 +40,5 @@
     </Properties>
   </Project>
   <Project Path="Soluvion.API/Soluvion.API.csproj" />
+  <Project Path="Soluvion.Domain/Soluvion.Domain.csproj" />
 </Solution>

@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Soluvion.API.Models
+namespace Soluvion.Domain.Models
 {
     public class Service
     {
