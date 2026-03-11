@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Soluvion.Domain.Models.Enums;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Soluvion.Domain.Models
@@ -96,7 +97,13 @@ namespace Soluvion.Domain.Models
         [MaxLength(5)]
         public string DefaultLanguage { get; set; } = "hu";
 
+        public bool AllowOverlappingAppointments { get; set; } = false;
+        public SubscriptionPlan SubscriptionPlan { get; set; } = SubscriptionPlan.Free;
+
         public ICollection<CompanyLanguage> Languages { get; set; } = new List<CompanyLanguage>();
         public ICollection<UiTranslationOverride> TranslationOverrides { get; set; } = new List<UiTranslationOverride>();
+        public ICollection<CompanyEmployee> Employees { get; set; } = new List<CompanyEmployee>();
+        public ICollection<CompanyCustomer> Customers { get; set; } = new List<CompanyCustomer>();
+        public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
     }
 }

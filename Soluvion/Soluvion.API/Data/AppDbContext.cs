@@ -32,6 +32,10 @@ namespace Soluvion.API.Data
         public DbSet<GalleryCategory> GalleryCategories { get; set; }
 
         public DbSet<UiTranslationOverride> UiTranslationOverrides { get; set; }
+        public DbSet<CompanyEmployee> CompanyEmployees { get; set; }
+        public DbSet<CompanyCustomer> CompanyCustomers { get; set; }
+        public DbSet<Appointment> Appointments { get; set; }
+        public DbSet<AppointmentItem> AppointmentItems { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -46,12 +50,71 @@ namespace Soluvion.API.Data
             modelBuilder.Entity<GalleryImage>().HasQueryFilter(gi => CurrentTenantId == 0 || gi.Category!.CompanyId == CurrentTenantId);
             modelBuilder.Entity<ServiceVariant>().HasQueryFilter(sv => CurrentTenantId == 0 || sv.Service!.CompanyId == CurrentTenantId);
 
+            modelBuilder.Entity<CompanyEmployee>().HasQueryFilter(ce => CurrentTenantId == 0 || ce.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<CompanyCustomer>().HasQueryFilter(cc => CurrentTenantId == 0 || cc.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<Appointment>().HasQueryFilter(a => CurrentTenantId == 0 || a.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<AppointmentItem>().HasQueryFilter(ai => CurrentTenantId == 0 || ai.Appointment!.CompanyId == CurrentTenantId);
+
             // --- 1. ÖSSZETETT KULCSOK ---
             modelBuilder.Entity<CompanyLanguage>()
                 .HasKey(cl => new { cl.CompanyId, cl.LanguageCode });
 
             modelBuilder.Entity<UiTranslationOverride>()
                 .HasKey(t => new { t.CompanyId, t.LanguageCode, t.TranslationKey });
+
+            modelBuilder.Entity<CompanyEmployee>()
+                .HasOne(ce => ce.Company)
+                .WithMany(c => c.Employees)
+                .HasForeignKey(ce => ce.CompanyId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CompanyEmployee>()
+                .HasOne(ce => ce.User)
+                .WithMany()
+                .HasForeignKey(ce => ce.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<CompanyCustomer>()
+                .HasOne(cc => cc.Company)
+                .WithMany(c => c.Customers)
+                .HasForeignKey(cc => cc.CompanyId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CompanyCustomer>()
+                .HasOne(cc => cc.User)
+                .WithMany()
+                .HasForeignKey(cc => cc.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Appointment>()
+                .HasOne(a => a.Company)
+                .WithMany(c => c.Appointments)
+                .HasForeignKey(a => a.CompanyId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Appointment>()
+                .HasOne(a => a.Customer)
+                .WithMany()
+                .HasForeignKey(a => a.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Appointment>()
+                .HasOne(a => a.Employee)
+                .WithMany()
+                .HasForeignKey(a => a.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<AppointmentItem>()
+                .HasOne(ai => ai.Appointment)
+                .WithMany(a => a.Items)
+                .HasForeignKey(ai => ai.AppointmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AppointmentItem>()
+                .HasOne(ai => ai.ServiceVariant)
+                .WithMany()
+                .HasForeignKey(ai => ai.ServiceVariantId)
+                .OnDelete(DeleteBehavior.Restrict);
 
 
             // --- 2. JSONB KONVERZIÓK (MANUÁLIS) ---
@@ -139,6 +202,14 @@ namespace Soluvion.API.Data
 
             modelBuilder.Entity<Company>()
                 .Property(c => c.OpeningExtraInfo)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
+                    dictionaryComparer);
+
+            modelBuilder.Entity<CompanyCustomer>()
+                .Property(c => c.Attributes)
                 .HasColumnType("jsonb")
                 .HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
