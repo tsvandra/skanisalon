@@ -14,6 +14,7 @@ const router = createRouter({
     { path: '/szolgaltatasok', name: 'services', component: ServicesView },
     { path: '/galeria', name: 'gallery', component: GalleryView },
     { path: '/kapcsolat', name: 'contact', component: ContactView },
+    { path: '/foglalas', name: 'booking', component: () => import('../views/BookingView.vue')},
     { path: '/login', name: 'login', component: LoginView },
     { path: '/beallitasok', name: 'settings', component: SettingsView }
   ],
