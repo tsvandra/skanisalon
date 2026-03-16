@@ -9,7 +9,7 @@ namespace Soluvion.Domain.Models
         public int CompanyId { get; set; }
         public Company? Company { get; set; }
 
-        public int UserId { get; set; }
+        public int? UserId { get; set; }
         public User? User { get; set; }
 
         // Dinamikus vendég adatok

@@ -218,8 +218,16 @@ const submitBooking = async () => {
   } catch (error) {
     if (error.response && error.response.status === 400) {
       errorMessage.value = error.response.data; // Ütközés üzenet a SmartEngine-ből
+    } else if (error.response && error.response.status === 500) {
+      // ÚJ: Kiírjuk a pontos backend hibaüzenetet!
+      const serverError = typeof error.response.data === 'string'
+        ? error.response.data
+        : JSON.stringify(error.response.data);
+      errorMessage.value = `Backend hiba: ${serverError}`;
+      console.error("Részletes hiba:", error.response.data);
     } else {
-      errorMessage.value = 'Hiba történt a foglalás során. Kérlek próbáld újra!';
+      errorMessage.value = 'Hálózati vagy ismeretlen hiba történt a foglalás során. Kérlek próbáld újra!';
+      console.error(error);
     }
   } finally {
     isSubmitting.value = false;
