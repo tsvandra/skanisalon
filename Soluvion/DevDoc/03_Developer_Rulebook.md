@@ -63,11 +63,6 @@ Ez a dokumentum azokat a szigorú kódolási elveket és konvenciókat tartalmaz
 * **`<style scoped>` Tilalma:** Az új vagy refaktorált komponensekben a `<style scoped>` használata Szigorúan Tilos. A megjelenést 100%-ban Tailwind utility osztályokkal kell megoldani (pl. egyedi görgetősávoknál: `[&::-webkit-scrollbar]`).
 * **PrimeVue Komponensek Témázása:** Mivel a PrimeVue alapértelmezett témája "kilóghat" a mi SaaS dizájnunkból, a komponensek formázásához a PrimeVue **Passthrough (PT)** attribútumát (pl. `pt:root:class="!bg-surface"`) vagy a Tailwind Deep Selectorait (pl. `[&_.p-datatable-thead]:bg-transparent`) KÖTELEZŐ használni.
 
-### 3.7. Vue Komponensek és Szeparáció (SRP - Single Responsibility Principle)
-* **Óriás fájlok tilalma:** Tilos 300+ soros, mindentudó View fájlokat írni (pl. egy teljes több lépéses űrlapot egy fájlban). 
-* **Darabolás:** A komplex felületeket (pl. Stepper lépései) kötelező kis, újrafelhasználható, dedikált komponensekre bontani (pl. `src/components/booking/StepServices.vue`), amiket a szülő View csak "karmesterként" vezérel.
-* **SPA Navigáció:** Űrlapok leadása vagy állapotváltozások után szigorúan TILOS a `window.location.reload()` használata. A Vue egy SPA (Single Page Application), így az állapotok (state) módosításával (pl. `isSuccess = true`) kell frissíteni a DOM-ot.
-
 ---
 
 ## 4. Mesterséges Intelligencia (AI) és Felhõ Szabályok

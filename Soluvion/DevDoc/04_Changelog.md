@@ -8,14 +8,6 @@ Ez a dokumentum kronológiai sorrendben (a legújabbtól visszafelé) rögzíti 
 
 ---
 
-## [2026-03-17] Feature 16: Smart Booking MVP & Frontend Refactoring
-**Státusz:** Kész, Stabilizálva
-* **SaaS Alapelvek:** A foglalási folyamatból (BookingView) eltávolításra került minden hard-coded, szakmaspecifikus adat (pl. hajhossz). A vendégattribútumokat a jövőben dinamikusan, az adatbázis `jsonb` mezőiből generáljuk.
-* **i18n & API Szeparáció:** A foglalási felület 100%-ban többnyelvűsítve lett (Master Source `hu.json` alapon). Az API hívások kiszervezve a dedikált `bookingApi.js` fájlba.
-* **Komponens Szeparáció (SRP):** A monolitikus `BookingView.vue` szétbontásra került kisebb, független komponensekre (`StepServices`, `StepDetails`, `StepDateTime`), drasztikusan javítva a kód olvashatóságát és karbantarthatóságát.
-* **UX/UI:** Elavult `alert()` és oldaltöltés (`reload()`) lecserélve egy elegáns, SPA-hoz méltó, animált sikeres képernyőre.
-* **AI Varázspálca:** A `UiTranslationManager` kiegészítve automatikus (csoportos és egyedi) AI fordító gombokkal, javított kivételkezeléssel, hogy a backend (500-as) hibák azonnal megjelenjenek a UI-on Toast üzenetként.
-
 ## [2026-03-06] Feature 15: SaaS Dizájn, Mobile-First UX & Smart Gallery V2
 **Státusz:** Kész, Stabilizálva
 * **SaaS Theming Engine:** A dinamikus CSS változók számítása és beinjektálása a `companyStore`-ba került (SRP), az `App.vue` ezt a logikát automatikusan hívja.

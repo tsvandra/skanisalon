@@ -59,7 +59,8 @@ namespace Soluvion.API.Controllers
             catch (Exception ex)
             {
                 Console.WriteLine($"Fordítási hiba: {ex.Message}");
-                return StatusCode(500, "Hiba történt a fordítás során.");
+                // Most már a frontend (böngésző) is látni fogja a pontos okot!
+                return StatusCode(500, $"Hiba történt a fordítás során: {ex.Message}");
             }
         }
         // ---------------------------------------------------------------

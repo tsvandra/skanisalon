@@ -7,11 +7,13 @@
     "edit": "Szerkesztés",
     "logout": "Kilépés",
     "login": "Belépés",
-    "settings": "Beállítások"
+    "settings": "Beállítások",
+    "defaultCompany": "Vállalkozás"
   },
   "nav": {
     "home": "Kezdőlap",
     "services": "Árlista",
+    "booking": "Időpontfoglalás",
     "gallery": "Galéria",
     "contact": "Kapcsolat"
   },
@@ -79,5 +81,29 @@
   },
   "footer": {
     "rights": "Minden jog fenntartva."
+  },
+  "booking": {
+    "title": "{companyName} - Időpontfoglalás",
+    "stepServices": "Szolgáltatások",
+    "stepDetails": "Adataid",
+    "stepSummary": "Időpont & Foglalás",
+    "selectService": "Válassz szolgáltatást",
+    "yourDetails": "Add meg az adataidat",
+    "fullName": "Teljes név *",
+    "email": "Email *",
+    "phone": "Telefonszám *",
+    "notes": "Megjegyzés a szolgáltatónak",
+    "back": "Vissza",
+    "next": "Tovább",
+    "selectDateTime": "Válassz időpontot és munkatársat",
+    "dateTimeLabel": "Dátum és Idő",
+    "employeeLabel": "Kiválasztott munkatárs",
+    "anyone": "Bárki (Automatikus)",
+    "submit": "Véglegesítés",
+    "success": "Sikeres foglalás! Hamarosan küldjük a visszaigazolást.",
+    "errorNetwork": "Hálózati vagy ismeretlen hiba történt a foglalás során. Kérlek próbáld újra!",
+    "errorServer": "Szerver hiba",
+    "successTitle": "Sikeres foglalás!",
+    "newBooking": "Új időpont foglalása"
   }
 }
