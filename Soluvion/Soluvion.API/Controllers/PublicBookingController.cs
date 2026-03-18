@@ -34,18 +34,16 @@ namespace Soluvion.API.Controllers
             try
             {
                 // ÚJ LOGIKA 1: Biztonságos Dolgozó (Employee) keresés
-                // Ha a frontend által küldött (pl. 1-es) ID nem létezik, automatikusan az első aktív dolgozóhoz rendeljük
                 var employeeExists = await _context.CompanyEmployees.AnyAsync(e => e.CompanyId == companyId && e.Id == dto.EmployeeId);
                 if (!employeeExists)
                 {
                     var defaultEmployee = await _context.CompanyEmployees.FirstOrDefaultAsync(e => e.CompanyId == companyId && e.IsActive);
                     if (defaultEmployee == null) throw new Exception("Nincs aktív dolgozó ebben a cégben, akihez foglalni lehetne!");
 
-                    dto.EmployeeId = defaultEmployee.Id; // Kicseréljük a valós ID-ra
+                    dto.EmployeeId = defaultEmployee.Id;
                 }
 
                 // ÚJ LOGIKA 2: Biztonságos JSONB Customer keresés
-                // Lekérjük a cég összes vendégét, és a memóriában (C#-ban) szűrünk, hogy elkerüljük a PostgreSQL fordítási hibákat
                 var allCustomers = await _context.CompanyCustomers.Where(c => c.CompanyId == companyId).ToListAsync();
                 var customer = allCustomers.FirstOrDefault(c => c.Attributes != null &&
                                                                 c.Attributes.ContainsKey("Email") &&
@@ -63,7 +61,7 @@ namespace Soluvion.API.Controllers
                     customer.Attributes["FullName"] = dto.FullName;
 
                     _context.CompanyCustomers.Add(customer);
-                    await _context.SaveChangesAsync(); // Hogy megkapja a CustomerId-t
+                    await _context.SaveChangesAsync();
                 }
                 else
                 {
@@ -84,7 +82,7 @@ namespace Soluvion.API.Controllers
                     return BadRequest("Sajnos ez az időpont már foglalt. Kérlek, válassz másikat!");
                 }
 
-                // 3. Appointment létrehozása
+                // 3. Appointment létrehozása (Új modellekkel)
                 var appointment = new Appointment
                 {
                     CompanyId = companyId,
@@ -94,7 +92,8 @@ namespace Soluvion.API.Controllers
                     EndDateTime = endDateTime,
                     TotalPrice = price,
                     Status = AppointmentStatus.Pending,
-                    Notes = dto.Notes
+                    Source = BookingSource.Web, // ÚJ: Vendég a webről küldte
+                    CustomerNotes = dto.Notes // ÚJ: Vendég megjegyzése
                 };
 
                 foreach (var variantId in dto.ServiceVariantIds)
@@ -117,7 +116,6 @@ namespace Soluvion.API.Controllers
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                // ÚJ LOGIKA 3: Pontos hibaüzenet visszaadása a frontendnek
                 return StatusCode(500, $"Belső szerverhiba: {ex.Message} {(ex.InnerException != null ? " - Részletek: " + ex.InnerException.Message : "")}");
             }
         }

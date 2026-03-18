@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Soluvion.API.Data;
@@ -11,9 +12,11 @@ using Soluvion.API.Data;
 namespace Soluvion.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260318134311_UpdateAppointmentModel")]
+    partial class UpdateAppointmentModel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -30,17 +33,11 @@ namespace Soluvion.API.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AdminNotes")
-                        .HasColumnType("text");
-
                     b.Property<int>("CompanyId")
                         .HasColumnType("integer");
 
                     b.Property<int>("CustomerId")
                         .HasColumnType("integer");
-
-                    b.Property<string>("CustomerNotes")
-                        .HasColumnType("text");
 
                     b.Property<int>("EmployeeId")
                         .HasColumnType("integer");
@@ -48,17 +45,14 @@ namespace Soluvion.API.Migrations
                     b.Property<DateTime>("EndDateTime")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("Source")
-                        .HasColumnType("integer");
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("StartDateTime")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
-
-                    b.Property<string>("StatusReason")
-                        .HasColumnType("text");
 
                     b.Property<decimal>("TotalPrice")
                         .HasColumnType("numeric");

@@ -19,9 +19,15 @@ namespace Soluvion.Domain.Models
         public DateTime EndDateTime { get; set; }
 
         public decimal TotalPrice { get; set; }
+        
+        // Státusz és Forrás
         public AppointmentStatus Status { get; set; } = AppointmentStatus.Pending;
+        public BookingSource Source { get; set; } = BookingSource.Web;
 
-        public string? Notes { get; set; }
+        // Szöveges mezők (Megjegyzések és Egyezkedés)
+        public string? CustomerNotes { get; set; } // Ezt írta a vendég a weben
+        public string? AdminNotes { get; set; }    // Ezt csak a dolgozók látják (belső info)
+        public string? StatusReason { get; set; }  // Indoklás elutasításhoz vagy átszervezéshez
 
         public ICollection<AppointmentItem> Items { get; set; } = new List<AppointmentItem>();
     }

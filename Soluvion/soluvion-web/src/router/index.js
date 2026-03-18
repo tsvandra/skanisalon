@@ -6,7 +6,6 @@ import ContactView from '../views/ContactView.vue'
 import LoginView from '../views/LoginView.vue'
 import SettingsView from '../views/SettingsView.vue'
 
-
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -14,9 +13,10 @@ const router = createRouter({
     { path: '/szolgaltatasok', name: 'services', component: ServicesView },
     { path: '/galeria', name: 'gallery', component: GalleryView },
     { path: '/kapcsolat', name: 'contact', component: ContactView },
-    { path: '/foglalas', name: 'booking', component: () => import('../views/BookingView.vue')},
+    { path: '/foglalas', name: 'booking', component: () => import('../views/BookingView.vue') },
     { path: '/login', name: 'login', component: LoginView },
-    { path: '/beallitasok', name: 'settings', component: SettingsView }
+    { path: '/beallitasok', name: 'settings', component: SettingsView },
+    { path: '/vezerlopult', name: 'dashboard', component: () => import('../components/admin/calendar/CalendarGrid.vue') }
   ],
 })
 

@@ -58,8 +58,9 @@
           {{ $t('nav.gallery') }}
         </router-link>
 
-        <router-link to="/foglalas" class="bg-primary text-white font-bold py-2 px-4 rounded-lg hover:brightness-90 transition-all">
-          {{ $t('nav.booking') }}
+        <router-link :to="isLoggedIn ? '/vezerlopult' : '/foglalas'"
+                     class="bg-primary text-white font-bold py-2 px-4 rounded-lg hover:brightness-90 transition-all min-h-[44px] flex items-center shadow-sm">
+          {{ isLoggedIn ? 'Vezérlőpult' : $t('nav.booking') }}
         </router-link>
 
         <router-link to="/kapcsolat" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-medium min-h-[44px] flex items-center">
@@ -84,6 +85,12 @@
     </div>
 
     <nav v-show="isMenuOpen" class="md:hidden absolute top-full left-0 right-0 bg-surface border-b border-primary/20 shadow-xl flex flex-col p-4 gap-2 z-[999]">
+
+      <router-link :to="isLoggedIn ? '/vezerlopult' : '/foglalas'" @click="isMenuOpen = false"
+                   class="bg-primary text-white text-center font-bold text-lg p-3 rounded-lg shadow-sm hover:brightness-95 transition-all mb-2 min-h-[48px] flex justify-center items-center">
+        {{ isLoggedIn ? 'Vezérlőpult' : $t('nav.booking') }}
+      </router-link>
+
       <router-link to="/szolgaltatasok" @click="isMenuOpen = false" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-bold text-lg p-3 rounded-lg hover:bg-text/5">
         {{ $t('nav.services') }}
       </router-link>
@@ -101,7 +108,7 @@
       <div class="flex justify-between items-center p-3">
         <LanguageSwitcher :adminMode="isLoggedIn" />
 
-        <router-link v-if="isLoggedIn" to="/beallitasok" @click="isMenuOpen = false" class="text-primary p-2">
+        <router-link v-if="isLoggedIn" to="/beallitasok" @click="isMenuOpen = false" class="text-primary p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
           <i class="pi pi-cog text-2xl"></i>
         </router-link>
       </div>
