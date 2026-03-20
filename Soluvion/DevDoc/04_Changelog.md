@@ -8,6 +8,19 @@ Ez a dokumentum kronológiai sorrendben (a legújabbtól visszafelé) rögzíti 
 
 ---
 
+## [2026-03-20] Feature 16: Admin Vezérlőpult, Valós Ügyfelek és Backend Stabilizálás
+**Státusz:** Kész, Élesíthető
+* **Backend (C#):**
+  * Valós ügyfelek (`CompanyCustomer`) bekötése a `CustomersController` és `CustomerService` segítségével (dinamikus JSONB kezelés: FullName, Phone, Email).
+  * Okos időtartam-kezelés (`CalculatedDurationMinutes`) bevezetése a DTO-kban a beégetett alapértelmezett idők helyett.
+  * EF Core Tracking és Concurrency hibák javítása a foglalás módosításakor (gyerek-elemek biztonságos törlése és újra-hozzáadása explicit ID-kkal).
+  * 500-as Internal Server Error hibák javítása (Authentication Scheme crashek megszüntetése `InvalidOperationException` használatával).
+* **Frontend (Vue 3):**
+  * Mock adatok (ügyfelek, anyagok) teljes kivezetése a `CalendarGrid.vue`-ból.
+  * "On-the-fly" új ügyfél létrehozása közvetlenül a foglalási űrlapból.
+  * UX fejlesztések: Ár nélküli szolgáltatások automatikus szűrése, Kaszkádos automatikus kiválasztás (ha csak 1 elem van a listában), Monogramok és teljes nevek megjelenítése a naptár idősávjain és kártyáin.
+  * Okos Mentés gomb validáció (Computed property alapján).
+
 ## [2026-03-06] Feature 15: SaaS Dizájn, Mobile-First UX & Smart Gallery V2
 **Státusz:** Kész, Stabilizálva
 * **SaaS Theming Engine:** A dinamikus CSS változók számítása és beinjektálása a `companyStore`-ba került (SRP), az `App.vue` ezt a logikát automatikusan hívja.

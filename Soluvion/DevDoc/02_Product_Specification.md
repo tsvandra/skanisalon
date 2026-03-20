@@ -65,3 +65,8 @@ A képek fizikai tárolását a Cloudinary végzi.
 * **Nested Drag-and-Drop:** Az Admin felhasználók szabadon sorrendezhetik a kategóriákat (függõleges lista) és a képeket a kategóriákon belül is. Képek mozgathatóak kategóriák között is.
 * **Vendég UI (Accordion & Swipe):** A látogatók számára a galéria letisztult Harmonika (Accordion) elrendezést használ, nyitáskor automatikus fókuszba görgetéssel. A Lightbox (képnézegető) asztali gépen nyilakkal, mobilon natív "Swipe" (húzás) gesztussal lapozható.
 * **Micro-Interactions:** Lightbox bezárásakor a rendszer automatikusan visszagörget ahhoz az indexképhez, aminél a látogató tartott, és egy vizuális kerettel ki is emeli azt az orientáció segítésére.
+
+### 4.5. Admin Vezérlőpult és Naptár (Dashboard)
+* **Zéró-Mock Ügyfélkezelés:** Az új foglalások rögzítésekor a rendszer valós időben kérdezi le és hozza létre az ügyfeleket. A rugalmas SaaS modell miatt a név, email vagy telefon megadása is elegendő a JSONB struktúrának köszönhetően.
+* **Okos Szolgáltatás-építő (Service Builder):** Kaszkádos legördülő menük, amelyek automatikusan szűrik az ár nélküli elemeket, és automatikusan kiválasztják a tételeket, ha csak egy opció van.
+* **Dinamikus Időtartam:** A fodrászok/munkatársak egyedi "Scrubbable" (húzható) inputtal bírálhatják felül egy szolgáltatás alapértelmezett idejét, amit a backend pontosan le is ment az adatbázisba.

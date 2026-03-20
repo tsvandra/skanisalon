@@ -4,6 +4,7 @@ namespace Soluvion.API.DTOs.AppointmentDtos
 {
     public class UpdateAppointmentDto
     {
+        public int CustomerId { get; set; }
         public DateTime StartDateTime { get; set; }
         public List<AppointmentItemRequestDto> Items { get; set; } = new();
         public string? Notes { get; set; }

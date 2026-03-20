@@ -30,6 +30,10 @@ Ez a dokumentum azokat a szigorú kódolási elveket és konvenciókat tartalmaz
 * [cite_start]**Tenant Isolation:** > Minden lekérdezést szûrni kell a Multi-tenancy miatt (pl. `.Where(x => x.CompanyId == currentCompanyId)`)[cite: 164]. [cite_start]Az azonosításhoz a JWT Tokenben lévõ `CompanyId` az irányadó[cite: 162].
 * [cite_start]**Adatbázis Elnevezések:** > Kulcs-érték párokat tároló tábláknál a kulcs mezõ neve legyen konzisztensen `TranslationKey` (vagy `ConfigKey`)[cite: 222]. [cite_start]Kerüljük a generikus `Key` elnevezést az EF Core ütközések miatt[cite: 222].
 
+### 2.3. Entity Framework és Hibakezelés (Lessons Learned)
+* **Gyerek-elemek (Child Collections) módosítása:** Frissítéskor (Update) a meglévő gyerek-elemek (pl. `AppointmentItems`) törlését és újra-hozzáadását két lépésben kell végezni, explicit Foreign Key megadásával, elkerülve az EF Core Tracking megzavarodását (Concurrency Exception).
+* **Üzleti Logikai Kivételek:** Jogosultsági vagy üzleti szabály megsértése esetén (pl. "Foglalt időpont", "Nincs elég magas előfizetés") TILOS `UnauthorizedAccessException`-t dobni, mert a Middleware Authentication Scheme hibával elszáll. Ilyenkor mindig `InvalidOperationException`-t kell használni.
+
 ---
 
 ## 3. Frontend Kódolási Szabályok (Vue 3)

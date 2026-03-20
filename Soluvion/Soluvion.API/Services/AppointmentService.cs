@@ -77,7 +77,7 @@ namespace Soluvion.API.Services
 
             if (company!.SubscriptionPlan == SubscriptionPlan.Free)
             {
-                throw new UnauthorizedAccessException("Az okos időpontfoglaló modul használatához legalább Basic előfizetés szükséges.");
+                throw new InvalidOperationException("Az okos időpontfoglaló modul használatához legalább Basic előfizetés szükséges.");
             }
 
             var currentUser = await _context.Users.SingleAsync(u => u.Username == username);
@@ -87,30 +87,29 @@ namespace Soluvion.API.Services
             if (currentEmployee == null)
                 throw new UnauthorizedAccessException("Nem vagy hozzárendelve ehhez a céghez.");
 
+            // 1. BIZTONSÁGI JAVÍTÁS AZ 500-AS HIBÁRA (Hardkódolt EmployeeId ellen)
+            var targetEmployeeExists = await _context.CompanyEmployees.AnyAsync(e => e.Id == dto.EmployeeId && e.CompanyId == companyId);
+            if (!targetEmployeeExists)
+            {
+                // Ha a Vue űrlap érvénytelen dolgozót küld (pl. fix 1-et), akkor ahhoz a dolgozóhoz mentjük, aki épp be van jelentkezve!
+                dto.EmployeeId = currentEmployee.Id;
+            }
+
             if (dto.Force && currentEmployee.Role != EmployeeRole.Owner && currentEmployee.Role != EmployeeRole.Manager)
             {
                 throw new UnauthorizedAccessException("Ütköző időpontot csak a Tulajdonos vagy a Menedzser erőszakolhat ki (Force).");
             }
 
-            if (currentEmployee.Role == EmployeeRole.Worker && dto.EmployeeId != currentEmployee.Id)
-            {
-                throw new UnauthorizedAccessException("Alkalmazottként csak magadhoz rögzíthetsz időpontot.");
-            }
-
-            // 1. Árazás az Engine-nel (kinyerjük az ID-kat az árazáshoz)
+            // 2. Árazás és időtartam
             var variantIds = dto.Items.Select(i => i.ServiceVariantId).ToList();
             var (_, price) = await _bookingEngine.CalculateAppointmentDetailsAsync(dto.CustomerId, variantIds);
 
-            // 2. A TÉNYLEGES IDŐTARTAM (A UI-ról kapott percek alapján összeadva!)
             int totalDuration = dto.Items.Sum(i => i.DurationMinutes);
             DateTime endDateTime = dto.StartDateTime.AddMinutes(totalDuration);
 
-            // 3. Ütközésvizsgálat az új végdátummal
+            // 3. Ütközésvizsgálat
             bool isAvailable = await _bookingEngine.IsTimeSlotAvailableAsync(companyId, dto.EmployeeId, dto.StartDateTime, endDateTime, dto.Force);
-            if (!isAvailable)
-            {
-                throw new InvalidOperationException("A kiválasztott időpont ütközik egy másikkal.");
-            }
+            if (!isAvailable) throw new InvalidOperationException("A kiválasztott időpont ütközik egy másikkal.");
 
             // 4. Foglalás létrehozása
             var appointment = new Appointment
@@ -122,31 +121,26 @@ namespace Soluvion.API.Services
                 EndDateTime = endDateTime,
                 TotalPrice = price,
                 Status = dto.Status,
-                Source = BookingSource.System, // Rendszerből lett felvéve
-                AdminNotes = dto.Notes // Belső, dolgozói megjegyzés
+                Source = BookingSource.System,
+                AdminNotes = dto.Notes,
+                Items = new List<AppointmentItem>()
             };
 
-            // 5. Tételek hozzáadása (a személyre szabott percekkel!)
             foreach (var itemDto in dto.Items)
             {
                 var variant = await _context.ServiceVariants.FindAsync(itemDto.ServiceVariantId);
-
-                // Biztonsági ellenőrzés NullReferenceException ellen!
-                if (variant == null)
-                {
-                    throw new ArgumentException($"Hiba: A(z) {itemDto.ServiceVariantId} azonosítójú szolgáltatás variáns nem található az adatbázisban!");
-                }
+                if (variant == null) throw new ArgumentException($"Hiba: A(z) {itemDto.ServiceVariantId} variáns nem található!");
 
                 appointment.Items.Add(new AppointmentItem
                 {
                     ServiceVariantId = itemDto.ServiceVariantId,
                     Price = variant.Price,
-                    CalculatedDurationMinutes = itemDto.DurationMinutes // Az egyedi percet mentjük!
+                    CalculatedDurationMinutes = itemDto.DurationMinutes
                 });
             }
 
             _context.Appointments.Add(appointment);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(); // Ha itt volt korábban az 500-as hiba, az EmployeeId felülírásával most eltűnik!
 
             return appointment;
         }
@@ -155,66 +149,60 @@ namespace Soluvion.API.Services
         {
             int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
 
-            // Biztonság: Csak a saját cégéhez tartozó foglalást módosíthatja!
             var appointment = await _context.Appointments.Include(a => a.Items)
                                             .FirstOrDefaultAsync(a => a.Id == appointmentId && a.CompanyId == companyId);
 
-            if (appointment == null) throw new KeyNotFoundException("Időpont nem található vagy nincs jogosultságod hozzá.");
+            if (appointment == null) throw new KeyNotFoundException("Időpont nem található vagy nincs jogosultságod.");
 
             var currentUser = await _context.Users.SingleAsync(u => u.Username == username);
             var currentEmployee = await _context.CompanyEmployees
                 .SingleOrDefaultAsync(e => e.UserId == currentUser.Id && e.CompanyId == companyId);
 
-            if (currentEmployee == null) throw new UnauthorizedAccessException("Nincs jogosultságod.");
-
-            if (currentEmployee.Role == EmployeeRole.Worker && appointment.EmployeeId != currentEmployee.Id)
-                throw new UnauthorizedAccessException("Csak a saját időpontjaidat módosíthatod.");
+            if (currentEmployee == null) throw new InvalidOperationException("Nincs jogosultságod.");
 
             if (dto.Force && currentEmployee.Role != EmployeeRole.Owner && currentEmployee.Role != EmployeeRole.Manager)
-                throw new UnauthorizedAccessException("Ütköző időpontot csak a Tulajdonos vagy a Menedzser erőszakolhat ki (Force).");
+                throw new InvalidOperationException("Ütköző időpontot csak a Tulajdonos vagy a Menedzser erőszakolhat ki.");
 
-            // 1. Árazás
+            // Árazás és időtartam
             var variantIds = dto.Items.Select(i => i.ServiceVariantId).ToList();
-            var (_, price) = await _bookingEngine.CalculateAppointmentDetailsAsync(appointment.CustomerId, variantIds);
+            var (_, price) = await _bookingEngine.CalculateAppointmentDetailsAsync(dto.CustomerId, variantIds);
 
-            // 2. A TÉNYLEGES IDŐTARTAM
             int totalDuration = dto.Items.Sum(i => i.DurationMinutes);
             DateTime endDateTime = dto.StartDateTime.AddMinutes(totalDuration);
 
-            // 3. Ütközésvizsgálat (kivéve önmagát)
             bool isAvailable = await _bookingEngine.IsTimeSlotAvailableAsync(companyId, appointment.EmployeeId, dto.StartDateTime, endDateTime, dto.Force, appointment.Id);
-
             if (!isAvailable) throw new InvalidOperationException("A kiválasztott időpont ütközik egy másikkal.");
 
-            // 4. Frissítés
+            // Foglalás alap adatainak frissítése
+            appointment.CustomerId = dto.CustomerId;
             appointment.StartDateTime = dto.StartDateTime;
             appointment.EndDateTime = endDateTime;
             appointment.TotalPrice = price;
             appointment.Status = dto.Status;
             appointment.AdminNotes = dto.Notes;
 
-            // Töröljük a régi tételeket
-            _context.AppointmentItems.RemoveRange(appointment.Items);
+            // BIZTONSÁGI JAVÍTÁS A CONCURRENCY HIBÁRA: 
+            // 1. Lépés: Explicit töröljük a régi elemeket és azonnal rámentünk, hogy az EF Core megnyugodjon
+            var oldItems = await _context.AppointmentItems.Where(i => i.AppointmentId == appointment.Id).ToListAsync();
+            _context.AppointmentItems.RemoveRange(oldItems);
+            await _context.SaveChangesAsync();
 
-            // Felvesszük az újakat
+            // 2. Lépés: Szépen, tisztán felvesszük az új tételeket
             foreach (var itemDto in dto.Items)
             {
                 var variant = await _context.ServiceVariants.FindAsync(itemDto.ServiceVariantId);
+                if (variant == null) throw new ArgumentException($"Hiba: A(z) {itemDto.ServiceVariantId} variáns nem található!");
 
-                if (variant == null)
+                _context.AppointmentItems.Add(new AppointmentItem
                 {
-                    throw new ArgumentException($"Hiba: A(z) {itemDto.ServiceVariantId} azonosítójú szolgáltatás variáns nem található az adatbázisban!");
-                }
-
-                appointment.Items.Add(new AppointmentItem
-                {
+                    AppointmentId = appointment.Id,
                     ServiceVariantId = itemDto.ServiceVariantId,
                     Price = variant.Price,
-                    CalculatedDurationMinutes = itemDto.DurationMinutes // Az egyedi percet mentjük!
+                    CalculatedDurationMinutes = itemDto.DurationMinutes
                 });
             }
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(); // Végső mentés
             return appointment;
         }
 

@@ -95,7 +95,7 @@
                 <div class="flex justify-between items-start">
                   <div class="flex items-center gap-2 md:gap-3">
                     <div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full" :class="app.status === 0 ? 'bg-red-500' : 'bg-green-500'"></div>
-                    <h4 class="text-sm md:text-md font-bold text-text">{{ $t('calendar.guest') || 'Vendég' }} #{{ app.customerId }}</h4>
+                    <h4 class="text-sm md:text-md font-bold text-text">{{ getCustomerName(app.customerId) }}</h4>
                   </div>
                   <div class="text-[10px] md:text-xs bg-background px-2 py-1 rounded text-text-muted font-bold capitalize">
                     {{ getDayNameShort(new Date(app.startDateTime)) }}, {{ formatDateShort(app.startDateTime) }}
@@ -154,7 +154,7 @@
                 <div class="flex justify-between items-start">
                   <div class="flex items-center gap-2 md:gap-3">
                     <div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full" :class="app.status === 0 ? 'bg-red-500' : 'bg-green-500'"></div>
-                    <h4 class="text-sm md:text-md font-bold text-text">{{ $t('calendar.guest') || 'Vendég' }} #{{ app.customerId }}</h4>
+                    <h4 class="text-sm md:text-md font-bold text-text">{{ getCustomerName(app.customerId) }}</h4>
                   </div>
                   <div class="text-[10px] md:text-xs bg-background px-2 py-1 rounded text-text-muted font-bold capitalize">
                     {{ getDayNameShort(new Date(app.startDateTime)) }}, {{ formatDateShort(app.startDateTime) }}
@@ -203,8 +203,8 @@
                    class="absolute top-0 bottom-0 h-full border-x border-white/50 cursor-pointer transition-transform hover:scale-y-105 flex items-center justify-center overflow-hidden shadow-sm"
                    :class="app.status === 0 ? 'bg-red-500/90 hover:bg-red-400' : 'bg-green-500/90 hover:bg-green-400'"
                    :style="{ left: app.left + '%', width: app.width + '%' }"
-                   :title="`${$t('calendar.guest') || 'Vendég'} #${app.customerId}: ${formatTime(app.startDateTime)} - ${formatTime(app.endDateTime)}`">
-                <span v-if="app.width > 8" class="text-white text-[10px] md:text-xs font-bold truncate px-1">#{{ app.customerId }}</span>
+                   :title="`${getCustomerName(app.customerId)}: ${formatTime(app.startDateTime)} - ${formatTime(app.endDateTime)}`">
+                <span v-if="app.width >= 3" class="text-white text-[10px] md:text-xs font-bold truncate px-1">{{ getCustomerInitials(app.customerId) }}</span>
               </div>
             </div>
 
@@ -228,7 +228,7 @@
               <div class="flex justify-between items-start">
                 <div class="flex items-center gap-2 md:gap-3">
                   <div class="w-3 h-3 md:w-4 md:h-4 rounded-full" :class="app.status === 0 ? 'bg-red-500' : 'bg-green-500'"></div>
-                  <h4 class="text-base md:text-xl font-bold text-text">{{ $t('calendar.guest') || 'Vendég' }} #{{ app.customerId }}</h4>
+                  <h4 class="text-base md:text-xl font-bold text-text">{{ getCustomerName(app.customerId) }}</h4>
                 </div>
                 <div class="flex items-center gap-2 md:gap-3 text-text-muted text-[10px] md:text-sm font-bold bg-surface px-2 md:px-3 py-1 md:py-1.5 rounded-lg border border-text/5">
                   <div class="flex items-center gap-1"><i class="pi pi-clock text-primary"></i> {{ formatTime(app.startDateTime) }}</div>
@@ -242,19 +242,6 @@
                      class="w-8 h-8 md:w-12 md:h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs md:text-base font-black border border-primary/20 cursor-help hover:bg-primary hover:text-white transition-colors"
                      :title="getVariantFullName(item.serviceVariantId)">
                   {{ getInitials(getVariantFullName(item.serviceVariantId)) }}
-                </div>
-              </div>
-
-              <div class="bg-surface rounded-lg md:rounded-xl p-2.5 md:p-4 mt-1 md:mt-2 border border-text/5">
-                <h5 class="text-[10px] md:text-xs font-black text-text-muted mb-2 md:mb-3 uppercase tracking-widest">{{ $t('calendar.materialsToUse') || 'Felhasználandó anyagok' }}</h5>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-                  <div v-for="mat in getMockMaterials(app.id)" :key="mat.id" class="flex items-center justify-between bg-background p-2 md:p-2.5 rounded-md md:rounded-lg border border-text/5">
-                    <div class="flex items-center gap-2 md:gap-3">
-                      <div class="w-6 h-6 md:w-8 md:h-8 bg-text/5 rounded flex items-center justify-center"><i class="pi pi-image text-text-muted text-[10px] md:text-base"></i></div>
-                      <span class="font-bold text-text text-xs md:text-sm">{{ mat.name }}</span>
-                    </div>
-                    <div class="font-black text-[10px] md:text-sm bg-surface px-1.5 md:px-2 py-0.5 md:py-1 rounded" :class="getMaterialStatusColor(mat.status)">{{ mat.quantity }} ml</div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -294,12 +281,18 @@
                 <select v-model="form.customerId" @change="handleCustomerSelect" class="w-full h-[44px] bg-background border border-text/20 rounded-lg px-3 text-sm text-text font-bold focus:outline-none focus:border-primary appearance-none cursor-pointer">
                   <option value="" disabled>Válassz a listából...</option>
                   <option value="new" class="text-primary font-bold">+ Új ügyfél rögzítése</option>
-                  <option v-for="c in mockCustomersList" :key="c.id" :value="c.id">{{ c.name }}</option>
+                  <option v-for="c in customersList" :key="c.id" :value="c.id">{{ c.name }}</option>
                 </select>
                 <i class="pi pi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none text-sm"></i>
               </div>
-              <div v-if="form.customerId">
-                <input type="text" v-model="form.customerName" placeholder="Ügyfél teljes neve..." class="w-full h-[44px] bg-background border border-text/20 rounded-lg px-3 text-sm text-text focus:outline-none focus:border-primary">
+
+              <div v-if="form.customerId === 'new'" class="flex flex-col gap-2">
+                <input type="text" v-model="form.customerFullName" placeholder="Teljes név (opcionális)..." class="w-full h-[44px] bg-background border border-text/20 rounded-lg px-3 text-sm text-text focus:outline-none focus:border-primary">
+                <input type="tel" v-model="form.customerPhone" placeholder="Telefonszám (opcionális)..." class="w-full h-[44px] bg-background border border-text/20 rounded-lg px-3 text-sm text-text focus:outline-none focus:border-primary">
+                <span class="text-[10px] text-text-muted leading-tight">Legalább az egyik mező kitöltése kötelező!</span>
+              </div>
+              <div v-else-if="form.customerId">
+                <input type="text" v-model="form.customerFullName" disabled class="w-full h-[44px] bg-background border border-text/20 rounded-lg px-3 text-sm text-text focus:outline-none focus:border-primary opacity-50 cursor-not-allowed">
               </div>
             </div>
           </div>
@@ -350,13 +343,7 @@
               <div v-if="builder.variantId" class="flex flex-col md:flex-row md:items-end gap-3 pt-2">
                 <div class="w-full md:w-1/3 flex flex-col">
                   <label class="text-[10px] font-bold text-text-muted uppercase mb-1">Időtartam (Húzd)</label>
-                  <ScrubbableInput v-model="builder.duration"
-                                   :min="5"
-                                   :max="480"
-                                   :step="5"
-                                   :sensitivity="10"
-                                   suffix="perc"
-                                   class="h-[44px]" />
+                  <ScrubbableInput v-model="builder.duration" :min="5" :max="480" :step="5" :sensitivity="10" suffix="perc" class="h-[44px]" />
                 </div>
 
                 <div class="w-full md:w-2/3">
@@ -410,7 +397,7 @@
             <button @click="closeModal" class="px-3 md:px-4 h-[44px] text-text text-sm md:text-base font-bold rounded-lg hover:bg-text/10 transition-colors">
               Mégsem
             </button>
-            <button @click="handleSave" :disabled="form.items.length === 0 || !form.customerName" class="px-4 md:px-6 h-[44px] bg-primary text-white text-sm md:text-base font-bold rounded-lg hover:brightness-110 shadow-md transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 md:gap-2">
+            <button @click="handleSave" :disabled="!isFormValid" class="px-4 md:px-6 h-[44px] bg-primary text-white text-sm md:text-base font-bold rounded-lg hover:brightness-110 shadow-md transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 md:gap-2">
               <i class="pi pi-save"></i> Mentés
             </button>
           </div>
@@ -558,9 +545,6 @@
     return { minMinutes, maxMinutes, totalMinutes, hours, appointments: mappedApps, gaps };
   });
 
-  const getMockMaterials = () => [];
-  const getMaterialStatusColor = (status) => status === 'ok' ? 'text-green-500' : status === 'warning' ? 'text-orange-500' : 'text-red-500';
-
   const fetchDataForCurrentView = () => {
     const d = new Date(currentDate.value);
     const start = new Date(d.getFullYear(), d.getMonth() - 1, 1);
@@ -569,36 +553,62 @@
   };
 
   // ============================================================================
-  // ÚJ: FOGLALÁS ŰRLAP (SERVICE BUILDER) LOGIKA
+  // ÚJ: VALÓS ÜGYFELEK ÉS FOGLALÁS ŰRLAP
   // ============================================================================
   const availableServices = ref([]);
-
-  const mockCustomersList = ref([
-    { id: 1, name: 'Kovács János' },
-    { id: 2, name: 'Nagy Éva' },
-    { id: 3, name: 'Szabó Péter' },
-    { id: 4, name: 'Tóth Mária' }
-  ]);
+  const customersList = ref([]);
 
   const isModalOpen = ref(false);
   const isEditing = ref(false);
 
   const form = ref({
-    id: null, customerId: '', customerName: '', employeeId: 1,
+    id: null, customerId: '', customerFullName: '', customerPhone: '', employeeId: 1,
     date: '', time: '08:00', status: 1, notes: '', items: []
   });
 
   const builder = ref({ category: '', serviceId: '', variantId: '', duration: 0 });
 
+  // ÚJ: Szűrt szolgáltatások lekérése
   const fetchServicesForAdmin = async () => {
     try {
       const response = await bookingApi.getPublicServices();
-      availableServices.value = response.data.$values || response.data;
+      const rawServices = response.data.$values || response.data || [];
+
+      // Szűrés: Csak aminek van ára (>0), és ahol a kategória emiatt nem ürül ki
+      const filteredServices = rawServices.map(s => {
+        const vars = s.variants?.$values || s.variants || [];
+        return {
+          ...s,
+          variants: vars.filter(v => v.price != null && v.price > 0)
+        };
+      }).filter(s => s.variants.length > 0);
+
+      availableServices.value = filteredServices;
     } catch (error) { console.error('Hiba a szolgáltatások betöltésekor:', error); }
+  };
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await bookingApi.getCustomers();
+      customersList.value = response.data.$values || response.data || [];
+    } catch (error) { console.error('Hiba az ügyfelek betöltésekor:', error); }
   };
 
   const getLocText = (dict) => dict ? (dict[currentLang.value] || dict['hu'] || '') : '';
   const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?';
+
+  // ÚJ: Név kinyerése ID alapján a listákhoz
+  const getCustomerName = (id) => {
+    const c = customersList.value.find(x => x.id === id);
+    return c && c.name && c.name !== 'Ismeretlen Vendég' ? c.name : `Vendég #${id}`;
+  };
+
+  // ÚJ: Monogram generálása ID alapján a timeline csíkhoz
+  const getCustomerInitials = (id) => {
+    const name = getCustomerName(id);
+    if (name.startsWith('Vendég #')) return `#${id}`;
+    return getInitials(name);
+  };
 
   const getVariantFullName = (variantId) => {
     for (const s of availableServices.value) {
@@ -623,8 +633,30 @@
   });
 
   const resetBuilder = (level) => {
-    if (level === 1) { builder.value.serviceId = ''; builder.value.variantId = ''; builder.value.duration = 0; }
-    if (level === 2) { builder.value.variantId = ''; builder.value.duration = 0; }
+    if (level === 1) {
+      builder.value.serviceId = '';
+      builder.value.variantId = '';
+      builder.value.duration = 0;
+
+      // ÚJ: Ha a kategóriában csak 1 szolgáltatás van, automatikusan kiválasztjuk!
+      const services = availableServicesInCategory.value;
+      if (services.length === 1) {
+        builder.value.serviceId = services[0].id;
+        resetBuilder(2); // Kaszkád hívás: egyből futtatjuk a 2-es szintet is!
+      }
+    }
+
+    if (level === 2) {
+      builder.value.variantId = '';
+      builder.value.duration = 0;
+
+      // ÚJ: Ha a szolgáltatásnak csak 1 variánsa van, automatikusan kiválasztjuk!
+      const variants = availableVariantsInService.value;
+      if (variants.length === 1) {
+        builder.value.variantId = variants[0].id;
+        onVariantSelected(); // Kaszkád hívás: egyből betöltjük az időtartamát!
+      }
+    }
   };
 
   const onVariantSelected = () => {
@@ -650,17 +682,18 @@
 
   const handleCustomerSelect = () => {
     if (form.value.customerId === 'new') {
-      form.value.customerName = '';
+      form.value.customerFullName = '';
+      form.value.customerPhone = '';
     } else {
-      const c = mockCustomersList.value.find(x => x.id === form.value.customerId);
-      if (c) form.value.customerName = c.name;
+      const c = customersList.value.find(x => x.id === form.value.customerId);
+      if (c) form.value.customerFullName = c.name;
     }
   };
 
   const openNewAppointment = () => {
     isEditing.value = false;
     const d = new Date(currentDate.value.getTime() - (currentDate.value.getTimezoneOffset() * 60000));
-    form.value = { id: null, customerId: '', customerName: '', employeeId: 1, date: d.toISOString().split('T')[0], time: '08:00', status: 1, notes: '', items: [] };
+    form.value = { id: null, customerId: '', customerFullName: '', customerPhone: '', employeeId: 1, date: d.toISOString().split('T')[0], time: '08:00', status: 1, notes: '', items: [] };
     builder.value = { category: '', serviceId: '', variantId: '', duration: 0 };
     isModalOpen.value = true;
   };
@@ -671,10 +704,11 @@
     const mappedItems = app.items?.map(i => ({
       variantId: i.serviceVariantId, name: getVariantFullName(i.serviceVariantId), duration: i.calculatedDurationMinutes || 30, price: i.price
     })) || [];
-    const mockC = mockCustomersList.value.find(c => c.id === app.customerId);
+
+    const c = customersList.value.find(x => x.id === app.customerId);
 
     form.value = {
-      id: app.id, customerId: app.customerId, customerName: mockC ? mockC.name : `Vendég #${app.customerId}`, employeeId: app.employeeId,
+      id: app.id, customerId: app.customerId, customerFullName: c ? c.name : '', customerPhone: '', employeeId: app.employeeId,
       date: new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0],
       time: d.toTimeString().substring(0, 5),
       status: (app.status === 0 || app.status === 'Pending') ? 0 : 1,
@@ -686,31 +720,54 @@
 
   const closeModal = () => { isModalOpen.value = false; };
 
+  const isFormValid = computed(() => {
+    if (form.value.items.length === 0) return false;
+    if (!form.value.customerId) return false;
+
+    if (form.value.customerId === 'new') {
+      const hasName = form.value.customerFullName && form.value.customerFullName.trim() !== '';
+      const hasPhone = form.value.customerPhone && form.value.customerPhone.trim() !== '';
+      if (!hasName && !hasPhone) return false;
+    }
+    return true;
+  });
+
   const handleSave = async () => {
     try {
-      const startDateTime = new Date(`${form.value.date}T${form.value.time}:00`).toISOString();
+      let finalCustId = form.value.customerId;
 
-      // ÚJ: A C# által várt új struktúrába csomagoljuk az elemeket
+      if (form.value.customerId === 'new') {
+        const nameVal = form.value.customerFullName?.trim() || '';
+        const phoneVal = form.value.customerPhone?.trim() || '';
+
+        const newCustomerResponse = await bookingApi.createCustomer({
+          fullName: nameVal,
+          phone: phoneVal
+        });
+        finalCustId = newCustomerResponse.data.id;
+        customersList.value.push(newCustomerResponse.data);
+      } else {
+        finalCustId = parseInt(form.value.customerId);
+      }
+
+      const startDateTime = new Date(`${form.value.date}T${form.value.time}:00`).toISOString();
       const mappedItems = form.value.items.map(i => ({
         serviceVariantId: i.variantId,
         durationMinutes: i.duration
       }));
 
-      const finalCustId = form.value.customerId === 'new' ? 999 : parseInt(form.value.customerId);
-
       const payload = {
         customerId: finalCustId,
         employeeId: parseInt(form.value.employeeId),
         startDateTime: startDateTime,
-        items: mappedItems, // ÚJ: serviceVariantIds helyett items-t küldünk!
+        items: mappedItems,
         status: parseInt(form.value.status),
         notes: form.value.notes,
         force: false
       };
 
       await store.saveAppointment(payload, form.value.id);
-      closeModal();
-      fetchDataForCurrentView();
+      closeModal(); fetchDataForCurrentView();
     } catch (error) {
       alert("Hiba mentéskor: " + (error.response?.data || error.message));
     }
@@ -725,6 +782,11 @@
     }
   };
 
-  onMounted(() => { store.initUserPermissions(); fetchDataForCurrentView(); fetchServicesForAdmin(); });
+  onMounted(() => {
+    store.initUserPermissions();
+    fetchDataForCurrentView();
+    fetchServicesForAdmin();
+    fetchCustomers();
+  });
   watch(currentDate, () => fetchDataForCurrentView());
 </script>

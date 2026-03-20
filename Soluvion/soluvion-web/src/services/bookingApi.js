@@ -4,11 +4,20 @@ export default {
   // Publikus szolgáltatás lista lekérése
   getPublicServices() {
     return api.get('/api/Service');
-    // Később ezt is érdemes lehet egy PublicService kontrollerbe mozgatni, de egyelőre jó így
   },
 
   // Publikus foglalás beküldése
   createGuestBooking(bookingData) {
     return api.post('/api/PublicBooking', bookingData);
+  },
+
+  // Lekéri a cég ügyfeleit
+  getCustomers() {
+    return api.get('/api/customers');
+  },
+
+  // Új ügyfelet hoz létre
+  createCustomer(payload) {
+    return api.post('/api/customers', payload);
   }
 };
