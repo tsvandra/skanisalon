@@ -10,8 +10,8 @@
         public decimal TotalPrice { get; set; }
         public string Status { get; set; } = string.Empty;
         public string? Notes { get; set; }
+        public List<AppointmentItemResponseDto> Items { get; set; } = new();
 
         // Később ide jöhetnek a Service nevek, Vendég nevek is, 
-        // egyelőre az ID-k és alapadatok is elegek a naptárnak.
     }
 }

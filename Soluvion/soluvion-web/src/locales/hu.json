@@ -15,7 +15,8 @@
     "services": "Árlista",
     "booking": "Időpontfoglalás",
     "gallery": "Galéria",
-    "contact": "Kapcsolat"
+    "contact": "Kapcsolat",
+    "dashboard":  "Vezérlőpult"
   },
   "home": {
     "welcome": "Üdvözöllek a {company}-ban!",
@@ -105,5 +106,23 @@
     "errorServer": "Szerver hiba",
     "successTitle": "Sikeres foglalás!",
     "newBooking": "Új időpont foglalása"
+  },
+  "calendar": {
+    "dashboardTitle": "Vezérlőpult",
+    "role": "Szerepkör",
+    "day": "Napi",
+    "week": "Heti",
+    "month": "Havi",
+    "today": "Ma",
+    "upcomingAppointments": "Következő várható foglalások",
+    "guest": "Vendég",
+    "noUpcomingAppointments": "Nincsenek közelgő foglalások.",
+    "remainingWeekAppointments": "A hét hátralévő foglalásai",
+    "noRemainingWeekAppointments": "Nincsenek hátralévő foglalások erre a hétre.",
+    "dailyAppointmentsDetails": "Napi Foglalások Részletei",
+    "materialsToUse": "Felhasználandó anyagok",
+    "noAppointmentsForDay": "Nincs foglalás erre a napra.",
+    "addNewAppointment": "Új foglalás hozzáadása",
+    "unknown": "Ismeretlen"
   }
 }

@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
-using Soluvion.API.DTOs;
 using Soluvion.API.DTOs.AppointmentDtos;
 using Soluvion.API.Interfaces;
 using Soluvion.Domain.Models;
@@ -31,11 +30,12 @@ namespace Soluvion.API.Services
 
             if (currentEmployee == null) throw new UnauthorizedAccessException("Nem vagy hozzárendelve ehhez a céghez.");
 
-            // 1. KÖTELEZŐ SaaS Szűrés (CompanyId) és időintervallum
+            // KÖTELEZŐ SaaS Szűrés (CompanyId) és időintervallum
             var query = _context.Appointments
+                .Include(a => a.Items) // Fontos: Be kell vonni a tételeket, hogy a UI lássa a szolgáltatásokat!
                 .Where(a => a.CompanyId == companyId && a.StartDateTime >= start && a.StartDateTime <= end);
 
-            // 2. Jogosultság alapú szűrés (RBAC)
+            // Jogosultság alapú szűrés (RBAC)
             if (currentEmployee.Role == EmployeeRole.Worker)
             {
                 query = query.Where(a => a.EmployeeId == currentEmployee.Id);
@@ -45,7 +45,7 @@ namespace Soluvion.API.Services
                 query = query.Where(a => a.EmployeeId == employeeId.Value);
             }
 
-            // 3. Adatbázis szintű (SQL) leképezés DTO-ba a ToListAsync előtt (Sokkal gyorsabb és hibamentes)
+            // Adatbázis szintű (SQL) leképezés DTO-ba (Sokkal gyorsabb és hibamentes)
             var appointments = await query.Select(a => new AppointmentResponseDto
             {
                 Id = a.Id,
@@ -54,9 +54,17 @@ namespace Soluvion.API.Services
                 StartDateTime = a.StartDateTime,
                 EndDateTime = a.EndDateTime,
                 TotalPrice = a.TotalPrice,
-                Status = a.Status.ToString(),
-                // Biztonságos EF Core null check (string.IsNullOrEmpty helyett)
-                Notes = (a.CustomerNotes != null && a.CustomerNotes != "") ? a.CustomerNotes : a.AdminNotes
+                Status = a.Status.ToString(), // Biztosítjuk, hogy számként menjen ki, ahogy a UI várja (vagy stringként, ha azt használod)
+                Notes = (a.CustomerNotes != null && a.CustomerNotes != "") ? a.CustomerNotes : a.AdminNotes,
+
+                // Tételek átadása a UI-nak
+                Items = a.Items.Select(i => new AppointmentItemResponseDto
+                {
+                    Id = i.Id,
+                    ServiceVariantId = i.ServiceVariantId,
+                    CalculatedDurationMinutes = i.CalculatedDurationMinutes,
+                    Price = i.Price
+                }).ToList()
             }).ToListAsync();
 
             return appointments;
@@ -89,16 +97,22 @@ namespace Soluvion.API.Services
                 throw new UnauthorizedAccessException("Alkalmazottként csak magadhoz rögzíthetsz időpontot.");
             }
 
-            var (duration, price) = await _bookingEngine.CalculateAppointmentDetailsAsync(dto.CustomerId, dto.ServiceVariantIds);
-            DateTime endDateTime = dto.StartDateTime.AddMinutes(duration);
+            // 1. Árazás az Engine-nel (kinyerjük az ID-kat az árazáshoz)
+            var variantIds = dto.Items.Select(i => i.ServiceVariantId).ToList();
+            var (_, price) = await _bookingEngine.CalculateAppointmentDetailsAsync(dto.CustomerId, variantIds);
 
+            // 2. A TÉNYLEGES IDŐTARTAM (A UI-ról kapott percek alapján összeadva!)
+            int totalDuration = dto.Items.Sum(i => i.DurationMinutes);
+            DateTime endDateTime = dto.StartDateTime.AddMinutes(totalDuration);
+
+            // 3. Ütközésvizsgálat az új végdátummal
             bool isAvailable = await _bookingEngine.IsTimeSlotAvailableAsync(companyId, dto.EmployeeId, dto.StartDateTime, endDateTime, dto.Force);
             if (!isAvailable)
             {
                 throw new InvalidOperationException("A kiválasztott időpont ütközik egy másikkal.");
             }
 
-            // 6. Foglalás létrehozása (Új modellek)
+            // 4. Foglalás létrehozása
             var appointment = new Appointment
             {
                 CompanyId = companyId,
@@ -107,19 +121,27 @@ namespace Soluvion.API.Services
                 StartDateTime = dto.StartDateTime,
                 EndDateTime = endDateTime,
                 TotalPrice = price,
-                Status = AppointmentStatus.Confirmed,
-                Source = BookingSource.System, // ÚJ: Rendszerből lett felvéve
-                AdminNotes = dto.Notes // ÚJ: Belső, dolgozói megjegyzés
+                Status = dto.Status,
+                Source = BookingSource.System, // Rendszerből lett felvéve
+                AdminNotes = dto.Notes // Belső, dolgozói megjegyzés
             };
 
-            foreach (var variantId in dto.ServiceVariantIds)
+            // 5. Tételek hozzáadása (a személyre szabott percekkel!)
+            foreach (var itemDto in dto.Items)
             {
-                var variant = await _context.ServiceVariants.FindAsync(variantId);
+                var variant = await _context.ServiceVariants.FindAsync(itemDto.ServiceVariantId);
+
+                // Biztonsági ellenőrzés NullReferenceException ellen!
+                if (variant == null)
+                {
+                    throw new ArgumentException($"Hiba: A(z) {itemDto.ServiceVariantId} azonosítójú szolgáltatás variáns nem található az adatbázisban!");
+                }
+
                 appointment.Items.Add(new AppointmentItem
                 {
-                    ServiceVariantId = variantId,
-                    Price = variant!.Price,
-                    CalculatedDurationMinutes = variant.Duration
+                    ServiceVariantId = itemDto.ServiceVariantId,
+                    Price = variant.Price,
+                    CalculatedDurationMinutes = itemDto.DurationMinutes // Az egyedi percet mentjük!
                 });
             }
 
@@ -133,9 +155,11 @@ namespace Soluvion.API.Services
         {
             int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
 
+            // Biztonság: Csak a saját cégéhez tartozó foglalást módosíthatja!
             var appointment = await _context.Appointments.Include(a => a.Items)
-                                            .FirstOrDefaultAsync(a => a.Id == appointmentId);
-            if (appointment == null) throw new KeyNotFoundException("Időpont nem található.");
+                                            .FirstOrDefaultAsync(a => a.Id == appointmentId && a.CompanyId == companyId);
+
+            if (appointment == null) throw new KeyNotFoundException("Időpont nem található vagy nincs jogosultságod hozzá.");
 
             var currentUser = await _context.Users.SingleAsync(u => u.Username == username);
             var currentEmployee = await _context.CompanyEmployees
@@ -149,30 +173,44 @@ namespace Soluvion.API.Services
             if (dto.Force && currentEmployee.Role != EmployeeRole.Owner && currentEmployee.Role != EmployeeRole.Manager)
                 throw new UnauthorizedAccessException("Ütköző időpontot csak a Tulajdonos vagy a Menedzser erőszakolhat ki (Force).");
 
-            var (duration, price) = await _bookingEngine.CalculateAppointmentDetailsAsync(appointment.CustomerId, dto.ServiceVariantIds);
-            DateTime endDateTime = dto.StartDateTime.AddMinutes(duration);
+            // 1. Árazás
+            var variantIds = dto.Items.Select(i => i.ServiceVariantId).ToList();
+            var (_, price) = await _bookingEngine.CalculateAppointmentDetailsAsync(appointment.CustomerId, variantIds);
 
+            // 2. A TÉNYLEGES IDŐTARTAM
+            int totalDuration = dto.Items.Sum(i => i.DurationMinutes);
+            DateTime endDateTime = dto.StartDateTime.AddMinutes(totalDuration);
+
+            // 3. Ütközésvizsgálat (kivéve önmagát)
             bool isAvailable = await _bookingEngine.IsTimeSlotAvailableAsync(companyId, appointment.EmployeeId, dto.StartDateTime, endDateTime, dto.Force, appointment.Id);
 
             if (!isAvailable) throw new InvalidOperationException("A kiválasztott időpont ütközik egy másikkal.");
 
-            // Frissítés
+            // 4. Frissítés
             appointment.StartDateTime = dto.StartDateTime;
             appointment.EndDateTime = endDateTime;
             appointment.TotalPrice = price;
             appointment.Status = dto.Status;
-            appointment.AdminNotes = dto.Notes; // Módosításkor a belső megjegyzést mentjük felül
+            appointment.AdminNotes = dto.Notes;
 
+            // Töröljük a régi tételeket
             _context.AppointmentItems.RemoveRange(appointment.Items);
 
-            foreach (var variantId in dto.ServiceVariantIds)
+            // Felvesszük az újakat
+            foreach (var itemDto in dto.Items)
             {
-                var variant = await _context.ServiceVariants.FindAsync(variantId);
+                var variant = await _context.ServiceVariants.FindAsync(itemDto.ServiceVariantId);
+
+                if (variant == null)
+                {
+                    throw new ArgumentException($"Hiba: A(z) {itemDto.ServiceVariantId} azonosítójú szolgáltatás variáns nem található az adatbázisban!");
+                }
+
                 appointment.Items.Add(new AppointmentItem
                 {
-                    ServiceVariantId = variantId,
-                    Price = variant!.Price,
-                    CalculatedDurationMinutes = variant.Duration
+                    ServiceVariantId = itemDto.ServiceVariantId,
+                    Price = variant.Price,
+                    CalculatedDurationMinutes = itemDto.DurationMinutes // Az egyedi percet mentjük!
                 });
             }
 
@@ -183,7 +221,11 @@ namespace Soluvion.API.Services
         public async Task<bool> DeleteAppointmentAsync(int appointmentId, string username)
         {
             int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
-            var appointment = await _context.Appointments.FindAsync(appointmentId);
+
+            // Biztonság: Csak a céghez tartozó foglalás törölhető!
+            var appointment = await _context.Appointments
+                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.CompanyId == companyId);
+
             if (appointment == null) return false;
 
             var currentUser = await _context.Users.SingleAsync(u => u.Username == username);

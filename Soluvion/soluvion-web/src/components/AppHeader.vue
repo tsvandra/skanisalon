@@ -60,7 +60,7 @@
 
         <router-link :to="isLoggedIn ? '/vezerlopult' : '/foglalas'"
                      class="bg-primary text-white font-bold py-2 px-4 rounded-lg hover:brightness-90 transition-all min-h-[44px] flex items-center shadow-sm">
-          {{ isLoggedIn ? 'Vezérlőpult' : $t('nav.booking') }}
+          {{ isLoggedIn ? $t('nav.dashboard') : $t('nav.booking') }}
         </router-link>
 
         <router-link to="/kapcsolat" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-medium min-h-[44px] flex items-center">
@@ -88,7 +88,7 @@
 
       <router-link :to="isLoggedIn ? '/vezerlopult' : '/foglalas'" @click="isMenuOpen = false"
                    class="bg-primary text-white text-center font-bold text-lg p-3 rounded-lg shadow-sm hover:brightness-95 transition-all mb-2 min-h-[48px] flex justify-center items-center">
-        {{ isLoggedIn ? 'Vezérlőpult' : $t('nav.booking') }}
+        {{ isLoggedIn ? $t('nav.dashboard') : $t('nav.booking') }}
       </router-link>
 
       <router-link to="/szolgaltatasok" @click="isMenuOpen = false" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-bold text-lg p-3 rounded-lg hover:bg-text/5">
