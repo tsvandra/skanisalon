@@ -16,7 +16,8 @@ const router = createRouter({
     { path: '/foglalas', name: 'booking', component: () => import('../views/BookingView.vue') },
     { path: '/login', name: 'login', component: LoginView },
     { path: '/beallitasok', name: 'settings', component: SettingsView },
-    { path: '/vezerlopult', name: 'dashboard', component: () => import('../components/admin/calendar/CalendarGrid.vue') }
+    { path: '/vezerlopult', name: 'dashboard', component: () => import('../components/admin/calendar/CalendarGrid.vue') },
+    { path: '/ugyfelek', name: 'customers', component: () => import('../views/CustomersView.vue') }
   ],
 })
 
