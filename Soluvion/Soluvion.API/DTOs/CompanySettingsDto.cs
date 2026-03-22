@@ -7,6 +7,10 @@
         public string Email { get; set; }
         public string Phone { get; set; }
 
+        // SaaS Funkciók és Beállítások
+        public List<string> EnabledFeatures { get; set; } = new();
+        public bool IsOnlineBookingEnabled { get; set; }
+
         // Cím
         public string City { get; set; }
         public string StreetName { get; set; }
@@ -32,7 +36,7 @@
         public int FooterHeight { get; set; }
         public int LogoHeight { get; set; }
 
-        // Képek (Csak olvashatóak itt, feltöltés külön endpointon megy)
+        // Képek
         public string? LogoUrl { get; set; }
         public string? HeroImageUrl { get; set; }
         public string? FooterImageUrl { get; set; }

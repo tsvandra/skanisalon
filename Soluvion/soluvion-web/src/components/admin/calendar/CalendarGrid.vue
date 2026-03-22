@@ -72,11 +72,11 @@
                   {{ dayObj.date.getDate() }}
                 </span>
 
-                <div class="flex gap-0.5 mt-auto pb-0.5 flex-wrap justify-center items-center">
-                  <span v-for="n in Math.min(dayObj.appointmentCount, 4)" :key="n"
-                        class="w-1.5 h-1.5 rounded-full shadow-sm"
-                        :class="dayObj.hasPending ? 'bg-red-500' : 'bg-green-500'"></span>
-                  <span v-if="dayObj.appointmentCount > 4" class="text-[8px] md:text-[9px] text-gray-600 font-black ml-0.5">+</span>
+                <div class="flex gap-1 mt-1 md:mt-2">
+                  <span v-for="app in dayObj.appointments.slice(0, 3)" :key="app.id"
+                        class="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shadow-sm"
+                        :style="{ backgroundColor: getCustomerColor(app.customerId) }"
+                        :title="getCustomerName(app.customerId)"></span>
                 </div>
               </div>
             </div>
@@ -143,8 +143,13 @@
                 </div>
                 <span class="text-[10px] md:text-xs text-gray-500 font-bold mt-1 uppercase">{{ getDayNameShort(dayObj.date) }}</span>
                 <span class="font-black text-lg md:text-2xl" :class="dayObj.isToday ? 'text-primary' : 'text-gray-800'">{{ dayObj.date.getDate() }}</span>
-                <div class="flex gap-0.5 md:gap-1 mt-1 md:mt-2">
-                  <span v-for="n in Math.min(dayObj.appointmentCount, 3)" :key="n" class="w-1.5 h-1.5 rounded-full bg-primary shadow-sm"></span>
+
+                <div class="flex gap-1 mt-1 md:mt-2">
+                  <span v-for="app in dayObj.appointments.slice(0, 3)" :key="app.id"
+                        class="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shadow-sm border"
+                        :class="app.status === 0 ? 'border-red-500' : 'border-green-500/50'"
+                        :style="{ backgroundColor: getCustomerColor(app.customerId) }"
+                        :title="getCustomerName(app.customerId)"></span>
                 </div>
               </div>
             </div>
@@ -523,8 +528,22 @@
   const createDayObject = (date, isCurrentMonth) => {
     const isToday = date.toDateString() === new Date().toDateString();
     const targetStr = date.toDateString();
-    const dayApps = displayAppointments.value.filter(a => new Date(a.startDateTime).toDateString() === targetStr);
-    return { date, isCurrentMonth, isToday, hasAppointments: dayApps.length > 0, appointmentCount: dayApps.length, hasPending: dayApps.some(a => a.status === 0 || a.status === 'Pending'), loadPercentage: dayApps.length > 0 ? (dayApps.length * 15) : 0 };
+
+    // ÚJ: A darabszám helyett ténylegesen átadjuk az adott napra vonatkozó foglalásokat is, hogy a UI tudjon rájuk hivatkozni!
+    const dayApps = displayAppointments.value
+      .filter(a => new Date(a.startDateTime).toDateString() === targetStr)
+      .sort((a, b) => new Date(a.startDateTime) - new Date(b.startDateTime));
+
+    return {
+      date,
+      isCurrentMonth,
+      isToday,
+      appointments: dayApps,
+      hasAppointments: dayApps.length > 0,
+      appointmentCount: dayApps.length,
+      hasPending: dayApps.some(a => a.status === 0 || a.status === 'Pending'),
+      loadPercentage: dayApps.length > 0 ? (dayApps.length * 15) : 0
+    };
   };
 
   const onDayClick = (dayObj) => { currentDate.value = dayObj.date; currentView.value = 'day'; };
@@ -580,33 +599,6 @@
     const start = new Date(d.getFullYear(), d.getMonth() - 1, 1);
     const end = new Date(d.getFullYear(), d.getMonth() + 2, 0);
     store.fetchAppointments(start, end);
-  };
-
-  // ============================================================================
-  // ÚJ: SZÍNEK GENERÁLÁSA ÜGYFELEKHEZ
-  // ============================================================================
-  const getCustomerColor = (customerId) => {
-    if (!customerId) return 'hsl(0, 0%, 90%)';
-    const str = String(customerId);
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const hue = Math.abs(hash) % 360;
-    // Világos pasztell árnyalat (S: 70%, L: 85%)
-    return `hsl(${hue}, 70%, 85%)`;
-  };
-
-  const getCustomerColorDarker = (customerId) => {
-    if (!customerId) return 'hsl(0, 0%, 70%)';
-    const str = String(customerId);
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const hue = Math.abs(hash) % 360;
-    // Kicsit sötétebb árnyalat a keretekhez (S: 60%, L: 65%)
-    return `hsl(${hue}, 60%, 65%)`;
   };
 
   // ============================================================================
@@ -816,7 +808,7 @@
         status: parseInt(form.value.status),
         notes: form.value.notes,
         force: false
-      }; 
+      };
 
       await store.saveAppointment(payload, form.value.id);
       closeModal(); fetchDataForCurrentView();

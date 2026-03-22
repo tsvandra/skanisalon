@@ -4,54 +4,56 @@
       {{ $t('booking.title', { companyName: company?.name || $t('common.defaultCompany') }) }}
     </h1>
 
-    <div v-if="isSuccess" class="bg-surface rounded-2xl shadow-lg p-8 md:p-16 text-center border border-text/10 flex flex-col items-center animate-fade-in">
+    <div v-if="!canSeeBookingForm" class="bg-surface rounded-2xl shadow-lg p-8 md:p-16 text-center border border-text/10 flex flex-col items-center animate-fade-in">
+      <i class="pi pi-calendar-clock text-primary text-6xl md:text-8xl mb-6 opacity-80"></i>
+      <h2 class="text-3xl font-bold mb-4 text-text">Hamarosan!</h2>
+      <p class="text-lg text-text-muted max-w-md">
+        Az online időpontfoglalási rendszerünk jelenleg tesztelés alatt áll, vagy ehhez a szalonhoz még nem elérhető. Kérjük, keress minket elérhetőségeinken!
+      </p>
+    </div>
+
+    <div v-else-if="isSuccess" class="bg-surface rounded-2xl shadow-lg p-8 md:p-16 text-center border border-text/10 flex flex-col items-center animate-fade-in">
       <i class="pi pi-check-circle text-green-500 text-6xl md:text-8xl mb-6"></i>
       <h2 class="text-3xl font-bold mb-4 text-primary">{{ $t('booking.successTitle') }}</h2>
       <p class="text-lg text-text-muted mb-10 max-w-md">{{ $t('booking.success') }}</p>
-
       <button @click="resetBooking" class="px-8 py-3 border-2 border-primary text-primary font-bold rounded-xl transition-all hover:bg-primary hover:text-white">
         <i class="pi pi-calendar-plus mr-2"></i> {{ $t('booking.newBooking') }}
       </button>
     </div>
 
-    <div v-else class="bg-surface rounded-2xl shadow-lg p-6 border border-text/10">
-      <Stepper v-model:value="activeStep">
+    <div v-else class="bg-surface rounded-2xl shadow-lg p-6 border border-text/10 animate-fade-in">
 
+      <div v-if="isDevLockActive && !isLoggedIn" class="bg-red-500/10 border border-red-500/30 text-red-600 rounded-lg p-3 mb-6 text-sm font-bold flex items-center gap-2">
+        <i class="pi pi-exclamation-triangle"></i> DEV OVERRIDE: Ez az űrlap csak azért látszik most Inkognitóban, mert a .env fájlban fejlesztői üzemmódban vagy!
+      </div>
+      <div v-if="isLoggedIn && (!isFeatureAllowed || !isTurnedOnByAdmin || isDevLockActive)" class="bg-orange-500/10 border border-orange-500/30 text-orange-600 rounded-lg p-3 mb-6 text-sm font-bold flex items-center gap-2">
+        <i class="pi pi-info-circle"></i> ADMIN NÉZET: A publikus vendégek most a "Hamarosan" feliratot látják. Ezt csak te látod, mert be vagy jelentkezve!
+      </div>
+
+      <Stepper v-model:value="activeStep">
         <StepList>
           <Step value="1">{{ $t('booking.stepServices') }}</Step>
           <Step value="2">{{ $t('booking.stepDetails') }}</Step>
           <Step value="3">{{ $t('booking.stepSummary') }}</Step>
         </StepList>
-
         <StepPanels>
           <StepPanel value="1" v-slot="{ activateCallback }">
-            <StepServices v-model:selectedVariants="bookingData.serviceVariantIds"
-                          :onNext="() => activateCallback('2')" />
+            <StepServices v-model:selectedVariants="bookingData.serviceVariantIds" :onNext="() => activateCallback('2')" />
           </StepPanel>
-
           <StepPanel value="2" v-slot="{ activateCallback }">
-            <StepDetails v-model="bookingData"
-                         :onNext="() => activateCallback('3')"
-                         :onPrev="() => activateCallback('1')" />
+            <StepDetails v-model="bookingData" :onNext="() => activateCallback('3')" :onPrev="() => activateCallback('1')" />
           </StepPanel>
-
           <StepPanel value="3" v-slot="{ activateCallback }">
-            <StepDateTime v-model:employeeId="bookingData.employeeId"
-                          v-model:selectedDateTime="selectedDateTime"
-                          :isSubmitting="isSubmitting"
-                          :errorMessage="errorMessage"
-                          :onPrev="() => activateCallback('2')"
-                          @submit="submitBooking" />
+            <StepDateTime v-model:employeeId="bookingData.employeeId" v-model:selectedDateTime="selectedDateTime" :isSubmitting="isSubmitting" :errorMessage="errorMessage" :onPrev="() => activateCallback('2')" @submit="submitBooking" />
           </StepPanel>
         </StepPanels>
-
       </Stepper>
     </div>
   </div>
 </template>
 
 <script setup>
-  import { ref, inject } from 'vue';
+  import { ref, inject, computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import bookingApi from '@/services/bookingApi';
 
@@ -67,19 +69,41 @@
 
   const { t } = useI18n();
   const company = inject('company', ref(null));
-  const activeStep = ref('1');
+  const isLoggedIn = inject('isLoggedIn', ref(false));
 
-  // ÚJ: Állapot a sikeres foglalásnak
+  const activeStep = ref('1');
   const isSuccess = ref(false);
 
+  // --- SaaS JOGOSULTSÁG ÉS MEGJELENÍTÉS LOGIKA ---
+
+  // 1. Fejlesztői (override) letiltás a .env-ből (Pl. éles környezetben ez VITE_LOCK_PUBLIC_BOOKING=true)
+  const isDevLockActive = import.meta.env.VITE_LOCK_PUBLIC_BOOKING === 'true';
+
+  // 2. Tartalmazza a cég csomagja az online foglalást?
+  const isFeatureAllowed = computed(() => {
+    return company.value?.enabledFeatures?.includes('OnlineBooking') || false;
+  });
+
+  // 3. Bekapcsolta a szalonvezető a beállításokban?
+  const isTurnedOnByAdmin = computed(() => {
+    return company.value?.isOnlineBookingEnabled || false;
+  });
+
+  // Láthatja-e a látogató a foglalási űrlapot?
+  const canSeeBookingForm = computed(() => {
+    // Ha dolgozó van bejelentkezve, mindig megmutatjuk neki a teszteléshez
+    if (isLoggedIn.value) return true;
+
+    // Ha nincs bejelentkezve, és globálisan le van zárva az éles .env miatt, akkor rejtjük
+    if (isDevLockActive) return false;
+
+    // Különben csak akkor látja a vendég, ha a csomag engedi, ÉS be van kapcsolva
+    return isFeatureAllowed.value && isTurnedOnByAdmin.value;
+  });
+  // ---------------------------------------------
+
   const getInitialBookingData = () => ({
-    fullName: '',
-    email: '',
-    phone: '',
-    attributes: {},
-    notes: '',
-    serviceVariantIds: [],
-    employeeId: 0
+    fullName: '', email: '', phone: '', attributes: {}, notes: '', serviceVariantIds: [], employeeId: 0
   });
 
   const bookingData = ref(getInitialBookingData());
@@ -92,21 +116,14 @@
     errorMessage.value = '';
 
     try {
-      const payload = {
-        ...bookingData.value,
-        startDateTime: new Date(selectedDateTime.value).toISOString()
-      };
+      const payload = { ...bookingData.value, startDateTime: new Date(selectedDateTime.value).toISOString() };
       await bookingApi.createGuestBooking(payload);
-
-      // JAVÍTVA: alert() és reload() törölve! Csak az állapotot váltjuk.
       isSuccess.value = true;
-
     } catch (error) {
       if (error.response && error.response.status === 400) {
         errorMessage.value = error.response.data;
       } else if (error.response && error.response.status === 500) {
-        const serverError = typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data);
-        errorMessage.value = `${t('booking.errorServer')}: ${serverError}`;
+        errorMessage.value = `${t('booking.errorServer')}: ${typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data)}`;
       } else {
         errorMessage.value = t('booking.errorNetwork');
       }
@@ -115,7 +132,6 @@
     }
   };
 
-  // ÚJ: Függvény, ami mindent alaphelyzetbe állít, ha új foglalást akar kezdeni
   const resetBooking = () => {
     bookingData.value = getInitialBookingData();
     selectedDateTime.value = '';
@@ -126,7 +142,6 @@
 </script>
 
 <style scoped>
-  /* Egy pici animáció, hogy elegáns legyen a megjelenés */
   .animate-fade-in {
     animation: fadeIn 0.5s ease-out;
   }
