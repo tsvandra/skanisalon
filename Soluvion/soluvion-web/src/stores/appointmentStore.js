@@ -54,7 +54,27 @@ export const useAppointmentStore = defineStore('appointment', {
         return true; // Sikeres mentés
       } catch (err) {
         this.error = err.response?.data || 'Hiba mentéskor';
-        throw err; // Továbbdobjuk a komponensnek a hibaüzenetet (pl. "Ütközés!")
+        throw err; // Továbbdobjuk a komponensnek a hibaüzenetet
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    // ÚJ: Törlés akció hozzáadva
+    async deleteAppointment(id) {
+      this.isLoading = true;
+      this.error = null;
+      try {
+        await appointmentApi.deleteAppointment(id);
+
+        // Opcionálisan kivehetjük a lokális state-ből is, bár a CalendarGrid 
+        // úgyis újrahívja a fetchAppointments()-t a törlés után.
+        this.appointments = this.appointments.filter(app => app.id !== id);
+
+        return true;
+      } catch (err) {
+        this.error = err.response?.data || 'Hiba törléskor';
+        throw err; // Továbbdobjuk, hogy a UI tudjon hibaüzenetet adni
       } finally {
         this.isLoading = false;
       }

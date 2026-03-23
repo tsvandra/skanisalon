@@ -63,6 +63,10 @@
           {{ isLoggedIn ? $t('nav.dashboard') : $t('nav.booking') }}
         </router-link>
 
+        <router-link v-if="isLoggedIn" to="/ugyfelek" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-medium min-h-[44px] flex items-center">
+          {{ $t('nav.customers') || 'Ügyfelek' }}
+        </router-link>
+
         <router-link to="/kapcsolat" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-medium min-h-[44px] flex items-center">
           {{ $t('nav.contact') }}
         </router-link>
@@ -97,6 +101,10 @@
 
       <router-link to="/galeria" @click="isMenuOpen = false" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-bold text-lg p-3 rounded-lg hover:bg-text/5">
         {{ $t('nav.gallery') }}
+      </router-link>
+
+      <router-link v-if="isLoggedIn" to="/ugyfelek" @click="isMenuOpen = false" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-bold text-lg p-3 rounded-lg hover:bg-text/5">
+        {{ $t('nav.customers') || 'Ügyfelek' }}
       </router-link>
 
       <router-link to="/kapcsolat" @click="isMenuOpen = false" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-bold text-lg p-3 rounded-lg hover:bg-text/5">

@@ -98,6 +98,7 @@ namespace Soluvion.Domain.Models
         public string DefaultLanguage { get; set; } = "hu";
 
         public bool AllowOverlappingAppointments { get; set; } = false;
+        public bool IsOnlineBookingEnabled { get; set; } = false;
         public SubscriptionPlan SubscriptionPlan { get; set; } = SubscriptionPlan.Free;
 
         public ICollection<CompanyLanguage> Languages { get; set; } = new List<CompanyLanguage>();

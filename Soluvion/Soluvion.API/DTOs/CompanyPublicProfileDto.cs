@@ -7,6 +7,10 @@ namespace Soluvion.API.DTOs
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
 
+        // SaaS Funkciók és Beállítások
+        public List<string> EnabledFeatures { get; set; } = new();
+        public bool IsOnlineBookingEnabled { get; set; }
+
         // Design
         public string? LogoUrl { get; set; }
         public int LogoHeight { get; set; }
@@ -38,10 +42,5 @@ namespace Soluvion.API.DTOs
         // Nyelvek
         public string DefaultLanguage { get; set; } = "hu";
         public List<string> SupportedLanguages { get; set; } = new List<string>();
-
-        // A Mester Sablon (hu.json) tartalma
-        // Ezt majd a Controller olvassa be a fájlból vagy DB-ből
-        // Most egyszerűsítünk: A frontendnek alapból kell a hu.json, 
-        // de azt külön hívással is kérheti. Egyelőre itt csak a konfigurációt adjuk vissza.
     }
 }

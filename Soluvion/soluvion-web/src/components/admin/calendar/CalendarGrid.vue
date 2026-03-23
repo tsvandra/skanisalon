@@ -72,11 +72,11 @@
                   {{ dayObj.date.getDate() }}
                 </span>
 
-                <div class="flex gap-0.5 mt-auto pb-0.5 flex-wrap justify-center items-center">
-                  <span v-for="n in Math.min(dayObj.appointmentCount, 4)" :key="n"
-                        class="w-1.5 h-1.5 rounded-full shadow-sm"
-                        :class="dayObj.hasPending ? 'bg-red-500' : 'bg-green-500'"></span>
-                  <span v-if="dayObj.appointmentCount > 4" class="text-[8px] md:text-[9px] text-gray-600 font-black ml-0.5">+</span>
+                <div class="flex gap-1 mt-1 md:mt-2">
+                  <span v-for="app in dayObj.appointments.slice(0, 3)" :key="app.id"
+                        class="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shadow-sm"
+                        :style="{ backgroundColor: getCustomerColor(app.customerId) }"
+                        :title="getCustomerName(app.customerId)"></span>
                 </div>
               </div>
             </div>
@@ -90,24 +90,33 @@
             <div v-if="upcomingAppointments.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
               <div v-for="app in upcomingAppointments" :key="'upc-'+app.id"
                    @click="openAppointmentDetails(app)"
-                   class="bg-surface rounded-xl p-3 md:p-4 shadow-sm border border-text/10 flex flex-col gap-2 md:gap-3 hover:border-primary/50 cursor-pointer transition-colors">
+                   class="bg-surface rounded-xl p-3 md:p-4 shadow-sm border border-text/10 flex flex-col gap-2 md:gap-3 hover:border-primary/50 cursor-pointer transition-colors relative"
+                   :style="{ borderLeftWidth: '5px', borderLeftColor: getCustomerColorDarker(app.customerId) }">
 
                 <div class="flex justify-between items-start">
                   <div class="flex items-center gap-2 md:gap-3">
-                    <div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full" :class="app.status === 0 ? 'bg-red-500' : 'bg-green-500'"></div>
-                    <h4 class="text-sm md:text-md font-bold text-text">{{ getCustomerName(app.customerId) }}</h4>
+                    <div class="flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full font-bold text-gray-800 text-[10px] md:text-xs border border-text/10 shadow-sm"
+                         :style="{ backgroundColor: getCustomerColor(app.customerId) }">
+                      {{ getCustomerInitials(app.customerId) }}
+                    </div>
+                    <div class="flex flex-col">
+                      <div class="flex items-center gap-2">
+                        <h4 class="text-sm md:text-md font-bold text-text">{{ getCustomerName(app.customerId) }}</h4>
+                        <div class="w-2 h-2 rounded-full shadow-sm" :class="app.status === 0 ? 'bg-red-500' : 'bg-green-500'" :title="app.status === 0 ? 'Függőben' : 'Jóváhagyva'"></div>
+                      </div>
+                    </div>
                   </div>
                   <div class="text-[10px] md:text-xs bg-background px-2 py-1 rounded text-text-muted font-bold capitalize">
                     {{ getDayNameShort(new Date(app.startDateTime)) }}, {{ formatDateShort(app.startDateTime) }}
                   </div>
                 </div>
 
-                <div class="flex items-center gap-3 md:gap-4 text-text-muted text-[10px] md:text-xs font-bold">
+                <div class="flex items-center gap-3 md:gap-4 text-text-muted text-[10px] md:text-xs font-bold pl-1">
                   <div class="flex items-center gap-1"><i class="pi pi-clock text-primary"></i> {{ formatTime(app.startDateTime) }}</div>
                   <div class="flex items-center gap-1"><i class="pi pi-hourglass text-primary"></i> {{ getDurationMinutes(app) }} p</div>
                 </div>
 
-                <div class="flex gap-1 md:gap-1.5 mt-1">
+                <div class="flex gap-1 md:gap-1.5 mt-1 pl-1">
                   <div v-for="item in app.items" :key="item.id"
                        class="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] md:text-xs font-black border border-primary/20 cursor-help"
                        :title="getVariantFullName(item.serviceVariantId)">
@@ -134,8 +143,13 @@
                 </div>
                 <span class="text-[10px] md:text-xs text-gray-500 font-bold mt-1 uppercase">{{ getDayNameShort(dayObj.date) }}</span>
                 <span class="font-black text-lg md:text-2xl" :class="dayObj.isToday ? 'text-primary' : 'text-gray-800'">{{ dayObj.date.getDate() }}</span>
-                <div class="flex gap-0.5 md:gap-1 mt-1 md:mt-2">
-                  <span v-for="n in Math.min(dayObj.appointmentCount, 3)" :key="n" class="w-1.5 h-1.5 rounded-full bg-primary shadow-sm"></span>
+
+                <div class="flex gap-1 mt-1 md:mt-2">
+                  <span v-for="app in dayObj.appointments.slice(0, 3)" :key="app.id"
+                        class="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shadow-sm border"
+                        :class="app.status === 0 ? 'border-red-500' : 'border-green-500/50'"
+                        :style="{ backgroundColor: getCustomerColor(app.customerId) }"
+                        :title="getCustomerName(app.customerId)"></span>
                 </div>
               </div>
             </div>
@@ -149,24 +163,33 @@
             <div v-if="currentWeekUpcomingAppointments.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
               <div v-for="app in currentWeekUpcomingAppointments" :key="'week-'+app.id"
                    @click="openAppointmentDetails(app)"
-                   class="bg-surface rounded-xl p-3 md:p-4 shadow-sm border border-text/10 flex flex-col gap-2 md:gap-3 hover:border-primary/50 cursor-pointer transition-colors">
+                   class="bg-surface rounded-xl p-3 md:p-4 shadow-sm border border-text/10 flex flex-col gap-2 md:gap-3 hover:border-primary/50 cursor-pointer transition-colors relative"
+                   :style="{ borderLeftWidth: '5px', borderLeftColor: getCustomerColorDarker(app.customerId) }">
 
                 <div class="flex justify-between items-start">
                   <div class="flex items-center gap-2 md:gap-3">
-                    <div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full" :class="app.status === 0 ? 'bg-red-500' : 'bg-green-500'"></div>
-                    <h4 class="text-sm md:text-md font-bold text-text">{{ getCustomerName(app.customerId) }}</h4>
+                    <div class="flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full font-bold text-gray-800 text-[10px] md:text-xs border border-text/10 shadow-sm"
+                         :style="{ backgroundColor: getCustomerColor(app.customerId) }">
+                      {{ getCustomerInitials(app.customerId) }}
+                    </div>
+                    <div class="flex flex-col">
+                      <div class="flex items-center gap-1.5">
+                        <h4 class="text-sm md:text-md font-bold text-text">{{ getCustomerName(app.customerId) }}</h4>
+                        <div class="w-2 h-2 rounded-full shadow-sm" :class="app.status === 0 ? 'bg-red-500' : 'bg-green-500'" :title="app.status === 0 ? 'Függőben' : 'Jóváhagyva'"></div>
+                      </div>
+                    </div>
                   </div>
                   <div class="text-[10px] md:text-xs bg-background px-2 py-1 rounded text-text-muted font-bold capitalize">
-                    {{ getDayNameShort(new Date(app.startDateTime)) }}, {{ formatDateShort(app.startDateTime) }}
+                    {{ getDayNameShort(new Date(app.startDateTime)) }}
                   </div>
                 </div>
 
-                <div class="flex items-center gap-3 md:gap-4 text-text-muted text-[10px] md:text-xs font-bold">
+                <div class="flex items-center gap-3 md:gap-4 text-text-muted text-[10px] md:text-xs font-bold pl-1">
                   <div class="flex items-center gap-1"><i class="pi pi-clock text-primary"></i> {{ formatTime(app.startDateTime) }}</div>
                   <div class="flex items-center gap-1"><i class="pi pi-hourglass text-primary"></i> {{ getDurationMinutes(app) }} p</div>
                 </div>
 
-                <div class="flex gap-1 md:gap-1.5 mt-1">
+                <div class="flex gap-1 md:gap-1.5 mt-1 pl-1">
                   <div v-for="item in app.items" :key="item.id"
                        class="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] md:text-xs font-black border border-primary/20 cursor-help"
                        :title="getVariantFullName(item.serviceVariantId)">
@@ -201,10 +224,12 @@
               <div v-for="app in timelineData.appointments" :key="'tl-'+app.id"
                    @click="openAppointmentDetails(app)"
                    class="absolute top-0 bottom-0 h-full border-x border-white/50 cursor-pointer transition-transform hover:scale-y-105 flex items-center justify-center overflow-hidden shadow-sm"
-                   :class="app.status === 0 ? 'bg-red-500/90 hover:bg-red-400' : 'bg-green-500/90 hover:bg-green-400'"
-                   :style="{ left: app.left + '%', width: app.width + '%' }"
+                   :style="{ left: app.left + '%', width: app.width + '%', backgroundColor: getCustomerColor(app.customerId) }"
                    :title="`${getCustomerName(app.customerId)}: ${formatTime(app.startDateTime)} - ${formatTime(app.endDateTime)}`">
-                <span v-if="app.width >= 3" class="text-white text-[10px] md:text-xs font-bold truncate px-1">{{ getCustomerInitials(app.customerId) }}</span>
+
+                <div class="absolute top-1 right-1 w-2 h-2 rounded-full shadow-sm border border-white/50" :class="app.status === 0 ? 'bg-red-500' : 'bg-green-500'"></div>
+
+                <span v-if="app.width >= 3" class="text-gray-800 text-[10px] md:text-xs font-bold truncate px-1 drop-shadow-sm">{{ getCustomerInitials(app.customerId) }}</span>
               </div>
             </div>
 
@@ -223,12 +248,21 @@
 
             <div v-for="app in currentDayAppointments" :key="'card-'+app.id"
                  @click="openAppointmentDetails(app)"
-                 class="bg-background rounded-xl md:rounded-2xl p-3 md:p-6 shadow-sm border border-text/10 flex flex-col gap-3 md:gap-4 hover:border-primary/30 transition-colors cursor-pointer">
+                 class="bg-background rounded-xl md:rounded-2xl p-3 md:p-6 shadow-sm border border-text/10 flex flex-col gap-3 md:gap-4 hover:border-primary/30 transition-colors cursor-pointer relative"
+                 :style="{ borderLeftWidth: '6px', borderLeftColor: getCustomerColorDarker(app.customerId) }">
 
               <div class="flex justify-between items-start">
                 <div class="flex items-center gap-2 md:gap-3">
-                  <div class="w-3 h-3 md:w-4 md:h-4 rounded-full" :class="app.status === 0 ? 'bg-red-500' : 'bg-green-500'"></div>
-                  <h4 class="text-base md:text-xl font-bold text-text">{{ getCustomerName(app.customerId) }}</h4>
+                  <div class="flex items-center justify-center w-8 h-8 md:w-12 md:h-12 rounded-full font-bold text-gray-800 text-xs md:text-lg border border-text/10 shadow-sm"
+                       :style="{ backgroundColor: getCustomerColor(app.customerId) }">
+                    {{ getCustomerInitials(app.customerId) }}
+                  </div>
+                  <div class="flex flex-col">
+                    <div class="flex items-center gap-2">
+                      <h4 class="text-base md:text-xl font-bold text-text">{{ getCustomerName(app.customerId) }}</h4>
+                      <div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full shadow-sm" :class="app.status === 0 ? 'bg-red-500' : 'bg-green-500'" :title="app.status === 0 ? 'Függőben' : 'Jóváhagyva'"></div>
+                    </div>
+                  </div>
                 </div>
                 <div class="flex items-center gap-2 md:gap-3 text-text-muted text-[10px] md:text-sm font-bold bg-surface px-2 md:px-3 py-1 md:py-1.5 rounded-lg border border-text/5">
                   <div class="flex items-center gap-1"><i class="pi pi-clock text-primary"></i> {{ formatTime(app.startDateTime) }}</div>
@@ -237,7 +271,7 @@
                 </div>
               </div>
 
-              <div class="flex flex-wrap gap-1.5 md:gap-2 mt-1 md:mt-2">
+              <div class="flex flex-wrap gap-1.5 md:gap-2 mt-1 md:mt-2 pl-2">
                 <div v-for="item in app.items" :key="item.id"
                      class="w-8 h-8 md:w-12 md:h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs md:text-base font-black border border-primary/20 cursor-help hover:bg-primary hover:text-white transition-colors"
                      :title="getVariantFullName(item.serviceVariantId)">
@@ -414,6 +448,7 @@
   import { useAppointmentStore } from '@/stores/appointmentStore';
   import bookingApi from '@/services/bookingApi';
   import ScrubbableInput from '@/components/common/ScrubbableInput.vue';
+  import { getCustomerColor, getCustomerColorDarker } from '@/utils/colorUtils';
 
   const store = useAppointmentStore();
   const { locale } = useI18n();
@@ -493,8 +528,22 @@
   const createDayObject = (date, isCurrentMonth) => {
     const isToday = date.toDateString() === new Date().toDateString();
     const targetStr = date.toDateString();
-    const dayApps = displayAppointments.value.filter(a => new Date(a.startDateTime).toDateString() === targetStr);
-    return { date, isCurrentMonth, isToday, hasAppointments: dayApps.length > 0, appointmentCount: dayApps.length, hasPending: dayApps.some(a => a.status === 0 || a.status === 'Pending'), loadPercentage: dayApps.length > 0 ? (dayApps.length * 15) : 0 };
+
+    // ÚJ: A darabszám helyett ténylegesen átadjuk az adott napra vonatkozó foglalásokat is, hogy a UI tudjon rájuk hivatkozni!
+    const dayApps = displayAppointments.value
+      .filter(a => new Date(a.startDateTime).toDateString() === targetStr)
+      .sort((a, b) => new Date(a.startDateTime) - new Date(b.startDateTime));
+
+    return {
+      date,
+      isCurrentMonth,
+      isToday,
+      appointments: dayApps,
+      hasAppointments: dayApps.length > 0,
+      appointmentCount: dayApps.length,
+      hasPending: dayApps.some(a => a.status === 0 || a.status === 'Pending'),
+      loadPercentage: dayApps.length > 0 ? (dayApps.length * 15) : 0
+    };
   };
 
   const onDayClick = (dayObj) => { currentDate.value = dayObj.date; currentView.value = 'day'; };
@@ -568,7 +617,6 @@
 
   const builder = ref({ category: '', serviceId: '', variantId: '', duration: 0 });
 
-  // ÚJ: Szűrt szolgáltatások lekérése
   const fetchServicesForAdmin = async () => {
     try {
       const response = await bookingApi.getPublicServices();
@@ -597,13 +645,11 @@
   const getLocText = (dict) => dict ? (dict[currentLang.value] || dict['hu'] || '') : '';
   const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?';
 
-  // ÚJ: Név kinyerése ID alapján a listákhoz
   const getCustomerName = (id) => {
     const c = customersList.value.find(x => x.id === id);
     return c && c.name && c.name !== 'Ismeretlen Vendég' ? c.name : `Vendég #${id}`;
   };
 
-  // ÚJ: Monogram generálása ID alapján a timeline csíkhoz
   const getCustomerInitials = (id) => {
     const name = getCustomerName(id);
     if (name.startsWith('Vendég #')) return `#${id}`;
@@ -638,11 +684,10 @@
       builder.value.variantId = '';
       builder.value.duration = 0;
 
-      // ÚJ: Ha a kategóriában csak 1 szolgáltatás van, automatikusan kiválasztjuk!
       const services = availableServicesInCategory.value;
       if (services.length === 1) {
         builder.value.serviceId = services[0].id;
-        resetBuilder(2); // Kaszkád hívás: egyből futtatjuk a 2-es szintet is!
+        resetBuilder(2);
       }
     }
 
@@ -650,11 +695,10 @@
       builder.value.variantId = '';
       builder.value.duration = 0;
 
-      // ÚJ: Ha a szolgáltatásnak csak 1 variánsa van, automatikusan kiválasztjuk!
       const variants = availableVariantsInService.value;
       if (variants.length === 1) {
         builder.value.variantId = variants[0].id;
-        onVariantSelected(); // Kaszkád hívás: egyből betöltjük az időtartamát!
+        onVariantSelected();
       }
     }
   };

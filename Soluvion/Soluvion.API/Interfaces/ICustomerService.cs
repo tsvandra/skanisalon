@@ -6,5 +6,7 @@ namespace Soluvion.API.Interfaces
     {
         Task<List<CustomerResponseDto>> GetCompanyCustomersAsync();
         Task<CustomerResponseDto> CreateCustomerAsync(CreateCustomerDto dto);
+        Task<CustomerResponseDto> UpdateCustomerAsync(int id, CreateCustomerDto dto);
+        Task DeleteCustomerAsync(int id);
     }
 }

@@ -31,11 +31,10 @@ namespace Soluvion.API.Services
 
                 if (c.Attributes != null)
                 {
-                    // Okos név/azonosító választó: Megpróbáljuk a legjobb azonosítót megtalálni
                     if (c.Attributes.ContainsKey("FullName") && !string.IsNullOrWhiteSpace(c.Attributes["FullName"]))
                         displayName = c.Attributes["FullName"];
                     else if (c.Attributes.ContainsKey("Name") && !string.IsNullOrWhiteSpace(c.Attributes["Name"]))
-                        displayName = c.Attributes["Name"]; // Kompatibilitás "Jozso"-val
+                        displayName = c.Attributes["Name"];
                     else if (c.Attributes.ContainsKey("Phone") && !string.IsNullOrWhiteSpace(c.Attributes["Phone"]))
                         displayName = c.Attributes["Phone"];
                     else if (c.Attributes.ContainsKey("Email") && !string.IsNullOrWhiteSpace(c.Attributes["Email"]))
@@ -45,7 +44,10 @@ namespace Soluvion.API.Services
                 return new CustomerResponseDto
                 {
                     Id = c.Id,
-                    Name = displayName
+                    Name = displayName,
+                    Phone = c.Attributes != null && c.Attributes.ContainsKey("Phone") ? c.Attributes["Phone"] : null,
+                    Email = c.Attributes != null && c.Attributes.ContainsKey("Email") ? c.Attributes["Email"] : null,
+                    Notes = c.Attributes != null && c.Attributes.ContainsKey("Notes") ? c.Attributes["Notes"] : null
                 };
             }).OrderBy(c => c.Name).ToList();
         }
@@ -56,10 +58,10 @@ namespace Soluvion.API.Services
 
             var attributes = new Dictionary<string, string>();
 
-            // Csak azt mentjük a JSONB-be, amit ténylegesen megadtak!
             if (!string.IsNullOrWhiteSpace(dto.FullName)) attributes.Add("FullName", dto.FullName.Trim());
             if (!string.IsNullOrWhiteSpace(dto.Phone)) attributes.Add("Phone", dto.Phone.Trim());
             if (!string.IsNullOrWhiteSpace(dto.Email)) attributes.Add("Email", dto.Email.Trim());
+            if (!string.IsNullOrWhiteSpace(dto.Notes)) attributes.Add("Notes", dto.Notes.Trim());
 
             var customer = new CompanyCustomer
             {
@@ -71,15 +73,57 @@ namespace Soluvion.API.Services
             _context.CompanyCustomers.Add(customer);
             await _context.SaveChangesAsync();
 
-            // Visszaadjuk a legördülőnek a legjobb megjeleníthető nevet
             string displayName = !string.IsNullOrWhiteSpace(dto.FullName) ? dto.FullName :
                                  (!string.IsNullOrWhiteSpace(dto.Phone) ? dto.Phone : dto.Email ?? "Névtelen Vendég");
 
-            return new CustomerResponseDto
+            return new CustomerResponseDto { Id = customer.Id, Name = displayName };
+        }
+
+        public async Task<CustomerResponseDto> UpdateCustomerAsync(int id, CreateCustomerDto dto)
+        {
+            int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
+
+            var customer = await _context.CompanyCustomers
+                .FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == companyId);
+
+            if (customer == null) throw new KeyNotFoundException("Az ügyfél nem található.");
+
+            // Újraépítjük az attribútumokat
+            var attributes = new Dictionary<string, string>();
+            if (!string.IsNullOrWhiteSpace(dto.FullName)) attributes.Add("FullName", dto.FullName.Trim());
+            if (!string.IsNullOrWhiteSpace(dto.Phone)) attributes.Add("Phone", dto.Phone.Trim());
+            if (!string.IsNullOrWhiteSpace(dto.Email)) attributes.Add("Email", dto.Email.Trim());
+            if (!string.IsNullOrWhiteSpace(dto.Notes)) attributes.Add("Notes", dto.Notes.Trim());
+
+            customer.Attributes = attributes;
+
+            _context.CompanyCustomers.Update(customer);
+            await _context.SaveChangesAsync();
+
+            string displayName = !string.IsNullOrWhiteSpace(dto.FullName) ? dto.FullName :
+                                 (!string.IsNullOrWhiteSpace(dto.Phone) ? dto.Phone : dto.Email ?? "Névtelen Vendég");
+
+            return new CustomerResponseDto { Id = customer.Id, Name = displayName };
+        }
+
+        public async Task DeleteCustomerAsync(int id)
+        {
+            int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
+
+            var customer = await _context.CompanyCustomers
+                .FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == companyId);
+
+            if (customer == null) throw new KeyNotFoundException("Az ügyfél nem található.");
+
+            // VÉDELEM: Ellenőrizzük, hogy van-e foglalása
+            bool hasAppointments = await _context.Appointments.AnyAsync(a => a.CustomerId == id && a.CompanyId == companyId);
+            if (hasAppointments)
             {
-                Id = customer.Id,
-                Name = displayName
-            };
+                throw new InvalidOperationException("Ezt az ügyfelet nem lehet törölni, mert már tartozik hozzá foglalás.");
+            }
+
+            _context.CompanyCustomers.Remove(customer);
+            await _context.SaveChangesAsync();
         }
     }
 }
