@@ -16,7 +16,8 @@
     "booking": "Időpontfoglalás",
     "gallery": "Galéria",
     "contact": "Kapcsolat",
-    "dashboard":  "Vezérlőpult"
+    "customers": "Ügyfelek",
+    "dashboard": "Vezérlőpult"
   },
   "home": {
     "welcome": "Üdvözöllek a {company}-ban!",
