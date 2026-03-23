@@ -1,4 +1,5 @@
 ﻿using OpenAI.Chat;
+using Soluvion.API.Interfaces;
 using System.ClientModel;
 
 namespace Soluvion.API.Services
@@ -73,8 +74,9 @@ namespace Soluvion.API.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"OpenAI Hiba: {ex.Message}");
-                return text;
+                // JAVÍTÁS: Nem nyeljük el a hibát! Dobjuk tovább a pontos OpenAI hibaüzenettel!
+                Console.WriteLine($"\n[HIBA] OpenAI API hiba: {ex.Message}\n");
+                throw new Exception($"OpenAI API hiba: {ex.Message}");
             }
         }
     }

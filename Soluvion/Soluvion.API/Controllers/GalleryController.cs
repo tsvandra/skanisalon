@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Soluvion.API.Models.DTOs;
-using Soluvion.API.Services;
+using Soluvion.API.DTOs;
+using Soluvion.API.Interfaces;
 
 namespace Soluvion.API.Controllers
 {

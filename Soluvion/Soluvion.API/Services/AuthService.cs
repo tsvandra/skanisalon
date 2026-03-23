@@ -1,11 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Soluvion.API.Data;
-using Soluvion.API.Models;
+using Soluvion.Domain.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using BCrypt.Net;
+using Soluvion.API.Interfaces;
 
 namespace Soluvion.API.Services
 {
@@ -20,28 +21,58 @@ namespace Soluvion.API.Services
             _configuration = configuration;
         }
 
-        public async Task<User?> RegisterAsync(string username, string password)
+        public async Task<User?> RegisterAsync(string username, string password, string companyName)
         {
             if (await _context.Users.AnyAsync(u => u.Username == username))
             {
                 return null;
             }
 
-            // BCrypt hashelés
-            string passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
-
-            var user = new User
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                Username = username,
-                PasswordHash = passwordHash,
-                CompanyId = 1, // Jelenleg fix, később SaaS logika szerint bővítjük
-                Role = "Admin"
-            };
+                // 1. Új cég létrehozása (SaaS alap)
+                var company = new Company
+                {
+                    Name = companyName,
+                    SubscriptionPlan = Domain.Models.Enums.SubscriptionPlan.Free,
+                    AllowOverlappingAppointments = false,
+                    // ... egyéb kötelező alapértékek a Company-n
+                };
+                _context.Companies.Add(company);
+                await _context.SaveChangesAsync(); // Hogy megkapjuk a company.Id-t
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+                // 2. Felhasználó létrehozása
+                string passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
+                var user = new User
+                {
+                    Username = username,
+                    PasswordHash = passwordHash,
+                    CompanyId = company.Id, // Az alapértelmezett cége
+                    Role = "Admin" // Globális szerepkör
+                };
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync(); // Hogy megkapjuk a user.Id-t
 
-            return user;
+                // 3. SaaS Jogosultság: CompanyEmployee összekötés 'Owner' role-lal
+                var employee = new CompanyEmployee
+                {
+                    CompanyId = company.Id,
+                    UserId = user.Id,
+                    Role = Domain.Models.Enums.EmployeeRole.Owner,
+                    IsActive = true
+                };
+                _context.CompanyEmployees.Add(employee);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+                return user;
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw; // A GlobalExceptionHandler majd elkapja
+            }
         }
 
         public async Task<string?> LoginAsync(string username, string password)

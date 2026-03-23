@@ -1,7 +1,7 @@
 ﻿using Soluvion.API.Data;
 using Soluvion.API.DTOs;
-using Soluvion.API.Models.DTOs;
-using Soluvion.API.Models.Enums;
+using Soluvion.API.Interfaces;
+using Soluvion.Domain.Models.Enums;
 
 namespace Soluvion.API.Services
 {
@@ -18,15 +18,34 @@ namespace Soluvion.API.Services
             _imageService = imageService;
         }
 
+        // --- SaaS FEATURE MATRIX ---
+        // Itt dől el, melyik csomag mit tud!
+        private List<string> GetEnabledFeatures(SubscriptionPlan plan)
+        {
+            return plan switch
+            {
+                SubscriptionPlan.Pro => new List<string> { "OnlineBooking", "AdvancedCalendar", "SmsReminders", "Analytics" },
+                SubscriptionPlan.Basic => new List<string> { "BasicCalendar" },
+                _ => new List<string>() // Free
+            };
+        }
+
         public Task<CompanyPublicProfileDto?> GetPublicConfigAsync()
         {
             var company = _tenantContext.CurrentCompany;
             if (company == null) return Task.FromResult<CompanyPublicProfileDto?>(null);
 
+            var features = GetEnabledFeatures(company.SubscriptionPlan); // <-- Itt határozzuk meg a jogosultságokat
+
             var dto = new CompanyPublicProfileDto
             {
                 Id = company.Id,
                 Name = company.Name,
+
+                // SaaS logika
+                EnabledFeatures = features,
+                IsOnlineBookingEnabled = company.IsOnlineBookingEnabled,
+
                 LogoUrl = company.LogoUrl,
                 LogoHeight = company.LogoHeight,
                 FooterImageUrl = company.FooterImageUrl,
@@ -75,6 +94,11 @@ namespace Soluvion.API.Services
                 Name = c.Name,
                 Email = c.Email,
                 Phone = c.Phone,
+
+                // SaaS logika
+                EnabledFeatures = GetEnabledFeatures(c.SubscriptionPlan),
+                IsOnlineBookingEnabled = c.IsOnlineBookingEnabled,
+
                 City = c.City,
                 StreetName = c.StreetName,
                 HouseNumber = c.HouseNumber,
@@ -102,6 +126,9 @@ namespace Soluvion.API.Services
         {
             var existing = await _context.Companies.FindAsync(companyId);
             if (existing == null) return null;
+
+            // Beállítás mentése (A jogosultságot nem itt állítjuk, az a belső rendszer dolga)
+            existing.IsOnlineBookingEnabled = dto.IsOnlineBookingEnabled;
 
             existing.Name = dto.Name;
             existing.Email = dto.Email;

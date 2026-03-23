@@ -1,6 +1,7 @@
 <script setup>
   import { ref, computed, onMounted, watch } from 'vue';
   import { useTranslationStore } from '@/stores/translationStore';
+  import { translationApi } from '@/services/translationApi'; // ÚJ: API import
   import { useI18n } from 'vue-i18n';
   import api from '@/services/api';
 
@@ -20,6 +21,10 @@
   const selectedLang = ref('hu');
   const overrides = ref({});
   const isLoading = ref(false);
+
+  // Állapotok a töltésjelzőkhöz (spinners)
+  const translatingItems = ref({});
+  const translatingGroups = ref({});
 
   const languageOptions = computed(() => {
     return store.languages
@@ -82,10 +87,70 @@
       });
 
       await store.loadOverrides(store.activeCompanyId, selectedLang.value);
-
       toast.add({ severity: 'success', summary: 'Mentve', detail: 'A szöveg frissült.', life: 2000 });
     } catch (err) {
       toast.add({ severity: 'error', summary: 'Hiba', detail: 'Nem sikerült menteni.', life: 3000 });
+    }
+  };
+
+  // ÚJ: EGYEDI ELEM FORDÍTÁSA
+  const autoTranslateItem = async (item) => {
+    if (!store.activeCompanyId || selectedLang.value === 'hu') return;
+
+    translatingItems.value[item.key] = true;
+    try {
+      const res = await translationApi.translateSingleText(item.original, selectedLang.value, 'ui');
+      if (res.data && res.data.translatedText) {
+        overrides.value[item.key] = res.data.translatedText;
+        // Automatikusan el is mentjük a fordítást
+        await saveOverride(item.key, res.data.translatedText);
+      }
+    } catch (err) {
+      console.error("Fordítási hiba:", err);
+      toast.add({ severity: 'error', summary: 'Hiba', detail: 'Fordítás sikertelen.', life: 3000 });
+    } finally {
+      translatingItems.value[item.key] = false;
+    }
+  };
+
+  // ÚJ: TELJES CSOPORT FORDÍTÁSA (pl. "booking")
+  const autoTranslateGroup = async (groupName, items, event) => {
+    event.stopPropagation(); // Megakadályozza, hogy az Accordion kinyíljon/becsukódjon a gombnyomásra
+    if (!store.activeCompanyId || selectedLang.value === 'hu') return;
+
+    translatingGroups.value[groupName] = true;
+    toast.add({ severity: 'info', summary: 'Fordítás indítva', detail: `${groupName.toUpperCase()} csoport fordítása folyamatban...`, life: 3000 });
+
+    try {
+      // Egymás után fordítunk, hogy ne terheljük túl az OpenAI Rate Limitjét
+      for (const item of items) {
+        // Csak azt fordítjuk, ami még nincs lefordítva (vagy üres)
+        if (!overrides.value[item.key] || overrides.value[item.key].trim() === '') {
+          translatingItems.value[item.key] = true;
+          try {
+            const res = await translationApi.translateSingleText(item.original, selectedLang.value, 'ui');
+            if (res.data && res.data.translatedText) {
+              overrides.value[item.key] = res.data.translatedText;
+              // Csak az Inputba tesszük be, menteni egyben is lehetne, de a biztonság kedvéért soronként mentjük
+              await api.post('/api/Translation/save-override', {
+                companyId: store.activeCompanyId,
+                languageCode: selectedLang.value,
+                key: item.key,
+                value: res.data.translatedText
+              });
+            }
+          } catch (e) {
+            console.error(`Hiba a ${item.key} elem fordításakor`);
+          } finally {
+            translatingItems.value[item.key] = false;
+          }
+        }
+      }
+      // Újratöltjük a store-t a végén, hogy mindenhol frissüljön
+      await store.loadOverrides(store.activeCompanyId, selectedLang.value);
+      toast.add({ severity: 'success', summary: 'Kész', detail: `${groupName.toUpperCase()} csoport lefordítva!`, life: 3000 });
+    } finally {
+      translatingGroups.value[groupName] = false;
     }
   };
 
@@ -130,7 +195,16 @@
                       pt:root:class="!border !border-text/10 !rounded-xl overflow-hidden !bg-transparent">
 
         <AccordionHeader pt:root:class="!bg-text/5 !border-b-0 hover:!bg-text/10 !text-text !px-5 !py-4 transition-colors">
-          <span class="font-bold text-lg tracking-widest text-primary">{{ groupName.toUpperCase() }}</span>
+          <div class="flex justify-between items-center w-full">
+            <span class="font-bold text-lg tracking-widest text-primary">{{ groupName.toUpperCase() }}</span>
+
+            <Button v-if="selectedLang !== 'hu'"
+                    icon="pi pi-sparkles"
+                    label="Csoport AI fordítása"
+                    @click="(e) => autoTranslateGroup(groupName, items, e)"
+                    :loading="translatingGroups[groupName]"
+                    class="!bg-primary/10 !text-primary !border-none !py-1 !px-3 !text-xs hover:!bg-primary hover:!text-black transition-colors" />
+          </div>
         </AccordionHeader>
 
         <AccordionContent pt:content:class="!bg-background !text-text !p-0 !border-t !border-text/10">
@@ -148,6 +222,13 @@
                 <InputText v-model="overrides[item.key]"
                            :placeholder="item.original"
                            class="w-full !border-none !bg-background !text-text !p-3 focus:!outline-none placeholder:italic placeholder:text-text/30" />
+
+                <Button v-if="selectedLang !== 'hu'"
+                        icon="pi pi-sparkles"
+                        @click="autoTranslateItem(item)"
+                        :loading="translatingItems[item.key]"
+                        class="!bg-surface !text-primary !border-none border-l border-text/10 !rounded-none !w-12 hover:!bg-primary/20 transition-all shrink-0"
+                        title="AI Fordítás" />
 
                 <Button icon="pi pi-check"
                         @click="saveOverride(item.key, overrides[item.key])"

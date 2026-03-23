@@ -1,4 +1,5 @@
-﻿using Soluvion.API.Models;
+﻿using Soluvion.API.Interfaces;
+using Soluvion.Domain.Models;
 
 namespace Soluvion.API.Services
 {

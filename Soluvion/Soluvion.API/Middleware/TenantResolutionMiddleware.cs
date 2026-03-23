@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
-using Soluvion.API.Services;
+using Soluvion.API.Interfaces;
 
 namespace Soluvion.API.Middleware
 {

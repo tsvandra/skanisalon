@@ -1,6 +1,5 @@
 import { createI18n } from 'vue-i18n';
 import hu from './locales/hu.json';
-import en from './locales/en.json';
 
 const savedLocale = localStorage.getItem('user-locale') || 'hu';
 
@@ -10,8 +9,7 @@ const i18n = createI18n({
   fallbackLocale: 'hu',
   globalInjection: true, // Hogy a template-ben használhassuk a $t-t
   messages: {
-    hu,
-    en
+    hu
   }
 });
 

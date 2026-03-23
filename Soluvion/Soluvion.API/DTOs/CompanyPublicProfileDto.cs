@@ -1,0 +1,46 @@
+﻿using Soluvion.Domain.Models;
+
+namespace Soluvion.API.DTOs
+{
+    public class CompanyPublicProfileDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+
+        // SaaS Funkciók és Beállítások
+        public List<string> EnabledFeatures { get; set; } = new();
+        public bool IsOnlineBookingEnabled { get; set; }
+
+        // Design
+        public string? LogoUrl { get; set; }
+        public int LogoHeight { get; set; }
+        public string? FooterImageUrl { get; set; }
+        public int FooterHeight { get; set; }
+        public string? HeroImageUrl { get; set; }
+        public string PrimaryColor { get; set; } = string.Empty;
+        public string SecondaryColor { get; set; } = string.Empty;
+
+        // Tartalom / Kapcsolat
+        public Dictionary<string, string> OpeningHoursTitle { get; set; } = new();
+        public Dictionary<string, string> OpeningHoursDescription { get; set; } = new();
+        public Dictionary<string, string> OpeningTimeSlots { get; set; } = new();
+        public Dictionary<string, string> OpeningExtraInfo { get; set; } = new();
+
+        public string? Phone { get; set; }
+        public string? Email { get; set; }
+        public string? FacebookUrl { get; set; }
+        public string? InstagramUrl { get; set; }
+        public string? TikTokUrl { get; set; }
+        public string? MapEmbedUrl { get; set; }
+
+        public string State { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public string StreetName { get; set; } = string.Empty;
+        public string HouseNumber { get; set; } = string.Empty;
+        public string PostalCode { get; set; } = string.Empty;
+
+        // Nyelvek
+        public string DefaultLanguage { get; set; } = "hu";
+        public List<string> SupportedLanguages { get; set; } = new List<string>();
+    }
+}

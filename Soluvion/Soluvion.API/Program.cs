@@ -12,6 +12,7 @@ using Soluvion.API.Middleware;
 using Microsoft.AspNetCore.Authentication;
 using CloudinaryDotNet;
 using Npgsql;
+using Soluvion.API.Interfaces;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -32,6 +33,9 @@ builder.Services.AddScoped<ITranslationService, OpenAiTranslationService>();
 builder.Services.AddScoped<ITenantContext, TenantContext>();
 builder.Services.AddScoped<IGalleryService, GalleryService>();
 builder.Services.AddScoped<ICatalogService, CatalogService>();
+builder.Services.AddScoped<ISmartBookingEngine, SmartBookingEngine>();
+builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+builder.Services.AddScoped<ICustomerService, CustomerService>();
 
 builder.Services.AddCors(options =>
 {

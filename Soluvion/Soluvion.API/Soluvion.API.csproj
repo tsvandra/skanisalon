@@ -29,4 +29,8 @@
     <Folder Include="wwwroot\uploads\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Soluvion.Domain\Soluvion.Domain.csproj" />
+  </ItemGroup>
+
 </Project>

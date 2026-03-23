@@ -20,5 +20,13 @@ export const translationApi = {
 
   getOverrides(companyId, langCode) {
     return api.get(`/api/Translation/overrides/${companyId}/${langCode}`);
+  },
+
+  translateSingleText(text, targetLanguage, context = 'ui') {
+    return api.post('/api/Translation', {
+      text: text,
+      targetLanguage: targetLanguage,
+      context: context
+    });
   }
 };
