@@ -72,11 +72,12 @@
                   {{ dayObj.date.getDate() }}
                 </span>
 
-                <div class="flex gap-1 mt-1 md:mt-2">
-                  <span v-for="app in dayObj.appointments.slice(0, 3)" :key="app.id"
+                <div class="flex gap-1 mt-auto pb-0.5 flex-wrap justify-center items-center">
+                  <span v-for="app in dayObj.appointments.slice(0, 4)" :key="app.id"
                         class="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shadow-sm"
                         :style="{ backgroundColor: getCustomerColor(app.customerId) }"
                         :title="getCustomerName(app.customerId)"></span>
+                  <span v-if="dayObj.appointments.length > 4" class="text-[8px] md:text-[9px] text-gray-600 font-black ml-0.5">+{{ dayObj.appointments.length - 4 }}</span>
                 </div>
               </div>
             </div>
@@ -95,14 +96,14 @@
 
                 <div class="flex justify-between items-start">
                   <div class="flex items-center gap-2 md:gap-3">
-                    <div class="flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full font-bold text-gray-800 text-[10px] md:text-xs border border-text/10 shadow-sm"
+                    <div class="flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full font-bold text-white drop-shadow-sm text-[10px] md:text-xs shadow-sm"
                          :style="{ backgroundColor: getCustomerColor(app.customerId) }">
                       {{ getCustomerInitials(app.customerId) }}
                     </div>
                     <div class="flex flex-col">
                       <div class="flex items-center gap-2">
                         <h4 class="text-sm md:text-md font-bold text-text">{{ getCustomerName(app.customerId) }}</h4>
-                        <div class="w-2 h-2 rounded-full shadow-sm" :class="app.status === 0 ? 'bg-red-500' : 'bg-green-500'" :title="app.status === 0 ? 'Függőben' : 'Jóváhagyva'"></div>
+                        <div class="w-2 h-2 rounded-full shadow-sm" :class="isPending(app.status) ? 'bg-red-500' : 'bg-green-500'" :title="isPending(app.status) ? 'Függőben' : 'Jóváhagyva'"></div>
                       </div>
                     </div>
                   </div>
@@ -146,8 +147,7 @@
 
                 <div class="flex gap-1 mt-1 md:mt-2">
                   <span v-for="app in dayObj.appointments.slice(0, 3)" :key="app.id"
-                        class="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shadow-sm border"
-                        :class="app.status === 0 ? 'border-red-500' : 'border-green-500/50'"
+                        class="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shadow-sm"
                         :style="{ backgroundColor: getCustomerColor(app.customerId) }"
                         :title="getCustomerName(app.customerId)"></span>
                 </div>
@@ -168,14 +168,14 @@
 
                 <div class="flex justify-between items-start">
                   <div class="flex items-center gap-2 md:gap-3">
-                    <div class="flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full font-bold text-gray-800 text-[10px] md:text-xs border border-text/10 shadow-sm"
+                    <div class="flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full font-bold text-white drop-shadow-sm text-[10px] md:text-xs shadow-sm"
                          :style="{ backgroundColor: getCustomerColor(app.customerId) }">
                       {{ getCustomerInitials(app.customerId) }}
                     </div>
                     <div class="flex flex-col">
                       <div class="flex items-center gap-1.5">
                         <h4 class="text-sm md:text-md font-bold text-text">{{ getCustomerName(app.customerId) }}</h4>
-                        <div class="w-2 h-2 rounded-full shadow-sm" :class="app.status === 0 ? 'bg-red-500' : 'bg-green-500'" :title="app.status === 0 ? 'Függőben' : 'Jóváhagyva'"></div>
+                        <div class="w-2 h-2 rounded-full shadow-sm" :class="isPending(app.status) ? 'bg-red-500' : 'bg-green-500'" :title="isPending(app.status) ? 'Függőben' : 'Jóváhagyva'"></div>
                       </div>
                     </div>
                   </div>
@@ -227,9 +227,9 @@
                    :style="{ left: app.left + '%', width: app.width + '%', backgroundColor: getCustomerColor(app.customerId) }"
                    :title="`${getCustomerName(app.customerId)}: ${formatTime(app.startDateTime)} - ${formatTime(app.endDateTime)}`">
 
-                <div class="absolute top-1 right-1 w-2 h-2 rounded-full shadow-sm border border-white/50" :class="app.status === 0 ? 'bg-red-500' : 'bg-green-500'"></div>
+                <div class="absolute top-1 right-1 w-2 h-2 rounded-full shadow-sm border border-white/50" :class="isPending(app.status) ? 'bg-red-500' : 'bg-green-500'"></div>
 
-                <span v-if="app.width >= 3" class="text-gray-800 text-[10px] md:text-xs font-bold truncate px-1 drop-shadow-sm">{{ getCustomerInitials(app.customerId) }}</span>
+                <span v-if="app.width >= 3" class="text-white drop-shadow-sm text-[10px] md:text-xs font-bold truncate px-1">{{ getCustomerInitials(app.customerId) }}</span>
               </div>
             </div>
 
@@ -253,14 +253,14 @@
 
               <div class="flex justify-between items-start">
                 <div class="flex items-center gap-2 md:gap-3">
-                  <div class="flex items-center justify-center w-8 h-8 md:w-12 md:h-12 rounded-full font-bold text-gray-800 text-xs md:text-lg border border-text/10 shadow-sm"
+                  <div class="flex items-center justify-center w-8 h-8 md:w-12 md:h-12 rounded-full font-bold text-white drop-shadow-sm text-xs md:text-lg shadow-sm"
                        :style="{ backgroundColor: getCustomerColor(app.customerId) }">
                     {{ getCustomerInitials(app.customerId) }}
                   </div>
                   <div class="flex flex-col">
                     <div class="flex items-center gap-2">
                       <h4 class="text-base md:text-xl font-bold text-text">{{ getCustomerName(app.customerId) }}</h4>
-                      <div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full shadow-sm" :class="app.status === 0 ? 'bg-red-500' : 'bg-green-500'" :title="app.status === 0 ? 'Függőben' : 'Jóváhagyva'"></div>
+                      <div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full shadow-sm" :class="isPending(app.status) ? 'bg-red-500' : 'bg-green-500'" :title="isPending(app.status) ? 'Függőben' : 'Jóváhagyva'"></div>
                     </div>
                   </div>
                 </div>
@@ -350,7 +350,7 @@
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div class="relative">
-                  <select v-model="builder.category" @change="resetBuilder(1)" class="w-full h-[44px] bg-white dark:bg-black border border-text/10 rounded-lg px-3 text-text focus:outline-none focus:border-primary appearance-none text-xs md:text-sm">
+                  <select v-model="builder.category" @change="resetBuilder(1)" class="w-full h-[44px] bg-background border border-text/10 rounded-lg px-3 text-text focus:outline-none focus:border-primary appearance-none text-xs md:text-sm">
                     <option value="" disabled>1. Kategória...</option>
                     <option v-for="cat in availableCategories" :key="cat" :value="cat">{{ cat }}</option>
                   </select>
@@ -358,7 +358,7 @@
                 </div>
 
                 <div class="relative">
-                  <select v-model="builder.serviceId" @change="resetBuilder(2)" :disabled="!builder.category" class="w-full h-[44px] bg-white dark:bg-black border border-text/10 rounded-lg px-3 text-text focus:outline-none focus:border-primary appearance-none text-xs md:text-sm disabled:opacity-50">
+                  <select v-model="builder.serviceId" @change="resetBuilder(2)" :disabled="!builder.category" class="w-full h-[44px] bg-background border border-text/10 rounded-lg px-3 text-text focus:outline-none focus:border-primary appearance-none text-xs md:text-sm disabled:opacity-50">
                     <option value="" disabled>2. Szolgáltatás...</option>
                     <option v-for="srv in availableServicesInCategory" :key="srv.id" :value="srv.id">{{ getLocText(srv.name) }}</option>
                   </select>
@@ -367,7 +367,7 @@
               </div>
 
               <div v-if="builder.serviceId" class="relative">
-                <select v-model="builder.variantId" @change="onVariantSelected" class="w-full h-[44px] bg-white dark:bg-black border border-primary/30 rounded-lg px-3 text-text font-bold focus:outline-none focus:border-primary appearance-none text-xs md:text-sm">
+                <select v-model="builder.variantId" @change="onVariantSelected" class="w-full h-[44px] bg-background border border-primary/30 rounded-lg px-3 text-text font-bold focus:outline-none focus:border-primary appearance-none text-xs md:text-sm">
                   <option value="" disabled>3. Pontos Variáns kiválasztása...</option>
                   <option v-for="v in availableVariantsInService" :key="v.id" :value="v.id">{{ getLocText(v.variantName) }} ({{ v.price }} EUR)</option>
                 </select>
@@ -454,6 +454,13 @@
   const { locale } = useI18n();
   const currentLang = computed(() => locale.value || 'hu-HU');
 
+  // ÚJ: Biztonságos státusz ellenőrző (Lekezeli az API-ból jövő Enum stringeket és a form integer értékeit is)
+  const isPending = (status) => {
+    if (status === 0 || status === '0') return true;
+    if (typeof status === 'string' && status.toLowerCase() === 'pending') return true;
+    return false;
+  };
+
   // --- ALAP NÉZET ÉS NAPTÁR LOGIKA ---
   const views = [{ id: 'day', icon: 'pi pi-clock', label: 'Napi' }, { id: 'week', icon: 'pi pi-list', label: 'Heti' }, { id: 'month', icon: 'pi pi-calendar', label: 'Havi' }];
   const currentView = ref('month');
@@ -529,7 +536,6 @@
     const isToday = date.toDateString() === new Date().toDateString();
     const targetStr = date.toDateString();
 
-    // ÚJ: A darabszám helyett ténylegesen átadjuk az adott napra vonatkozó foglalásokat is, hogy a UI tudjon rájuk hivatkozni!
     const dayApps = displayAppointments.value
       .filter(a => new Date(a.startDateTime).toDateString() === targetStr)
       .sort((a, b) => new Date(a.startDateTime) - new Date(b.startDateTime));
@@ -541,7 +547,7 @@
       appointments: dayApps,
       hasAppointments: dayApps.length > 0,
       appointmentCount: dayApps.length,
-      hasPending: dayApps.some(a => a.status === 0 || a.status === 'Pending'),
+      hasPending: dayApps.some(a => isPending(a.status)),
       loadPercentage: dayApps.length > 0 ? (dayApps.length * 15) : 0
     };
   };
@@ -622,7 +628,6 @@
       const response = await bookingApi.getPublicServices();
       const rawServices = response.data.$values || response.data || [];
 
-      // Szűrés: Csak aminek van ára (>0), és ahol a kategória emiatt nem ürül ki
       const filteredServices = rawServices.map(s => {
         const vars = s.variants?.$values || s.variants || [];
         return {
@@ -737,6 +742,7 @@
   const openNewAppointment = () => {
     isEditing.value = false;
     const d = new Date(currentDate.value.getTime() - (currentDate.value.getTimezoneOffset() * 60000));
+    // Default továbbra is 1 (Jóváhagyva) az admin számára új rögzítéskor
     form.value = { id: null, customerId: '', customerFullName: '', customerPhone: '', employeeId: 1, date: d.toISOString().split('T')[0], time: '08:00', status: 1, notes: '', items: [] };
     builder.value = { category: '', serviceId: '', variantId: '', duration: 0 };
     isModalOpen.value = true;
@@ -755,7 +761,7 @@
       id: app.id, customerId: app.customerId, customerFullName: c ? c.name : '', customerPhone: '', employeeId: app.employeeId,
       date: new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0],
       time: d.toTimeString().substring(0, 5),
-      status: (app.status === 0 || app.status === 'Pending') ? 0 : 1,
+      status: isPending(app.status) ? 0 : 1, // Javított visszaolvasás
       notes: app.notes || '', items: mappedItems
     };
     builder.value = { category: '', serviceId: '', variantId: '', duration: 0 };
@@ -790,6 +796,7 @@
         });
         finalCustId = newCustomerResponse.data.id;
         customersList.value.push(newCustomerResponse.data);
+        form.value.customerId = finalCustId;
       } else {
         finalCustId = parseInt(form.value.customerId);
       }
@@ -811,9 +818,11 @@
       };
 
       await store.saveAppointment(payload, form.value.id);
-      closeModal(); fetchDataForCurrentView();
+      closeModal();
+      fetchDataForCurrentView();
     } catch (error) {
-      alert("Hiba mentéskor: " + (error.response?.data || error.message));
+      const errorMsg = error.response?.data?.message || error.response?.data || error.message;
+      alert("Hiba mentéskor: " + errorMsg);
     }
   };
 
