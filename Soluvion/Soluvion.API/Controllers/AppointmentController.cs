@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Soluvion.API.DTOs;
 using Soluvion.API.DTOs.AppointmentDtos;
 using Soluvion.API.Interfaces;
 using System.Security.Claims;
@@ -34,15 +33,15 @@ namespace Soluvion.API.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(ex.Message); // 400 (Pl. ütközés)
+                // ÚJ: Kifejezetten 409 Conflict-ot küldünk egy fix belső hibakóddal!
+                return StatusCode(409, new { errorCode = "OVERLAP", message = ex.Message });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(ex.Message); // 400 (Pl. rossz variáns ID)
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                // VÉDELEM: Ha bármi más elszáll, küldjük vissza a frontendnek a pontos hibaüzenetet!
                 return StatusCode(500, new { message = $"Szerver hiba: {ex.Message}", details = ex.InnerException?.Message });
             }
         }
@@ -73,11 +72,20 @@ namespace Soluvion.API.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ex.Message);
+                return NotFound(new { message = ex.Message });
             }
-            catch (Exception ex) when (ex is UnauthorizedAccessException || ex is InvalidOperationException || ex is ArgumentException)
+            catch (UnauthorizedAccessException ex)
             {
-                return BadRequest(ex.Message);
+                return StatusCode(403, new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                // ÚJ: Szintén 409 Conflict!
+                return StatusCode(409, new { errorCode = "OVERLAP", message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -92,7 +100,7 @@ namespace Soluvion.API.Controllers
             {
                 string username = User.FindFirstValue(ClaimTypes.Name)!;
                 var success = await _appointmentService.DeleteAppointmentAsync(id, username);
-                if (!success) return NotFound("Időpont nem található.");
+                if (!success) return NotFound(new { message = "Időpont nem található." });
 
                 return Ok(new { Message = "Időpont sikeresen törölve." });
             }

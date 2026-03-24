@@ -306,30 +306,69 @@ const isFormValid = computed(() => {
   return true;
 });
 
-const handleSave = async () => {
-  try {
-    let finalCustId = form.value.customerId;
-    if (form.value.customerId === 'new') {
-      const nameVal = form.value.customerFullName?.trim() || '';
-      const phoneVal = form.value.customerPhone?.trim() || '';
-      const newCustomerResponse = await bookingApi.createCustomer({ fullName: nameVal, phone: phoneVal });
-      finalCustId = newCustomerResponse.data.id;
-      customersList.value.push(newCustomerResponse.data);
-    } else {
-      finalCustId = parseInt(form.value.customerId);
+  const handleSave = async (forceParam = false) => {
+    // 1. JAVÍTÁS: Mivel a Vue @click átadja az Event objektumot, meg kell vizsgálnunk, 
+    // hogy tényleg boolean (igaz/hamis) értéket kaptunk-e. Ha nem, akkor false.
+    const isForced = typeof forceParam === 'boolean' ? forceParam : false;
+
+    try {
+      let finalCustId = form.value.customerId;
+      if (form.value.customerId === 'new') {
+        const nameVal = form.value.customerFullName?.trim() || '';
+        const phoneVal = form.value.customerPhone?.trim() || '';
+        const newCustomerResponse = await bookingApi.createCustomer({ fullName: nameVal, phone: phoneVal });
+        finalCustId = newCustomerResponse.data.id;
+        customersList.value.push(newCustomerResponse.data);
+      } else {
+        finalCustId = parseInt(form.value.customerId);
+      }
+
+      // Alap payload, ami mindkét DTO-ban szerepel
+      const basePayload = {
+        customerId: finalCustId,
+        startDateTime: new Date(`${form.value.date}T${form.value.time}:00`).toISOString(),
+        items: form.value.items.map(i => ({ serviceVariantId: parseInt(i.variantId), durationMinutes: parseInt(i.duration) })),
+        status: parseInt(form.value.status),
+        notes: form.value.notes,
+        force: isForced
+      };
+
+      let payload;
+      // 2. JAVÍTÁS: Különbséget teszünk Create és Update között a DTO-k alapján
+      if (form.value.id) {
+        // Ha van ID, akkor ez UPDATE -> Az UpdateAppointmentDto nem kér EmployeeId-t!
+        payload = { ...basePayload };
+      } else {
+        // Ha nincs ID, akkor ez CREATE -> A CreateAppointmentDto kéri az EmployeeId-t!
+        payload = { ...basePayload, employeeId: parseInt(form.value.employeeId) };
+      }
+
+      await store.saveAppointment(payload, form.value.id);
+      emit('saved');
+    } catch (error) {
+      const status = error.response?.status;
+      const data = error.response?.data;
+
+      // TISZTA RENDSZERSZINTŰ ELLENŐRZÉS SZÖVEG NÉLKÜL!
+      const isConflictError = status === 409 || data?.errorCode === 'OVERLAP';
+
+      if (!isForced && isConflictError) {
+        if (confirm("⚠️ Figyelem! Erre az időpontra már van aktív foglalás. Biztosan rá akarsz könyvelni (párhuzamos foglalás)?")) {
+          handleSave(true);
+        }
+      } else {
+        let errorDetails = data?.message || error.message;
+
+        if (status === 400 && data?.errors) {
+          errorDetails = Object.entries(data.errors)
+            .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
+            .join('\n');
+        }
+
+        alert("Hiba mentéskor:\n" + errorDetails);
+      }
     }
-
-    const payload = {
-      customerId: finalCustId, employeeId: parseInt(form.value.employeeId),
-      startDateTime: new Date(`${form.value.date}T${form.value.time}:00`).toISOString(),
-      items: form.value.items.map(i => ({ serviceVariantId: i.variantId, durationMinutes: i.duration })),
-      status: parseInt(form.value.status), notes: form.value.notes, force: false
-    };
-
-    await store.saveAppointment(payload, form.value.id);
-    emit('saved');
-  } catch (error) { alert("Hiba mentéskor: " + (error.response?.data?.message || error.message)); }
-};
+  };
 
 const handleDelete = async () => {
   if (confirm("Biztosan véglegesen törlöd ezt a foglalást?")) {
