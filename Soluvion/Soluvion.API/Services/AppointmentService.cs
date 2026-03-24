@@ -153,12 +153,14 @@ namespace Soluvion.API.Services
 
             var currentUser = await _context.Users.SingleAsync(u => u.Username == username);
             var currentEmployee = await _context.CompanyEmployees
-                .SingleOrDefaultAsync(e => e.UserId == currentUser.Id && e.CompanyId == companyId);
+            .SingleOrDefaultAsync(e => e.UserId == currentUser.Id && e.CompanyId == companyId);
 
-            if (currentEmployee == null) throw new InvalidOperationException("Nincs jogosultságod.");
+            // JAVÍTÁS: Ezek eddig InvalidOperationException-ök voltak, mostantól UnauthorizedAccessException!
+            if (currentEmployee == null)
+                throw new UnauthorizedAccessException("Nincs jogosultságod.");
 
             if (dto.Force && currentEmployee.Role != EmployeeRole.Owner && currentEmployee.Role != EmployeeRole.Manager)
-                throw new InvalidOperationException("Ütköző időpontot csak a Tulajdonos vagy a Menedzser erőszakolhat ki.");
+                throw new UnauthorizedAccessException("Ütköző időpontot csak a Tulajdonos vagy a Menedzser erőszakolhat ki.");
 
             var variantIds = dto.Items.Select(i => i.ServiceVariantId).ToList();
             var (_, price) = await _bookingEngine.CalculateAppointmentDetailsAsync(dto.CustomerId, variantIds);
