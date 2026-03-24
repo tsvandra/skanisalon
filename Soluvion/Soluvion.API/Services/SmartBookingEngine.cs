@@ -2,7 +2,6 @@
 using Soluvion.API.Data;
 using Soluvion.API.Interfaces;
 using Soluvion.Domain.Models.Enums;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace Soluvion.API.Services
 {
@@ -17,30 +16,14 @@ namespace Soluvion.API.Services
 
         public async Task<(int TotalDuration, decimal TotalPrice)> CalculateAppointmentDetailsAsync(int customerId, List<int> variantIds)
         {
-            var customer = await _context.CompanyCustomers.FindAsync(customerId);
             var variants = await _context.ServiceVariants
                                          .Where(v => variantIds.Contains(v.Id))
                                          .ToListAsync();
 
+            // Szigorúan csak az adatbázisból jövő variánsok árait és időtartamait összegezzük!
+            // (A dinamikus felárakat a jövőben egy külön adatbázis táblából fogjuk kezelni, ha szükséges.)
             decimal totalPrice = variants.Sum(v => v.Price);
             int totalDuration = variants.Sum(v => v.Duration);
-
-            // Dinamikus időszámítás a vendég JSONB attribútumai alapján
-            // Példa: ha a vendég profiljában be van állítva a hajhossz
-
-            // TODO - az attributumoknak az adatbazisbol kellene jönniük, nem hardcoded string-ként
-            // Például: "HairLength": "Long" vagy "HairLength": "ExtraLong"
-            if (customer != null && customer.Attributes.TryGetValue("HairLength", out string? hairLength))
-            {
-                if (hairLength.Equals("Long", StringComparison.OrdinalIgnoreCase))
-                {
-                    totalDuration += 30; // +30 perc hosszú haj esetén
-                }
-                else if (hairLength.Equals("ExtraLong", StringComparison.OrdinalIgnoreCase))
-                {
-                    totalDuration += 45; // +45 perc extra hosszú haj esetén
-                }
-            }
 
             return (totalDuration, totalPrice);
         }
@@ -54,12 +37,12 @@ namespace Soluvion.API.Services
             if (force) return true;
 
             // Megnézzük, van-e már foglalás erre az idősávra (ami nincs lemondva)
-            var query =  _context.Appointments
+            var query = _context.Appointments
                 .Where(a => a.EmployeeId == employeeId &&
                                a.Status != AppointmentStatus.Cancelled &&
                                a.StartDateTime < end &&
                                a.EndDateTime > start);
-            
+
             if (excludeAppointmentId.HasValue)
             {
                 query = query.Where(a => a.Id != excludeAppointmentId.Value);
