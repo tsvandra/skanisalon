@@ -1,136 +1,24 @@
 <template>
   <div class="flex flex-col h-full bg-background text-text">
 
-    <div class="sticky top-0 z-20 bg-surface border-b border-text/10 p-3 md:p-4 shadow-sm">
-      <div class="max-w-7xl mx-auto w-full flex flex-col xl:flex-row justify-between items-start xl:items-center gap-2 md:gap-4">
-
-        <div class="flex items-baseline gap-2 md:gap-4 w-full xl:w-auto">
-          <h2 class="text-xl md:text-2xl font-bold text-text drop-shadow-sm">{{ $t('calendar.dashboardTitle') || 'Vezérlőpult' }}</h2>
-          <span class="text-xs md:text-sm text-text-muted">{{ $t('calendar.role') || 'Szerepkör' }}: <strong class="text-primary">{{ store.userRole }}</strong></span>
-        </div>
-
-        <div class="flex flex-col md:flex-row items-center gap-2 w-full xl:w-auto mt-1 md:mt-0">
-
-          <div class="flex flex-row w-full md:w-auto gap-2">
-            <button @click="goToday" class="flex-1 md:flex-none px-3 md:px-5 min-h-[44px] font-bold text-sm bg-background border border-text/10 hover:border-primary/50 transition-colors rounded-xl text-text shadow-sm flex items-center justify-center gap-1.5">
-              <i class="pi pi-calendar-times text-primary"></i> <span>{{ $t('calendar.today') || 'Ma' }}</span>
-            </button>
-
-            <div class="flex flex-1 md:flex-none bg-background rounded-xl p-1 shadow-inner border border-text/5">
-              <button v-for="view in views" :key="view.id"
-                      @click="currentView = view.id"
-                      class="flex-1 min-h-[36px] md:min-h-[44px] px-2 md:px-4 rounded-lg font-bold text-xs md:text-sm flex items-center justify-center gap-1 md:gap-2 transition-all"
-                      :class="currentView === view.id ? 'bg-surface text-primary shadow-sm ring-1 ring-text/10' : 'text-text-muted hover:text-text hover:bg-text/5'">
-                <i :class="view.icon"></i>
-                <span class="hidden sm:inline">{{ $t(`calendar.${view.id}`) || view.label }}</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="flex items-center bg-background rounded-xl p-1 shadow-inner border border-text/5 w-full md:w-auto justify-between md:justify-center">
-            <button @click="goPrev" class="min-w-[44px] min-h-[36px] md:min-h-[44px] flex items-center justify-center rounded-lg hover:bg-text/5 transition-colors text-text">
-              <i class="pi pi-chevron-left font-bold text-base md:text-lg"></i>
-            </button>
-
-            <div class="px-2 md:px-4 font-black text-text uppercase tracking-wider text-xs md:text-base text-center w-full md:min-w-[220px] truncate">
-              {{ pagerText }}
-            </div>
-
-            <button @click="goNext" class="min-w-[44px] min-h-[36px] md:min-h-[44px] flex items-center justify-center rounded-lg hover:bg-text/5 transition-colors text-text">
-              <i class="pi pi-chevron-right font-bold text-base md:text-lg"></i>
-            </button>
-          </div>
-
-        </div>
-      </div>
-    </div>
+    <CalendarToolbar v-model:current-view="currentView"
+                     :pager-text="pagerText"
+                     :user-role="store.userRole"
+                     @prev="goPrev"
+                     @next="goNext"
+                     @today="goToday" />
 
     <div class="flex-1 overflow-y-auto p-2 md:p-6 w-full">
       <div class="max-w-7xl mx-auto w-full">
 
-        <div v-if="currentView === 'month'" class="space-y-6 md:space-y-8">
-
-          <div class="max-w-5xl mx-auto bg-surface p-2 md:p-5 rounded-2xl border border-text/10 shadow-sm">
-            <div class="grid grid-cols-7 gap-1 md:gap-2">
-              <div v-for="day in dynamicWeekDays" :key="day" class="text-center text-[10px] md:text-xs font-bold text-text-muted uppercase mb-1 tracking-wider">
-                {{ day }}
-              </div>
-
-              <div v-for="(dayObj, index) in calendarDays" :key="index"
-                   @click="onDayClick(dayObj)"
-                   class="relative min-h-[50px] md:min-h-[80px] p-1 md:p-2 rounded-lg transition-all cursor-pointer flex flex-col items-center justify-between border"
-                   :class="[
-                     dayObj.isCurrentMonth ? 'bg-white border-gray-300 shadow-sm hover:border-primary/60' : 'bg-gray-100 border-transparent opacity-50',
-                     dayObj.isToday ? 'ring-2 ring-primary ring-offset-1 md:ring-offset-2 ring-offset-surface' : ''
-                   ]">
-
-                <div v-if="dayObj.isCurrentMonth" class="absolute top-0 left-0 right-0 h-1 bg-gray-200 rounded-t-lg overflow-hidden">
-                  <div class="h-full bg-primary transition-all" :style="{ width: `${dayObj.loadPercentage}%` }"></div>
-                </div>
-
-                <span class="font-black text-xs md:text-base mt-1" :class="dayObj.isToday ? 'text-primary drop-shadow-sm' : 'text-gray-800'">
-                  {{ dayObj.date.getDate() }}
-                </span>
-
-                <div class="flex gap-1 mt-auto pb-0.5 flex-wrap justify-center items-center">
-                  <span v-for="app in dayObj.appointments.slice(0, 4)" :key="app.id"
-                        class="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shadow-sm"
-                        :style="{ backgroundColor: getCustomerColor(app.customerId) }"
-                        :title="getCustomerName(app.customerId)"></span>
-                  <span v-if="dayObj.appointments.length > 4" class="text-[8px] md:text-[9px] text-gray-600 font-black ml-0.5">+{{ dayObj.appointments.length - 4 }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="max-w-5xl mx-auto mt-6 md:mt-8">
-            <h3 class="font-bold text-lg md:text-xl text-text border-b border-text/10 pb-2 mb-3 md:mb-4 flex items-center gap-2">
-              <i class="pi pi-forward text-primary"></i> {{ $t('calendar.upcomingAppointments') || 'Következő várható foglalások' }}
-            </h3>
-
-            <div v-if="upcomingAppointments.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-              <div v-for="app in upcomingAppointments" :key="'upc-'+app.id"
-                   @click="openAppointmentDetails(app)"
-                   class="bg-surface rounded-xl p-3 md:p-4 shadow-sm border border-text/10 flex flex-col gap-2 md:gap-3 hover:border-primary/50 cursor-pointer transition-colors relative"
-                   :style="{ borderLeftWidth: '5px', borderLeftColor: getCustomerColorDarker(app.customerId) }">
-
-                <div class="flex justify-between items-start">
-                  <div class="flex items-center gap-2 md:gap-3">
-                    <div class="flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full font-bold text-white drop-shadow-sm text-[10px] md:text-xs shadow-sm"
-                         :style="{ backgroundColor: getCustomerColor(app.customerId) }">
-                      {{ getCustomerInitials(app.customerId) }}
-                    </div>
-                    <div class="flex flex-col">
-                      <div class="flex items-center gap-2">
-                        <h4 class="text-sm md:text-md font-bold text-text">{{ getCustomerName(app.customerId) }}</h4>
-                        <div class="w-2 h-2 rounded-full shadow-sm" :class="isPending(app.status) ? 'bg-red-500' : 'bg-green-500'" :title="isPending(app.status) ? 'Függőben' : 'Jóváhagyva'"></div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="text-[10px] md:text-xs bg-background px-2 py-1 rounded text-text-muted font-bold capitalize">
-                    {{ getDayNameShort(new Date(app.startDateTime)) }}, {{ formatDateShort(app.startDateTime) }}
-                  </div>
-                </div>
-
-                <div class="flex items-center gap-3 md:gap-4 text-text-muted text-[10px] md:text-xs font-bold pl-1">
-                  <div class="flex items-center gap-1"><i class="pi pi-clock text-primary"></i> {{ formatTime(app.startDateTime) }}</div>
-                  <div class="flex items-center gap-1"><i class="pi pi-hourglass text-primary"></i> {{ getDurationMinutes(app) }} p</div>
-                </div>
-
-                <div class="flex gap-1 md:gap-1.5 mt-1 pl-1">
-                  <div v-for="item in app.items" :key="item.id"
-                       class="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] md:text-xs font-black border border-primary/20 cursor-help"
-                       :title="getVariantFullName(item.serviceVariantId)">
-                    {{ getInitials(getVariantFullName(item.serviceVariantId)) }}
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div v-else class="text-center py-6 md:py-8 bg-surface rounded-xl border border-dashed border-text/10 text-text-muted text-sm md:text-base">
-              {{ $t('calendar.noUpcomingAppointments') || 'Nincsenek közelgő foglalások.' }}
-            </div>
-          </div>
-        </div>
+        <CalendarMonthView v-if="currentView === 'month'"
+                           :dynamic-week-days="dynamicWeekDays"
+                           :calendar-days="calendarDays"
+                           :upcoming-appointments="upcomingAppointments"
+                           :available-services="availableServices"
+                           :customers-list="customersList"
+                           @day-click="onDayClick"
+                           @appointment-click="openAppointmentDetails" />
 
         <div v-else-if="currentView === 'week'" class="space-y-6 md:space-y-8">
           <div class="bg-surface p-2 md:p-5 rounded-2xl border border-text/10 shadow-sm">
@@ -293,151 +181,12 @@
       </div>
     </div>
 
-    <div v-if="isModalOpen" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-2 md:p-4">
-      <div class="bg-surface w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border border-text/10 flex flex-col max-h-[95vh] md:max-h-[90vh]">
-
-        <div class="p-4 md:p-6 border-b border-text/10 flex justify-between items-center bg-background/50">
-          <h2 class="text-lg md:text-xl font-bold text-text flex items-center gap-2">
-            <i class="pi" :class="isEditing ? 'pi-pencil text-primary' : 'pi-plus-circle text-primary'"></i>
-            {{ isEditing ? 'Foglalás szerkesztése' : 'Új foglalás rögzítése' }}
-          </h2>
-          <button @click="closeModal" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-text/10 text-text-muted transition-colors">
-            <i class="pi pi-times"></i>
-          </button>
-        </div>
-
-        <div class="p-4 md:p-6 overflow-y-auto space-y-6">
-
-          <div>
-            <label class="block text-[10px] md:text-xs font-bold text-text-muted mb-1.5 uppercase flex items-center gap-1"><i class="pi pi-user"></i> 1. Ügyfél</label>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div class="relative">
-                <select v-model="form.customerId" @change="handleCustomerSelect" class="w-full h-[44px] bg-background border border-text/20 rounded-lg px-3 text-sm text-text font-bold focus:outline-none focus:border-primary appearance-none cursor-pointer">
-                  <option value="" disabled>Válassz a listából...</option>
-                  <option value="new" class="text-primary font-bold">+ Új ügyfél rögzítése</option>
-                  <option v-for="c in customersList" :key="c.id" :value="c.id">{{ c.name }}</option>
-                </select>
-                <i class="pi pi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none text-sm"></i>
-              </div>
-
-              <div v-if="form.customerId === 'new'" class="flex flex-col gap-2">
-                <input type="text" v-model="form.customerFullName" placeholder="Teljes név (opcionális)..." class="w-full h-[44px] bg-background border border-text/20 rounded-lg px-3 text-sm text-text focus:outline-none focus:border-primary">
-                <input type="tel" v-model="form.customerPhone" placeholder="Telefonszám (opcionális)..." class="w-full h-[44px] bg-background border border-text/20 rounded-lg px-3 text-sm text-text focus:outline-none focus:border-primary">
-                <span class="text-[10px] text-text-muted leading-tight">Legalább az egyik mező kitöltése kötelező!</span>
-              </div>
-              <div v-else-if="form.customerId">
-                <input type="text" v-model="form.customerFullName" disabled class="w-full h-[44px] bg-background border border-text/20 rounded-lg px-3 text-sm text-text focus:outline-none focus:border-primary opacity-50 cursor-not-allowed">
-              </div>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3 border-t border-text/10 pt-4">
-            <div>
-              <label class="block text-[10px] md:text-xs font-bold text-text-muted mb-1.5 uppercase flex items-center gap-1"><i class="pi pi-calendar"></i> Dátum</label>
-              <input type="date" v-model="form.date" class="w-full h-[44px] bg-background border border-text/20 rounded-lg px-3 text-sm text-text font-bold focus:outline-none focus:border-primary">
-            </div>
-            <div>
-              <label class="block text-[10px] md:text-xs font-bold text-text-muted mb-1.5 uppercase flex items-center gap-1"><i class="pi pi-clock"></i> Kezdés</label>
-              <input type="time" v-model="form.time" class="w-full h-[44px] bg-background border border-text/20 rounded-lg px-3 text-sm text-text font-bold focus:outline-none focus:border-primary">
-            </div>
-          </div>
-
-          <div class="border-t border-text/10 pt-4">
-            <label class="block text-[10px] md:text-xs font-bold text-text-muted mb-2 uppercase flex items-center gap-1"><i class="pi pi-sparkles"></i> Szolgáltatások</label>
-
-            <div class="bg-primary/5 p-3 md:p-4 rounded-xl border border-primary/20 space-y-3 mb-4">
-              <h4 class="text-sm font-bold text-primary flex items-center gap-2"><i class="pi pi-plus-circle"></i> Tétel hozzáadása</h4>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div class="relative">
-                  <select v-model="builder.category" @change="resetBuilder(1)" class="w-full h-[44px] bg-background border border-text/10 rounded-lg px-3 text-text focus:outline-none focus:border-primary appearance-none text-xs md:text-sm">
-                    <option value="" disabled>1. Kategória...</option>
-                    <option v-for="cat in availableCategories" :key="cat" :value="cat">{{ cat }}</option>
-                  </select>
-                  <i class="pi pi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-text-muted text-xs pointer-events-none"></i>
-                </div>
-
-                <div class="relative">
-                  <select v-model="builder.serviceId" @change="resetBuilder(2)" :disabled="!builder.category" class="w-full h-[44px] bg-background border border-text/10 rounded-lg px-3 text-text focus:outline-none focus:border-primary appearance-none text-xs md:text-sm disabled:opacity-50">
-                    <option value="" disabled>2. Szolgáltatás...</option>
-                    <option v-for="srv in availableServicesInCategory" :key="srv.id" :value="srv.id">{{ getLocText(srv.name) }}</option>
-                  </select>
-                  <i class="pi pi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-text-muted text-xs pointer-events-none"></i>
-                </div>
-              </div>
-
-              <div v-if="builder.serviceId" class="relative">
-                <select v-model="builder.variantId" @change="onVariantSelected" class="w-full h-[44px] bg-background border border-primary/30 rounded-lg px-3 text-text font-bold focus:outline-none focus:border-primary appearance-none text-xs md:text-sm">
-                  <option value="" disabled>3. Pontos Variáns kiválasztása...</option>
-                  <option v-for="v in availableVariantsInService" :key="v.id" :value="v.id">{{ getLocText(v.variantName) }} ({{ v.price }} EUR)</option>
-                </select>
-                <i class="pi pi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-primary text-xs pointer-events-none"></i>
-              </div>
-
-              <div v-if="builder.variantId" class="flex flex-col md:flex-row md:items-end gap-3 pt-2">
-                <div class="w-full md:w-1/3 flex flex-col">
-                  <label class="text-[10px] font-bold text-text-muted uppercase mb-1">Időtartam (Húzd)</label>
-                  <ScrubbableInput v-model="builder.duration" :min="5" :max="480" :step="5" :sensitivity="10" suffix="perc" class="h-[44px]" />
-                </div>
-
-                <div class="w-full md:w-2/3">
-                  <button @click="addServiceToForm" class="w-full h-[44px] bg-primary text-white font-bold rounded-lg shadow-sm hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2">
-                    <i class="pi pi-check"></i> Listához ad
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="form.items.length > 0" class="space-y-2 mt-2">
-              <div v-for="(item, idx) in form.items" :key="idx" class="flex items-center justify-between bg-surface border border-text/10 p-2 md:p-3 rounded-lg shadow-sm">
-                <div class="flex flex-col">
-                  <span class="font-bold text-xs md:text-sm text-text">{{ item.name }}</span>
-                  <span class="text-[10px] md:text-xs text-text-muted font-medium">{{ item.duration }} perc • {{ item.price }} EUR</span>
-                </div>
-                <button @click="removeFormItem(idx)" class="w-8 h-8 flex items-center justify-center bg-red-500/10 text-red-500 rounded-full hover:bg-red-500 hover:text-white transition-colors">
-                  <i class="pi pi-trash text-xs"></i>
-                </button>
-              </div>
-            </div>
-            <div v-else class="text-[10px] md:text-xs text-center py-2 text-text-muted border border-dashed border-text/10 rounded-lg">
-              Még nincs szolgáltatás hozzáadva.
-            </div>
-
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-text/10 pt-4">
-            <div>
-              <label class="block text-[10px] md:text-xs font-bold text-text-muted mb-2 uppercase">Állapot</label>
-              <div class="flex gap-2">
-                <button @click="form.status = 0" class="flex-1 h-[44px] rounded-lg font-bold text-xs md:text-sm border transition-all" :class="form.status === 0 ? 'bg-red-500/10 border-red-500 text-red-500 shadow-sm' : 'border-text/20 text-text hover:bg-text/5'">Függőben</button>
-                <button @click="form.status = 1" class="flex-1 h-[44px] rounded-lg font-bold text-xs md:text-sm border transition-all" :class="form.status === 1 ? 'bg-green-500/10 border-green-500 text-green-500 shadow-sm' : 'border-text/20 text-text hover:bg-text/5'">Jóváhagyva</button>
-              </div>
-            </div>
-            <div>
-              <label class="block text-[10px] md:text-xs font-bold text-text-muted mb-1.5 uppercase">Belső Megjegyzés</label>
-              <textarea v-model="form.notes" rows="2" placeholder="Opcionális feljegyzés..." class="w-full bg-background border border-text/20 rounded-lg p-2.5 text-xs md:text-sm text-text focus:outline-none focus:border-primary resize-none"></textarea>
-            </div>
-          </div>
-
-        </div>
-
-        <div class="p-3 md:p-4 border-t border-text/10 bg-background/50 flex justify-between gap-2 md:gap-3 mt-auto">
-          <button v-if="isEditing" @click="handleDelete" class="px-3 md:px-4 h-[44px] text-red-500 font-bold text-sm md:text-base rounded-lg border border-red-500/30 hover:bg-red-500/10 transition-colors">
-            Törlés
-          </button>
-          <div v-else></div>
-
-          <div class="flex gap-2">
-            <button @click="closeModal" class="px-3 md:px-4 h-[44px] text-text text-sm md:text-base font-bold rounded-lg hover:bg-text/10 transition-colors">
-              Mégsem
-            </button>
-            <button @click="handleSave" :disabled="!isFormValid" class="px-4 md:px-6 h-[44px] bg-primary text-white text-sm md:text-base font-bold rounded-lg hover:brightness-110 shadow-md transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 md:gap-2">
-              <i class="pi pi-save"></i> Mentés
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <AppointmentEditorModal :is-open="isModalOpen"
+                            :edit-data="selectedAppointment"
+                            :default-date="currentDate"
+                            @close="closeModal"
+                            @saved="handleModalSaved"
+                            @deleted="handleModalDeleted" />
 
   </div>
 </template>
@@ -447,14 +196,16 @@
   import { useI18n } from 'vue-i18n';
   import { useAppointmentStore } from '@/stores/appointmentStore';
   import bookingApi from '@/services/bookingApi';
-  import ScrubbableInput from '@/components/common/ScrubbableInput.vue';
   import { getCustomerColor, getCustomerColorDarker } from '@/utils/colorUtils';
+
+  import AppointmentEditorModal from './AppointmentEditorModal.vue';
+  import CalendarToolbar from './CalendarToolbar.vue';
+  import CalendarMonthView from './CalendarMonthView.vue'; // ÚJ IMPORT
 
   const store = useAppointmentStore();
   const { locale } = useI18n();
   const currentLang = computed(() => locale.value || 'hu-HU');
 
-  // ÚJ: Biztonságos státusz ellenőrző (Lekezeli az API-ból jövő Enum stringeket és a form integer értékeit is)
   const isPending = (status) => {
     if (status === 0 || status === '0') return true;
     if (typeof status === 'string' && status.toLowerCase() === 'pending') return true;
@@ -462,7 +213,6 @@
   };
 
   // --- ALAP NÉZET ÉS NAPTÁR LOGIKA ---
-  const views = [{ id: 'day', icon: 'pi pi-clock', label: 'Napi' }, { id: 'week', icon: 'pi pi-list', label: 'Heti' }, { id: 'month', icon: 'pi pi-calendar', label: 'Havi' }];
   const currentView = ref('month');
   const currentDate = ref(new Date());
 
@@ -489,7 +239,6 @@
   const getDayNameShort = (date) => date.toLocaleString(currentLang.value, { weekday: 'short' });
   const getDayNameLong = (date) => date.toLocaleString(currentLang.value, { weekday: 'long' });
   const formatDateLong = (date) => date.toLocaleDateString(currentLang.value, { year: 'numeric', month: 'long', day: 'numeric' });
-  const formatDateShort = (iso) => iso ? new Date(iso).toLocaleDateString(currentLang.value, { month: 'short', day: 'numeric' }) : '';
   const formatTime = (iso) => iso ? new Date(iso).toLocaleTimeString(currentLang.value, { hour: '2-digit', minute: '2-digit' }) : '';
   const formatDurationStr = (m) => m >= 60 ? `${Math.floor(m / 60)}:${(m % 60).toString().padStart(2, '0')}` : `${m}p`;
   const getDurationMinutes = (app) => Math.round((new Date(app.endDateTime) - new Date(app.startDateTime)) / 60000);
@@ -541,12 +290,8 @@
       .sort((a, b) => new Date(a.startDateTime) - new Date(b.startDateTime));
 
     return {
-      date,
-      isCurrentMonth,
-      isToday,
-      appointments: dayApps,
-      hasAppointments: dayApps.length > 0,
-      appointmentCount: dayApps.length,
+      date, isCurrentMonth, isToday, appointments: dayApps,
+      hasAppointments: dayApps.length > 0, appointmentCount: dayApps.length,
       hasPending: dayApps.some(a => isPending(a.status)),
       loadPercentage: dayApps.length > 0 ? (dayApps.length * 15) : 0
     };
@@ -608,35 +353,19 @@
   };
 
   // ============================================================================
-  // ÚJ: VALÓS ÜGYFELEK ÉS FOGLALÁS ŰRLAP
+  // ADATOK LEKÉRÉSE A MEGJELENÍTÉSHEZ (A kártyák feliratozásához szükséges)
   // ============================================================================
   const availableServices = ref([]);
   const customersList = ref([]);
-
-  const isModalOpen = ref(false);
-  const isEditing = ref(false);
-
-  const form = ref({
-    id: null, customerId: '', customerFullName: '', customerPhone: '', employeeId: 1,
-    date: '', time: '08:00', status: 1, notes: '', items: []
-  });
-
-  const builder = ref({ category: '', serviceId: '', variantId: '', duration: 0 });
 
   const fetchServicesForAdmin = async () => {
     try {
       const response = await bookingApi.getPublicServices();
       const rawServices = response.data.$values || response.data || [];
-
-      const filteredServices = rawServices.map(s => {
+      availableServices.value = rawServices.map(s => {
         const vars = s.variants?.$values || s.variants || [];
-        return {
-          ...s,
-          variants: vars.filter(v => v.price != null && v.price > 0)
-        };
+        return { ...s, variants: vars.filter(v => v.price != null && v.price > 0) };
       }).filter(s => s.variants.length > 0);
-
-      availableServices.value = filteredServices;
     } catch (error) { console.error('Hiba a szolgáltatások betöltésekor:', error); }
   };
 
@@ -668,171 +397,36 @@
     } return 'Ismeretlen';
   };
 
-  const availableCategories = computed(() => {
-    const cats = new Set();
-    availableServices.value.forEach(s => cats.add(getLocText(s.category) || 'Egyéb'));
-    return Array.from(cats).sort();
-  });
-
-  const availableServicesInCategory = computed(() => {
-    return availableServices.value.filter(s => (getLocText(s.category) || 'Egyéb') === builder.value.category);
-  });
-
-  const availableVariantsInService = computed(() => {
-    const s = availableServices.value.find(s => s.id === builder.value.serviceId);
-    return s ? s.variants : [];
-  });
-
-  const resetBuilder = (level) => {
-    if (level === 1) {
-      builder.value.serviceId = '';
-      builder.value.variantId = '';
-      builder.value.duration = 0;
-
-      const services = availableServicesInCategory.value;
-      if (services.length === 1) {
-        builder.value.serviceId = services[0].id;
-        resetBuilder(2);
-      }
-    }
-
-    if (level === 2) {
-      builder.value.variantId = '';
-      builder.value.duration = 0;
-
-      const variants = availableVariantsInService.value;
-      if (variants.length === 1) {
-        builder.value.variantId = variants[0].id;
-        onVariantSelected();
-      }
-    }
-  };
-
-  const onVariantSelected = () => {
-    const v = availableVariantsInService.value.find(vx => vx.id === builder.value.variantId);
-    if (v) builder.value.duration = v.duration || 30;
-  };
-
-  const addServiceToForm = () => {
-    const s = availableServices.value.find(x => x.id === builder.value.serviceId);
-    const v = availableVariantsInService.value.find(x => x.id === builder.value.variantId);
-    if (s && v) {
-      form.value.items.push({
-        variantId: v.id,
-        name: `${getLocText(s.name)} - ${getLocText(v.variantName)}`,
-        duration: builder.value.duration,
-        price: v.price
-      });
-      builder.value = { category: '', serviceId: '', variantId: '', duration: 0 };
-    }
-  };
-
-  const removeFormItem = (idx) => form.value.items.splice(idx, 1);
-
-  const handleCustomerSelect = () => {
-    if (form.value.customerId === 'new') {
-      form.value.customerFullName = '';
-      form.value.customerPhone = '';
-    } else {
-      const c = customersList.value.find(x => x.id === form.value.customerId);
-      if (c) form.value.customerFullName = c.name;
-    }
-  };
+  // ============================================================================
+  // MODAL KEZELÉS (Közvetítő logika)
+  // ============================================================================
+  const isModalOpen = ref(false);
+  const selectedAppointment = ref(null);
 
   const openNewAppointment = () => {
-    isEditing.value = false;
-    const d = new Date(currentDate.value.getTime() - (currentDate.value.getTimezoneOffset() * 60000));
-    // Default továbbra is 1 (Jóváhagyva) az admin számára új rögzítéskor
-    form.value = { id: null, customerId: '', customerFullName: '', customerPhone: '', employeeId: 1, date: d.toISOString().split('T')[0], time: '08:00', status: 1, notes: '', items: [] };
-    builder.value = { category: '', serviceId: '', variantId: '', duration: 0 };
+    selectedAppointment.value = null; // null jelzi az új foglalást
     isModalOpen.value = true;
   };
 
   const openAppointmentDetails = (app) => {
-    isEditing.value = true;
-    const d = new Date(app.startDateTime);
-    const mappedItems = app.items?.map(i => ({
-      variantId: i.serviceVariantId, name: getVariantFullName(i.serviceVariantId), duration: i.calculatedDurationMinutes || 30, price: i.price
-    })) || [];
-
-    const c = customersList.value.find(x => x.id === app.customerId);
-
-    form.value = {
-      id: app.id, customerId: app.customerId, customerFullName: c ? c.name : '', customerPhone: '', employeeId: app.employeeId,
-      date: new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0],
-      time: d.toTimeString().substring(0, 5),
-      status: isPending(app.status) ? 0 : 1, // Javított visszaolvasás
-      notes: app.notes || '', items: mappedItems
-    };
-    builder.value = { category: '', serviceId: '', variantId: '', duration: 0 };
+    selectedAppointment.value = app; // Átadjuk a szerkesztendő adatot
     isModalOpen.value = true;
   };
 
-  const closeModal = () => { isModalOpen.value = false; };
-
-  const isFormValid = computed(() => {
-    if (form.value.items.length === 0) return false;
-    if (!form.value.customerId) return false;
-
-    if (form.value.customerId === 'new') {
-      const hasName = form.value.customerFullName && form.value.customerFullName.trim() !== '';
-      const hasPhone = form.value.customerPhone && form.value.customerPhone.trim() !== '';
-      if (!hasName && !hasPhone) return false;
-    }
-    return true;
-  });
-
-  const handleSave = async () => {
-    try {
-      let finalCustId = form.value.customerId;
-
-      if (form.value.customerId === 'new') {
-        const nameVal = form.value.customerFullName?.trim() || '';
-        const phoneVal = form.value.customerPhone?.trim() || '';
-
-        const newCustomerResponse = await bookingApi.createCustomer({
-          fullName: nameVal,
-          phone: phoneVal
-        });
-        finalCustId = newCustomerResponse.data.id;
-        customersList.value.push(newCustomerResponse.data);
-        form.value.customerId = finalCustId;
-      } else {
-        finalCustId = parseInt(form.value.customerId);
-      }
-
-      const startDateTime = new Date(`${form.value.date}T${form.value.time}:00`).toISOString();
-      const mappedItems = form.value.items.map(i => ({
-        serviceVariantId: i.variantId,
-        durationMinutes: i.duration
-      }));
-
-      const payload = {
-        customerId: finalCustId,
-        employeeId: parseInt(form.value.employeeId),
-        startDateTime: startDateTime,
-        items: mappedItems,
-        status: parseInt(form.value.status),
-        notes: form.value.notes,
-        force: false
-      };
-
-      await store.saveAppointment(payload, form.value.id);
-      closeModal();
-      fetchDataForCurrentView();
-    } catch (error) {
-      const errorMsg = error.response?.data?.message || error.response?.data || error.message;
-      alert("Hiba mentéskor: " + errorMsg);
-    }
+  const closeModal = () => {
+    isModalOpen.value = false;
+    selectedAppointment.value = null;
   };
 
-  const handleDelete = async () => {
-    if (confirm("Biztosan véglegesen törlöd ezt a foglalást?")) {
-      try {
-        if (store.deleteAppointment) await store.deleteAppointment(form.value.id);
-        closeModal(); fetchDataForCurrentView();
-      } catch (error) { alert("Hiba történt a törlés során."); }
-    }
+  const handleModalSaved = () => {
+    closeModal();
+    fetchDataForCurrentView();
+    fetchCustomers(); // Hátha új ügyfél lett rögzítve, frissítsük a listát a naptárban is
+  };
+
+  const handleModalDeleted = () => {
+    closeModal();
+    fetchDataForCurrentView();
   };
 
   onMounted(() => {
