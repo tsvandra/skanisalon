@@ -10,7 +10,7 @@
     <File Path="DevDoc/04_Changelog.md" />
   </Folder>
   <Folder Name="/Solution Items/DevDoc/features/">
-    <File Path="01_Smart_Booking_Engine.md" />
+    <File Path="DevDoc/features/01_Smart_Booking_Engine.md" />
   </Folder>
   <Folder Name="/Solution Items/documentationArchive/">
     <File Path="documentationArchive/DevelopDocumentation.txt" />

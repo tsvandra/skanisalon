@@ -8,6 +8,13 @@ Ez a dokumentum kronológiai sorrendben (a legújabbtól visszafelé) rögzíti 
 
 ---
 
+## [Jelenlegi Dátum] Feature 17: Calendar Refactoring, Double-Booking & i18n
+**Státusz:** Kész
+* **Frontend Architektúra:** A `CalendarGrid.vue` monolitikus fájl szétbontása Clean Code / SRP elvek alapján Smart és Dumb komponensekre (`CalendarToolbar`, `CalendarMonthView`, `CalendarWeekView`, `CalendarDayView`, `AppointmentEditorModal`).
+* **Okos Idővonal (Timeline):** Napi nézet "Lanes" (sáv-kiosztó) algoritmusának bevezetése az ütköző (párhuzamos) foglalások egymás alatti/melletti megjelenítésére. Tényleges terheltség és szabadidő (Gaps) számítása matematikai intervallum-összeolvasztással (Merge).
+* **Backend (C#):** Szabványosított HTTP `409 Conflict` és `OVERLAP` hibakód bevezetése az `AppointmentController`-ben a korábbi string-alapú (szövegre keresős) hibakezelés kiváltására.
+* **i18n (Többnyelvűsítés):** Hardkódolt szövegek kivezetése az Admin naptár modulokból és a publikus `BookingView`-ból. A `hu.json` kibővítése a `calendar.editor` ággal.
+
 ## [2026-03-20] Feature 16: Admin Vezérlőpult, Valós Ügyfelek és Backend Stabilizálás
 **Státusz:** Kész, Élesíthető
 * **Backend (C#):**

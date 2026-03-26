@@ -80,3 +80,15 @@ Ez a dokumentum azokat a szigorú kódolási elveket és konvenciókat tartalmaz
 ### 4.2. Felhõ Tárolás (Cloud Storage)
 * [cite_start]**Lokális tárolás tilalma:** > Felhasználó által feltöltött médiafájlokat TILOS lokálisan a `wwwroot`-ban tárolni[cite: 201].
 * [cite_start]**Cloudinary használata:** > Minden médiafájlt a Cloudinary-ba kell feltölteni[cite: 202]. [cite_start]Az adatbázisban a `PublicId`-t is tárolni kell az `Url` mellett a törölhetõség érdekében[cite: 203].
+
+## 5. Hibakezelés (Error Handling)
+* **Szigorú Tilos a String-alapú logika:** A frontend SOHA nem hozhat üzleti döntést a backend hibaüzenet szövegének vizsgálatával (pl. `msg.includes('ütközés')`), mivel ez a többnyelvűsítésnél azonnal eltörik. 
+* **Státuszkódok:** A Backendnek szabványos HTTP kódokat kell használnia (200: OK, 400: Validáció, 401/403: Jogosultság, 404: Nincs meg, 409: Ütközés/Conflict, 500: Szerverhiba).
+* **Belső Hibakódok:** Speciális üzleti hibáknál a backend egy fix string kódot is ad a JSON-ben (pl. `errorCode: "OVERLAP"`), amit a frontend biztonságosan azonosíthat.
+
+## 6. SaaS & Új Feature Checklist (Minden PR előtt ellenőrizendő)
+- [ ] **Tenant izoláció:** A lekérdezésekben és mentéseknél mindig ellenőrizve van a `CompanyId`?
+- [ ] **Előfizetés / Feature Flag:** Az adott funkció engedélyezett a cég jelenlegi csomagjában és a szalonvezető beállításaiban?
+- [ ] **Zéró Hardcode (i18n):** Minden új szöveg bekerült a `.json` nyelvi fájlba, és a kódban `$t('kulcs')` formátumban van meghívva?
+- [ ] **SRP (Egyetlen Felelősség):** A fájlok nincsenek túlzsúfolva? A szülő (Smart) komponens intézi az adatot, és átadja a gyermek (Dumb) komponenseknek?
+- [ ] **DTO egyezés:** A Vue által küldött payload pontosan megegyezik a C# DTO mezőivel és típusaival?
