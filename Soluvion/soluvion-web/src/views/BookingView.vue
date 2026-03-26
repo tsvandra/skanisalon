@@ -6,9 +6,9 @@
 
     <div v-if="!canSeeBookingForm" class="bg-surface rounded-2xl shadow-lg p-8 md:p-16 text-center border border-text/10 flex flex-col items-center animate-fade-in">
       <i class="pi pi-calendar-clock text-primary text-6xl md:text-8xl mb-6 opacity-80"></i>
-      <h2 class="text-3xl font-bold mb-4 text-text">Hamarosan!</h2>
+      <h2 class="text-3xl font-bold mb-4 text-text">{{ $t('booking.comingSoonTitle') }}</h2>
       <p class="text-lg text-text-muted max-w-md">
-        Az online időpontfoglalási rendszerünk jelenleg tesztelés alatt áll, vagy ehhez a szalonhoz még nem elérhető. Kérjük, keress minket elérhetőségeinken!
+        {{ $t('booking.comingSoonText') }}
       </p>
     </div>
 
@@ -24,10 +24,10 @@
     <div v-else class="bg-surface rounded-2xl shadow-lg p-6 border border-text/10 animate-fade-in">
 
       <div v-if="isDevLockActive && !isLoggedIn" class="bg-red-500/10 border border-red-500/30 text-red-600 rounded-lg p-3 mb-6 text-sm font-bold flex items-center gap-2">
-        <i class="pi pi-exclamation-triangle"></i> DEV OVERRIDE: Ez az űrlap csak azért látszik most Inkognitóban, mert a .env fájlban fejlesztői üzemmódban vagy!
+        <i class="pi pi-exclamation-triangle"></i> {{ $t('booking.devOverrideWarning') }}
       </div>
       <div v-if="isLoggedIn && (!isFeatureAllowed || !isTurnedOnByAdmin || isDevLockActive)" class="bg-orange-500/10 border border-orange-500/30 text-orange-600 rounded-lg p-3 mb-6 text-sm font-bold flex items-center gap-2">
-        <i class="pi pi-info-circle"></i> ADMIN NÉZET: A publikus vendégek most a "Hamarosan" feliratot látják. Ezt csak te látod, mert be vagy jelentkezve!
+        <i class="pi pi-info-circle"></i> {{ $t('booking.adminViewWarning') }}
       </div>
 
       <Stepper v-model:value="activeStep">
@@ -76,7 +76,7 @@
 
   // --- SaaS JOGOSULTSÁG ÉS MEGJELENÍTÉS LOGIKA ---
 
-  // 1. Fejlesztői (override) letiltás a .env-ből (Pl. éles környezetben ez VITE_LOCK_PUBLIC_BOOKING=true)
+  // 1. Fejlesztői (override) letiltás a .env-ből
   const isDevLockActive = import.meta.env.VITE_LOCK_PUBLIC_BOOKING === 'true';
 
   // 2. Tartalmazza a cég csomagja az online foglalást?
@@ -91,13 +91,8 @@
 
   // Láthatja-e a látogató a foglalási űrlapot?
   const canSeeBookingForm = computed(() => {
-    // Ha dolgozó van bejelentkezve, mindig megmutatjuk neki a teszteléshez
     if (isLoggedIn.value) return true;
-
-    // Ha nincs bejelentkezve, és globálisan le van zárva az éles .env miatt, akkor rejtjük
     if (isDevLockActive) return false;
-
-    // Különben csak akkor látja a vendég, ha a csomag engedi, ÉS be van kapcsolva
     return isFeatureAllowed.value && isTurnedOnByAdmin.value;
   });
   // ---------------------------------------------

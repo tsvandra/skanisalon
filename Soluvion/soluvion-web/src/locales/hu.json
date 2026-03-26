@@ -106,7 +106,11 @@
     "errorNetwork": "Hálózati vagy ismeretlen hiba történt a foglalás során. Kérlek próbáld újra!",
     "errorServer": "Szerver hiba",
     "successTitle": "Sikeres foglalás!",
-    "newBooking": "Új időpont foglalása"
+    "newBooking": "Új időpont foglalása",
+    "comingSoonTitle": "Hamarosan!",
+    "comingSoonText": "Az online időpontfoglalási rendszerünk jelenleg tesztelés alatt áll, vagy ehhez a szalonhoz még nem elérhető. Kérjük, keress minket elérhetőségeinken!",
+    "devOverrideWarning": "DEV OVERRIDE: Ez az űrlap csak azért látszik most Inkognitóban, mert a .env fájlban fejlesztői üzemmódban vagy!",
+    "adminViewWarning": "ADMIN NÉZET: A publikus vendégek most a \"Hamarosan\" feliratot látják. Ezt csak te látod, mert be vagy jelentkezve!"
   },
   "calendar": {
     "dashboardTitle": "Vezérlőpult",
@@ -124,6 +128,35 @@
     "materialsToUse": "Felhasználandó anyagok",
     "noAppointmentsForDay": "Nincs foglalás erre a napra.",
     "addNewAppointment": "Új foglalás hozzáadása",
-    "unknown": "Ismeretlen"
+    "unknown": "Ismeretlen",
+    "editor": {
+      "editTitle": "Foglalás szerkesztése",
+      "newTitle": "Új foglalás rögzítése",
+      "client": "1. Ügyfél",
+      "selectFromList": "Válassz a listából...",
+      "addNewClient": "+ Új ügyfél rögzítése",
+      "fullNameOptional": "Teljes név (opcionális)...",
+      "phoneOptional": "Telefonszám (opcionális)...",
+      "clientValidationWarning": "Legalább az egyik mező kitöltése kötelező!",
+      "date": "Dátum",
+      "startTime": "Kezdés",
+      "services": "Szolgáltatások",
+      "addItem": "Tétel hozzáadása",
+      "categoryLabel": "1. Kategória...",
+      "serviceLabel": "2. Szolgáltatás...",
+      "variantLabel": "3. Pontos Variáns kiválasztása...",
+      "durationLabel": "Időtartam (Húzd)",
+      "durationSuffix": "perc",
+      "addToList": "Listához ad",
+      "noServicesAdded": "Még nincs szolgáltatás hozzáadva.",
+      "status": "Állapot",
+      "statusPending": "Függőben",
+      "statusApproved": "Jóváhagyva",
+      "internalNote": "Belső Megjegyzés",
+      "notePlaceholder": "Opcionális feljegyzés...",
+      "confirmDelete": "Biztosan véglegesen törlöd ezt a foglalást?",
+      "overlapWarning": "⚠️ Figyelem! Erre az időpontra már van aktív foglalás. Biztosan rá akarsz könyvelni (párhuzamos foglalás)?",
+      "saveError": "Hiba mentéskor:\n"
+    }
   }
 }
