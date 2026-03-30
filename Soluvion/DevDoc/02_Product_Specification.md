@@ -67,6 +67,8 @@ A képek fizikai tárolását a Cloudinary végzi.
 * **Micro-Interactions:** Lightbox bezárásakor a rendszer automatikusan visszagörget ahhoz az indexképhez, aminél a látogató tartott, és egy vizuális kerettel ki is emeli azt az orientáció segítésére.
 
 ### 4.5. Admin Vezérlőpult és Naptár (Dashboard)
-* **Zéró-Mock Ügyfélkezelés:** Az új foglalások rögzítésekor a rendszer valós időben kérdezi le és hozza létre az ügyfeleket. A rugalmas SaaS modell miatt a név, email vagy telefon megadása is elegendő a JSONB struktúrának köszönhetően.
-* **Okos Szolgáltatás-építő (Service Builder):** Kaszkádos legördülő menük, amelyek automatikusan szűrik az ár nélküli elemeket, és automatikusan kiválasztják a tételeket, ha csak egy opció van.
-* **Dinamikus Időtartam:** A fodrászok/munkatársak egyedi "Scrubbable" (húzható) inputtal bírálhatják felül egy szolgáltatás alapértelmezett idejét, amit a backend pontosan le is ment az adatbázisba.
+* **Zéró-Mock Ügyfélkezelés:** Az új foglalások rögzítésekor a rendszer valós időben kérdezi le és hozza létre az ügyfeleket (`CustomerPicker`). A rugalmas SaaS modell miatt a név, email vagy telefon megadása is elegendő a JSONB struktúrának köszönhetően.
+* **Okos Szolgáltatás-építő és Kosár (Split-View):** A foglalási felület egy letisztult, SaaS kategóriás "Split-View" designt használ. Bal oldalon a kategóriák, jobb oldalon a "Row-level selection" (kattintható sorok) logika működik egyedi lenyíló listákkal (`InlineDropdown`).
+* **Magic Sync (Variáns szinkronizáció):** Ha a felhasználó egy szolgáltatáshoz beállít egy variánst (pl. "Rövid haj" a vágásnál), a rendszer automatikusan megkeresi és alkalmazza ezt a variánst a többi kiválasztott elemnél is (pl. hajfestés).
+* **Dinamikus Időtartam és Kosár Összesítő:** A hozzáadott tételek egy dedikált kosárba (`AppointmentCart`) kerülnek. Itt a munkatársak egyedi "Scrubbable" (húzható) inputtal bírálhatják felül az alapértelmezett időt, a rendszer pedig valós időben kalkulálja az összidőt és az árat.
+* **Párhuzamos foglalások:** A rendszer vizuálisan egymás mellé (Lanes) rendezi az ütköző eseményeket, és HTTP 409 (OVERLAP) hibaüzenettel védi a backendet a véletlen ráfoglalásoktól, amit az admin tudatosan felülbírálhat.
