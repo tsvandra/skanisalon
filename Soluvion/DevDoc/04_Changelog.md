@@ -8,6 +8,13 @@ Ez a dokumentum kronológiai sorrendben (a legújabbtól visszafelé) rögzíti 
 
 ---
 
+## [Jelenlegi Dátum] Feature 18: Admin Appointment Editor Refactoring & UI/UX Polishing
+**Státusz:** Kész
+* **UI/UX:** Az Admin naptár foglalási modal (`AppointmentEditorModal.vue`) teljes vizuális és funkcionális újraírása. Bevezetésre került a "Split-View" elrendezés (Y-tengelyes kategóriatabok) és a modern "Row-level selection" (sor-szintű kijelölés) a régi legördülők és checkboxok helyett.
+* **Okos Funkciók:** "Magic Sync" algoritmus integrálása: a kiválasztott szolgáltatás-variánsok (pl. hajhossz) automatikusan szinkronizálódnak az azonos nevű, de más kategóriájú szolgáltatások között.
+* **Frontend Architektúra (Clean Code):** A monolitikus modal fájl feldarabolása Single Responsibility elv alapján. Új komponensek: `CustomerPicker`, `ServicePicker`, `AppointmentCart`, és egy teljesen újrafelhasználható, egyedi `InlineDropdown` komponens (a natív HTML select vizuális korlátainak és fókuszálási hibáinak áthidalására).
+* **Bugfix:** `AppHeader` reszponzivitásának javítása. A hamburger menü breakpointja `lg` (1024px) méretre lett emelve, hogy elkerüljük a logó és a menüpontok egymásra csúszását tablet nézetben.
+
 ## [Jelenlegi Dátum] Feature 17: Calendar Refactoring, Double-Booking & i18n
 **Státusz:** Kész
 * **Frontend Architektúra:** A `CalendarGrid.vue` monolitikus fájl szétbontása Clean Code / SRP elvek alapján Smart és Dumb komponensekre (`CalendarToolbar`, `CalendarMonthView`, `CalendarWeekView`, `CalendarDayView`, `AppointmentEditorModal`).

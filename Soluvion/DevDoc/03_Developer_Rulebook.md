@@ -17,6 +17,10 @@ Ez a dokumentum azokat a szigorú kódolási elveket és konvenciókat tartalmaz
 * [cite_start]**`feature/...` ágak (LOCAL):** > Minden új funkciót vagy hibajavítást egy dedikált ágon kell elvégezni[cite: 60].
 * [cite_start]**Névkonvenció:** > A feature ágak neve tartalmazza az Issue számát (pl. `feature/12-arlista-backend`)[cite: 61, 62].
 
+## 1.5. Frontend UI/UX Konvenciók és Komponens Darabolás (SRP)
+* **Natív HTML Elemek vs. Custom UI:** Ha egy interakcióhoz automatikus "lenyitást" (programmatic open) vagy komplex stílusozást kérünk, szigorúan tilos a natív `<select>` taget JavaScript "hackekkel" (pl. `.focus()`) manipulálni a böngészők biztonsági tiltásai miatt. Ilyenkor kötelező egyedi Vue komponenst építeni (pl. `InlineDropdown.vue`).
+* **Single Responsibility Principle (SRP) a Vue-ban:** Egy `.vue` fájl nem haladhatja meg az átláthatósági küszöböt (jellemzően 250-300 sor felett). Ha egy űrlap (Modal) több különböző logikai egységet lát el (pl. ügyfélválasztás + kosárkezelés + szolgáltatás listázás), azokat kötelező külön `Smart` vagy `Dumb` komponensekbe kiszervezni (`CustomerPicker.vue`, `AppointmentCart.vue`). A szülő komponens dolga pusztán ezen építőkockák összefogása és a hálózati (API) kérések kezelése.
+
 ---
 
 ## 2. Backend Kódolási Szabályok (.NET)
