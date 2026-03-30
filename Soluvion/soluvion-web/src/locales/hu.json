@@ -156,7 +156,16 @@
       "notePlaceholder": "Opcionális feljegyzés...",
       "confirmDelete": "Biztosan véglegesen törlöd ezt a foglalást?",
       "overlapWarning": "⚠️ Figyelem! Erre az időpontra már van aktív foglalás. Biztosan rá akarsz könyvelni (párhuzamos foglalás)?",
-      "saveError": "Hiba mentéskor:\n"
+      "saveError": "Hiba mentéskor:\n",
+      "validationMissingVariants": "Válassz variánst a kijelölt szolgáltatásokhoz!",
+      "selectPlaceholder": "Válassz...",
+      "noServicesToDisplay": "Nincs megjeleníthető szolgáltatás.",
+      "addMissingAndSubmit": "Hiányzók pótlása és Hozzáadás",
+      "addSelectedServices": "Kijelöltek Hozzáadása",
+      "addedServices": "Hozzáadott szolgáltatások",
+      "totalTime": "Összes idő:",
+      "totalPrice": "Összesen:",
+      "deleteError": "Hiba történt a törlés során."
     }
   }
 }
