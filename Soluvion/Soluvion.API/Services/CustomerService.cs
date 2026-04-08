@@ -41,13 +41,26 @@ namespace Soluvion.API.Services
                         displayName = c.Attributes["Email"];
                 }
 
+                // Kiszűrjük azokat a kulcsokat, amiket fix mezőként kezelünk (Név, Telefon, Email, Notes)
+                var dynamicAttributes = c.Attributes?
+                    .Where(kvp => kvp.Key != "FullName" && kvp.Key != "Name" && kvp.Key != "Phone" && kvp.Key != "Email" && kvp.Key != "Notes")
+                    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? new Dictionary<string, string>();
+
+                // A megjegyzés prioritása: Ha van fizikai mező, azt használjuk, ha nincs, akkor megnézzük maradt-e a JSON-ben régi adat
+                string? notes = c.Notes;
+                if (string.IsNullOrWhiteSpace(notes) && c.Attributes != null && c.Attributes.ContainsKey("Notes"))
+                {
+                    notes = c.Attributes["Notes"];
+                }
+
                 return new CustomerResponseDto
                 {
                     Id = c.Id,
                     Name = displayName,
                     Phone = c.Attributes != null && c.Attributes.ContainsKey("Phone") ? c.Attributes["Phone"] : null,
                     Email = c.Attributes != null && c.Attributes.ContainsKey("Email") ? c.Attributes["Email"] : null,
-                    Notes = c.Attributes != null && c.Attributes.ContainsKey("Notes") ? c.Attributes["Notes"] : null
+                    Notes = notes,
+                    Attributes = dynamicAttributes // Csak a tiszta, egyedi jellemzők mennek a frontendnek
                 };
             }).OrderBy(c => c.Name).ToList();
         }
@@ -56,18 +69,25 @@ namespace Soluvion.API.Services
         {
             int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
 
-            var attributes = new Dictionary<string, string>();
+            // A frontendről érkező egyedi jellemzőkből indulunk ki (vagy üres lista)
+            var attributes = dto.Attributes != null
+                ? new Dictionary<string, string>(dto.Attributes)
+                : new Dictionary<string, string>();
 
-            if (!string.IsNullOrWhiteSpace(dto.FullName)) attributes.Add("FullName", dto.FullName.Trim());
-            if (!string.IsNullOrWhiteSpace(dto.Phone)) attributes.Add("Phone", dto.Phone.Trim());
-            if (!string.IsNullOrWhiteSpace(dto.Email)) attributes.Add("Email", dto.Email.Trim());
-            if (!string.IsNullOrWhiteSpace(dto.Notes)) attributes.Add("Notes", dto.Notes.Trim());
+            // Hozzáadjuk a fix alapadatokat a JSONB-hez
+            if (!string.IsNullOrWhiteSpace(dto.FullName)) attributes["FullName"] = dto.FullName.Trim();
+            if (!string.IsNullOrWhiteSpace(dto.Phone)) attributes["Phone"] = dto.Phone.Trim();
+            if (!string.IsNullOrWhiteSpace(dto.Email)) attributes["Email"] = dto.Email.Trim();
+
+            // A Notes szigorúan a fizikai oszlopba megy, kivesszük a JSON-ből, ha véletlenül bekerült volna
+            if (attributes.ContainsKey("Notes")) attributes.Remove("Notes");
 
             var customer = new CompanyCustomer
             {
                 CompanyId = companyId,
                 UserId = null,
-                Attributes = attributes
+                Attributes = attributes,
+                Notes = dto.Notes?.Trim() // Fizikai oszlopba mentjük
             };
 
             _context.CompanyCustomers.Add(customer);
@@ -76,7 +96,15 @@ namespace Soluvion.API.Services
             string displayName = !string.IsNullOrWhiteSpace(dto.FullName) ? dto.FullName :
                                  (!string.IsNullOrWhiteSpace(dto.Phone) ? dto.Phone : dto.Email ?? "Névtelen Vendég");
 
-            return new CustomerResponseDto { Id = customer.Id, Name = displayName };
+            return new CustomerResponseDto
+            {
+                Id = customer.Id,
+                Name = displayName,
+                Phone = dto.Phone,
+                Email = dto.Email,
+                Notes = customer.Notes,
+                Attributes = dto.Attributes ?? new Dictionary<string, string>()
+            };
         }
 
         public async Task<CustomerResponseDto> UpdateCustomerAsync(int id, CreateCustomerDto dto)
@@ -88,14 +116,26 @@ namespace Soluvion.API.Services
 
             if (customer == null) throw new KeyNotFoundException("Az ügyfél nem található.");
 
-            // Újraépítjük az attribútumokat
-            var attributes = new Dictionary<string, string>();
-            if (!string.IsNullOrWhiteSpace(dto.FullName)) attributes.Add("FullName", dto.FullName.Trim());
-            if (!string.IsNullOrWhiteSpace(dto.Phone)) attributes.Add("Phone", dto.Phone.Trim());
-            if (!string.IsNullOrWhiteSpace(dto.Email)) attributes.Add("Email", dto.Email.Trim());
-            if (!string.IsNullOrWhiteSpace(dto.Notes)) attributes.Add("Notes", dto.Notes.Trim());
+            // A frontendről érkező egyedi jellemzőkből indulunk ki
+            var attributes = dto.Attributes != null
+                ? new Dictionary<string, string>(dto.Attributes)
+                : new Dictionary<string, string>();
+
+            // Frissítjük a fix alapadatokat
+            if (!string.IsNullOrWhiteSpace(dto.FullName)) attributes["FullName"] = dto.FullName.Trim();
+            else attributes.Remove("FullName");
+
+            if (!string.IsNullOrWhiteSpace(dto.Phone)) attributes["Phone"] = dto.Phone.Trim();
+            else attributes.Remove("Phone");
+
+            if (!string.IsNullOrWhiteSpace(dto.Email)) attributes["Email"] = dto.Email.Trim();
+            else attributes.Remove("Email");
+
+            // A Notes szigorúan a fizikai oszlopba megy, tisztítjuk a JSONB-t a régi adatoktól
+            if (attributes.ContainsKey("Notes")) attributes.Remove("Notes");
 
             customer.Attributes = attributes;
+            customer.Notes = dto.Notes?.Trim(); // Fizikai oszlop frissítése
 
             _context.CompanyCustomers.Update(customer);
             await _context.SaveChangesAsync();
@@ -103,7 +143,15 @@ namespace Soluvion.API.Services
             string displayName = !string.IsNullOrWhiteSpace(dto.FullName) ? dto.FullName :
                                  (!string.IsNullOrWhiteSpace(dto.Phone) ? dto.Phone : dto.Email ?? "Névtelen Vendég");
 
-            return new CustomerResponseDto { Id = customer.Id, Name = displayName };
+            return new CustomerResponseDto
+            {
+                Id = customer.Id,
+                Name = displayName,
+                Phone = dto.Phone,
+                Email = dto.Email,
+                Notes = customer.Notes,
+                Attributes = dto.Attributes ?? new Dictionary<string, string>()
+            };
         }
 
         public async Task DeleteCustomerAsync(int id)
@@ -115,7 +163,6 @@ namespace Soluvion.API.Services
 
             if (customer == null) throw new KeyNotFoundException("Az ügyfél nem található.");
 
-            // VÉDELEM: Ellenőrizzük, hogy van-e foglalása
             bool hasAppointments = await _context.Appointments.AnyAsync(a => a.CustomerId == id && a.CompanyId == companyId);
             if (hasAppointments)
             {
