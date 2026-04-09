@@ -19,5 +19,6 @@
         public Dictionary<string, string> VariantName { get; set; } = new();
         public decimal? Price { get; set; }
         public int Duration { get; set; }
+        public Dictionary<string, string> ProfileModifiers { get; set; } = new();
     }
 }

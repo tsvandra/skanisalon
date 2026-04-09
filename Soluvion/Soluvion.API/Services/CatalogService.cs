@@ -48,7 +48,9 @@ namespace Soluvion.API.Services
                 {
                     VariantName = v.VariantName ?? new Dictionary<string, string> { { "hu", "Normál" } },
                     Price = v.Price ?? 0,
-                    Duration = v.Duration
+                    Duration = v.Duration,
+                    // ÚJ: ProfileModifiers hozzáadása létrehozáskor
+                    ProfileModifiers = v.ProfileModifiers ?? new Dictionary<string, string>()
                 }).ToList() ?? new List<ServiceVariant>()
             };
 
@@ -90,7 +92,9 @@ namespace Soluvion.API.Services
                         {
                             VariantName = vDto.VariantName,
                             Price = vDto.Price ?? 0,
-                            Duration = vDto.Duration
+                            Duration = vDto.Duration,
+                            // ÚJ: ProfileModifiers mentése új variáns esetén
+                            ProfileModifiers = vDto.ProfileModifiers ?? new Dictionary<string, string>()
                         });
                     }
                     else
@@ -101,6 +105,8 @@ namespace Soluvion.API.Services
                             existVar.VariantName = vDto.VariantName;
                             existVar.Price = vDto.Price ?? 0;
                             existVar.Duration = vDto.Duration;
+                            // ÚJ: ProfileModifiers mentése variáns módosításakor
+                            existVar.ProfileModifiers = vDto.ProfileModifiers ?? new Dictionary<string, string>();
                         }
                     }
                 }
@@ -138,7 +144,9 @@ namespace Soluvion.API.Services
                     Id = v.Id,
                     VariantName = v.VariantName,
                     Price = v.Price,
-                    Duration = v.Duration
+                    Duration = v.Duration,
+                    // ÚJ: ProfileModifiers lekérése az adatbázisból
+                    ProfileModifiers = v.ProfileModifiers ?? new Dictionary<string, string>()
                 }).ToList() ?? new List<CatalogVariantDto>()
             };
         }
