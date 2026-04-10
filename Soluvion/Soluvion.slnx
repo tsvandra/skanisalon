@@ -4,7 +4,7 @@
     <File Path="Dockerfile" />
   </Folder>
   <Folder Name="/Solution Items/DevDoc/">
-    <File Path="01_Architecture_and_DevOps.md" />
+    <File Path="DevDoc/01_Architecture_and_DevOps.md" />
     <File Path="DevDoc/02_Product_Specification.md" />
     <File Path="DevDoc/03_Developer_Rulebook.md" />
     <File Path="DevDoc/04_Changelog.md" />

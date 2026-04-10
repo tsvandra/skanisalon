@@ -72,3 +72,8 @@ A képek fizikai tárolását a Cloudinary végzi.
 * **Magic Sync (Variáns szinkronizáció):** Ha a felhasználó egy szolgáltatáshoz beállít egy variánst (pl. "Rövid haj" a vágásnál), a rendszer automatikusan megkeresi és alkalmazza ezt a variánst a többi kiválasztott elemnél is (pl. hajfestés).
 * **Dinamikus Időtartam és Kosár Összesítő:** A hozzáadott tételek egy dedikált kosárba (`AppointmentCart`) kerülnek. Itt a munkatársak egyedi "Scrubbable" (húzható) inputtal bírálhatják felül az alapértelmezett időt, a rendszer pedig valós időben kalkulálja az összidőt és az árat.
 * **Párhuzamos foglalások:** A rendszer vizuálisan egymás mellé (Lanes) rendezi az ütköző eseményeket, és HTTP 409 (OVERLAP) hibaüzenettel védi a backendet a véletlen ráfoglalásoktól, amit az admin tudatosan felülbírálhat.
+
+* ### 4.6. Dinamikus CRM és Attribútum Rendszer (SaaS Engine)
+A rendszer ügyfélkezelése elszakad a hagyományos kötött tábláktól, maximális szabadságot adva a különböző iparágaknak.
+* **Szalon-specifikus Adatlapok (Company Attributes):** A szalonok saját maguk definiálhatják a vendégekről gyűjtött adatokat (pl. Hajhossz, Allergia, Kutyakozmetika esetén Kutya fajtája). Ezek a dinamikus mezők beállíthatóak kötelezőnek, és lehetnek szabadon beírhatóak vagy legördülő listából választhatóak.
+* **Zero-Admin Profil Építés (Profile Modifiers):** A rendszer képes "tanulni" a napi szintű naptár-használatból. Ha a vendégnek lefoglalnak egy szolgáltatást, amihez be van állítva egy Módosító (pl. Női Hajvágás -> Hajhossz: Rövid), a backend transzparensen és automatikusan beírja (vagy frissíti) ezt az adatot a vendég JSONB profiljában a foglalás pillanatában. Így elkerülhető a dupla adminisztráció.

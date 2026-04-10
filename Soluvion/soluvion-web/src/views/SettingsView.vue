@@ -15,6 +15,7 @@
   import SettingsSocial from '@/components/admin/settings/SettingsSocial.vue';
   import SettingsAppearance from '@/components/admin/settings/SettingsAppearance.vue';
   import SettingsTranslations from '@/components/admin/settings/SettingsTranslations.vue';
+  import SettingsCustomers from '@/components/admin/settings/SettingsCustomers.vue';
 
   const companyData = ref({});
   const isLoading = ref(false);
@@ -113,7 +114,8 @@
           <Tab value="1">Nyitvatartás</Tab>
           <Tab value="2">Közösségi & Térkép</Tab>
           <Tab value="3">Megjelenés</Tab>
-          <Tab value="4">Fordítások & Nyelvek</Tab>
+          <Tab value="4">Fordítások</Tab>
+          <Tab value="5">Vendég Jellemzők</Tab>
         </TabList>
 
         <TabPanels>
@@ -136,11 +138,15 @@
           <TabPanel value="4">
             <SettingsTranslations />
           </TabPanel>
+
+          <TabPanel value="5">
+            <SettingsCustomers />
+          </TabPanel>
         </TabPanels>
       </Tabs>
 
       <div class="mt-10 flex justify-end border-t border-text/10 pt-6">
-        <Button :label="isSaving ? 'Mentés folyamatban...' : 'Beállítások Mentése'"
+        <Button :label="isSaving ? 'Mentés folyamatban...' : 'Alap Beállítások Mentése'"
                 :icon="isSaving ? 'pi pi-spin pi-spinner' : 'pi pi-check'"
                 :disabled="isSaving"
                 @click="saveSettings"

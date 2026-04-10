@@ -36,6 +36,7 @@ namespace Soluvion.API.Data
         public DbSet<CompanyCustomer> CompanyCustomers { get; set; }
         public DbSet<Appointment> Appointments { get; set; }
         public DbSet<AppointmentItem> AppointmentItems { get; set; }
+        public DbSet<CompanyAttribute> CompanyAttributes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -54,6 +55,7 @@ namespace Soluvion.API.Data
             modelBuilder.Entity<CompanyCustomer>().HasQueryFilter(cc => CurrentTenantId == 0 || cc.CompanyId == CurrentTenantId);
             modelBuilder.Entity<Appointment>().HasQueryFilter(a => CurrentTenantId == 0 || a.CompanyId == CurrentTenantId);
             modelBuilder.Entity<AppointmentItem>().HasQueryFilter(ai => CurrentTenantId == 0 || ai.Appointment!.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<CompanyAttribute>().HasQueryFilter(ca => CurrentTenantId == 0 || ca.CompanyId == CurrentTenantId);
 
             // --- 1. ÖSSZETETT KULCSOK ---
             modelBuilder.Entity<CompanyLanguage>()
@@ -116,6 +118,12 @@ namespace Soluvion.API.Data
                 .HasForeignKey(ai => ai.ServiceVariantId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            modelBuilder.Entity<CompanyAttribute>()
+                .HasOne(ca => ca.Company)
+                .WithMany()
+                .HasForeignKey(ca => ca.CompanyId)
+                .OnDelete(DeleteBehavior.Cascade);
+
 
             // --- 2. JSONB KONVERZIÓK (MANUÁLIS) ---
             // Ez oldja meg a "Reading as Dictionary is not supported" hibát!
@@ -124,9 +132,23 @@ namespace Soluvion.API.Data
                 c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
                 c => c.ToDictionary(entry => entry.Key, entry => entry.Value));
 
+            var listStringComparer = new ValueComparer<List<string>>(
+                (c1, c2) => c1.SequenceEqual(c2),
+                c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
+                c => c.ToList());
+
             // --- ServiceVariant ---
             modelBuilder.Entity<ServiceVariant>()
                 .Property(v => v.VariantName)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
+                    dictionaryComparer);
+
+            // ProfileModifiers konverzió
+            modelBuilder.Entity<ServiceVariant>()
+                .Property(v => v.ProfileModifiers)
                 .HasColumnType("jsonb")
                 .HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
@@ -215,6 +237,14 @@ namespace Soluvion.API.Data
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
                     v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
                     dictionaryComparer);
+
+            modelBuilder.Entity<CompanyAttribute>()
+                .Property(ca => ca.Options)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions)null) ?? new List<string>(),
+                    listStringComparer);
         }
     }
 }

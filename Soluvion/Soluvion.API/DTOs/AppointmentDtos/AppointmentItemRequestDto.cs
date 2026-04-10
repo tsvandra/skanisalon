@@ -4,5 +4,6 @@
     {
         public int ServiceVariantId { get; set; }
         public int DurationMinutes { get; set; }
+        public decimal Price { get; set; }
     }
 }

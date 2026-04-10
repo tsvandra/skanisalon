@@ -18,5 +18,8 @@ namespace Soluvion.Domain.Models
         [Column(TypeName = "decimal(10, 2)")]
         public decimal Price { get; set; }
         public int Duration { get; set; } // in minutes
+
+        [Column(TypeName = "jsonb")]
+        public Dictionary<string, string> ProfileModifiers { get; set; } = new();
     }
 }
