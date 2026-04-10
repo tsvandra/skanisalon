@@ -131,97 +131,94 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import api from '@/services/companyAttributesApi'; // Frissítsd az elérési utat a sajátodra!
+  import { ref, onMounted } from 'vue';
+  import api from '@/services/api'; // <--- Ide beírjuk a meglévő fő API hívódat
 
-const attributes = ref([]);
-const loading = ref(true);
-const saving = ref(false);
-const isModalOpen = ref(false);
+  const attributes = ref([]);
+  const loading = ref(true);
+  const saving = ref(false);
+  const isModalOpen = ref(false);
 
-const form = ref({
-  id: null,
-  label: '',
-  key: '',
-  dataType: 'text',
-  options: [],
-  isRequired: false,
-  showOnPublicBooking: false,
-  isActive: true
-});
+  const form = ref({
+    id: null,
+    label: '',
+    key: '',
+    dataType: 'text',
+    options: [],
+    isRequired: false,
+    showOnPublicBooking: false,
+    isActive: true
+  });
 
-const loadAttributes = async () => {
-  loading.value = true;
-  try {
-    const response = await api.getAttributes();
-    // Kezeljük a $values-t, ha a backend C# JSON serializer úgy küldi vissza
-    attributes.value = response.data.$values || response.data || [];
-  } catch (error) {
-    console.error("Hiba az attribútumok lekérésekor:", error);
-  } finally {
-    loading.value = false;
-  }
-};
-
-const autoGenerateKey = () => {
-  if (!form.value.id) {
-    // Ékezetmentesítés, kisbetűsítés, szóközök cseréje
-    form.value.key = form.value.label
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '_')
-      .replace(/_+/g, '_')
-      .replace(/^_|_$/g, '');
-  }
-};
-
-const openModal = (attr = null) => {
-  if (attr) {
-    form.value = { ...attr, options: attr.options ? [...attr.options] : [] };
-  } else {
-    form.value = { id: null, label: '', key: '', dataType: 'text', options: [], isRequired: false, showOnPublicBooking: false, isActive: true };
-  }
-  isModalOpen.value = true;
-};
-
-const saveAttribute = async () => {
-  saving.value = true;
-
-  // Üres opciók kiszűrése mentés előtt
-  if (form.value.dataType === 'select') {
-    form.value.options = form.value.options.filter(o => o.trim() !== '');
-  } else {
-    form.value.options = [];
-  }
-
-  try {
-    if (form.value.id) {
-      await api.updateAttribute(form.value.id, form.value);
-    } else {
-      await api.createAttribute(form.value);
-    }
-    await loadAttributes();
-    isModalOpen.value = false;
-  } catch (error) {
-    console.error("Mentési hiba:", error);
-    alert(error.response?.data?.message || "Hiba történt a mentés során.");
-  } finally {
-    saving.value = false;
-  }
-};
-
-const deleteAttribute = async (id) => {
-  if (confirm("Biztosan törlöd ezt az attribútumot? A meglévő vendégek adatai a háttérben megmaradnak, de az űrlapon nem fognak többé megjelenni.")) {
+  const loadAttributes = async () => {
+    loading.value = true;
     try {
-      await api.deleteAttribute(id);
-      await loadAttributes();
+      const response = await api.get('/api/company-attributes');
+      attributes.value = response.data.$values || response.data || [];
     } catch (error) {
-      console.error("Törlési hiba:", error);
+      console.error("Hiba az attribútumok lekérésekor:", error);
+    } finally {
+      loading.value = false;
     }
-  }
-};
+  };
 
-onMounted(() => {
-  loadAttributes();
-});
+  const autoGenerateKey = () => {
+    if (!form.value.id) {
+      form.value.key = form.value.label
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+    }
+  };
+
+  const openModal = (attr = null) => {
+    if (attr) {
+      form.value = { ...attr, options: attr.options ? [...attr.options] : [] };
+    } else {
+      form.value = { id: null, label: '', key: '', dataType: 'text', options: [], isRequired: false, showOnPublicBooking: false, isActive: true };
+    }
+    isModalOpen.value = true;
+  };
+
+  const saveAttribute = async () => {
+    saving.value = true;
+
+    if (form.value.dataType === 'select') {
+      form.value.options = form.value.options.filter(o => o.trim() !== '');
+    } else {
+      form.value.options = [];
+    }
+
+    try {
+      if (form.value.id) {
+        await api.put(`/api/company-attributes/${form.value.id}`, form.value);
+      } else {
+        await api.post('/api/company-attributes', form.value);
+      }
+      await loadAttributes();
+      isModalOpen.value = false;
+    } catch (error) {
+      console.error("Mentési hiba:", error);
+      alert(error.response?.data?.message || "Hiba történt a mentés során.");
+    } finally {
+      saving.value = false;
+    }
+  };
+
+  const deleteAttribute = async (id) => {
+    if (confirm("Biztosan törlöd ezt az attribútumot? A meglévő vendégek adatai a háttérben megmaradnak, de az űrlapon nem fognak többé megjelenni.")) {
+      try {
+        await api.delete(`/api/company-attributes/${id}`);
+        await loadAttributes();
+      } catch (error) {
+        console.error("Törlési hiba:", error);
+      }
+    }
+  };
+
+  onMounted(() => {
+    loadAttributes();
+  });
 </script>

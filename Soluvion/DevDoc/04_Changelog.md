@@ -7,15 +7,21 @@
 Ez a dokumentum kronológiai sorrendben (a legújabbtól visszafelé) rögzíti a befejezett funkciókat, infrastrukturális változásokat és a kritikus hibajavításokat.
 
 ---
+## [2026-04-10] Feature 19: SaaS CRM & Smart Profile Modifiers
+**Státusz:** Kész, Stabilizálva
+* **Adatbázis (C#):** Új `CompanyAttribute` entitás a szalon-specifikus adatbekérési szabályok (Kérdések, Opciók) tárolására. `ServiceVariant` entitás bővítése a `ProfileModifiers` JSONB oszloppal.
+* **Backend "Magic" Logika:** Az `AppointmentService` Létrehozás és Módosítás folyamata kiegészült egy automatikus algoritmusal. Foglaláskor a rendszer befésüli a variánsokhoz rendelt módosítókat a vendég JSONB profiljába, így a CRM emberi beavatkozás nélkül, magától épül.
+* **Frontend (Settings & CRM):** Új `SettingsCustomers.vue` felület az attribútumok menedzselésére. A `CustomersView.vue` modalja intelligens űrlap-generátorrá alakult, ami a cég beállításai alapján dinamikusan rendereli a `text` és `select` mezőket, kezelve a kötelezőségi (required) szabályokat is.
+* **UX Innováció (ServicesView):** A szolgáltatás mátrixban az automatikus profil frissítő (Modifier) beállítása oszlop-szintre (Fejléc Variáns) került, megszüntetve a redundáns adatbevitelt. Egyetlen kattintással a teljes kategóriára érvényesíthető a szabály (pl. "Rövid" oszlop minden szolgáltatása a "Hajhossz: Rövid" attribútumot triggeli).
 
-## [Jelenlegi Dátum] Feature 18: Admin Appointment Editor Refactoring & UI/UX Polishing
+## [2026-04-05] Feature 18: Admin Appointment Editor Refactoring & UI/UX Polishing
 **Státusz:** Kész
 * **UI/UX:** Az Admin naptár foglalási modal (`AppointmentEditorModal.vue`) teljes vizuális és funkcionális újraírása. Bevezetésre került a "Split-View" elrendezés (Y-tengelyes kategóriatabok) és a modern "Row-level selection" (sor-szintű kijelölés) a régi legördülők és checkboxok helyett.
 * **Okos Funkciók:** "Magic Sync" algoritmus integrálása: a kiválasztott szolgáltatás-variánsok (pl. hajhossz) automatikusan szinkronizálódnak az azonos nevű, de más kategóriájú szolgáltatások között.
 * **Frontend Architektúra (Clean Code):** A monolitikus modal fájl feldarabolása Single Responsibility elv alapján. Új komponensek: `CustomerPicker`, `ServicePicker`, `AppointmentCart`, és egy teljesen újrafelhasználható, egyedi `InlineDropdown` komponens (a natív HTML select vizuális korlátainak és fókuszálási hibáinak áthidalására).
 * **Bugfix:** `AppHeader` reszponzivitásának javítása. A hamburger menü breakpointja `lg` (1024px) méretre lett emelve, hogy elkerüljük a logó és a menüpontok egymásra csúszását tablet nézetben.
 
-## [Jelenlegi Dátum] Feature 17: Calendar Refactoring, Double-Booking & i18n
+## [2026-03-30] Feature 17: Calendar Refactoring, Double-Booking & i18n
 **Státusz:** Kész
 * **Frontend Architektúra:** A `CalendarGrid.vue` monolitikus fájl szétbontása Clean Code / SRP elvek alapján Smart és Dumb komponensekre (`CalendarToolbar`, `CalendarMonthView`, `CalendarWeekView`, `CalendarDayView`, `AppointmentEditorModal`).
 * **Okos Idővonal (Timeline):** Napi nézet "Lanes" (sáv-kiosztó) algoritmusának bevezetése az ütköző (párhuzamos) foglalások egymás alatti/melletti megjelenítésére. Tényleges terheltség és szabadidő (Gaps) számítása matematikai intervallum-összeolvasztással (Merge).
