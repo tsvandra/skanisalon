@@ -40,42 +40,14 @@
       </h3>
 
       <div v-if="upcomingAppointments.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-        <div v-for="app in upcomingAppointments" :key="'upc-'+app.id"
-             @click="$emit('appointmentClick', app)"
-             class="bg-surface rounded-xl p-3 md:p-4 shadow-sm border border-text/10 flex flex-col gap-2 md:gap-3 hover:border-primary/50 cursor-pointer transition-colors relative"
-             :style="{ borderLeftWidth: '5px', borderLeftColor: getCustomerColorDarker(app.customerId) }">
 
-          <div class="flex justify-between items-start">
-            <div class="flex items-center gap-2 md:gap-3">
-              <div class="flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full font-bold text-white drop-shadow-sm text-[10px] md:text-xs shadow-sm"
-                   :style="{ backgroundColor: getCustomerColor(app.customerId) }">
-                {{ getCustomerInitials(app.customerId) }}
-              </div>
-              <div class="flex flex-col">
-                <div class="flex items-center gap-2">
-                  <h4 class="text-sm md:text-md font-bold text-text">{{ getCustomerName(app.customerId) }}</h4>
-                  <div class="w-2 h-2 rounded-full shadow-sm" :class="isPending(app.status) ? 'bg-red-500' : 'bg-green-500'" :title="isPending(app.status) ? 'Függőben' : 'Jóváhagyva'"></div>
-                </div>
-              </div>
-            </div>
-            <div class="text-[10px] md:text-xs bg-background px-2 py-1 rounded text-text-muted font-bold capitalize">
-              {{ getDayNameShort(app.startDateTime) }}, {{ formatDateShort(app.startDateTime) }}
-            </div>
-          </div>
+        <AppointmentCard v-for="app in upcomingAppointments" :key="'upc-'+app.id"
+                         :app="app"
+                         mode="month"
+                         :customers-list="customersList"
+                         :available-services="availableServices"
+                         @click="$emit('appointmentClick', app)" />
 
-          <div class="flex items-center gap-3 md:gap-4 text-text-muted text-[10px] md:text-xs font-bold pl-1">
-            <div class="flex items-center gap-1"><i class="pi pi-clock text-primary"></i> {{ formatTime(app.startDateTime) }}</div>
-            <div class="flex items-center gap-1"><i class="pi pi-hourglass text-primary"></i> {{ getDurationMinutes(app) }} p</div>
-          </div>
-
-          <div class="flex gap-1 md:gap-1.5 mt-1 pl-1">
-            <div v-for="item in app.items" :key="item.id"
-                 class="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] md:text-xs font-black border border-primary/20 cursor-help"
-                 :title="getVariantFullName(item.serviceVariantId)">
-              {{ getInitials(getVariantFullName(item.serviceVariantId)) }}
-            </div>
-          </div>
-        </div>
       </div>
       <div v-else class="text-center py-6 md:py-8 bg-surface rounded-xl border border-dashed border-text/10 text-text-muted text-sm md:text-base">
         {{ $t('calendar.noUpcomingAppointments') || 'Nincsenek közelgő foglalások.' }}
@@ -86,49 +58,23 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { useI18n } from 'vue-i18n';
-import { getCustomerColor, getCustomerColorDarker } from '@/utils/colorUtils';
+  import { computed } from 'vue';
+  import { getCustomerColor } from '@/utils/colorUtils';
+  import AppointmentCard from './AppointmentCard.vue';
 
-const props = defineProps({
-  dynamicWeekDays: { type: Array, required: true },
-  calendarDays: { type: Array, required: true },
-  upcomingAppointments: { type: Array, required: true },
-  availableServices: { type: Array, default: () => [] },
-  customersList: { type: Array, default: () => [] }
-});
+  const props = defineProps({
+    dynamicWeekDays: { type: Array, required: true },
+    calendarDays: { type: Array, required: true },
+    upcomingAppointments: { type: Array, required: true },
+    availableServices: { type: Array, default: () => [] },
+    customersList: { type: Array, default: () => [] }
+  });
 
-defineEmits(['dayClick', 'appointmentClick']);
+  defineEmits(['dayClick', 'appointmentClick']);
 
-const { locale } = useI18n();
-const currentLang = computed(() => locale.value || 'hu-HU');
-
-// --- Formázó segédfüggvények, amelyek ezen a nézeten belül szükségesek ---
-const isPending = (status) => status === 0 || status === '0' || (typeof status === 'string' && status.toLowerCase() === 'pending');
-const getDayNameShort = (date) => new Date(date).toLocaleString(currentLang.value, { weekday: 'short' });
-const formatDateShort = (iso) => iso ? new Date(iso).toLocaleDateString(currentLang.value, { month: 'short', day: 'numeric' }) : '';
-const formatTime = (iso) => iso ? new Date(iso).toLocaleTimeString(currentLang.value, { hour: '2-digit', minute: '2-digit' }) : '';
-const getDurationMinutes = (app) => Math.round((new Date(app.endDateTime) - new Date(app.startDateTime)) / 60000);
-const getLocText = (dict) => dict ? (dict[currentLang.value] || dict['hu'] || '') : '';
-const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?';
-
-// --- Névkereső funkciók a kapott Props adatok alapján ---
-const getCustomerName = (id) => {
-  const c = props.customersList.find(x => x.id === id);
-  return c && c.name && c.name !== 'Ismeretlen Vendég' ? c.name : `Vendég #${id}`;
-};
-
-const getCustomerInitials = (id) => {
-  const name = getCustomerName(id);
-  if (name.startsWith('Vendég #')) return `#${id}`;
-  return getInitials(name);
-};
-
-const getVariantFullName = (variantId) => {
-  for (const s of props.availableServices) {
-    const v = s.variants?.find(vx => vx.id === variantId);
-    if (v) return `${getLocText(s.name)} - ${getLocText(v.variantName)}`;
-  }
-  return 'Ismeretlen';
-};
+  // Formatters for Grid ONLY
+  const getCustomerName = (id) => {
+    const c = props.customersList.find(x => x.id === id);
+    return c && c.name && c.name !== 'Ismeretlen Vendég' ? c.name : `Vendég #${id}`;
+  };
 </script>

@@ -44,30 +44,30 @@
       </div>
 
       <button @click="toggleMenu"
-              class="md:hidden flex items-center justify-center min-w-[44px] min-h-[44px] text-text hover:text-primary transition-colors"
+              class="lg:hidden flex items-center justify-center min-w-[44px] min-h-[44px] text-text hover:text-primary transition-colors"
               aria-label="Menü megnyitása">
         <i :class="isMenuOpen ? 'pi pi-times' : 'pi pi-bars'" class="text-2xl"></i>
       </button>
 
-      <nav class="hidden md:flex items-center gap-6">
-        <router-link to="/szolgaltatasok" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-medium min-h-[44px] flex items-center">
+      <nav class="hidden lg:flex items-center gap-3 xl:gap-6">
+        <router-link to="/szolgaltatasok" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-medium min-h-[44px] flex items-center whitespace-nowrap">
           {{ $t('nav.services') }}
         </router-link>
 
-        <router-link to="/galeria" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-medium min-h-[44px] flex items-center">
+        <router-link to="/galeria" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-medium min-h-[44px] flex items-center whitespace-nowrap">
           {{ $t('nav.gallery') }}
         </router-link>
 
         <router-link :to="isLoggedIn ? '/vezerlopult' : '/foglalas'"
-                     class="bg-primary text-white font-bold py-2 px-4 rounded-lg hover:brightness-90 transition-all min-h-[44px] flex items-center shadow-sm">
+                     class="bg-primary text-white font-bold py-2 px-4 rounded-lg hover:brightness-90 transition-all min-h-[44px] flex items-center shadow-sm whitespace-nowrap">
           {{ isLoggedIn ? $t('nav.dashboard') : $t('nav.booking') }}
         </router-link>
 
-        <router-link v-if="isLoggedIn" to="/ugyfelek" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-medium min-h-[44px] flex items-center">
+        <router-link v-if="isLoggedIn" to="/ugyfelek" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-medium min-h-[44px] flex items-center whitespace-nowrap">
           {{ $t('nav.customers') || 'Ügyfelek' }}
         </router-link>
 
-        <router-link to="/kapcsolat" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-medium min-h-[44px] flex items-center">
+        <router-link to="/kapcsolat" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-medium min-h-[44px] flex items-center whitespace-nowrap">
           {{ $t('nav.contact') }}
         </router-link>
 
@@ -78,17 +78,17 @@
         </router-link>
 
         <button v-if="isLoggedIn" @click="handleLogout"
-                class="px-5 py-2 min-h-[44px] rounded-lg text-sm border border-primary text-primary hover:bg-primary/10 transition-colors font-bold tracking-wide">
+                class="px-3 xl:px-5 py-2 min-h-[44px] rounded-lg text-sm border border-primary text-primary hover:bg-primary/10 transition-colors font-bold tracking-wide whitespace-nowrap">
           {{ $t('common.logout') }}
         </button>
 
-        <router-link v-else to="/login" class="px-5 py-2 min-h-[44px] rounded-lg text-sm bg-primary text-white hover:bg-primary-emphasis transition-colors font-bold tracking-wide flex items-center">
+        <router-link v-else to="/login" class="px-5 py-2 min-h-[44px] rounded-lg text-sm bg-primary text-white hover:bg-primary-emphasis transition-colors font-bold tracking-wide flex items-center whitespace-nowrap">
           {{ $t('common.login') }}
         </router-link>
       </nav>
     </div>
 
-    <nav v-show="isMenuOpen" class="md:hidden absolute top-full left-0 right-0 bg-surface border-b border-primary/20 shadow-xl flex flex-col p-4 gap-2 z-[999]">
+    <nav v-show="isMenuOpen" class="lg:hidden absolute top-full left-0 right-0 bg-surface border-b border-primary/20 shadow-xl flex flex-col p-4 gap-2 z-[999]">
 
       <router-link :to="isLoggedIn ? '/vezerlopult' : '/foglalas'" @click="isMenuOpen = false"
                    class="bg-primary text-white text-center font-bold text-lg p-3 rounded-lg shadow-sm hover:brightness-95 transition-all mb-2 min-h-[48px] flex justify-center items-center">

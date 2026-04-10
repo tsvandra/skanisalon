@@ -7,7 +7,7 @@
           <h1 class="text-2xl md:text-3xl font-black text-primary flex items-center gap-3">
             <i class="pi pi-users"></i> Ügyfelek kezelése
           </h1>
-          <p class="text-text-muted text-sm md:text-base mt-1">Vendégek adatainak, elérhetőségeinek és megjegyzéseinek karbantartása.</p>
+          <p class="text-text-muted text-sm md:text-base mt-1">Vendégek adatainak, jellemzőinek és megjegyzéseinek karbantartása.</p>
         </div>
 
         <div class="flex flex-col sm:flex-row w-full md:w-auto gap-3">
@@ -66,6 +66,12 @@
             </div>
           </div>
 
+          <div v-if="customer.attributes && Object.keys(customer.attributes).length > 0" class="flex flex-wrap gap-1.5 mt-2">
+            <span v-for="(val, key) in customer.attributes" :key="key" class="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md font-bold border border-primary/20" :title="key">
+              {{ getAttributeLabel(key) }}: {{ val }}
+            </span>
+          </div>
+
           <div v-if="customer.notes" class="mt-auto pt-4 border-t border-text/5">
             <p class="text-xs text-text-muted italic line-clamp-2" :title="customer.notes">
               <i class="pi pi-info-circle mr-1"></i> {{ customer.notes }}
@@ -77,9 +83,9 @@
     </div>
 
     <div v-if="isModalOpen" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
-      <div class="bg-surface w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-text/10 flex flex-col">
+      <div class="bg-surface w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-text/10 flex flex-col max-h-[90vh]">
 
-        <div class="p-5 border-b border-text/10 flex justify-between items-center bg-background/50">
+        <div class="p-5 border-b border-text/10 flex justify-between items-center bg-background/50 shrink-0">
           <h2 class="text-xl font-bold text-text flex items-center gap-2">
             <i class="pi" :class="isEditing ? 'pi-user-edit text-primary' : 'pi-user-plus text-primary'"></i>
             {{ isEditing ? 'Ügyfél szerkesztése' : 'Új ügyfél felvétele' }}
@@ -89,29 +95,62 @@
           </button>
         </div>
 
-        <div class="p-6 space-y-4">
-          <div>
-            <label class="block text-xs font-bold text-text-muted mb-1.5 uppercase">Teljes Név <span class="text-red-500">*</span></label>
-            <input type="text" v-model="form.name" placeholder="Pl. Kiss Katalin" class="w-full h-[44px] bg-background border border-text/20 rounded-xl px-4 text-sm focus:outline-none focus:border-primary font-medium">
+        <div class="p-6 space-y-6 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-text/20">
+
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-text-muted mb-1.5 uppercase">Teljes Név <span class="text-red-500">*</span></label>
+              <input type="text" v-model="form.name" name="cust_name" autocomplete="off" data-1p-ignore data-lpignore="true" placeholder="Pl. Kiss Katalin" class="w-full h-[44px] bg-background border border-text/20 rounded-xl px-4 text-sm focus:outline-none focus:border-primary font-medium">
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-text-muted mb-1.5 uppercase">Telefonszám</label>
+                <input type="tel" v-model="form.phone" name="cust_phone" autocomplete="off" data-1p-ignore data-lpignore="true" placeholder="+36 30 123 4567" class="w-full h-[44px] bg-background border border-text/20 rounded-xl px-4 text-sm focus:outline-none focus:border-primary font-medium">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-text-muted mb-1.5 uppercase">Email cím</label>
+                <input type="email" v-model="form.email" name="cust_email" autocomplete="off" data-1p-ignore data-lpignore="true" placeholder="katalin@example.com" class="w-full h-[44px] bg-background border border-text/20 rounded-xl px-4 text-sm focus:outline-none focus:border-primary font-medium">
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label class="block text-xs font-bold text-text-muted mb-1.5 uppercase">Telefonszám</label>
-            <input type="tel" v-model="form.phone" placeholder="+36 30 123 4567" class="w-full h-[44px] bg-background border border-text/20 rounded-xl px-4 text-sm focus:outline-none focus:border-primary font-medium">
+          <div v-if="companyAttributes.length > 0">
+            <div class="h-px bg-text/10 mb-6"></div>
+            <label class="block text-xs font-bold text-text-muted mb-4 uppercase flex items-center gap-1">
+              <i class="pi pi-tags"></i> Szalon Jellemzők
+            </label>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div v-for="attr in companyAttributes" :key="attr.key">
+                <label class="block text-xs font-bold text-text-muted mb-1.5 uppercase">
+                  {{ attr.label }} <span v-if="attr.isRequired" class="text-red-500">*</span>
+                </label>
+
+                <input v-if="attr.dataType === 'text'" type="text" v-model="form.attributes[attr.key]" :placeholder="attr.label"
+                       class="w-full h-[40px] bg-background border border-text/20 rounded-xl px-3 text-sm focus:outline-none focus:border-primary font-medium">
+
+                <select v-else-if="attr.dataType === 'select'" v-model="form.attributes[attr.key]"
+                        class="w-full h-[40px] bg-background border border-text/20 rounded-xl px-3 text-sm focus:outline-none focus:border-primary font-medium appearance-none">
+                  <option value="" disabled>Válassz...</option>
+                  <option v-for="opt in attr.options" :key="opt" :value="opt">{{ opt }}</option>
+                </select>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label class="block text-xs font-bold text-text-muted mb-1.5 uppercase">Email cím</label>
-            <input type="email" v-model="form.email" placeholder="katalin@example.com" class="w-full h-[44px] bg-background border border-text/20 rounded-xl px-4 text-sm focus:outline-none focus:border-primary font-medium">
-          </div>
+          <div class="h-px bg-text/10"></div>
 
           <div>
-            <label class="block text-xs font-bold text-text-muted mb-1.5 uppercase">Attributumok / Megjegyzés</label>
-            <textarea v-model="form.notes" rows="3" placeholder="Pl. Festék allergia, kedvenc téma..." class="w-full bg-background border border-text/20 rounded-xl p-4 text-sm focus:outline-none focus:border-primary resize-none font-medium"></textarea>
+            <label class="block text-xs font-bold text-text-muted mb-1.5 uppercase flex items-center gap-1">
+              <i class="pi pi-align-left"></i> Általános Megjegyzés
+            </label>
+            <textarea v-model="form.notes" rows="2" placeholder="Olyan információ, ami nem fér be jellemzőként (pl. Általában késik 10 percet...)" class="w-full bg-background border border-text/20 rounded-xl p-3 text-sm focus:outline-none focus:border-primary resize-none font-medium"></textarea>
           </div>
         </div>
 
-        <div class="p-5 border-t border-text/10 bg-background/50 flex justify-end gap-3">
+        <div class="p-5 border-t border-text/10 bg-background/50 flex justify-end gap-3 shrink-0">
           <button @click="closeModal" class="px-5 h-[44px] text-text text-sm font-bold rounded-xl hover:bg-text/10 transition-colors">
             Mégsem
           </button>
@@ -126,127 +165,177 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import bookingApi from '@/services/bookingApi';
-import { getCustomerColor } from '@/utils/colorUtils';
+  import { ref, computed, onMounted } from 'vue';
+  import bookingApi from '@/services/bookingApi';
+  import attributesApi from '@/services/companyAttributesApi'; // <- Fontos: Itt hívjuk meg az új API-t!
+  import { getCustomerColor } from '@/utils/colorUtils';
 
-const customers = ref([]);
-const loading = ref(true);
-const saving = ref(false);
-const searchQuery = ref('');
+  const customers = ref([]);
+  const companyAttributes = ref([]); // Itt tároljuk a dinamikus űrlap szabályait
+  const loading = ref(true);
+  const saving = ref(false);
+  const searchQuery = ref('');
 
-const isModalOpen = ref(false);
-const isEditing = ref(false);
+  const isModalOpen = ref(false);
+  const isEditing = ref(false);
 
-const form = ref({
-  id: null,
-  name: '',
-  phone: '',
-  email: '',
-  notes: ''
-});
+  const form = ref({
+    id: null,
+    name: '',
+    phone: '',
+    email: '',
+    notes: '',
+    attributes: {}
+  });
 
-// Szűrő a kereséshez
-const filteredCustomers = computed(() => {
-  if (!searchQuery.value) return customers.value;
-  const q = searchQuery.value.toLowerCase();
-  return customers.value.filter(c =>
-    (c.name && c.name.toLowerCase().includes(q)) ||
-    (c.phone && c.phone.includes(q)) ||
-    (c.email && c.email.toLowerCase().includes(q))
-  );
-});
+  // Szűrő a kereséshez
+  const filteredCustomers = computed(() => {
+    if (!searchQuery.value) return customers.value;
+    const q = searchQuery.value.toLowerCase();
+    return customers.value.filter(c =>
+      (c.name && c.name.toLowerCase().includes(q)) ||
+      (c.phone && c.phone.includes(q)) ||
+      (c.email && c.email.toLowerCase().includes(q))
+    );
+  });
 
-const isFormValid = computed(() => {
-  return form.value.name && form.value.name.trim().length > 0;
-});
+  // A kötelező attribútumok ellenőrzése is belekerült az űrlap validációba!
+  const isFormValid = computed(() => {
+    if (!form.value.name || form.value.name.trim().length === 0) return false;
 
-// Adatok betöltése
-const fetchCustomers = async () => {
-  loading.value = true;
-  try {
-    const response = await bookingApi.getCustomers();
-    customers.value = response.data.$values || response.data || [];
-  } catch (error) {
-    console.error("Hiba az ügyfelek lekérésekor:", error);
-    alert("Nem sikerült betölteni az ügyfeleket.");
-  } finally {
-    loading.value = false;
-  }
-};
+    for (const attr of companyAttributes.value) {
+      if (attr.isRequired) {
+        const val = form.value.attributes[attr.key];
+        if (!val || val.toString().trim() === '') return false;
+      }
+    }
 
-// Modal kezelés
-const openCreateModal = () => {
-  isEditing.value = false;
-  form.value = { id: null, name: '', phone: '', email: '', notes: '' };
-  isModalOpen.value = true;
-};
+    return true;
+  });
 
-const openEditModal = (customer) => {
-  isEditing.value = true;
-  form.value = {
-    id: customer.id,
-    name: customer.name || '',
-    phone: customer.phone || '',
-    email: customer.email || '',
-    notes: customer.notes || ''
+  // Segédfüggvény: A kártyán a belső 'hair_length' helyett 'Hajhossz'-t írjon ki
+  const getAttributeLabel = (key) => {
+    const attr = companyAttributes.value.find(a => a.key === key);
+    return attr ? attr.label : key;
   };
-  isModalOpen.value = true;
-};
 
-const closeModal = () => {
-  isModalOpen.value = false;
-};
-
-// Mentés (Létrehozás vagy Frissítés)
-const saveCustomer = async () => {
-  if (!isFormValid.value) return;
-  saving.value = true;
-
-  try {
-    const payload = {
-      fullName: form.value.name.trim(),
-      phone: form.value.phone?.trim() || null,
-      email: form.value.email?.trim() || null,
-      notes: form.value.notes?.trim() || null
-    };
-
-    if (isEditing.value) {
-      await bookingApi.updateCustomer(form.value.id, payload);
-    } else {
-      await bookingApi.createCustomer(payload);
-    }
-
-    await fetchCustomers(); // Újratöltjük a listát
-    closeModal();
-  } catch (error) {
-    console.error("Hiba a mentés során:", error);
-    alert("Hiba történt a mentés során. Lehet, hogy a szerver nem támogatja még a frissítést.");
-  } finally {
-    saving.value = false;
-  }
-};
-
-// Törlés
-const confirmDelete = async (customer) => {
-  if (confirm(`Biztosan törlöd a következő ügyfelet: ${customer.name}?\nEzzel a hozzá tartozó foglalások állapota is változhat!`)) {
+  // Adatok betöltése (Ügyfelek ÉS Jellemző Szabályok egyszerre)
+  const fetchData = async () => {
+    loading.value = true;
     try {
-      await bookingApi.deleteCustomer(customer.id);
-      await fetchCustomers();
+      const [custRes, attrRes] = await Promise.all([
+        bookingApi.getCustomers(),
+        attributesApi.getAttributes()
+      ]);
+
+      customers.value = custRes.data.$values || custRes.data || [];
+      // Csak az aktív attribútumokat rajzoljuk ki az űrlapra
+      const allAttrs = attrRes.data.$values || attrRes.data || [];
+      companyAttributes.value = allAttrs.filter(a => a.isActive);
+
     } catch (error) {
-      console.error("Hiba a törlés során:", error);
-      alert("Hiba történt a törlés során. Lehet, hogy folyamatban lévő foglalása van, ami miatt nem törölhető.");
+      console.error("Hiba az adatok lekérésekor:", error);
+      alert("Nem sikerült betölteni az ügyfeleket vagy a beállításokat.");
+    } finally {
+      loading.value = false;
     }
-  }
-};
+  };
 
-// Segédfüggvények a UI-hoz (Ugyanaz a pasztell logika mint a naptárban)
-const getInitials = (name) => {
-  if (!name || name.startsWith('Vendég #')) return '?';
-  return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-};
+  // Modal kezelés
+  const openCreateModal = () => {
+    isEditing.value = false;
 
-onMounted(() => {
-  fetchCustomers();
-});
+    // Alapértelmezett üres értékek beállítása a dinamikus attribútumokhoz
+    const defaultAttrs = {};
+    companyAttributes.value.forEach(attr => {
+      defaultAttrs[attr.key] = '';
+    });
+
+    form.value = { id: null, name: '', phone: '', email: '', notes: '', attributes: defaultAttrs };
+    isModalOpen.value = true;
+  };
+
+  const openEditModal = (customer) => {
+    isEditing.value = true;
+
+    // Összefésüljük a létező adatokat a jelenleg aktív sablonokkal
+    const mergedAttrs = {};
+    companyAttributes.value.forEach(attr => {
+      mergedAttrs[attr.key] = customer.attributes && customer.attributes[attr.key] ? customer.attributes[attr.key] : '';
+    });
+
+    form.value = {
+      id: customer.id,
+      name: customer.name || '',
+      phone: customer.phone || '',
+      email: customer.email || '',
+      notes: customer.notes || '',
+      attributes: mergedAttrs
+    };
+    isModalOpen.value = true;
+  };
+
+  const closeModal = () => {
+    isModalOpen.value = false;
+  };
+
+  // Mentés (Létrehozás vagy Frissítés)
+  const saveCustomer = async () => {
+    if (!isFormValid.value) return;
+    saving.value = true;
+
+    try {
+      // Kiszűrjük azokat a dinamikus attribútumokat, amiket nem töltöttek ki (üres stringek),
+      // hogy ne szemeteljük tele az adatbázist
+      const cleanAttributes = {};
+      for (const [key, value] of Object.entries(form.value.attributes)) {
+        if (value !== null && value.toString().trim() !== '') {
+          cleanAttributes[key] = value;
+        }
+      }
+
+      const payload = {
+        fullName: form.value.name.trim(),
+        phone: form.value.phone?.trim() || null,
+        email: form.value.email?.trim() || null,
+        notes: form.value.notes?.trim() || null,
+        attributes: cleanAttributes
+      };
+
+      if (isEditing.value) {
+        await bookingApi.updateCustomer(form.value.id, payload);
+      } else {
+        await bookingApi.createCustomer(payload);
+      }
+
+      await fetchData(); // Újratöltjük a listát
+      closeModal();
+    } catch (error) {
+      console.error("Hiba a mentés során:", error);
+      alert("Hiba történt a mentés során.");
+    } finally {
+      saving.value = false;
+    }
+  };
+
+  const confirmDelete = async (customer) => {
+    if (confirm(`Biztosan törlöd a következő ügyfelet: ${customer.name}?`)) {
+      try {
+        await bookingApi.deleteCustomer(customer.id);
+        await fetchData();
+      } catch (error) {
+        console.error("Hiba a törlés során:", error);
+        alert("Hiba történt a törlés során. Lehet, hogy folyamatban lévő foglalása van, ami miatt nem törölhető.");
+      }
+    }
+  };
+
+  const getInitials = (name) => {
+    if (!name || name.startsWith('Vendég #')) return '?';
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
+
+  onMounted(() => {
+    fetchData();
+  });
 </script>

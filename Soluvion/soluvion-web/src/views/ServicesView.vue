@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, inject, watch, computed, nextTick } from 'vue';
+  import { ref, inject, watch, computed, nextTick, onMounted } from 'vue';
   import InputNumber from 'primevue/inputnumber';
   import apiClient from '@/services/api';
   import draggable from 'vuedraggable';
@@ -14,6 +14,7 @@
 
   const services = ref([]);
   const categories = ref([]);
+  const companyAttributes = ref([]); // ÚJ: Vendég jellemzők betöltése
   const loading = ref(true);
 
   const currentLang = computed(() => locale.value);
@@ -22,6 +23,11 @@
 
   const { reorderNestedItems } = useDragAndDrop();
   const { translatingField, translateField } = useTranslation();
+
+  // --- ÚJ: Profil Módosító Modal Állapota ---
+  const isModifierModalOpen = ref(false);
+  const editingVariant = ref(null);
+  const editingService = ref(null);
 
   const sortVariants = (variants) => {
     if (!variants) return [];
@@ -123,6 +129,7 @@
         service.variants.forEach(v => {
           if (v.price === 0) v.price = null;
           v.variantName = ensureDict(v.variantName, "Extra");
+          if (!v.profileModifiers) v.profileModifiers = {}; // ÚJ: Biztosítjuk az objektumot
         });
       }
       service.name = ensureDict(service.name, "Névtelen");
@@ -132,19 +139,28 @@
     categories.value = buildNestedStructure(serviceList);
   };
 
-  const fetchServices = async () => {
+  const fetchServicesAndAttributes = async () => {
     loading.value = true;
     try {
-      const response = await apiClient.get('/api/Service');
-      const rawServices = response.data;
+      // API hívások párhuzamosan
+      const [servicesRes, attrRes] = await Promise.all([
+        apiClient.get('/api/Service'),
+        isLoggedIn.value ? apiClient.get('/api/company-attributes').catch(() => ({ data: [] })) : { data: [] }
+      ]);
 
+      const rawServices = servicesRes.data;
       if (!Array.isArray(rawServices)) {
         if (rawServices && Array.isArray(rawServices.$values)) {
           processServices(rawServices.$values);
         }
-        return;
+      } else {
+        processServices(rawServices);
       }
-      processServices(rawServices);
+
+      if (isLoggedIn.value) {
+        companyAttributes.value = (attrRes.data.$values || attrRes.data || []).filter(a => a.isActive);
+      }
+
     } catch (error) { console.error('Hiba a betolteskor:', error); }
     finally {
       loading.value = false;
@@ -152,7 +168,7 @@
     }
   };
 
-  watch(() => company?.value?.id, (newId) => { if (newId) fetchServices(); }, { immediate: true });
+  watch(() => company?.value?.id, (newId) => { if (newId) fetchServicesAndAttributes(); }, { immediate: true });
 
   const saveService = async (serviceItem, refreshLocal = false) => {
     const serviceId = serviceItem.id;
@@ -178,6 +194,7 @@
             updated.variants.forEach(v => {
               if (v.price === 0) v.price = null;
               v.variantName = ensureDict(v.variantName);
+              if (!v.profileModifiers) v.profileModifiers = {};
             });
           }
           updated.name = ensureDict(updated.name);
@@ -298,19 +315,20 @@
       category: { [currentLang.value]: "ÚJ KATEGÓRIA" },
       defaultPrice: 0,
       orderIndex: 99999,
-      variants: [{ variantName: { [currentLang.value]: "Normál" }, price: 0, duration: 30 }],
+      variants: [{ variantName: { [currentLang.value]: "Normál" }, price: 0, duration: 30, profileModifiers: {} }],
       description: { [currentLang.value]: "" }
     };
     await postNewService(newService);
   };
 
   const addServiceToGroupEnd = async (group) => {
-    let variants = [{ variantName: { [currentLang.value]: "Normál" }, price: 0, duration: 30 }];
+    let variants = [{ variantName: { [currentLang.value]: "Normál" }, price: 0, duration: 30, profileModifiers: {} }];
     if (group.headerVariants && group.headerVariants.length > 0) {
       variants = group.headerVariants.map(v => ({
         variantName: JSON.parse(JSON.stringify(v.variantName)),
         price: 0,
-        duration: v.duration
+        duration: v.duration,
+        profileModifiers: {}
       }));
     }
     const newService = {
@@ -330,7 +348,7 @@
       if (!payload.variants) payload.variants = [];
       payload.variants.forEach(v => { v.price = 0; });
       await apiClient.post('/api/Service', payload);
-      await fetchServices();
+      await fetchServicesAndAttributes();
     } catch (err) { console.error(err); }
   };
 
@@ -338,7 +356,7 @@
     if (!confirm("Biztosan törölni akarod?")) return;
     try {
       await apiClient.delete(`/api/Service/${id}`);
-      await fetchServices();
+      await fetchServicesAndAttributes();
     } catch (err) { console.error(err); }
   };
 
@@ -354,10 +372,58 @@
       id: 0,
       variantName: { [currentLang.value]: "Extra" },
       price: 0,
-      duration: 30
+      duration: 30,
+      profileModifiers: {}
     });
     if (group) group.headerVariants = [...service.variants];
     await saveService(service, true);
+  };
+
+  // --- ÚJ LOGIKA: Profil Módosító Modal Kezelése ---
+  const editingGroup = ref(null);
+  const editingVariantIndex = ref(null);
+
+  const openModifierModal = (group, vIndex) => {
+    editingGroup.value = group;
+    editingVariantIndex.value = vIndex;
+    editingVariant.value = group.headerVariants[vIndex];
+    if (!editingVariant.value.profileModifiers) editingVariant.value.profileModifiers = {};
+    isModifierModalOpen.value = true;
+  };
+
+  const updateGroupVariantModifiers = async (group, variantIndex) => {
+    const sourceModifiers = group.headerVariants[variantIndex].profileModifiers || {};
+    const promises = group.items.map(service => {
+      if (service.variants && service.variants[variantIndex]) {
+        // Klónozzuk a szabályt a fejlécből az adott szolgáltatás variánsába
+        service.variants[variantIndex].profileModifiers = JSON.parse(JSON.stringify(sourceModifiers));
+        return saveService(service, false);
+      }
+      return Promise.resolve();
+    });
+    await Promise.all(promises);
+  };
+
+  const closeModifierModal = async () => {
+    // Üres értékek takarítása mentés előtt
+    if (editingVariant.value && editingVariant.value.profileModifiers) {
+      for (const key in editingVariant.value.profileModifiers) {
+        if (!editingVariant.value.profileModifiers[key] || editingVariant.value.profileModifiers[key].trim() === '') {
+          delete editingVariant.value.profileModifiers[key];
+        }
+      }
+    }
+
+    isModifierModalOpen.value = false;
+
+    // Ha a fejlécben módosítottuk, mentsük el az összes alá tartozó szolgáltatásba!
+    if (editingGroup.value && editingVariantIndex.value !== null) {
+      await updateGroupVariantModifiers(editingGroup.value, editingVariantIndex.value);
+    }
+
+    editingVariant.value = null;
+    editingGroup.value = null;
+    editingVariantIndex.value = null;
   };
 </script>
 
@@ -418,13 +484,20 @@
 
                   <div class="flex justify-end gap-2 md:gap-4 shrink-0 pr-2">
                     <div v-for="(v, vIndex) in group.headerVariants" :key="vIndex" class="w-[90px] md:w-[120px] flex items-end justify-center relative text-center">
-                      <div class="relative w-full flex items-center justify-center group/tools">
+                      <div class="relative w-full flex flex-col items-center justify-center group/tools">
                         <textarea v-if="isLoggedIn"
                                   v-model="v.variantName[currentLang]"
                                   @change="updateGroupVariantName(group, vIndex)"
                                   class="w-full text-center border-none bg-transparent font-bold text-text-muted text-xs md:text-sm uppercase resize-none overflow-hidden focus:bg-text/5 focus:outline focus:outline-1 focus:outline-primary focus:text-text rounded transition-colors py-1"
                                   rows="1"></textarea>
                         <span v-else class="font-bold text-text-muted text-xs md:text-sm uppercase text-center block w-full whitespace-normal break-words py-1">{{ v.variantName[currentLang] }}</span>
+
+                        <button v-if="isLoggedIn" @click="openModifierModal(group, vIndex)"
+                                class="mt-1 border border-primary/20 bg-primary/5 text-primary text-[9px] md:text-[10px] font-bold rounded hover:bg-primary hover:text-white transition-colors py-0.5 px-2 flex items-center justify-center gap-1 cursor-pointer"
+                                :class="{'!bg-primary/20': v.profileModifiers && Object.keys(v.profileModifiers).length > 0}">
+                          <i class="pi pi-bolt"></i>
+                          <span class="hidden md:inline">{{ (v.profileModifiers && Object.keys(v.profileModifiers).length > 0) ? 'Aktív' : 'Beállítás' }}</span>
+                        </button>
 
                         <button v-if="isLoggedIn"
                                 @click="translateHeaderVariant(group, v, vIndex)"
@@ -472,9 +545,9 @@
                         </div>
 
                         <div class="flex justify-end gap-2 md:gap-4 shrink-0 pr-2">
-                          <div v-for="(variant, vIndex) in service.variants" :key="variant.id || vIndex" class="w-[90px] md:w-[120px] flex items-center justify-center relative text-center group/variant min-h-[44px] shrink-0">
+                          <div v-for="(variant, vIndex) in service.variants" :key="variant.id || vIndex" class="w-[90px] md:w-[120px] flex flex-col items-center justify-center relative text-center group/variant min-h-[44px] shrink-0">
 
-                            <div class="w-full flex justify-center">
+                            <div class="w-full flex flex-col justify-center gap-1">
                               <InputNumber v-if="isLoggedIn"
                                            v-model="variant.price"
                                            mode="currency" currency="EUR" locale="hu-HU" :minFractionDigits="0"
@@ -487,6 +560,7 @@
                             <button v-if="isLoggedIn" @click="removeVariant(service, vIndex, group)" class="absolute -top-2 md:-top-3 right-0 border-none bg-transparent text-red-500 opacity-100 md:opacity-0 cursor-pointer flex items-center justify-center w-[24px] h-[24px] md:group-hover/variant:opacity-100 transition-opacity text-xl font-bold hover:scale-110 bg-surface rounded-full shadow-sm">&times;</button>
                           </div>
                         </div>
+
                       </div>
 
                       <div v-if="service.description && (
@@ -537,5 +611,49 @@
       </draggable>
 
     </div>
+
+    <div v-if="isModifierModalOpen" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
+      <div class="bg-surface w-full max-w-md rounded-2xl shadow-xl overflow-hidden flex flex-col">
+
+        <div class="p-5 border-b border-text/10 bg-background/50">
+          <h3 class="font-bold text-lg text-text flex items-center gap-2">
+            <i class="pi pi-bolt text-primary"></i> Automatikus Profil Frissítés
+          </h3>
+          <p class="text-xs text-text-muted mt-1 leading-tight">
+            Amikor a vendég ezt a variánst lefoglalja, a rendszer automatikusan a lenti értékekre frissíti a profilját.
+          </p>
+        </div>
+
+        <div class="p-5 space-y-4 overflow-y-auto max-h-[60vh]">
+
+          <div v-if="companyAttributes.length === 0" class="text-sm text-text-muted text-center py-4 italic">
+            Előbb hozz létre jellemzőket a Beállítások > Vendég Jellemzők menüben!
+          </div>
+
+          <div v-else class="space-y-4">
+            <div v-for="attr in companyAttributes" :key="attr.key">
+              <label class="block text-xs font-bold text-text-muted mb-1.5 uppercase">{{ attr.label }}</label>
+
+              <select v-if="attr.dataType === 'select'" v-model="editingVariant.profileModifiers[attr.key]"
+                      class="w-full h-10 bg-background border border-text/20 rounded-lg px-3 text-sm focus:outline-none focus:border-primary">
+                <option value="">- Ne módosítsa -</option>
+                <option v-for="opt in attr.options" :key="opt" :value="opt">{{ opt }}</option>
+              </select>
+
+              <input v-else type="text" v-model="editingVariant.profileModifiers[attr.key]" placeholder="Üresen hagyva nem módosítja"
+                     class="w-full h-10 bg-background border border-text/20 rounded-lg px-3 text-sm focus:outline-none focus:border-primary">
+            </div>
+          </div>
+        </div>
+
+        <div class="p-5 border-t border-text/10 flex justify-end gap-3 bg-background/50">
+          <button @click="closeModifierModal" class="px-6 h-10 bg-primary text-white font-bold rounded-lg hover:brightness-110 shadow-md transition-transform active:scale-95 flex items-center gap-2">
+            <i class="pi pi-check"></i> Kész & Mentés
+          </button>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 </template>

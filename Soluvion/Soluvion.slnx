@@ -4,13 +4,13 @@
     <File Path="Dockerfile" />
   </Folder>
   <Folder Name="/Solution Items/DevDoc/">
-    <File Path="01_Architecture_and_DevOps.md" />
+    <File Path="DevDoc/01_Architecture_and_DevOps.md" />
     <File Path="DevDoc/02_Product_Specification.md" />
     <File Path="DevDoc/03_Developer_Rulebook.md" />
     <File Path="DevDoc/04_Changelog.md" />
   </Folder>
   <Folder Name="/Solution Items/DevDoc/features/">
-    <File Path="01_Smart_Booking_Engine.md" />
+    <File Path="DevDoc/features/01_Smart_Booking_Engine.md" />
   </Folder>
   <Folder Name="/Solution Items/documentationArchive/">
     <File Path="documentationArchive/DevelopDocumentation.txt" />
