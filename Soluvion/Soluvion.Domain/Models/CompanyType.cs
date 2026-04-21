@@ -6,7 +6,8 @@ namespace Soluvion.Domain.Models
     {
         public int Id { get; set; }
 
-        [MaxLength(50)] // Kicsit nagyobbat adtam neki, mint a modellben (20), a biztonság kedvéért
+        [MaxLength(50)] 
         public string Name { get; set; } = string.Empty;
+        public ICollection<IndustryTemplateAttribute> TemplateAttributes { get; set; } = new List<IndustryTemplateAttribute>();
     }
 }

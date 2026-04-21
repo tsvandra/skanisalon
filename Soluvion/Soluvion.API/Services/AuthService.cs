@@ -21,7 +21,7 @@ namespace Soluvion.API.Services
             _configuration = configuration;
         }
 
-        public async Task<User?> RegisterAsync(string username, string password, string companyName)
+        public async Task<User?> RegisterAsync(string username, string password, string companyName, int companyTypeId)
         {
             if (await _context.Users.AnyAsync(u => u.Username == username))
             {
@@ -31,13 +31,13 @@ namespace Soluvion.API.Services
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // 1. Új cég létrehozása (SaaS alap)
+                // 1. Új cég létrehozása (SaaS alap) + CompanyTypeId bekötése
                 var company = new Company
                 {
                     Name = companyName,
+                    CompanyTypeId = companyTypeId,
                     SubscriptionPlan = Domain.Models.Enums.SubscriptionPlan.Free,
                     AllowOverlappingAppointments = false,
-                    // ... egyéb kötelező alapértékek a Company-n
                 };
                 _context.Companies.Add(company);
                 await _context.SaveChangesAsync(); // Hogy megkapjuk a company.Id-t
@@ -48,11 +48,11 @@ namespace Soluvion.API.Services
                 {
                     Username = username,
                     PasswordHash = passwordHash,
-                    CompanyId = company.Id, // Az alapértelmezett cége
-                    Role = "Admin" // Globális szerepkör
+                    CompanyId = company.Id,
+                    Role = "Admin"
                 };
                 _context.Users.Add(user);
-                await _context.SaveChangesAsync(); // Hogy megkapjuk a user.Id-t
+                await _context.SaveChangesAsync();
 
                 // 3. SaaS Jogosultság: CompanyEmployee összekötés 'Owner' role-lal
                 var employee = new CompanyEmployee
@@ -65,13 +65,36 @@ namespace Soluvion.API.Services
                 _context.CompanyEmployees.Add(employee);
                 await _context.SaveChangesAsync();
 
+                // 4. ONBOARDING VARÁZSLAT: Iparági sablonok másolása
+                var templates = await _context.IndustryTemplateAttributes
+                    .Where(t => t.CompanyTypeId == companyTypeId && t.IsActive)
+                    .ToListAsync();
+
+                if (templates.Any())
+                {
+                    var companyAttributes = templates.Select(t => new CompanyAttribute
+                    {
+                        CompanyId = company.Id,
+                        Key = t.Key,
+                        Label = t.Label,
+                        DataType = t.DataType,
+                        Options = t.Options, // A JSONB konverzió miatt ez simán másolható
+                        IsRequired = t.IsRequired,
+                        ShowOnPublicBooking = t.ShowOnPublicBooking,
+                        IsActive = t.IsActive
+                    }).ToList();
+
+                    _context.CompanyAttributes.AddRange(companyAttributes);
+                    await _context.SaveChangesAsync();
+                }
+
                 await transaction.CommitAsync();
                 return user;
             }
             catch (Exception)
             {
                 await transaction.RollbackAsync();
-                throw; // A GlobalExceptionHandler majd elkapja
+                throw;
             }
         }
 
@@ -83,7 +106,6 @@ namespace Soluvion.API.Services
                 return null;
             }
 
-            // BCrypt ellenőrzés
             if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
             {
                 return null;

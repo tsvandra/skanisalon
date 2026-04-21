@@ -1,12 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using Soluvion.API.Data;
-using Soluvion.Domain.Models;
 using Soluvion.API.DTOs;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
+using Soluvion.API.Interfaces;
 
 namespace Soluvion.API.Controllers
 {
@@ -14,88 +8,42 @@ namespace Soluvion.API.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
-        private readonly AppDbContext _context;
-        private readonly IConfiguration _configuration;
+        private readonly IAuthService _authService;
 
-        public AuthController(AppDbContext context, IConfiguration configuration)
+        public AuthController(IAuthService authService)
         {
-            _context = context;
-            _configuration = configuration;
+            _authService = authService;
         }
 
         [HttpPost("register")]
-        public async Task<ActionResult<User>> Register(string username, string password)
+        public async Task<IActionResult> Register([FromBody] RegisterDto request)
         {
-            if (_context.Users.Any(u => u.Username == username))
-            {
-                return BadRequest("Ez a felhasználónév már foglalt!");
-            }
+            var user = await _authService.RegisterAsync(
+                request.Username,
+                request.Password,
+                request.CompanyName,
+                request.CompanyTypeId
+            );
 
-            // MÓDOSÍTÁS: Itt már a BCrypt-et hívjuk, egyszerűsödött a kód
-            string passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
-
-            var user = new User
-            {
-                Username = username,
-                PasswordHash = passwordHash,
-                CompanyId = 7, // Ezt majd később javítjuk a logikában
-                Role = "Admin"
-            };
-
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-
-            return Ok("Sikeres regisztráció!");
-        }
-
-
-        [HttpPost("login")]
-        public async Task<ActionResult<String>> Login([FromBody] LoginDto request)
-        {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
             if (user == null)
             {
-                return BadRequest("Hibás felhasználónév vagy jelszó.");
+                return BadRequest("Ez a felhasználónév már foglalt, vagy a regisztráció sikertelen!");
             }
 
-            // MÓDOSÍTÁS: Az új ellenőrző metódust hívjuk
-            if (!VerifyPasswordHash(request.Password, user.PasswordHash))
+            return Ok(new { Message = "Sikeres regisztráció!" });
+        }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginDto request)
+        {
+            var token = await _authService.LoginAsync(request.Username, request.Password);
+
+            if (token == null)
             {
                 return BadRequest("Hibás felhasználónév vagy jelszó.");
             }
 
-            string token = CreateToken(user);
-
-            return Ok(token);
-        }
-
-        private string CreateToken(User user)
-        {
-            List<Claim> claims = new List<Claim>()
-            {
-                new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.Role, user.Role),
-                new Claim("CompanyId", user.CompanyId.ToString())
-            };
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
-                _configuration.GetSection("AppSettings:Token").Value!));
-
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
-
-            var token = new JwtSecurityToken(
-                    claims: claims,
-                    expires: DateTime.Now.AddDays(1),
-                    signingCredentials: creds
-                );
-
-            var jwt = new JwtSecurityTokenHandler().WriteToken(token);
-            return jwt;
-        }
-
-        private bool VerifyPasswordHash(string password, string storedHash)
-        {
-            return BCrypt.Net.BCrypt.Verify(password, storedHash);
+            return Ok(new { Token = token });
         }
     }
 }

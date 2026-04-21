@@ -25,7 +25,7 @@
       // A backend sima szövegként (string) adja vissza a tokent,
       // az axios ezt is a .data-ba teszi
       console.log("Sikeres válasz:", res.data);
-      const token = res.data;
+      const token = res.data.token;
 
       localStorage.setItem('salon_token', token);
 

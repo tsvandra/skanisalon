@@ -1,8 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking; // FONTOS: Ez kell az összehasonlításhoz
 using Soluvion.Domain.Models;
-using System.Text.Json;
-using Soluvion.API.Interfaces; // FONTOS: Ez kell a JSON kezeléshez
+using Soluvion.API.Interfaces;
+using System.Reflection;
 
 namespace Soluvion.API.Data
 {
@@ -10,14 +9,11 @@ namespace Soluvion.API.Data
     {
         private readonly ITenantContext? _tenantContext;
 
-        // FONTOS: Injektáljuk a TenantContext-et (opcionálisként, hogy a migrációk hibátlanul lefussanak)
         public AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext? tenantContext = null) : base(options)
         {
             _tenantContext = tenantContext;
         }
 
-        // Segédtulajdonság az EF Core dinamikus lekérdezéseihez
-        // Ha nincs tenant (pl. háttérfolyamat vagy migráció), akkor 0-t ad vissza.
         public int CurrentTenantId => _tenantContext?.CurrentCompany?.Id ?? 0;
 
         public DbSet<User> Users { get; set; }
@@ -37,11 +33,13 @@ namespace Soluvion.API.Data
         public DbSet<Appointment> Appointments { get; set; }
         public DbSet<AppointmentItem> AppointmentItems { get; set; }
         public DbSet<CompanyAttribute> CompanyAttributes { get; set; }
+        public DbSet<IndustryTemplateAttribute> IndustryTemplateAttributes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
+            // --- 1. GLOBÁLIS TENANT SZŰRŐK (Query Filters) ---
             modelBuilder.Entity<Company>().HasQueryFilter(c => CurrentTenantId == 0 || c.Id == CurrentTenantId);
             modelBuilder.Entity<CompanyLanguage>().HasQueryFilter(cl => CurrentTenantId == 0 || cl.CompanyId == CurrentTenantId);
             modelBuilder.Entity<Service>().HasQueryFilter(s => CurrentTenantId == 0 || s.CompanyId == CurrentTenantId);
@@ -57,194 +55,10 @@ namespace Soluvion.API.Data
             modelBuilder.Entity<AppointmentItem>().HasQueryFilter(ai => CurrentTenantId == 0 || ai.Appointment!.CompanyId == CurrentTenantId);
             modelBuilder.Entity<CompanyAttribute>().HasQueryFilter(ca => CurrentTenantId == 0 || ca.CompanyId == CurrentTenantId);
 
-            // --- 1. ÖSSZETETT KULCSOK ---
-            modelBuilder.Entity<CompanyLanguage>()
-                .HasKey(cl => new { cl.CompanyId, cl.LanguageCode });
-
-            modelBuilder.Entity<UiTranslationOverride>()
-                .HasKey(t => new { t.CompanyId, t.LanguageCode, t.TranslationKey });
-
-            modelBuilder.Entity<CompanyEmployee>()
-                .HasOne(ce => ce.Company)
-                .WithMany(c => c.Employees)
-                .HasForeignKey(ce => ce.CompanyId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<CompanyEmployee>()
-                .HasOne(ce => ce.User)
-                .WithMany()
-                .HasForeignKey(ce => ce.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<CompanyCustomer>()
-                .HasOne(cc => cc.Company)
-                .WithMany(c => c.Customers)
-                .HasForeignKey(cc => cc.CompanyId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<CompanyCustomer>()
-                .HasOne(cc => cc.User)
-                .WithMany()
-                .HasForeignKey(cc => cc.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<Appointment>()
-                .HasOne(a => a.Company)
-                .WithMany(c => c.Appointments)
-                .HasForeignKey(a => a.CompanyId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<Appointment>()
-                .HasOne(a => a.Customer)
-                .WithMany()
-                .HasForeignKey(a => a.CustomerId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<Appointment>()
-                .HasOne(a => a.Employee)
-                .WithMany()
-                .HasForeignKey(a => a.EmployeeId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<AppointmentItem>()
-                .HasOne(ai => ai.Appointment)
-                .WithMany(a => a.Items)
-                .HasForeignKey(ai => ai.AppointmentId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<AppointmentItem>()
-                .HasOne(ai => ai.ServiceVariant)
-                .WithMany()
-                .HasForeignKey(ai => ai.ServiceVariantId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<CompanyAttribute>()
-                .HasOne(ca => ca.Company)
-                .WithMany()
-                .HasForeignKey(ca => ca.CompanyId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-
-            // --- 2. JSONB KONVERZIÓK (MANUÁLIS) ---
-            // Ez oldja meg a "Reading as Dictionary is not supported" hibát!
-            var dictionaryComparer = new ValueComparer<Dictionary<string, string>>(
-                (c1, c2) => c1.SequenceEqual(c2),
-                c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
-                c => c.ToDictionary(entry => entry.Key, entry => entry.Value));
-
-            var listStringComparer = new ValueComparer<List<string>>(
-                (c1, c2) => c1.SequenceEqual(c2),
-                c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
-                c => c.ToList());
-
-            // --- ServiceVariant ---
-            modelBuilder.Entity<ServiceVariant>()
-                .Property(v => v.VariantName)
-                .HasColumnType("jsonb")
-                .HasConversion(
-                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
-                    dictionaryComparer);
-
-            // ProfileModifiers konverzió
-            modelBuilder.Entity<ServiceVariant>()
-                .Property(v => v.ProfileModifiers)
-                .HasColumnType("jsonb")
-                .HasConversion(
-                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
-                    dictionaryComparer);
-
-            // --- Service ---
-            modelBuilder.Entity<Service>()
-                .Property(s => s.Name)
-                .HasColumnType("jsonb")
-                .HasConversion(
-                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
-                    dictionaryComparer);
-
-            modelBuilder.Entity<Service>()
-                .Property(s => s.Category)
-                .HasColumnType("jsonb")
-                .HasConversion(
-                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
-                    dictionaryComparer);
-
-            modelBuilder.Entity<Service>()
-                .Property(s => s.Description)
-                .HasColumnType("jsonb")
-                .HasConversion(
-                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
-                    dictionaryComparer);
-
-            // --- GalleryImage ---
-            modelBuilder.Entity<GalleryImage>()
-                .Property(g => g.Title)
-                .HasColumnType("jsonb")
-                .HasConversion(
-                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
-                    dictionaryComparer);
-
-            // --- GalleryCategory ---
-            modelBuilder.Entity<GalleryCategory>()
-                .Property(c => c.Name)
-                .HasColumnType("jsonb")
-                .HasConversion(
-                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
-                    dictionaryComparer);
-
-            modelBuilder.Entity<Company>()
-                .Property(c => c.OpeningHoursTitle)
-                .HasColumnType("jsonb")
-                .HasConversion(
-                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
-                    dictionaryComparer);
-
-            modelBuilder.Entity<Company>()
-                .Property(c => c.OpeningHoursDescription)
-                .HasColumnType("jsonb")
-                .HasConversion(
-                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
-                    dictionaryComparer);
-
-            modelBuilder.Entity<Company>()
-                .Property(c => c.OpeningTimeSlots)
-                .HasColumnType("jsonb")
-                .HasConversion(
-                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
-                    dictionaryComparer);
-
-            modelBuilder.Entity<Company>()
-                .Property(c => c.OpeningExtraInfo)
-                .HasColumnType("jsonb")
-                .HasConversion(
-                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
-                    dictionaryComparer);
-
-            modelBuilder.Entity<CompanyCustomer>()
-                .Property(c => c.Attributes)
-                .HasColumnType("jsonb")
-                .HasConversion(
-                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions)null) ?? new Dictionary<string, string>(),
-                    dictionaryComparer);
-
-            modelBuilder.Entity<CompanyAttribute>()
-                .Property(ca => ca.Options)
-                .HasColumnType("jsonb")
-                .HasConversion(
-                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-                    v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions)null) ?? new List<string>(),
-                    listStringComparer);
+            // --- 2. KONFIGURÁCIÓK ALKALMAZÁSA AUTÓMATIKUSAN ---
+            // Ez a sor megkeresi az Assembly-ben (a projektben) az összes IEntityTypeConfiguration 
+            // interfészt implementáló osztályt (amit az EntityConfigurations.cs-ben írtunk), és be is tölti őket!
+            modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
         }
     }
 }
