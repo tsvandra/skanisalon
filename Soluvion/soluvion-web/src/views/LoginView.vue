@@ -1,9 +1,10 @@
 <script setup>
   import { ref } from 'vue';
-  import { useRouter } from 'vue-router';
+  import { useRouter, useRoute } from 'vue-router';
   import api from '@/services/api';
 
   const router = useRouter();
+  const route = useRoute();
   const username = ref('');
   const password = ref('');
   const errorMsg = ref('');
@@ -25,11 +26,13 @@
       // A backend sima szövegként (string) adja vissza a tokent,
       // az axios ezt is a .data-ba teszi
       console.log("Sikeres válasz:", res.data);
-      const token = res.data;
+      const token = res.data.token;
 
       localStorage.setItem('salon_token', token);
 
-      router.push('/');
+      const redirectPath = route.query.redirect || '/';
+
+      router.push(redirectPath);
       setTimeout(() => window.location.reload(), 100);
 
     } catch (err) {

@@ -48,7 +48,14 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       console.warn("A munkamenet lejárt, vagy nincs jogosultság. Újra be kell jelentkezni.");
       localStorage.removeItem('salon_token'); // Töröljük a rossz tokent
-      window.location.href = '/login'; // Visszairányítjuk a bejelentkezéshez
+
+      const currentPath = window.location.pathname + window.location.search;
+
+      if (window.location.pathname !== '/login') {
+        window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`; // Visszairányítjuk a bejelentkezéshez
+      } else {
+        window.location.href = '/login'; // Ha már a login oldalon vagyunk, csak frissítjük
+      }
     }
     // ----------------------------------------------------
     return Promise.reject(error);

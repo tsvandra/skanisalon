@@ -107,6 +107,11 @@ using (var scope = app.Services.CreateScope())
         Console.WriteLine("Adatbázis migrációk ellenőrzése és futtatása...");
         db.Database.Migrate(); // Automatikusan lefuttatja a hiányzó migrációkat a Railway-en!
         Console.WriteLine("Adatbázis sikeresen frissítve!");
+
+        Console.WriteLine("Alapértelmezett adatok ellenőrzése (Seeding)...");
+        await DbSeeder.SeedAsync(db);
+        Console.WriteLine("Seeding kész!");
+
     }
     catch (Exception ex)
     {
