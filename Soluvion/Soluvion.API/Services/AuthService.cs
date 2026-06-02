@@ -130,7 +130,7 @@ namespace Soluvion.API.Services
 
             var token = new JwtSecurityToken(
                     claims: claims,
-                    expires: DateTime.Now.AddDays(1),
+                    expires: DateTime.Now.AddDays(14),
                     signingCredentials: creds
                 );
 
