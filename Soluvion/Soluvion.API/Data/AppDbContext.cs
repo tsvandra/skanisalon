@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Soluvion.Domain.Models;
 using Soluvion.API.Interfaces;
 using System.Reflection;
@@ -35,6 +35,13 @@ namespace Soluvion.API.Data
         public DbSet<CompanyAttribute> CompanyAttributes { get; set; }
         public DbSet<IndustryTemplateAttribute> IndustryTemplateAttributes { get; set; }
 
+        // --- Raktár DbSets ---
+        public DbSet<Product> Products { get; set; }
+        public DbSet<InventoryDocument> InventoryDocuments { get; set; }
+        public DbSet<InventoryDocumentItem> InventoryDocumentItems { get; set; }
+        public DbSet<ServiceVariantProduct> ServiceVariantProducts { get; set; }
+        public DbSet<AppointmentUsedProduct> AppointmentUsedProducts { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -54,6 +61,13 @@ namespace Soluvion.API.Data
             modelBuilder.Entity<Appointment>().HasQueryFilter(a => CurrentTenantId == 0 || a.CompanyId == CurrentTenantId);
             modelBuilder.Entity<AppointmentItem>().HasQueryFilter(ai => CurrentTenantId == 0 || ai.Appointment!.CompanyId == CurrentTenantId);
             modelBuilder.Entity<CompanyAttribute>().HasQueryFilter(ca => CurrentTenantId == 0 || ca.CompanyId == CurrentTenantId);
+
+            // Raktár Query Filterek
+            modelBuilder.Entity<Product>().HasQueryFilter(p => CurrentTenantId == 0 || p.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<InventoryDocument>().HasQueryFilter(id => CurrentTenantId == 0 || id.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<InventoryDocumentItem>().HasQueryFilter(idi => CurrentTenantId == 0 || idi.InventoryDocument!.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<ServiceVariantProduct>().HasQueryFilter(svp => CurrentTenantId == 0 || svp.Product!.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<AppointmentUsedProduct>().HasQueryFilter(aup => CurrentTenantId == 0 || aup.Product!.CompanyId == CurrentTenantId);
 
             // --- 2. KONFIGURÁCIÓK ALKALMAZÁSA AUTÓMATIKUSAN ---
             // Ez a sor megkeresi az Assembly-ben (a projektben) az összes IEntityTypeConfiguration 

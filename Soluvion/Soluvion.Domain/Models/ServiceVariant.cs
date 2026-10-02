@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
@@ -21,5 +21,7 @@ namespace Soluvion.Domain.Models
 
         [Column(TypeName = "jsonb")]
         public Dictionary<string, string> ProfileModifiers { get; set; } = new();
+
+        public ICollection<ServiceVariantProduct> DefaultProducts { get; set; } = new List<ServiceVariantProduct>();
     }
 }

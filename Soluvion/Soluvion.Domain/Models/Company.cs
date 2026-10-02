@@ -1,4 +1,4 @@
-﻿using Soluvion.Domain.Models.Enums;
+using Soluvion.Domain.Models.Enums;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -106,5 +106,9 @@ namespace Soluvion.Domain.Models
         public ICollection<CompanyEmployee> Employees { get; set; } = new List<CompanyEmployee>();
         public ICollection<CompanyCustomer> Customers { get; set; } = new List<CompanyCustomer>();
         public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
+        
+        // Raktár
+        public ICollection<Product> Products { get; set; } = new List<Product>();
+        public ICollection<InventoryDocument> InventoryDocuments { get; set; } = new List<InventoryDocument>();
     }
 }

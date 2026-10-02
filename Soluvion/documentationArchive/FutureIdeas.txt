@@ -1,0 +1,11 @@
+# Jövőbeli Fejlesztési Ötletek (Raktár és Készletkezelés)
+
+1. Központi / Globális Termék Adatbázis
+- Jelenleg (MVP) minden szalon (Company) csak a saját termékeit (Product) kezeli.
+- Későbbi fejlesztés: Egy globális adatbázis létrehozása (pl. népszerű márkák, mint L'Oréal, Schwarzkopf stb. hivatalos termékeivel).
+- Gamification / Marketing lehetőség: Ha egy szalon szépen, részletesen kitölt egy új terméket (leírás, EAN, képek), lehetőséget kaphat, hogy "beküldje" a közös adatbázisba ellenőrzésre. Ha elfogadják, kaphat valamilyen pontot, plecsnit, vagy marketing kiemelést a rendszerben.
+
+2. Több raktár telephelyenként (Multi-Location Stock)
+- Jelenleg (MVP) minden cégnek (Company) egyetlen összevont raktára van. A készlet közvetlenül a Product entitáson (vagy egy 1:1 kapcsolatú ProductStock táblán) van nyilvántartva.
+- Későbbi fejlesztés: `Location` vagy `Warehouse` entitás bevezetése. A készletet így raktárakra (pl. "Fodrászat raktár", "Kozmetika raktár", "Pult") lebontva lehet nyilvántartani. Szükség lesz raktárközi átadási bizonylatok (Transfer Documents) lefejlesztésére is.
+
