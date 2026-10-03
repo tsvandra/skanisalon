@@ -67,6 +67,10 @@
           {{ $t('nav.customers') || 'Ügyfelek' }}
         </router-link>
 
+        <router-link v-if="isLoggedIn" to="/raktar" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-medium min-h-[44px] flex items-center whitespace-nowrap">
+          Raktár
+        </router-link>
+
         <router-link to="/kapcsolat" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-medium min-h-[44px] flex items-center whitespace-nowrap">
           {{ $t('nav.contact') }}
         </router-link>
@@ -105,6 +109,10 @@
 
       <router-link v-if="isLoggedIn" to="/ugyfelek" @click="isMenuOpen = false" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-bold text-lg p-3 rounded-lg hover:bg-text/5">
         {{ $t('nav.customers') || 'Ügyfelek' }}
+      </router-link>
+
+      <router-link v-if="isLoggedIn" to="/raktar" @click="isMenuOpen = false" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-bold text-lg p-3 rounded-lg hover:bg-text/5">
+        Raktár
       </router-link>
 
       <router-link to="/kapcsolat" @click="isMenuOpen = false" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-bold text-lg p-3 rounded-lg hover:bg-text/5">

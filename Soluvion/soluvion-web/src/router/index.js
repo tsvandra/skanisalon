@@ -17,7 +17,20 @@ const router = createRouter({
     { path: '/login', name: 'login', component: LoginView },
     { path: '/beallitasok', name: 'settings', component: SettingsView },
     { path: '/vezerlopult', name: 'dashboard', component: () => import('../components/admin/calendar/CalendarGrid.vue') },
-    { path: '/ugyfelek', name: 'customers', component: () => import('../views/CustomersView.vue') }
+    { path: '/ugyfelek', name: 'customers', component: () => import('../views/CustomersView.vue') },
+    { 
+      path: '/raktar', 
+      name: 'inventory', 
+      component: () => import('../views/Inventory/InventoryView.vue'),
+      beforeEnter: (to, from, next) => {
+        const token = localStorage.getItem('salon_token');
+        if (token) {
+          next();
+        } else {
+          next('/login');
+        }
+      }
+    }
   ],
 })
 
