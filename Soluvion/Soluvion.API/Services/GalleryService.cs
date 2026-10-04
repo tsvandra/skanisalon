@@ -1,4 +1,4 @@
-Ôªøusing Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
 using Soluvion.Domain.Models;
 using Soluvion.API.DTOs;
@@ -21,11 +21,11 @@ namespace Soluvion.API.Services
 
         private int GetCurrentCompanyId() => _tenantContext.CurrentCompany?.Id ?? 0;
 
-        // --- K√âPEK KEZEL√âSE ---
+        // --- K…PEK KEZEL…SE ---
 
         public async Task<IEnumerable<GalleryImageDto>> GetImagesAsync()
         {
-            // AsNoTracking() hozz√°adva a teljes√≠tm√©ny optimaliz√°l√°sa √©rdek√©ben!
+            // AsNoTracking() hozz·adva a teljesÌtmÈny optimaliz·l·sa ÈrdekÈben!
             var images = await _context.GalleryImages
                 .AsNoTracking()
                 .Include(i => i.Category)
@@ -38,7 +38,7 @@ namespace Soluvion.API.Services
                 Id = i.Id,
                 ImageUrl = i.ImagePath,
                 CategoryId = i.CategoryId,
-                Category = i.Category != null ? i.Category.Name : new Dictionary<string, string> { { "hu", "Egy√©b" } },
+                Category = i.Category != null ? i.Category.Name : new Dictionary<string, string> { { "hu", "EgyÈb" } },
                 Title = i.Title,
                 OrderIndex = i.OrderIndex
             });
@@ -47,16 +47,16 @@ namespace Soluvion.API.Services
         public async Task<(GalleryImageDto? Image, string? ErrorMessage)> UploadImageAsync(IFormFile file, int categoryId)
         {
             int companyId = GetCurrentCompanyId();
-            if (companyId == 0) return (null, "√ârv√©nytelen szalon azonos√≠t√≥.");
+            if (companyId == 0) return (null, "…rvÈnytelen szalon azonosÌtÛ.");
 
-            // Kateg√≥ria kikeres√©se ID alapj√°n n√©v helyett
+            // KategÛria kikeresÈse ID alapj·n nÈv helyett
             var galleryCategory = await _context.GalleryCategories
                 .FirstOrDefaultAsync(c => c.Id == categoryId);
 
-            if (galleryCategory == null) return (null, "A megadott kateg√≥ria nem l√©tezik.");
+            if (galleryCategory == null) return (null, "A megadott kategÛria nem lÈtezik.");
 
             var uploadResult = await _imageService.UploadImageAsync(file, $"soluvion/company_{companyId}/gallery", 1920);
-            if (uploadResult == null) return (null, "Hiba a felt√∂lt√©s sor√°n.");
+            if (uploadResult == null) return (null, "Hiba a feltˆltÈs sor·n.");
 
             var galleryImage = new GalleryImage
             {
@@ -87,7 +87,7 @@ namespace Soluvion.API.Services
         public async Task<bool> UpdateImageAsync(int id, GalleryImageUpdateDto dto)
         {
             var image = await _context.GalleryImages.Include(i => i.Category).FirstOrDefaultAsync(i => i.Id == id);
-            if (image == null) return false; // Nincs meg, vagy m√°sik c√©g√© (az EF elrejti el≈ël√ºnk)
+            if (image == null) return false; // Nincs meg, vagy m·sik cÈgÈ (az EF elrejti elol¸nk)
 
             if (dto.Title != null) image.Title = dto.Title;
             image.OrderIndex = dto.OrderIndex;
@@ -99,16 +99,16 @@ namespace Soluvion.API.Services
                 else
                 {
                     string name1 = image.Category.Name.ContainsKey("hu") ? image.Category.Name["hu"] : "";
-                    string name2 = dto.CategoryName.ContainsKey("hu") ? dto.CategoryName["hu"] : "";
+                    string name2 = dto.CategoryName!.ContainsKey("hu") ? dto.CategoryName["hu"] : "";
                     if (name1 != name2) categoryChanged = true;
                 }
             }
 
             if (categoryChanged)
             {
-                string targetHuName = dto.CategoryName.ContainsKey("hu") ? dto.CategoryName["hu"] : "Egy√©b";
+                string targetHuName = dto.CategoryName!.ContainsKey("hu") ? dto.CategoryName["hu"] : "EgyÈb";
                 var existingCategories = await _context.GalleryCategories.ToListAsync();
-                var newCategory = existingCategories.FirstOrDefault(c => c.Name.ContainsKey("hu") && c.Name["hu"] == targetHuName);
+                var newCategory = existingCategories.FirstOrDefault(c => c.Name != null && c.Name.ContainsKey("hu") && c.Name["hu"] == targetHuName);
 
                 if (newCategory == null)
                 {
@@ -141,11 +141,11 @@ namespace Soluvion.API.Services
             return true;
         }
 
-        // --- KATEG√ìRI√ÅK KEZEL√âSE ---
+        // --- KATEG”RI¡K KEZEL…SE ---
 
         public async Task<IEnumerable<GalleryCategoryDto>> GetCategoriesAsync()
         {
-            // AsNoTracking() hozz√°adva a teljes√≠tm√©ny optimaliz√°l√°sa √©rdek√©ben!
+            // AsNoTracking() hozz·adva a teljesÌtmÈny optimaliz·l·sa ÈrdekÈben!
             var categories = await _context.GalleryCategories
                 .AsNoTracking()
                 .OrderBy(c => c.OrderIndex)
@@ -209,10 +209,10 @@ namespace Soluvion.API.Services
 
             if (cat.Images != null && cat.Images.Any())
             {
-                return (false, "A kateg√≥ria nem t√∂r√∂lhet≈ë, mert k√©peket tartalmaz! El≈ëbb t√∂r√∂ld vagy mozgasd √°t a k√©peket.");
+                return (false, "A kategÛria nem tˆrˆlheto, mert kÈpeket tartalmaz! Elobb tˆrˆld vagy mozgasd ·t a kÈpeket.");
             }
 
-            _context.GalleryImages.RemoveRange(cat.Images); // Biztos ami biztos alapon, de elvileg ezen a ponton nincs benne k√©p
+            if (cat.Images != null) { _context.GalleryImages.RemoveRange(cat.Images); } // Biztos ami biztos alapon, de elvileg ezen a ponton nincs benne kÈp
             _context.GalleryCategories.Remove(cat);
             await _context.SaveChangesAsync();
             return (true, null);

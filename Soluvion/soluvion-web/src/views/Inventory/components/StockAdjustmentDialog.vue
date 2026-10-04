@@ -35,7 +35,7 @@
           filter 
           class="flex-1"
         />
-        <Button icon="pi pi-plus" @click="addProductToMovement" :disabled="!selectedProduct" />
+        <Button icon="pi pi-plus" @click="addProductToMovement" :disabled="!selectedProduct ? true : false" />
       </div>
     </div>
 
@@ -62,7 +62,7 @@
 
     <template #footer>
       <Button label="Mégse" icon="pi pi-times" text @click="hideDialog" />
-      <Button label="Mentés" icon="pi pi-check" @click="saveMovement" :loading="saving" :disabled="movement.items.length === 0" />
+      <Button label="Mentés" icon="pi pi-check" @click="saveMovement" :loading="saving" :disabled="movement.items.length === 0 ? true : false" />
     </template>
   </Dialog>
 </template>

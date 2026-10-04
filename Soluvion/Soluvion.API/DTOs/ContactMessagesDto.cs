@@ -1,9 +1,9 @@
-﻿namespace Soluvion.API.DTOs
+namespace Soluvion.API.DTOs
 {
     public class ContactMessageDto
     {
-        public string Name { get; set; }
-        public string Email { get; set; }
-        public string Message { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
     }
 }

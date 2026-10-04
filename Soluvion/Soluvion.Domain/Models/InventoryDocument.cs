@@ -16,7 +16,7 @@ namespace Soluvion.Domain.Models
         public string? Note { get; set; }
 
         // Navigation
-        public Company? Company { get; set; }
+        public Company? Company { get; set; } public int? AppointmentId { get; set; } public Appointment? Appointment { get; set; }
 
         public ICollection<InventoryDocumentItem> Items { get; set; } = new List<InventoryDocumentItem>();
     }

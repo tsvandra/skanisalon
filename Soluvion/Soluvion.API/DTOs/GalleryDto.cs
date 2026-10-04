@@ -1,19 +1,19 @@
-Ôªønamespace Soluvion.API.DTOs
+namespace Soluvion.API.DTOs
 {
     public class GalleryImageDto
     {
         public int Id { get; set; }
-        public string ImageUrl { get; set; } // A frontend ezt v√°rja
-        public Dictionary<string, string> Title { get; set; }
+        public string ImageUrl { get; set; } = string.Empty; // A frontend ezt v·rja
+        public Dictionary<string, string> Title { get; set; } = new();
         public int CategoryId { get; set; }
-        public Dictionary<string, string> Category { get; set; } // A frontend ezt v√°rja
+        public Dictionary<string, string> Category { get; set; } = new(); // A frontend ezt v·rja
         public int OrderIndex { get; set; }
     }
 
     public class GalleryCategoryDto
     {
         public int Id { get; set; }
-        public Dictionary<string, string> Name { get; set; }
+        public Dictionary<string, string> Name { get; set; } = new();
         public int OrderIndex { get; set; }
     }
 

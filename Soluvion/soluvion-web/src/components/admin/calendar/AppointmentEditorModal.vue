@@ -48,6 +48,7 @@
             <div class="flex gap-2">
               <button @click="form.status = 0" class="flex-1 h-[44px] rounded-lg font-bold text-xs md:text-sm border transition-all" :class="form.status === 0 ? 'bg-red-500/10 border-red-500 text-red-500 shadow-sm' : 'border-text/20 text-text hover:bg-text/5'">{{ $t('calendar.editor.statusPending') }}</button>
               <button @click="form.status = 1" class="flex-1 h-[44px] rounded-lg font-bold text-xs md:text-sm border transition-all" :class="form.status === 1 ? 'bg-green-500/10 border-green-500 text-green-500 shadow-sm' : 'border-text/20 text-text hover:bg-text/5'">{{ $t('calendar.editor.statusApproved') }}</button>
+              <button @click="form.status = 2" class="flex-1 h-[44px] rounded-lg font-bold text-xs md:text-sm border transition-all" :class="form.status === 2 ? 'bg-primary/10 border-primary text-primary shadow-sm' : 'border-text/20 text-text hover:bg-text/5'">Befejezve</button>
             </div>
           </div>
           <div>
@@ -168,7 +169,7 @@
       form.value = {
         id: app.id, customerId: app.customerId, customerFullName: c ? c.name : '', customerPhone: '', employeeId: app.employeeId,
         date: new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0],
-        time: d.toTimeString().substring(0, 5), status: isPending(app.status) ? 0 : 1, notes: app.notes || '', items: mappedItems
+        time: d.toTimeString().substring(0, 5), status: (app.status === 'Completed' || app.status === 2 || app.status === '2') ? 2 : (isPending(app.status) ? 0 : 1), notes: app.notes || '', items: mappedItems
       };
     }
     openDropdownId.value = null;

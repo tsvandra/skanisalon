@@ -8,7 +8,7 @@ namespace Soluvion.API.DTOs
         public int Id { get; set; }
         public InventoryDocumentType Type { get; set; }
         public DateTime CreatedAt { get; set; }
-        public string? Note { get; set; }
+        public string? Note { get; set; } public int? AppointmentId { get; set; }
         public List<InventoryDocumentItemDto> Items { get; set; } = new();
     }
 
@@ -24,7 +24,7 @@ namespace Soluvion.API.DTOs
     public class CreateInventoryDocumentDto
     {
         public InventoryDocumentType Type { get; set; }
-        public string? Note { get; set; }
+        public string? Note { get; set; } public int? AppointmentId { get; set; }
 
         [Required, MinLength(1, ErrorMessage = "Legalább egy tételt meg kell adni!")]
         public List<CreateInventoryDocumentItemDto> Items { get; set; } = new();

@@ -1,4 +1,5 @@
 <script setup>
+// @ts-nocheck
   import { ref, inject, watch, computed, nextTick, onMounted } from 'vue';
   import InputNumber from 'primevue/inputnumber';
   import apiClient from '@/services/api';
@@ -7,13 +8,30 @@
   import { useCompanyStore } from '@/stores/companyStore';
   import { useDragAndDrop } from '@/composables/useDragAndDrop';
   import { useTranslation } from '@/composables/useTranslation';
+  import ServiceRecipeModal from '@/components/admin/ServiceRecipeModal.vue';
 
   const { locale } = useI18n();
   const isLoggedIn = inject('isLoggedIn');
   const companyStore = useCompanyStore();
-
   const services = ref([]);
   const categories = ref([]);
+  const isRecipeModalOpen = ref(false);
+  const editingRecipeVariant = ref(null);
+  const editingRecipeServiceName = ref("");
+  const editingRecipeVariantName = ref("");
+
+  const openRecipeModal = (service, variant, group, vIndex) => {
+    editingRecipeVariant.value = variant;
+    editingRecipeServiceName.value = service.name[currentLang.value] || "";
+    editingRecipeVariantName.value = group.headerVariants[vIndex]?.variantName[currentLang.value] || "";
+    isRecipeModalOpen.value = true;
+  };
+
+  const onRecipeSaved = (updatedProducts) => {
+    if (editingRecipeVariant.value) {
+      editingRecipeVariant.value.defaultProducts = updatedProducts;
+    }
+  };
   const companyAttributes = ref([]); // ÚJ: Vendég jellemzők betöltése
   const loading = ref(true);
 
@@ -475,10 +493,10 @@
             </div>
 
             <div class="w-full overflow-x-auto bg-background [&::-webkit-scrollbar]:h-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-text-muted/50 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-primary">
-              <div class="min-w-[500px] md:min-w-0 flex flex-col w-full">
+              <div class="w-max min-w-full flex flex-col">
 
                 <div class="flex items-end border-b border-text/10 px-2 pt-3 pb-2 bg-text/5">
-                  <div class="flex-grow pl-[45px] md:pl-[50px] text-xs font-bold text-text-muted uppercase tracking-widest pb-1 opacity-70">
+                  <div class="flex-grow min-w-[250px] shrink-0 pl-[45px] md:pl-[50px] text-xs font-bold text-text-muted uppercase tracking-widest pb-1 opacity-70">
                     {{ $t('nav.services') }}
                   </div>
 
@@ -517,7 +535,7 @@
 
                       <div class="flex items-center px-2 py-2 md:py-3 w-full">
 
-                        <div class="flex-grow flex items-center gap-1 pr-4 min-w-[200px]">
+                        <div class="flex-grow flex items-center gap-1 pr-4 min-w-[250px] shrink-0">
                           <div v-if="isLoggedIn" class="cursor-grab text-text-muted text-lg flex items-center justify-center min-w-[40px] min-h-[44px] hover:text-primary drag-handle-item transition-colors">⋮⋮</div>
 
                           <div class="relative w-full flex items-center group/tools flex-grow">
@@ -540,7 +558,7 @@
                           <div v-if="isLoggedIn" class="flex items-center gap-1 opacity-100 md:opacity-0 transition-opacity duration-200 md:group-hover/row:opacity-100 shrink-0">
                             <button @click="toggleNote(service)" class="border-none bg-transparent cursor-pointer flex items-center justify-center w-[36px] h-[44px] text-text-muted text-base hover:text-primary transition-colors"><i class="pi pi-comment"></i></button>
                             <button @click="addVariantToService(service, group)" class="border-none bg-transparent cursor-pointer flex items-center justify-center w-[36px] h-[44px] text-text-muted text-xl font-bold hover:text-text transition-colors">+</button>
-                            <button @click="deleteService(service.id)" class="border-none bg-transparent cursor-pointer flex items-center justify-center w-[36px] h-[44px] text-text-muted text-lg hover:text-red-500 transition-colors">🗑</button>
+                            <button @click="deleteService(service.id)" class="border-none bg-transparent cursor-pointer flex items-center justify-center w-[36px] h-[44px] text-text-muted text-lg hover:text-red-500 transition-colors">🗑️</button>
                           </div>
                         </div>
 
@@ -556,6 +574,11 @@
                                            @blur="saveService(service, false)" />
                               <span v-else class="text-text font-inherit transition-colors">{{ formatCurrency(variant.price) }}</span>
                             </div>
+
+                            <button v-if="isLoggedIn" @click="openRecipeModal(service, variant, group, vIndex)" class="text-[10px] text-text-muted hover:text-primary flex items-center justify-center gap-1 mt-1" :title="variant.defaultProducts?.length ? 'Anyagfelhasználás beállítva' : 'Alapértelmezett anyagok beállítása'">
+                              <i class="pi pi-box" :class="variant.defaultProducts?.length ? 'text-primary' : ''"></i>
+                              <span v-if="variant.defaultProducts?.length">{{ variant.defaultProducts.length }} termék</span>
+                            </button>
 
                             <button v-if="isLoggedIn" @click="removeVariant(service, vIndex, group)" class="absolute -top-2 md:-top-3 right-0 border-none bg-transparent text-red-500 opacity-100 md:opacity-0 cursor-pointer flex items-center justify-center w-[24px] h-[24px] md:group-hover/variant:opacity-100 transition-opacity text-xl font-bold hover:scale-110 bg-surface rounded-full shadow-sm">&times;</button>
                           </div>
@@ -656,4 +679,12 @@
     </div>
 
   </div>
+
+  <ServiceRecipeModal 
+    v-model:visible="isRecipeModalOpen"
+    :variant="editingRecipeVariant"
+    :serviceName="editingRecipeServiceName"
+    :variantName="editingRecipeVariantName"
+    @saved="onRecipeSaved"
+  />
 </template>

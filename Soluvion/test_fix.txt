@@ -1,0 +1,11 @@
+<template>
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-text">VezÒ©rl�&��pult</h1>
+      <p class="text-text-muted mt-2">VÒ¡laszd ki, melyik bels�&�� rendszert szeretnÒ©d kezelni.</p>
+    </div>
+
+    <!-- Esti Napi ZÒ¡rÒ¡s Widget -->
+    <div v-if="pendingMaterialLogs.length > 0" class="mb-8 bg-red-500/5 border border-red-500/20 rounded-2xl p-6 shadow-sm">
+      <div class="flex items-center gap-3 mb-4">
+        <i class="p

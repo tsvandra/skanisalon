@@ -13,6 +13,7 @@
   const route = useRoute();
 
   const isLoggedIn = ref(false);
+  const userRole = ref(null);
   const isAppReady = ref(false);
 
   // --- SaaS DINAMIKUS TÉMA INJEKTÁLÁSA A :ROOT-BA ---
@@ -28,11 +29,14 @@
   const checkAuthStatus = async () => {
     const token = localStorage.getItem('salon_token');
     isLoggedIn.value = !!token;
+    if (!token) userRole.value = null;
 
     if (token) {
       try {
         const decoded = jwtDecode(token);
         const companyId = parseInt(decoded.CompanyId || decoded.companyId || 0);
+        const roleClaim = decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || decoded.role || decoded.Role;
+        userRole.value = roleClaim || 'Customer';
 
         if (companyId) {
           const defaultLang = companyStore.company?.defaultLanguage || 'hu';
@@ -60,6 +64,7 @@
 
   provide('company', computed(() => companyStore.company));
   provide('isLoggedIn', isLoggedIn);
+  provide('userRole', userRole);
 
   // --- A FŐ LOGIKA ---
   onMounted(async () => {

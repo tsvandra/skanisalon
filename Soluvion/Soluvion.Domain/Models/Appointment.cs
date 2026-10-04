@@ -1,4 +1,4 @@
-Ôªøusing Soluvion.Domain.Models.Enums;
+using Soluvion.Domain.Models.Enums;
 
 namespace Soluvion.Domain.Models
 {
@@ -20,15 +20,15 @@ namespace Soluvion.Domain.Models
 
         public decimal TotalPrice { get; set; }
         
-        // St√°tusz √©s Forr√°s
+        // St·tusz Ès Forr·s
         public AppointmentStatus Status { get; set; } = AppointmentStatus.Pending;
         public BookingSource Source { get; set; } = BookingSource.Web;
 
-        // Sz√∂veges mez≈ëk (Megjegyz√©sek √©s Egyezked√©s)
-        public string? CustomerNotes { get; set; } // Ezt √≠rta a vend√©g a weben
-        public string? AdminNotes { get; set; }    // Ezt csak a dolgoz√≥k l√°tj√°k (bels≈ë info)
-        public string? StatusReason { get; set; }  // Indokl√°s elutas√≠t√°shoz vagy √°tszervez√©shez
+        // Szˆveges mezok (MegjegyzÈsek Ès EgyezkedÈs)
+        public string? CustomerNotes { get; set; } // Ezt Ìrta a vendÈg a weben
+        public string? AdminNotes { get; set; }    // Ezt csak a dolgozÛk l·tj·k (belso info)
+        public string? StatusReason { get; set; }  // Indokl·s elutasÌt·shoz vagy ·tszervezÈshez
 
-        public ICollection<AppointmentItem> Items { get; set; } = new List<AppointmentItem>();
+        public ICollection<AppointmentItem> Items { get; set; } = new List<AppointmentItem>();        public bool MaterialUsageRecorded { get; set; } = false;
     }
 }

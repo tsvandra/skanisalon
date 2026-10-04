@@ -75,8 +75,18 @@ namespace Soluvion.API.Services
                     Type = dto.Type,
                     CreatedAt = DateTime.UtcNow,
                     Note = dto.Note,
+                    AppointmentId = dto.AppointmentId,
                     Items = new List<InventoryDocumentItem>()
                 };
+
+                if (dto.AppointmentId.HasValue)
+                {
+                    var appointment = await _context.Appointments.FirstOrDefaultAsync(a => a.Id == dto.AppointmentId.Value && a.CompanyId == GetCurrentCompanyId());
+                    if (appointment != null)
+                    {
+                        appointment.MaterialUsageRecorded = true;
+                    }
+                }
 
                 foreach (var itemDto in dto.Items)
                 {

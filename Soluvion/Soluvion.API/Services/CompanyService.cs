@@ -1,4 +1,4 @@
-Ôªøusing Soluvion.API.Data;
+using Soluvion.API.Data;
 using Soluvion.API.DTOs;
 using Soluvion.API.Interfaces;
 using Soluvion.Domain.Models.Enums;
@@ -19,7 +19,7 @@ namespace Soluvion.API.Services
         }
 
         // --- SaaS FEATURE MATRIX ---
-        // Itt d≈ël el, melyik csomag mit tud!
+        // Itt dol el, melyik csomag mit tud!
         private List<string> GetEnabledFeatures(SubscriptionPlan plan)
         {
             return plan switch
@@ -35,7 +35,7 @@ namespace Soluvion.API.Services
             var company = _tenantContext.CurrentCompany;
             if (company == null) return Task.FromResult<CompanyPublicProfileDto?>(null);
 
-            var features = GetEnabledFeatures(company.SubscriptionPlan); // <-- Itt hat√°rozzuk meg a jogosults√°gokat
+            var features = GetEnabledFeatures(company.SubscriptionPlan); // <-- Itt hat·rozzuk meg a jogosults·gokat
 
             var dto = new CompanyPublicProfileDto
             {
@@ -127,7 +127,7 @@ namespace Soluvion.API.Services
             var existing = await _context.Companies.FindAsync(companyId);
             if (existing == null) return null;
 
-            // Be√°ll√≠t√°s ment√©se (A jogosults√°got nem itt √°ll√≠tjuk, az a bels≈ë rendszer dolga)
+            // Be·llÌt·s mentÈse (A jogosults·got nem itt ·llÌtjuk, az a belso rendszer dolga)
             existing.IsOnlineBookingEnabled = dto.IsOnlineBookingEnabled;
 
             existing.Name = dto.Name;
@@ -149,8 +149,8 @@ namespace Soluvion.API.Services
             existing.OpeningTimeSlots = dto.OpeningTimeSlots;
             existing.OpeningExtraInfo = dto.OpeningExtraInfo;
 
-            existing.PrimaryColor = dto.PrimaryColor;
-            existing.SecondaryColor = dto.SecondaryColor;
+            existing.PrimaryColor = dto.PrimaryColor ?? existing.PrimaryColor;
+            existing.SecondaryColor = dto.SecondaryColor ?? existing.SecondaryColor;
             existing.FooterHeight = dto.FooterHeight;
             existing.LogoHeight = dto.LogoHeight;
 

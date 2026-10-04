@@ -17,8 +17,8 @@
               {{ getCustomerName(app.customerId) }}
             </h4>
             <div class="rounded-full shadow-sm"
-                 :class="[isPending(app.status) ? 'bg-red-500' : 'bg-green-500', mode === 'day' ? 'w-2.5 h-2.5 md:w-3 md:h-3' : 'w-2 h-2']"
-                 :title="isPending(app.status) ? 'Függőben' : 'Jóváhagyva'"></div>
+                 :class="[app.status === 'Completed' || app.status === 2 || app.status === '2' ? 'bg-primary' : (isPending(app.status) ? 'bg-red-500' : 'bg-green-500'), mode === 'day' ? 'w-2.5 h-2.5 md:w-3 md:h-3' : 'w-2 h-2']"
+                 :title="app.status === 'Completed' || app.status === 2 || app.status === '2' ? 'Befejezve' : (isPending(app.status) ? 'Függőben' : 'Jóváhagyva')"></div>
           </div>
         </div>
       </div>

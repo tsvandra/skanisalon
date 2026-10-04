@@ -31,19 +31,20 @@
 
     <template #footer>
       <Button label="Mégse" icon="pi pi-times" text @click="hideDialog" />
-      <Button label="Módosítás mentése" icon="pi pi-check" @click="saveAdjustment" :loading="saving" :disabled="stockDifference === 0" />
+      <Button label="Módosítás mentése" icon="pi pi-check" @click="saveAdjustment" :loading="saving" :disabled="stockDifference === 0 ? true : false" />
     </template>
   </Dialog>
 </template>
 
 <script setup>
+// @ts-nocheck
 import { ref, watch, computed } from 'vue';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import InputNumber from 'primevue/inputnumber';
 import Button from 'primevue/button';
 import Message from 'primevue/message';
-import inventoryApi from '@/services/inventoryApi';
+import inventoryApi from '@/services/inventoryApi.js';
 
 const props = defineProps({
   visible: Boolean,
@@ -73,12 +74,12 @@ const hideDialog = () => {
 };
 
 const saveAdjustment = async () => {
+  if (!props.product) return;
   const diff = stockDifference.value;
   if (diff === 0) return;
 
   saving.value = true;
   try {
-    // Ha pozitív az eltérés, akkor Receipt (0), ha negatív akkor Issue (1)
     const type = diff > 0 ? 0 : 1; 
     
     const payload = {
@@ -88,7 +89,7 @@ const saveAdjustment = async () => {
         {
           productId: props.product.id,
           quantity: Math.abs(diff),
-          costPrice: 0 // Leltárnál nem rögzítünk új beszerzési árat általában
+          costPrice: 0 
         }
       ]
     };
