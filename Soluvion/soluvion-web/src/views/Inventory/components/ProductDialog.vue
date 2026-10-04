@@ -6,58 +6,66 @@
     :header="isEdit ? 'Termék szerkesztése' : 'Új termék felvitele'" 
     :modal="true" 
     class="p-fluid"
+    :pt="{
+      root: { class: 'bg-surface border border-text/10 rounded-2xl overflow-hidden shadow-2xl' },
+      header: { class: 'px-6 py-4 border-b border-text/10 bg-background/50' },
+      title: { class: 'text-xl font-bold text-text' },
+      content: { class: 'p-6 bg-surface' },
+      footer: { class: 'p-4 border-t border-text/10 bg-background/50 flex justify-end gap-2' },
+      closeButton: { class: 'hover:bg-text/10 p-2 rounded-full transition-colors w-8 h-8 flex items-center justify-center text-text-muted' }
+    }"
   >
-    <div class="flex flex-col gap-1 mb-4">
-      <label for="name" class="font-bold">Termék neve *</label>
-      <InputText id="name" v-model.trim="product.name" required autofocus class="w-full" />
+    <div class="flex flex-col mb-5 mt-2">
+      <label for="name" class="text-sm font-bold text-text-muted mb-1">Termék neve *</label>
+      <InputText id="name" v-model.trim="product.name" required autofocus class="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text" />
     </div>
 
-    <div class="flex flex-col gap-1 mb-4">
-      <label for="ean" class="font-bold">Vonalkód (EAN)</label>
-      <InputText id="ean" v-model.trim="product.ean" class="w-full" />
+    <div class="flex flex-col mb-5">
+      <label for="ean" class="text-sm font-bold text-text-muted mb-1">Vonalkód (EAN)</label>
+      <InputText id="ean" v-model.trim="product.ean" class="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text" />
     </div>
 
-    <div class="flex flex-col sm:flex-row gap-4 mb-4">
-      <div class="flex-1 flex flex-col gap-1">
-        <label for="unit" class="font-bold">Mértékegység</label>
-        <Dropdown id="unit" v-model="product.unit" :options="unitOptions" optionLabel="label" optionValue="value" placeholder="Válassz..." class="w-full" />
+    <div class="flex flex-col sm:flex-row gap-4 mb-5">
+      <div class="flex-1 flex flex-col">
+        <label for="unit" class="text-sm font-bold text-text-muted mb-1">Mértékegység</label>
+        <Dropdown id="unit" v-model="product.unit" :options="unitOptions" optionLabel="label" optionValue="value" placeholder="Válassz..." class="w-full bg-background border border-text/20 rounded-lg focus:outline-none focus:border-primary px-3 py-2.5 flex items-center" />
       </div>
-      <div class="flex-1 flex flex-col gap-1">
-        <label for="packageSize" class="font-bold">Kiszerelés</label>
-        <InputNumber id="packageSize" v-model="product.packageSize" mode="decimal" class="w-full" />
-      </div>
-    </div>
-
-    <div class="flex flex-col sm:flex-row gap-4 mb-4">
-      <div class="flex-1 flex flex-col gap-1">
-        <label for="costPrice" class="font-bold">Beszerzési ár</label>
-        <InputNumber id="costPrice" v-model="product.costPrice" mode="currency" currency="EUR" locale="sk-SK" class="w-full" />
-      </div>
-      <div class="flex-1 flex flex-col gap-1">
-        <label for="retailPrice" class="font-bold">Eladási ár</label>
-        <InputNumber id="retailPrice" v-model="product.retailPrice" mode="currency" currency="EUR" locale="sk-SK" class="w-full" />
+      <div class="flex-1 flex flex-col">
+        <label for="packageSize" class="text-sm font-bold text-text-muted mb-1">Kiszerelés</label>
+        <InputNumber id="packageSize" v-model="product.packageSize" mode="decimal" inputClass="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text" />
       </div>
     </div>
 
-    <div class="flex flex-col gap-1 mb-4">
-      <label for="lowStockThreshold" class="font-bold">Minimum készlet (Figyelmeztetéshez)</label>
-      <InputNumber id="lowStockThreshold" v-model="product.lowStockThreshold" mode="decimal" class="w-full" />
+    <div class="flex flex-col sm:flex-row gap-4 mb-5">
+      <div class="flex-1 flex flex-col">
+        <label for="costPrice" class="text-sm font-bold text-text-muted mb-1">Beszerzési ár</label>
+        <InputNumber id="costPrice" v-model="product.costPrice" mode="currency" currency="EUR" locale="sk-SK" inputClass="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text" />
+      </div>
+      <div class="flex-1 flex flex-col">
+        <label for="retailPrice" class="text-sm font-bold text-text-muted mb-1">Eladási ár</label>
+        <InputNumber id="retailPrice" v-model="product.retailPrice" mode="currency" currency="EUR" locale="sk-SK" inputClass="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text" />
+      </div>
+    </div>
+
+    <div class="flex flex-col mb-5">
+      <label for="lowStockThreshold" class="text-sm font-bold text-text-muted mb-1">Minimum készlet (Figyelmeztetéshez)</label>
+      <InputNumber id="lowStockThreshold" v-model="product.lowStockThreshold" mode="decimal" inputClass="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text" />
     </div>
 
     <div class="flex gap-4 mb-4">
       <div class="flex items-center">
-        <Checkbox v-model="product.isProfessional" inputId="isProfessional" :binary="true" />
-        <label for="isProfessional" class="ml-2">Professzionális (Szalonhasználat)</label>
+        <Checkbox v-model="product.isProfessional" inputId="isProfessional" :binary="true" :pt="{ box: ({ context }) => ({ class: context.checked ? '' : '!border-2 !border-text/40 !bg-background' }) }" />
+        <label for="isProfessional" class="ml-2 font-medium">Professzionális (Szalonhasználat)</label>
       </div>
       <div class="flex items-center">
-        <Checkbox v-model="product.isRetail" inputId="isRetail" :binary="true" />
-        <label for="isRetail" class="ml-2">Lakossági (Eladható)</label>
+        <Checkbox v-model="product.isRetail" inputId="isRetail" :binary="true" :pt="{ box: ({ context }) => ({ class: context.checked ? '' : '!border-2 !border-text/40 !bg-background' }) }" />
+        <label for="isRetail" class="ml-2 font-medium">Lakossági (Eladható)</label>
       </div>
     </div>
 
     <template #footer>
-      <Button label="Mégse" icon="pi pi-times" text @click="hideDialog" />
-      <Button label="Mentés" icon="pi pi-check" @click="saveProduct" :loading="saving" />
+      <Button label="Mégse" icon="pi pi-times" class="bg-background text-text border border-text/20 hover:bg-text/5 px-4 py-2 font-bold" @click="hideDialog" />
+      <Button label="Mentés" icon="pi pi-check" class="bg-primary text-white hover:brightness-110 px-4 py-2 font-bold" @click="saveProduct" :loading="saving" />
     </template>
   </Dialog>
 </template>
@@ -97,7 +105,9 @@ const isEdit = computed(() => !!props.productData?.id);
 const unitOptions = [
   { label: 'Milliliter (ml)', value: 0 },
   { label: 'Gramm (g)', value: 1 },
-  { label: 'Darab (db)', value: 2 }
+  { label: 'Darab (db)', value: 2 },
+  { label: 'Méter (m)', value: 3 },
+  { label: 'Centiméter (cm)', value: 4 }
 ];
 
 watch(() => props.visible, (newVal) => {
@@ -135,4 +145,3 @@ const saveProduct = async () => {
   }
 };
 </script>
-

@@ -86,7 +86,7 @@ const loadProducts = async () => {
 const getUnit = (id) => {
   const p = allProducts.value.find(x => x.id === id);
   if (!p) return '';
-  const units = ['db', 'ml', 'g'];
+  const units = ['ml', 'g', 'db', 'm', 'cm'];
   return units[p.unit] || '';
 };
 

@@ -176,7 +176,7 @@
   };
 
   const isFormValid = computed(() => {
-    if (form.value.items.length === 0) return false;
+    if (!isEditing.value && form.value.items.length === 0) return false;
     if (!form.value.customerId) return false;
     if (form.value.customerId === 'new') {
       const hasName = form.value.customerFullName && form.value.customerFullName.trim() !== '';

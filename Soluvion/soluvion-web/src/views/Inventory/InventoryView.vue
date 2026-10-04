@@ -17,19 +17,19 @@
           </span>
         </template>
       </Column>
-      <Column field="ean" header="Vonalkód / EAN" :sortable="true"></Column>
-      <Column header="Típus">
+      <Column field="ean" header="Vonalkód / EAN" :sortable="true" headerClass="hidden md:table-cell" bodyClass="hidden md:table-cell"></Column>
+      <Column header="Típus" headerClass="hidden md:table-cell" bodyClass="hidden md:table-cell">
         <template #body="slotProps">
-          <Badge v-if="slotProps.data.isProfessional" value="Professzionális" severity="info" class="mr-2" />
-          <Badge v-if="slotProps.data.isRetail" value="Lakossági" severity="success" />
+          <Badge v-if="slotProps.data.isProfessional" value="Professzionális" severity="info" class="mr-2 px-1" />
+          <Badge v-if="slotProps.data.isRetail" value="Lakossági" severity="success" class="px-1" />
         </template>
       </Column>
-      <Column field="packageSize" header="Kiszerelés">
+      <Column field="packageSize" header="Kiszerelés" headerClass="whitespace-nowrap !pr-6" bodyClass="whitespace-nowrap !pr-6">
         <template #body="slotProps">
           {{ slotProps.data.packageSize }} {{ getUnitName(slotProps.data.unit) }}
         </template>
       </Column>
-      <Column field="currentStock" header="Készlet" :sortable="true">
+      <Column field="currentStock" header="Készlet" :sortable="true" headerClass="whitespace-nowrap !min-w-[6rem]" bodyClass="whitespace-nowrap !min-w-[6rem]">
         <template #body="slotProps">
           <div 
             class="cursor-pointer inline-flex items-center gap-2 px-3 py-1 rounded-md hover:bg-surface-200 transition-colors" 
@@ -102,7 +102,7 @@ const fetchProducts = async () => {
 };
 
 const getUnitName = (unitEnum) => {
-  const units = ['ml', 'g', 'db'];
+  const units = ['ml', 'g', 'db', 'm', 'cm'];
   return units[unitEnum] || '';
 };
 

@@ -44,7 +44,7 @@
       </router-link>
 
       <!-- Raktár -->
-      <router-link to="/raktar" class="block group no-underline">
+      <router-link v-if="isAdmin" to="/raktar" class="block group no-underline">
         <div class="bg-surface border border-text/10 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-full flex flex-col items-center text-center">
           <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
             <i class="pi pi-box text-3xl"></i>
@@ -66,6 +66,32 @@
       </router-link>
     </div>
 
+    <!-- Kifogyóban lévő termékek Widget -->
+    <div v-if="isAdmin && lowStockProducts.length > 0" class="mt-8 bg-orange-500/5 border border-orange-500/20 rounded-2xl p-6 shadow-sm">
+      <div class="flex items-center gap-3 mb-4">
+        <i class="pi pi-exclamation-triangle text-2xl text-orange-500"></i>
+        <h2 class="text-xl font-bold text-orange-500">Kifogyóban lévő termékek</h2>
+        <span class="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full">{{ lowStockProducts.length }}</span>
+      </div>
+      <p class="text-sm text-text-muted mb-4">
+        Az alábbi termékek készletszintje a beállított minimum szint alá csökkent. Javasolt a beszerzésük.
+      </p>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <router-link v-for="product in lowStockProducts" :key="product.id" to="/raktar" 
+             class="bg-background border border-orange-500/30 p-4 rounded-xl cursor-pointer hover:bg-orange-500/10 hover:border-orange-500/50 transition-all flex items-center justify-between group no-underline">
+          <div>
+            <div class="font-bold text-text group-hover:text-primary transition-colors flex items-center gap-2">
+              <i class="pi pi-box text-text-muted text-sm"></i> {{ product.name }}
+            </div>
+            <div class="text-xs text-text-muted mt-1 font-medium">
+              Készlet: <span class="text-orange-500 font-bold">{{ product.currentStock }} db</span> (Minimum: {{ product.lowStockThreshold }} db)
+            </div>
+          </div>
+          <i class="pi pi-angle-right text-text-muted group-hover:text-orange-500 transition-colors ml-2"></i>
+        </router-link>
+      </div>
+    </div>
+
     <!-- Napi Zárás Modal -->
     <MaterialWrapUpModal 
       :is-open="isWrapUpModalOpen" 
@@ -78,7 +104,7 @@
 
 <script setup>
 // @ts-nocheck
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, inject, computed } from 'vue';
 import appointmentApi from '@/services/appointmentApi';
 import apiClient from '@/services/api';
 import MaterialWrapUpModal from '@/components/admin/dashboard/MaterialWrapUpModal.vue';
@@ -87,7 +113,11 @@ import { useI18n } from 'vue-i18n';
 const { locale } = useI18n();
 const currentLang = ref(locale.value || 'hu-HU');
 
+const userRole = inject('userRole');
+const isAdmin = computed(() => ['Admin', 'Owner'].includes(userRole?.value));
+
 const pendingMaterialLogs = ref([]);
+const lowStockProducts = ref([]);
 const services = ref([]);
 const isWrapUpModalOpen = ref(false);
 const selectedAppointment = ref(null);
@@ -140,6 +170,16 @@ const fetchPendingLogs = async () => {
   }
 };
 
+const fetchLowStockProducts = async () => {
+  try {
+    const response = await apiClient.get('/api/Product');
+    const allProducts = response.data || [];
+    lowStockProducts.value = allProducts.filter(p => !p.isDeleted && p.currentStock <= p.lowStockThreshold);
+  } catch (error) {
+    console.error("Hiba a termékek betöltésekor", error);
+  }
+};
+
 const formatDateShort = (iso) => iso ? new Date(iso).toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' }) : '';
 const formatTime = (iso) => iso ? new Date(iso).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }) : '';
 
@@ -151,11 +191,13 @@ const openWrapUp = (app) => {
 const handleWrapUpSaved = () => {
   isWrapUpModalOpen.value = false;
   fetchPendingLogs(); 
+  fetchLowStockProducts();
 };
 
 onMounted(() => {
   fetchServices();
   fetchPendingLogs();
+  fetchLowStockProducts();
 });
 </script>
 

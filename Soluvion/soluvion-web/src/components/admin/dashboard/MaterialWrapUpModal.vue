@@ -75,11 +75,12 @@
           
           <!-- Új termék hozzáadása Dropdown -->
           <div v-if="showAddProduct" class="p-3 border border-primary/30 bg-primary/5 rounded-xl flex flex-col sm:flex-row gap-3">
-            <Dropdown v-model="selectedNewProduct" :options="allProducts" optionLabel="name" placeholder="Válassz terméket..." filter class="flex-1" />
+            <Dropdown v-model="selectedNewProduct" :options="allProducts" optionLabel="name" placeholder="Válassz terméket..." filter class="flex-1 bg-background border border-text/20 rounded-lg focus:outline-none focus:border-primary px-3 py-2 flex items-center h-[44px]" />
             <div class="flex items-center gap-2">
-              <InputNumber v-model="newQuantity" :min="0" :maxFractionDigits="2" class="w-24 h-[44px]" placeholder="Menny." />
-              <button @click="addNewProduct" class="h-[44px] px-4 bg-primary text-white font-bold rounded-lg hover:brightness-110 disabled:opacity-50" :disabled="!selectedNewProduct || !newQuantity">Hozzáad</button>
-              <button @click="showAddProduct = false" class="h-[44px] px-3 bg-background border border-text/20 text-text rounded-lg hover:bg-text/5"><i class="pi pi-times"></i></button>
+              <InputNumber v-model="newQuantity" :min="0" :maxFractionDigits="2" class="w-24 h-[44px]" inputClass="w-full h-full text-center" placeholder="Menny." />
+              <span class="text-xs font-bold text-text-muted w-6 text-center">{{ selectedNewProduct ? getUnit(selectedNewProduct.id) : '-' }}</span>
+              <button @click="addNewProduct" class="cursor-pointer h-[44px] px-4 bg-primary text-white font-bold rounded-lg hover:brightness-110 disabled:opacity-50" :disabled="!selectedNewProduct || !newQuantity">Hozzáad</button>
+              <button @click="showAddProduct = false" class="cursor-pointer h-[44px] px-3 bg-background border border-text/20 text-text rounded-lg hover:bg-text/5"><i class="pi pi-times"></i></button>
             </div>
           </div>
 
@@ -145,7 +146,9 @@ const getVariantName = (variantId) => {
 
 const getUnit = (productId) => {
   const p = allProducts.value.find(x => x.id === productId);
-  return p ? p.unit : 'db';
+  if (!p) return 'db';
+  const units = ['ml', 'g', 'db', 'm', 'cm'];
+  return units[p.unit] || 'db';
 };
 
 const decreaseQty = (item) => { if (item.quantity > 0) item.quantity = Math.max(0, item.quantity - 0.5); };
@@ -223,15 +226,19 @@ const close = () => {
 const saveWrapUp = async () => {
   saving.value = true;
   try {
-    const validItems = wrapUpItems.value.filter(i => i.quantity > 0).map(i => ({
-      productId: i.productId,
-      quantity: i.quantity,
-      costPrice: i.costPrice || 0
-    }));
+    const validItems = wrapUpItems.value.filter(i => i.quantity > 0).map(i => {
+      const p = allProducts.value.find(x => x.id === i.productId);
+      const pkgSize = (p && p.packageSize && p.packageSize > 0) ? p.packageSize : 1;
+      return {
+        productId: i.productId,
+        quantity: i.quantity / pkgSize,
+        costPrice: i.costPrice || 0
+      };
+    });
 
     if (validItems.length > 0) {
       const payload = {
-        type: 'Outbound',
+        type: 1, // 1 = Issue (Kiadás)
         note: `Napi zárás (Foglalás ID: ${props.appointment.id})`,
         appointmentId: props.appointment.id,
         items: validItems
