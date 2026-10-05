@@ -134,6 +134,8 @@
       "newTitle": "Új foglalás rögzítése",
       "client": "1. Ügyfél",
       "selectFromList": "Válassz a listából...",
+      "searchClient": "Keresés névre vagy telefonszámra...",
+      "noClientFound": "Nincs találat",
       "addNewClient": "+ Új ügyfél rögzítése",
       "fullNameOptional": "Teljes név (opcionális)...",
       "phoneOptional": "Telefonszám (opcionális)...",

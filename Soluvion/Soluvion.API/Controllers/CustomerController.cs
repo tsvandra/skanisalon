@@ -85,5 +85,34 @@ namespace Soluvion.API.Controllers
                 return BadRequest(ex.Message);
             }
         }
+
+        [HttpPost("merge/preview")]
+        public async Task<IActionResult> PreviewMergeCustomers([FromBody] MergeCustomersDto dto)
+        {
+            return await ExecuteMerge(dto, dryRun: true);
+        }
+
+        [HttpPost("merge")]
+        public async Task<IActionResult> MergeCustomers([FromBody] MergeCustomersDto dto)
+        {
+            return await ExecuteMerge(dto, dryRun: false);
+        }
+
+        private async Task<IActionResult> ExecuteMerge(MergeCustomersDto dto, bool dryRun)
+        {
+            try
+            {
+                var result = await _customerService.MergeCustomersAsync(dto, dryRun);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
     }
 }

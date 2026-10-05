@@ -112,8 +112,8 @@
           <button @click="close" class="px-3 md:px-4 h-[44px] text-text text-sm md:text-base font-bold rounded-lg hover:bg-text/10 transition-colors">
             {{ $t('common.cancel') }}
           </button>
-          <button @click="handleSave" :disabled="!isFormValid" class="px-4 md:px-6 h-[44px] bg-primary text-white text-sm md:text-base font-bold rounded-lg hover:brightness-110 shadow-md transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 md:gap-2">
-            <i class="pi pi-save"></i> {{ $t('common.save') }}
+          <button @click="handleSave()" :disabled="!isFormValid || isSaving" class="px-4 md:px-6 h-[44px] bg-primary text-white text-sm md:text-base font-bold rounded-lg hover:brightness-110 shadow-md transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 md:gap-2">
+            <i class="pi" :class="isSaving ? 'pi-spin pi-spinner' : 'pi-save'"></i> {{ $t('common.save') }}
           </button>
         </div>
       </div>
@@ -261,8 +261,15 @@ const removeExtraProduct = (idx) => { form.value.extraMaterials.splice(idx, 1); 
     return true;
   });
 
+  const isSaving = ref(false);
+
   const handleSave = async (forceParam = false) => {
     const isForced = typeof forceParam === 'boolean' ? forceParam : false;
+
+    // Dupla kattintás / párhuzamos mentés elleni védelem
+    if (isSaving.value) return;
+    isSaving.value = true;
+    let retryForced = false;
 
     try {
       let finalCustId = form.value.customerId;
@@ -272,6 +279,8 @@ const removeExtraProduct = (idx) => { form.value.extraMaterials.splice(idx, 1); 
         const newCustomerResponse = await bookingApi.createCustomer({ fullName: nameVal, phone: phoneVal });
         finalCustId = newCustomerResponse.data.id;
         customersList.value.push(newCustomerResponse.data);
+        // Ha a mentés később hibázik, újrapróbálkozáskor ne hozzunk létre még egy ügyfelet
+        form.value.customerId = finalCustId;
       } else {
         finalCustId = parseInt(form.value.customerId);
       }
@@ -325,7 +334,7 @@ const removeExtraProduct = (idx) => { form.value.extraMaterials.splice(idx, 1); 
 
       if (!isForced && isConflictError) {
         if (confirm(t('calendar.editor.overlapWarning'))) {
-          handleSave(true);
+          retryForced = true;
         }
       } else {
         let errorDetails = data?.message || error.message;
@@ -336,7 +345,11 @@ const removeExtraProduct = (idx) => { form.value.extraMaterials.splice(idx, 1); 
         }
         alert(t('calendar.editor.saveError') + "\n" + errorDetails);
       }
+    } finally {
+      isSaving.value = false;
     }
+
+    if (retryForced) await handleSave(true);
   };
 
   const handleDelete = async () => {

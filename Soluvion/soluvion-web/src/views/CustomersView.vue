@@ -16,6 +16,9 @@
             <input type="text" v-model="searchQuery" placeholder="Keresés név alapján..."
                    class="w-full h-[44px] pl-10 pr-4 bg-background border border-text/20 rounded-xl text-sm focus:outline-none focus:border-primary transition-colors">
           </div>
+          <button @click="openMergeModal()" class="h-[44px] px-5 bg-surface text-text border border-text/20 font-bold rounded-xl shadow-sm hover:border-primary hover:text-primary active:scale-95 transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+            <i class="pi pi-sitemap"></i> Összevonás
+          </button>
           <button @click="openCreateModal" class="h-[44px] px-5 bg-primary text-white font-bold rounded-xl shadow-md hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 whitespace-nowrap">
             <i class="pi pi-plus"></i> Új ügyfél
           </button>
@@ -41,6 +44,9 @@
             </button>
             <button @click="openEditModal(customer)" class="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-colors" title="Szerkesztés">
               <i class="pi pi-pencil text-sm"></i>
+            </button>
+            <button @click="openMergeModal(customer)" class="w-8 h-8 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center hover:bg-amber-500 hover:text-white transition-colors" title="Összevonás másik ügyféllel">
+              <i class="pi pi-sitemap text-sm"></i>
             </button>
             <button @click="confirmDelete(customer)" class="w-8 h-8 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors" title="Törlés">
               <i class="pi pi-trash text-sm"></i>
@@ -173,6 +179,15 @@
       @close="closeHistoryModal" 
       @updated="fetchData"
     />
+
+    <CustomerMergeModal
+      v-if="isMergeModalOpen"
+      :customers="customers"
+      :companyAttributes="companyAttributes"
+      :initialCustomerId="mergeInitialCustomerId"
+      @close="isMergeModalOpen = false"
+      @merged="onMerged"
+    />
   </div>
 </template>
 
@@ -183,6 +198,7 @@
   import attributesApi from '@/services/companyAttributesApi'; // <- Fontos: Itt hívjuk meg az új API-t!
   import { getCustomerColor } from '@/utils/colorUtils';
   import CustomerHistoryModal from '@/components/admin/customers/CustomerHistoryModal.vue';
+  import CustomerMergeModal from '@/components/admin/customers/CustomerMergeModal.vue';
 
   const route = useRoute();
   const router = useRouter();
@@ -197,6 +213,21 @@
 
   const isHistoryModalOpen = ref(false);
   const selectedCustomerHistory = ref(null);
+
+  const isMergeModalOpen = ref(false);
+  const mergeInitialCustomerId = ref(null);
+
+  const openMergeModal = (customer = null) => {
+    mergeInitialCustomerId.value = customer ? customer.id : null;
+    isMergeModalOpen.value = true;
+  };
+
+  const onMerged = async (result) => {
+    isMergeModalOpen.value = false;
+    await fetchData();
+    alert(`Sikeres összevonás.\nÖsszes foglalás: ${result.totalAppointmentsAfterMerge}` +
+      (result.removedDuplicateAppointments > 0 ? `\nEgyesített duplikált foglalás: ${result.removedDuplicateAppointments}` : ''));
+  };
 
   const form = ref({
     id: null,

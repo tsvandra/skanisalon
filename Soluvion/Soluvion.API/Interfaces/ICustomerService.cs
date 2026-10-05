@@ -10,5 +10,10 @@ namespace Soluvion.API.Interfaces
         Task<CustomerResponseDto> CreateCustomerAsync(CreateCustomerDto dto);
         Task<CustomerResponseDto> UpdateCustomerAsync(int id, CreateCustomerDto dto);
         Task DeleteCustomerAsync(int id);
+
+        /// <summary>
+        /// Több ügyfél összevonása egyetlen ügyféllé. Ha dryRun igaz, csak a várható eredményt számolja ki, nem módosít semmit.
+        /// </summary>
+        Task<MergeCustomersResultDto> MergeCustomersAsync(MergeCustomersDto dto, bool dryRun);
     }
 }
