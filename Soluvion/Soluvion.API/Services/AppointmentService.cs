@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
 using Soluvion.API.DTOs.AppointmentDtos;
 using Soluvion.API.Interfaces;
@@ -32,6 +32,7 @@ namespace Soluvion.API.Services
 
             var query = _context.Appointments
                 .Include(a => a.Items)
+                .Include(a => a.Customer)
                 .Where(a => a.CompanyId == companyId && a.StartDateTime >= start && a.StartDateTime <= end);
 
             if (currentEmployee.Role == EmployeeRole.Worker)
@@ -43,7 +44,9 @@ namespace Soluvion.API.Services
                 query = query.Where(a => a.EmployeeId == employeeId.Value);
             }
 
-            var appointments = await query.Select(a => new AppointmentResponseDto
+            var rawAppointments = await query.ToListAsync();
+
+            var appointments = rawAppointments.Select(a => new AppointmentResponseDto
             {
                 Id = a.Id,
                 CustomerId = a.CustomerId,
@@ -51,7 +54,7 @@ namespace Soluvion.API.Services
                 StartDateTime = a.StartDateTime,
                 EndDateTime = a.EndDateTime,
                 TotalPrice = a.TotalPrice,
-                Status = a.Status.ToString(),
+                Status = a.Status.ToString(), MaterialUsageRecorded = a.MaterialUsageRecorded, ExtraMaterials = a.ExtraMaterials, CustomerName = a.Customer != null && a.Customer.Attributes != null && a.Customer.Attributes.ContainsKey("FullName") ? a.Customer.Attributes["FullName"] : "Ismeretlen",
                 Notes = (a.CustomerNotes != null && a.CustomerNotes != "") ? a.CustomerNotes : a.AdminNotes,
 
                 Items = a.Items.Select(i => new AppointmentItemResponseDto
@@ -61,7 +64,7 @@ namespace Soluvion.API.Services
                     CalculatedDurationMinutes = i.CalculatedDurationMinutes,
                     Price = i.Price
                 }).ToList()
-            }).ToListAsync();
+            }).ToList();
 
             return appointments;
         }
@@ -86,7 +89,7 @@ namespace Soluvion.API.Services
 
             if (dto.Force && currentEmployee.Role != EmployeeRole.Owner && currentEmployee.Role != EmployeeRole.Manager)
             {
-                throw new UnauthorizedAccessException("Ütköző időpontot csak a Tulajdonos vagy a Menedzser erőszakolhat ki (Force).");
+                throw new UnauthorizedAccessException("Ütközo idopontot csak a Tulajdonos vagy a Menedzser eroszakolhat ki (Force).");
             }
 
             var variantIds = dto.Items.Select(i => i.ServiceVariantId).ToList();
@@ -97,10 +100,10 @@ namespace Soluvion.API.Services
             bool isAvailable = await _bookingEngine.IsTimeSlotAvailableAsync(companyId, dto.EmployeeId, dto.StartDateTime, endDateTime, dto.Force);
             if (!isAvailable)
             {
-                throw new InvalidOperationException("A kiválasztott időpont ütközik egy másikkal.");
+                throw new InvalidOperationException("A kiválasztott idopont ütközik egy másikkal.");
             }
 
-            // ÁR FELÜLBÍRÁLÁS: Admin felületről jövő konkrét (akár módosított) árak összegzése
+            // ÁR FELÜLBÍRÁLÁS: Admin felületrol jövo konkrét (akár módosított) árak összegzése
             decimal totalPrice = dto.Items.Sum(i => i.Price);
 
             var appointment = new Appointment
@@ -114,6 +117,7 @@ namespace Soluvion.API.Services
                 Status = dto.Status,
                 Source = BookingSource.System,
                 AdminNotes = dto.Notes,
+                ExtraMaterials = NormalizeExtraMaterials(dto.ExtraMaterials),
                 Items = new List<AppointmentItem>()
             };
 
@@ -146,9 +150,10 @@ namespace Soluvion.API.Services
             int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
 
             var appointment = await _context.Appointments.Include(a => a.Items)
+                .Include(a => a.Customer)
                                             .FirstOrDefaultAsync(a => a.Id == appointmentId && a.CompanyId == companyId);
 
-            if (appointment == null) throw new KeyNotFoundException("Időpont nem található vagy nincs jogosultságod.");
+            if (appointment == null) throw new KeyNotFoundException("Idopont nem található vagy nincs jogosultságod.");
 
             var currentUser = await _context.Users.SingleAsync(u => u.Username == username);
             var currentEmployee = await _context.CompanyEmployees
@@ -158,7 +163,7 @@ namespace Soluvion.API.Services
                 throw new UnauthorizedAccessException("Nincs jogosultságod.");
 
             if (dto.Force && currentEmployee.Role != EmployeeRole.Owner && currentEmployee.Role != EmployeeRole.Manager)
-                throw new UnauthorizedAccessException("Ütköző időpontot csak a Tulajdonos vagy a Menedzser erőszakolhat ki.");
+                throw new UnauthorizedAccessException("Ütközo idopontot csak a Tulajdonos vagy a Menedzser eroszakolhat ki.");
 
             var variantIds = dto.Items.Select(i => i.ServiceVariantId).ToList();
 
@@ -166,9 +171,9 @@ namespace Soluvion.API.Services
             DateTime endDateTime = dto.StartDateTime.AddMinutes(totalDuration);
 
             bool isAvailable = await _bookingEngine.IsTimeSlotAvailableAsync(companyId, appointment.EmployeeId, dto.StartDateTime, endDateTime, dto.Force, appointment.Id);
-            if (!isAvailable) throw new InvalidOperationException("A kiválasztott időpont ütközik egy másikkal.");
+            if (!isAvailable) throw new InvalidOperationException("A kiválasztott idopont ütközik egy másikkal.");
 
-            // ÁR FELÜLBÍRÁLÁS: Admin felületről jövő konkrét (akár módosított) árak összegzése
+            // ÁR FELÜLBÍRÁLÁS: Admin felületrol jövo konkrét (akár módosított) árak összegzése
             decimal totalPrice = dto.Items.Sum(i => i.Price);
 
             appointment.CustomerId = dto.CustomerId;
@@ -177,6 +182,7 @@ namespace Soluvion.API.Services
             appointment.TotalPrice = totalPrice;
             appointment.Status = dto.Status;
             appointment.AdminNotes = dto.Notes;
+            appointment.ExtraMaterials = NormalizeExtraMaterials(dto.ExtraMaterials);
 
             var oldItems = await _context.AppointmentItems.Where(i => i.AppointmentId == appointment.Id).ToListAsync();
             _context.AppointmentItems.RemoveRange(oldItems);
@@ -204,6 +210,26 @@ namespace Soluvion.API.Services
             return appointment;
         }
 
+        /// <summary>
+        /// A foglaláshoz mentett extra anyagok JSON-jának ellenőrzése: csak érvényes, nem üres JSON tömb marad meg, minden más null.
+        /// </summary>
+        private static string? NormalizeExtraMaterials(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return null;
+
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Array || doc.RootElement.GetArrayLength() == 0)
+                    return null;
+                return json;
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                return null;
+            }
+        }
+
         public async Task<bool> DeleteAppointmentAsync(int appointmentId, string username)
         {
             int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
@@ -220,14 +246,14 @@ namespace Soluvion.API.Services
             if (currentEmployee == null) throw new UnauthorizedAccessException("Nincs jogosultságod.");
 
             if (currentEmployee.Role == EmployeeRole.Worker && appointment.EmployeeId != currentEmployee.Id)
-                throw new UnauthorizedAccessException("Csak a saját időpontjaidat törölheted.");
+                throw new UnauthorizedAccessException("Csak a saját idopontjaidat törölheted.");
 
             _context.Appointments.Remove(appointment);
             await _context.SaveChangesAsync();
             return true;
         }
 
-        // === PRIVÁT METÓDUS: Az Automatikus Vendégprofil Frissítő Algoritmus ===
+        // === PRIVÁT METÓDUS: Az Automatikus Vendégprofil Frissíto Algoritmus ===
         private async Task SyncCustomerAttributesFromVariantsAsync(int customerId, List<int> variantIds)
         {
             var customer = await _context.CompanyCustomers.FindAsync(customerId);
@@ -262,7 +288,7 @@ namespace Soluvion.API.Services
                 }
             }
 
-            // Csak akkor hívunk adatbázis mentést (I/O műveletet), ha tényleg változott adat a vendégen
+            // Csak akkor hívunk adatbázis mentést (I/O muveletet), ha tényleg változott adat a vendégen
             if (isCustomerChanged)
             {
                 _context.CompanyCustomers.Update(customer);
@@ -271,3 +297,8 @@ namespace Soluvion.API.Services
         }
     }
 }
+
+
+
+
+

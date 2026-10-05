@@ -1,0 +1,128 @@
+{
+  "inventory": {
+    "units": {
+      "short": {
+        "ml": "ml",
+        "g": "g",
+        "pcs": "db",
+        "m": "m",
+        "cm": "cm"
+      },
+      "full": {
+        "ml": "Milliliter (ml)",
+        "g": "Gramm (g)",
+        "pcs": "Darab (db)",
+        "m": "Méter (m)",
+        "cm": "Centiméter (cm)"
+      }
+    },
+    "view": {
+      "title": "Raktár & Termékek",
+      "newProduct": "Új termék",
+      "stockMovement": "Inventúra / Mozgás",
+      "columns": {
+        "name": "Név",
+        "ean": "Vonalkód / EAN",
+        "type": "Típus",
+        "packageSize": "Kiszerelés",
+        "stock": "Készlet"
+      },
+      "editProductTitle": "Termékkártya szerkesztése",
+      "quickStockTitle": "Készlet gyors módosítása",
+      "professional": "Professzionális",
+      "retail": "Lakossági",
+      "empty": "Még nincsenek termékek felvéve."
+    },
+    "productDialog": {
+      "titleEdit": "Termék szerkesztése",
+      "titleNew": "Új termék felvitele",
+      "name": "Termék neve *",
+      "ean": "Vonalkód (EAN)",
+      "unit": "Mértékegység",
+      "unitPlaceholder": "Válassz...",
+      "packageSize": "Kiszerelés",
+      "costPrice": "Beszerzési ár",
+      "retailPrice": "Eladási ár",
+      "lowStockThreshold": "Minimum készlet (Figyelmeztetéshez)",
+      "professional": "Professzionális (Szalonhasználat)",
+      "retail": "Lakossági (Eladható)",
+      "cancel": "Mégse",
+      "save": "Mentés"
+    },
+    "quickStockDialog": {
+      "header": "Leltári készletmódosítás",
+      "currentStock": "Jelenlegi készlet a rendszerben:",
+      "newStock": "Új, valós darabszám (polcon lévő)",
+      "note": "Megjegyzés / Indoklás",
+      "notePlaceholder": "Pl. Éves leltár eltérés, selejt, stb.",
+      "defaultNote": "Leltári korrekció",
+      "differenceBefore": "A rendszer",
+      "differenceAfter": "darabos {kind} fog rögzíteni.",
+      "receiptKind": "bevételezést",
+      "issueKind": "kiadást",
+      "noDifference": "Nincs eltérés, nem jön létre bizonylat.",
+      "cancel": "Mégse",
+      "save": "Módosítás mentése"
+    },
+    "stockDialog": {
+      "header": "Készletmódosítás / Inventúra",
+      "type": "Művelet típusa *",
+      "typeReceipt": "Bevételezés (Készlet növelése)",
+      "typeIssue": "Kiadás / Selejtezés (Készlet csökkentése)",
+      "note": "Megjegyzés",
+      "notePlaceholder": "Pl. Havi leltár, árkezés, sérült áru...",
+      "addProducts": "Termékek hozzáadása",
+      "selectProduct": "Válassz terméket...",
+      "columns": {
+        "product": "Termék",
+        "quantity": "Mennyiség",
+        "costPrice": "Beszerzési ár"
+      },
+      "cancel": "Mégse",
+      "save": "Mentés"
+    },
+    "serviceRecipe": {
+      "header": "Alapértelmezett Anyagfelhasználás",
+      "introBefore": "Állítsd be, hogy ehhez a szolgáltatás-variánshoz (",
+      "introAfter": ") milyen termékeket és mekkora mennyiséget készítsen be a rendszer alapértelmezetten a Napi Záráskor.",
+      "selectProduct": "Termék kiválasztása",
+      "searchPlaceholder": "Keress egy terméket...",
+      "quantity": "Mennyiség",
+      "empty": "Nincs beállítva alapértelmezett anyagfelhasználás.",
+      "cancel": "Mégse",
+      "save": "Mentés"
+    },
+    "lowStockPlanner": {
+      "title": "Készlet tervező:",
+      "currentStock": "Jelenlegi készlet:",
+      "minimum": "Minimum:",
+      "upcomingUsage": "Várható fogyás a következő 30 napban",
+      "relatedBookings": "Kapcsolódó Foglalások (30 nap)",
+      "noBookings": "Nincs olyan jövőbeli foglalás, ami ezt a terméket igényelné.",
+      "unknownGuest": "Ismeretlen Vendég",
+      "guest": "Vendég",
+      "requiredQuantity": "Szükséges mennyiség:",
+      "close": "Bezárás"
+    },
+    "wrapUp": {
+      "title": "Esti Zárás - Anyaglevonás",
+      "servicesCount": "{count} szolgáltatás",
+      "usedServices": "Igénybe vett szolgáltatások",
+      "noServices": "Nem található szolgáltatás (hibás foglalás).",
+      "usedMaterials": "Felhasznált anyagok",
+      "newProduct": "Új termék",
+      "noDefaults": "Nincs alapértelmezett anyagfelhasználás beállítva ehhez a foglaláshoz.",
+      "notEnoughStock": "Nincs elég készlet!",
+      "belowMinimum": "Minimum alá esik",
+      "atMinimum": "Pont a minimumon marad",
+      "selectProduct": "Válassz terméket...",
+      "quantityPlaceholder": "Menny.",
+      "add": "Hozzáad",
+      "cancel": "Mégsem",
+      "saveAndDeduct": "Mentés & Levonás",
+      "itemFallback": "Tétel #{id}",
+      "unknownProduct": "Ismeretlen termék",
+      "saveError": "Hiba történt a mentés során. Lehet, hogy nincs elég készlet a raktárban?"
+    }
+  }
+}

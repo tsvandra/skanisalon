@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Soluvion.API.DTOs.AppointmentDtos;
 using Soluvion.API.Interfaces;
@@ -111,6 +111,26 @@ namespace Soluvion.API.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { message = $"Szerver hiba: {ex.Message}" });
+            }
+        }
+
+        [HttpPost("{id}/mark-materials-recorded")]
+        public async Task<IActionResult> MarkMaterialsRecorded(int id)
+        {
+            try
+            {
+                var context = HttpContext.RequestServices.GetRequiredService<Soluvion.API.Data.AppDbContext>();
+                var app = await context.Appointments.FindAsync(id);
+                if (app != null)
+                {
+                    app.MaterialUsageRecorded = true;
+                    await context.SaveChangesAsync();
+                }
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
             }
         }
     }

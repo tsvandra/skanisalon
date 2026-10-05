@@ -1,8 +1,10 @@
 <script setup>
   import { ref } from 'vue';
   import { useRouter, useRoute } from 'vue-router';
+  import { useI18n } from 'vue-i18n';
   import api from '@/services/api';
 
+  const { t } = useI18n();
   const router = useRouter();
   const route = useRoute();
   const username = ref('');
@@ -37,7 +39,7 @@
 
     } catch (err) {
       console.error("Hiba történt:", err);
-      errorMsg.value = err.response?.data || 'Hibás felhasználónév vagy jelszó!';
+      errorMsg.value = err.response?.data || t('login.invalidCredentials');
     } finally {
       isLoading.value = false;
     }
@@ -48,24 +50,24 @@
   <div class="min-h-[80vh] flex justify-center items-center bg-background p-4">
 
     <div class="bg-surface p-8 rounded-xl shadow-xl w-full max-w-md text-center border-t-4 border-primary">
-      <h2 class="text-text text-2xl font-bold mb-2">Admin Belépés</h2>
+      <h2 class="text-text text-2xl font-bold mb-2">{{ $t('login.title') }}</h2>
       <p class="text-text-muted text-sm mb-8">Skani Salon Management</p>
 
       <form @submit.prevent="handleLogin">
 
         <div class="mb-6 text-left">
-          <label for="username" class="block mb-2 font-bold text-text">Felhasználónév</label>
+          <label for="username" class="block mb-2 font-bold text-text">{{ $t('login.username') }}</label>
           <input id="username"
                  name="username"
                  type="text"
                  v-model="username"
                  required
-                 placeholder="Írd be a neved..."
+                 :placeholder="$t('login.usernamePlaceholder')"
                  class="w-full p-3 border border-text/20 rounded-lg text-base bg-background text-text focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors" />
         </div>
 
         <div class="mb-6 text-left">
-          <label for="password" class="block mb-2 font-bold text-text">Jelszó</label>
+          <label for="password" class="block mb-2 font-bold text-text">{{ $t('login.password') }}</label>
           <input id="password"
                  name="password"
                  type="password"
@@ -81,7 +83,7 @@
                 :disabled="isLoading"
                 class="w-full p-3 bg-primary text-black font-bold rounded-lg cursor-pointer transition-all duration-300 hover:brightness-90 disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md">
           <i v-if="isLoading" class="pi pi-spin pi-spinner mr-2"></i>
-          {{ isLoading ? 'Belépés folyamatban...' : 'Belépés' }}
+          {{ isLoading ? $t('login.submitting') : $t('login.submit') }}
         </button>
 
       </form>

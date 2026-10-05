@@ -67,6 +67,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useLocalizedText } from '@/composables/useLocalizedText';
 import InlineDropdown from '@/components/common/InlineDropdown.vue';
 
 const props = defineProps({
@@ -76,7 +77,7 @@ const props = defineProps({
 
 const emit = defineEmits(['add-items', 'update:openDropdownId']);
 
-const { locale } = useI18n();
+const { locale, t } = useI18n();
 const currentLang = computed(() => locale.value || 'hu-HU');
 
 const activeCategory = ref('');
@@ -84,7 +85,7 @@ const stagedServices = ref([]);
 const stagedVariants = ref({});
 const missingVariantsMode = ref(false);
 
-const getLocText = (dict) => dict ? (dict[currentLang.value] || dict['hu'] || '') : '';
+const { getLocText } = useLocalizedText();
 
 const getDropdownOptions = (srv) => {
   return srv.variants.map(v => ({
@@ -96,12 +97,12 @@ const getDropdownOptions = (srv) => {
 
 const availableCategories = computed(() => {
   const cats = new Set();
-  props.availableServices.forEach(s => cats.add(getLocText(s.category) || 'Egyéb'));
+  props.availableServices.forEach(s => cats.add(getLocText(s.category) || t('orders.calendar.servicePicker.otherCategory')));
   return Array.from(cats).sort();
 });
 
 const availableServicesInCategory = computed(() => {
-  return props.availableServices.filter(s => (getLocText(s.category) || 'Egyéb') === activeCategory.value);
+  return props.availableServices.filter(s => (getLocText(s.category) || t('orders.calendar.servicePicker.otherCategory')) === activeCategory.value);
 });
 
 // Init első kategória

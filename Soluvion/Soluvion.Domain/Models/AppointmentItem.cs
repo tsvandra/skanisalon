@@ -1,4 +1,4 @@
-﻿namespace Soluvion.Domain.Models
+namespace Soluvion.Domain.Models
 {
     public class AppointmentItem
     {
@@ -13,5 +13,7 @@
         public decimal Price { get; set; }
         public int CalculatedDurationMinutes { get; set; }
         public int? ProcessingTimeMinutes { get; set; } // Opcionális hatóidő
+
+        public ICollection<AppointmentUsedProduct> UsedProducts { get; set; } = new List<AppointmentUsedProduct>();
     }
 }

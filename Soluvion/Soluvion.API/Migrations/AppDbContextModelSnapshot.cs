@@ -48,6 +48,12 @@ namespace Soluvion.API.Migrations
                     b.Property<DateTime>("EndDateTime")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ExtraMaterials")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("MaterialUsageRecorded")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Source")
                         .HasColumnType("integer");
 
@@ -104,6 +110,35 @@ namespace Soluvion.API.Migrations
                     b.HasIndex("ServiceVariantId");
 
                     b.ToTable("AppointmentItems");
+                });
+
+            modelBuilder.Entity("Soluvion.Domain.Models.AppointmentUsedProduct", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AppointmentItemId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsBilledToCustomer")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("QuantityUsed")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppointmentItemId");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("AppointmentUsedProducts");
                 });
 
             modelBuilder.Entity("Soluvion.Domain.Models.Company", b =>
@@ -260,6 +295,9 @@ namespace Soluvion.API.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("StockTrackingStartDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("StreetName")
                         .IsRequired()
@@ -533,6 +571,135 @@ namespace Soluvion.API.Migrations
                     b.ToTable("IndustryTemplateAttributes");
                 });
 
+            modelBuilder.Entity("Soluvion.Domain.Models.InventoryDocument", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AppointmentId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsReversed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int?>("ReversalOfDocumentId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppointmentId");
+
+                    b.HasIndex("CompanyId");
+
+                    b.ToTable("InventoryDocuments");
+                });
+
+            modelBuilder.Entity("Soluvion.Domain.Models.InventoryDocumentItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("CostPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("InventoryDocumentId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InventoryDocumentId");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("InventoryDocumentItems");
+                });
+
+            modelBuilder.Entity("Soluvion.Domain.Models.Product", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("CostPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("CurrentStock")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("EAN")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsProfessional")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsRetail")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("LowStockThreshold")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("PackageSize")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("RetailPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("Unit")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.ToTable("Products");
+                });
+
             modelBuilder.Entity("Soluvion.Domain.Models.Service", b =>
                 {
                     b.Property<int>("Id")
@@ -607,6 +774,32 @@ namespace Soluvion.API.Migrations
                     b.HasIndex("ServiceId");
 
                     b.ToTable("ServiceVariants");
+                });
+
+            modelBuilder.Entity("Soluvion.Domain.Models.ServiceVariantProduct", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("DefaultQuantity")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ServiceVariantId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("ServiceVariantId");
+
+                    b.ToTable("ServiceVariantProducts");
                 });
 
             modelBuilder.Entity("Soluvion.Domain.Models.UiTranslationOverride", b =>
@@ -706,6 +899,25 @@ namespace Soluvion.API.Migrations
                     b.Navigation("ServiceVariant");
                 });
 
+            modelBuilder.Entity("Soluvion.Domain.Models.AppointmentUsedProduct", b =>
+                {
+                    b.HasOne("Soluvion.Domain.Models.AppointmentItem", "AppointmentItem")
+                        .WithMany("UsedProducts")
+                        .HasForeignKey("AppointmentItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Soluvion.Domain.Models.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AppointmentItem");
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("Soluvion.Domain.Models.Company", b =>
                 {
                     b.HasOne("Soluvion.Domain.Models.CompanyType", "CompanyType")
@@ -798,6 +1010,53 @@ namespace Soluvion.API.Migrations
                     b.Navigation("CompanyType");
                 });
 
+            modelBuilder.Entity("Soluvion.Domain.Models.InventoryDocument", b =>
+                {
+                    b.HasOne("Soluvion.Domain.Models.Appointment", "Appointment")
+                        .WithMany()
+                        .HasForeignKey("AppointmentId");
+
+                    b.HasOne("Soluvion.Domain.Models.Company", "Company")
+                        .WithMany("InventoryDocuments")
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Appointment");
+
+                    b.Navigation("Company");
+                });
+
+            modelBuilder.Entity("Soluvion.Domain.Models.InventoryDocumentItem", b =>
+                {
+                    b.HasOne("Soluvion.Domain.Models.InventoryDocument", "InventoryDocument")
+                        .WithMany("Items")
+                        .HasForeignKey("InventoryDocumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Soluvion.Domain.Models.Product", "Product")
+                        .WithMany("InventoryMovements")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("InventoryDocument");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("Soluvion.Domain.Models.Product", b =>
+                {
+                    b.HasOne("Soluvion.Domain.Models.Company", "Company")
+                        .WithMany("Products")
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+                });
+
             modelBuilder.Entity("Soluvion.Domain.Models.Service", b =>
                 {
                     b.HasOne("Soluvion.Domain.Models.Company", "Company")
@@ -820,6 +1079,25 @@ namespace Soluvion.API.Migrations
                     b.Navigation("Service");
                 });
 
+            modelBuilder.Entity("Soluvion.Domain.Models.ServiceVariantProduct", b =>
+                {
+                    b.HasOne("Soluvion.Domain.Models.Product", "Product")
+                        .WithMany("ServiceVariantLinks")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Soluvion.Domain.Models.ServiceVariant", "ServiceVariant")
+                        .WithMany("DefaultProducts")
+                        .HasForeignKey("ServiceVariantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("ServiceVariant");
+                });
+
             modelBuilder.Entity("Soluvion.Domain.Models.UiTranslationOverride", b =>
                 {
                     b.HasOne("Soluvion.Domain.Models.Company", "Company")
@@ -836,6 +1114,11 @@ namespace Soluvion.API.Migrations
                     b.Navigation("Items");
                 });
 
+            modelBuilder.Entity("Soluvion.Domain.Models.AppointmentItem", b =>
+                {
+                    b.Navigation("UsedProducts");
+                });
+
             modelBuilder.Entity("Soluvion.Domain.Models.Company", b =>
                 {
                     b.Navigation("Appointments");
@@ -844,7 +1127,11 @@ namespace Soluvion.API.Migrations
 
                     b.Navigation("Employees");
 
+                    b.Navigation("InventoryDocuments");
+
                     b.Navigation("Languages");
+
+                    b.Navigation("Products");
 
                     b.Navigation("TranslationOverrides");
                 });
@@ -859,9 +1146,26 @@ namespace Soluvion.API.Migrations
                     b.Navigation("Images");
                 });
 
+            modelBuilder.Entity("Soluvion.Domain.Models.InventoryDocument", b =>
+                {
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("Soluvion.Domain.Models.Product", b =>
+                {
+                    b.Navigation("InventoryMovements");
+
+                    b.Navigation("ServiceVariantLinks");
+                });
+
             modelBuilder.Entity("Soluvion.Domain.Models.Service", b =>
                 {
                     b.Navigation("Variants");
+                });
+
+            modelBuilder.Entity("Soluvion.Domain.Models.ServiceVariant", b =>
+                {
+                    b.Navigation("DefaultProducts");
                 });
 #pragma warning restore 612, 618
         }

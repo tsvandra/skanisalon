@@ -71,7 +71,7 @@
 <script setup>
   import { ref, computed, onMounted } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { useCompanyStore } from '@/stores/companyStore';
+  import { useLocalizedText } from '@/composables/useLocalizedText';
   import bookingApi from '@/services/bookingApi';
 
   const props = defineProps({
@@ -83,23 +83,16 @@
   const { locale } = useI18n();
 
   // Store-ok inicializálása
-  const companyStore = useCompanyStore();
   const currentLang = computed(() => locale.value);
-  const fallbackLang = computed(() => companyStore.company?.defaultLanguage || 'hu');
+  const { getLocText, defaultLang: fallbackLang } = useLocalizedText();
 
   const loading = ref(true);
   const categories = ref([]);
   const activeCategory = ref(null);
 
-  // Biztonságos nyelvi feloldó függvény (Zéró Hardcode elv)
-  const getLocText = (dict) => {
-    if (!dict) return '';
-    return dict[currentLang.value] || dict[fallbackLang.value] || dict['hu'] || '';
-  };
-
   const formatCurrency = (val) => {
     if (val == null) return '';
-    return val.toLocaleString('hu-HU', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+    return val.toLocaleString(locale.value, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
   };
 
   const toggleCategory = (categoryId) => {
@@ -136,7 +129,7 @@
 
       flatServices.forEach(s => {
         const catDict = s.category || {};
-        const catName = catDict[currentLang.value] || catDict[fallbackLang.value] || catDict['hu'] || 'Egyéb';
+        const catName = getLocText(catDict, 'Egyéb');
         if (!groups[catName]) groups[catName] = { id: catName, categoryName: catDict, items: [] };
         groups[catName].items.push(s);
       });

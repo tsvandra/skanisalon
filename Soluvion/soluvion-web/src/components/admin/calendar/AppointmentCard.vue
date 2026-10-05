@@ -5,7 +5,7 @@
        :style="{ borderLeftWidth: mode === 'day' ? '6px' : '5px', borderLeftColor: getCustomerColorDarker(app.customerId) }">
 
     <div class="flex justify-between items-start" :class="{'mb-1': mode !== 'day'}">
-      <div class="flex items-center gap-2 md:gap-3">
+      <div class="flex items-center gap-2 md:gap-3 hover:opacity-80 transition-opacity" @click.stop="goToCustomer(app.customerId)" :title="$t('orders.calendar.card.goToCustomer')">
         <div class="flex items-center justify-center rounded-full font-bold text-white drop-shadow-sm shadow-sm"
              :class="mode === 'day' ? 'w-8 h-8 md:w-12 md:h-12 text-xs md:text-lg' : 'w-7 h-7 md:w-9 md:h-9 text-[10px] md:text-xs'"
              :style="{ backgroundColor: getCustomerColor(app.customerId) }">
@@ -17,8 +17,8 @@
               {{ getCustomerName(app.customerId) }}
             </h4>
             <div class="rounded-full shadow-sm"
-                 :class="[isPending(app.status) ? 'bg-red-500' : 'bg-green-500', mode === 'day' ? 'w-2.5 h-2.5 md:w-3 md:h-3' : 'w-2 h-2']"
-                 :title="isPending(app.status) ? 'Függőben' : 'Jóváhagyva'"></div>
+                 :class="[app.status === 'Completed' || app.status === 2 || app.status === '2' ? 'bg-primary' : (isNoShow(app.status) ? 'bg-gray-400' : (isPending(app.status) ? 'bg-red-500' : 'bg-green-500')), mode === 'day' ? 'w-2.5 h-2.5 md:w-3 md:h-3' : 'w-2 h-2']"
+                 :title="app.status === 'Completed' || app.status === 2 || app.status === '2' ? $t('orders.calendar.card.statusCompleted') : (isNoShow(app.status) ? $t('calendar.editor.statusNoShow') : (isPending(app.status) ? $t('calendar.editor.statusPending') : $t('calendar.editor.statusApproved')))"></div>
           </div>
         </div>
       </div>
@@ -26,7 +26,7 @@
       <div v-if="mode === 'day'" class="flex flex-wrap items-center justify-end gap-2 md:gap-3 text-text-muted text-[10px] md:text-sm font-bold bg-surface px-2 md:px-3 py-1 md:py-1.5 rounded-lg border border-text/5">
         <div class="flex items-center gap-1"><i class="pi pi-clock text-primary"></i> {{ formatTime(app.startDateTime) }}</div>
         <span class="text-text/20">|</span>
-        <div class="flex items-center gap-1"><i class="pi pi-hourglass text-primary"></i> {{ getDurationMinutes(app) }} p</div>
+        <div class="flex items-center gap-1"><i class="pi pi-hourglass text-primary"></i> {{ getDurationMinutes(app) }} {{ $t('orders.calendar.card.minutesShort') }}</div>
         <span class="text-text/20">|</span>
         <div class="flex items-center gap-1 text-primary"><i class="pi pi-tag"></i> {{ formatPrice(app) }} EUR</div>
       </div>
@@ -38,7 +38,7 @@
 
     <div v-if="mode !== 'day'" class="flex items-center flex-wrap gap-x-3 gap-y-1 md:gap-x-4 text-text-muted text-[10px] md:text-xs font-bold pl-1">
       <div class="flex items-center gap-1"><i class="pi pi-clock text-primary"></i> {{ formatTime(app.startDateTime) }}</div>
-      <div class="flex items-center gap-1"><i class="pi pi-hourglass text-primary"></i> {{ getDurationMinutes(app) }} p</div>
+      <div class="flex items-center gap-1"><i class="pi pi-hourglass text-primary"></i> {{ getDurationMinutes(app) }} {{ $t('orders.calendar.card.minutesShort') }}</div>
       <div class="flex items-center gap-1 text-primary"><i class="pi pi-tag"></i> {{ formatPrice(app) }} EUR</div>
     </div>
 
@@ -64,8 +64,15 @@
 
 <script setup>
 import { computed } from 'vue';
+import { useLocalizedRoute } from '@/composables/useLocalizedRoute';
 import { useI18n } from 'vue-i18n';
+import { useLocalizedText } from '@/composables/useLocalizedText';
 import { getCustomerColor, getCustomerColorDarker } from '@/utils/colorUtils';
+
+const { go } = useLocalizedRoute();
+const goToCustomer = (id) => {
+  if(id) go('customers', { query: { customerId: id } });
+};
 
 const props = defineProps({
   app: { type: Object, required: true },
@@ -81,11 +88,12 @@ const currentLang = computed(() => locale.value || 'hu-HU');
 
 // Formázók
 const isPending = (status) => status === 0 || status === '0' || (typeof status === 'string' && status.toLowerCase() === 'pending');
+const isNoShow = (status) => status === 4 || status === '4' || (typeof status === 'string' && status.toLowerCase() === 'noshow');
 const getDayNameShort = (date) => new Date(date).toLocaleString(currentLang.value, { weekday: 'short' });
 const formatDateShort = (iso) => iso ? new Date(iso).toLocaleDateString(currentLang.value, { month: 'short', day: 'numeric' }) : '';
 const formatTime = (iso) => iso ? new Date(iso).toLocaleTimeString(currentLang.value, { hour: '2-digit', minute: '2-digit' }) : '';
 const getDurationMinutes = (app) => Math.round((new Date(app.endDateTime) - new Date(app.startDateTime)) / 60000);
-const getLocText = (dict) => dict ? (dict[currentLang.value] || dict['hu'] || '') : '';
+const { getLocText } = useLocalizedText();
 const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?';
 
 const formatPrice = (app) => {
@@ -94,14 +102,15 @@ const formatPrice = (app) => {
 };
 
 // Névkeresők
+const guestPrefix = () => `${t('calendar.guest')} #`;
 const getCustomerName = (id) => {
   const c = props.customersList.find(x => x.id === id);
-  return c && c.name && c.name !== 'Ismeretlen Vendég' ? c.name : `Vendég #${id}`;
+  return c && c.name && c.name !== 'Ismeretlen Vendég' ? c.name : `${guestPrefix()}${id}`;
 };
 
 const getCustomerInitials = (id) => {
   const name = getCustomerName(id);
-  if (name.startsWith('Vendég #')) return `#${id}`;
+  if (name.startsWith(guestPrefix())) return `#${id}`;
   return getInitials(name);
 };
 
@@ -110,6 +119,6 @@ const getVariantFullName = (variantId) => {
     const v = s.variants?.find(vx => vx.id === variantId);
     if (v) return `${getLocText(s.name)} - ${getLocText(v.variantName)}`;
   }
-  return 'Ismeretlen';
+  return t('calendar.unknown');
 };
 </script>

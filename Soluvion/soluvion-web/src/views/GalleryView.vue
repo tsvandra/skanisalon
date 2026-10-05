@@ -8,7 +8,7 @@
   import draggable from 'vuedraggable';
   import { useI18n } from 'vue-i18n';
 
-  const { locale } = useI18n();
+  const { t, locale } = useI18n();
   const isLoggedIn = inject('isLoggedIn');
 
   const currentLang = computed(() => locale.value);
@@ -78,7 +78,7 @@
       const rawCats = Array.isArray(resCats.data) ? resCats.data : [];
       const rawImages = Array.isArray(resImages.data) ? resImages.data : [];
 
-      categories.value = rawCats.map(c => ({ ...c, name: ensureDict(c.name, "Névtelen galéria") }));
+      categories.value = rawCats.map(c => ({ ...c, name: ensureDict(c.name, t('gallery.untitled')) }));
       images.value = rawImages.map(i => ({
         ...i,
         category: ensureDict(i.category, "Egyéb"),
@@ -98,7 +98,7 @@
       groups.push(group);
       groupsMap.set(cat.id, group);
     });
-    const uncategorized = { id: -1, name: { [currentLang.value]: "Egyéb / Nem kategorizált" }, items: [], orderIndex: 999999 };
+    const uncategorized = { id: -1, name: { [currentLang.value]: t('gallery.uncategorized') }, items: [], orderIndex: 999999 };
 
     images.value.forEach(img => {
       if (img.categoryId && groupsMap.has(img.categoryId)) {
@@ -118,7 +118,7 @@
   const createCategory = async () => {
     if (!isLoggedIn.value) return;
     try {
-      const res = await api.post('/api/Gallery/categories', { name: { [currentLang.value]: "Új galéria" } });
+      const res = await api.post('/api/Gallery/categories', { name: { [currentLang.value]: t('gallery.newGalleryName') } });
       const newCat = res.data;
       newCat.name = ensureDict(newCat.name);
       const newGroup = { id: newCat.id, name: newCat.name, items: [], orderIndex: newCat.orderIndex };
@@ -130,18 +130,18 @@
 
   const saveCategory = (group) => {
     if (!group.id || group.id === -1) return;
-    if (!group.name[currentLang.value]?.trim()) group.name[currentLang.value] = "Új galéria";
+    if (!group.name[currentLang.value]?.trim()) group.name[currentLang.value] = t('gallery.newGalleryName');
     addToQueue(`cat-${group.id}`, async () => {
       await api.put(`/api/Gallery/categories/${group.id}`, { name: group.name, orderIndex: group.orderIndex });
     });
   };
 
   const deleteCategory = async (group) => {
-    if (!confirm(`Törlöd a "${group.name[currentLang.value]}" mappát?`)) return;
+    if (!confirm(t('gallery.confirmDeleteCategory', { name: group.name[currentLang.value] }))) return;
     try {
       await api.delete(`/api/Gallery/categories/${group.id}`);
       groupedImages.value = groupedImages.value.filter(g => g.id !== group.id);
-    } catch (err) { alert("Nem sikerült törölni."); }
+    } catch (err) { alert(t('gallery.deleteFailed')); }
   };
 
   const saveImage = (img) => {
@@ -166,7 +166,7 @@
   };
 
   const deleteImage = async (id) => {
-    if (!confirm("Törlöd a képet?")) return;
+    if (!confirm(t('gallery.confirmDeleteImage'))) return;
     try {
       images.value = images.value.filter(i => i.id !== id);
       buildNestedStructure();
@@ -292,7 +292,7 @@
                @click="!isLoggedIn && toggleCategory(group.id)">
 
             <div class="flex items-center gap-2 md:gap-4 flex-grow w-full md:w-auto">
-              <div v-if="isLoggedIn && group.id !== -1" class="cursor-grab text-2xl text-text-muted flex items-center justify-center min-w-[44px] min-h-[44px] hover:text-primary drag-handle-cat transition-colors shrink-0" title="Galéria mozgatása">⋮⋮</div>
+              <div v-if="isLoggedIn && group.id !== -1" class="cursor-grab text-2xl text-text-muted flex items-center justify-center min-w-[44px] min-h-[44px] hover:text-primary drag-handle-cat transition-colors shrink-0" :title="$t('gallery.moveGallery')">⋮⋮</div>
 
               <div class="flex items-center gap-3 flex-grow min-w-0">
                 <div class="relative flex items-center w-full group/cat">
@@ -301,13 +301,13 @@
                          v-model="group.name[currentLang]"
                          @change="saveCategory(group)"
                          class="bg-transparent border-none border-b border-dashed border-text/30 text-primary text-lg md:text-xl font-bold py-2 w-full min-h-[44px] focus:outline-none focus:border-solid focus:border-primary focus:bg-text/10 placeholder-text/50 transition-all rounded-t-sm px-1 truncate"
-                         placeholder="Új galéria" />
+                         :placeholder="$t('gallery.newGalleryName')" />
 
-                  <h3 v-else class="text-primary text-lg md:text-xl font-bold py-2 m-0 truncate select-none">{{ group.name[currentLang] }}</h3>
+                  <h3 v-else class="text-primary text-lg md:text-xl font-bold py-2 m-0 truncate select-none">{{ group.id === -1 ? $t('gallery.uncategorized') : group.name[currentLang] }}</h3>
 
                   <button v-if="isLoggedIn && group.id !== -1"
                           @click.stop="triggerTranslation(group, 'name')"
-                          class="opacity-100 md:opacity-0 bg-transparent border-none text-primary cursor-pointer ml-1 flex items-center justify-center min-w-[44px] min-h-[44px] transition-all duration-200 md:group-hover/cat:opacity-100 hover:scale-110 shrink-0" title="Fordítás">
+                          class="opacity-100 md:opacity-0 bg-transparent border-none text-primary cursor-pointer ml-1 flex items-center justify-center min-w-[44px] min-h-[44px] transition-all duration-200 md:group-hover/cat:opacity-100 hover:scale-110 shrink-0" :title="$t('gallery.translate')">
                     <i v-if="translatingField === `${group.id}-name-${currentLang}`" class="pi pi-spin pi-spinner"></i>
                     <i v-else class="pi pi-sparkles"></i>
                   </button>
@@ -338,7 +338,7 @@
                 </div>
                 <div class="p-2 bg-surface flex flex-col gap-2 items-stretch border-t border-text/10">
                   <div class="relative flex items-center w-full group/tools">
-                    <input v-model="img.title[currentLang]" @change="saveImage(img)" placeholder="Cím..." class="w-full bg-text/5 border border-transparent text-text p-2 min-h-[44px] text-xs md:text-sm rounded-lg focus:outline-none focus:border-primary focus:bg-text/10 transition-all" />
+                    <input v-model="img.title[currentLang]" @change="saveImage(img)" :placeholder="$t('gallery.imageTitlePlaceholder')" class="w-full bg-text/5 border border-transparent text-text p-2 min-h-[44px] text-xs md:text-sm rounded-lg focus:outline-none focus:border-primary focus:bg-text/10 transition-all" />
                     <button @click="triggerTranslation(img, 'title')" class="absolute right-0 opacity-100 md:opacity-0 bg-transparent border-none text-primary cursor-pointer flex items-center justify-center min-w-[44px] min-h-[44px] text-lg transition-all duration-200 md:group-hover/tools:opacity-100 hover:scale-110 shrink-0"><i class="pi pi-sparkles"></i></button>
                   </div>
                   <button @click="deleteImage(img.id)" class="bg-red-500/10 text-red-500 border border-transparent w-full min-h-[44px] font-bold cursor-pointer rounded-lg flex justify-center items-center transition-colors duration-200 hover:bg-red-500 hover:text-white"><i class="pi pi-trash mr-2"></i></button>
@@ -408,7 +408,7 @@
       </button>
 
       <div v-if="previewList.length > 1" class="md:hidden absolute bottom-8 text-white/50 text-sm flex items-center gap-2 tracking-widest pointer-events-none">
-        <i class="pi pi-angle-left"></i> SWIPE <i class="pi pi-angle-right"></i>
+        <i class="pi pi-angle-left"></i> {{ $t('gallery.swipe') }} <i class="pi pi-angle-right"></i>
       </div>
 
     </div>

@@ -1,0 +1,87 @@
+{
+  "customers": {
+    "title": "Ügyfelek kezelése",
+    "subtitle": "Vendégek adatainak, jellemzőinek és megjegyzéseinek karbantartása.",
+    "searchPlaceholder": "Keresés név alapján...",
+    "loadingData": "Adatok betöltése...",
+    "emptyState": "Nincs találat vagy még nincsenek ügyfelek.",
+    "noPhone": "Nincs megadva telefonszám",
+    "noEmail": "Nincs megadva email",
+    "actions": {
+      "merge": "Összevonás",
+      "newCustomer": "Új ügyfél",
+      "history": "Karton & Történet",
+      "mergeWithOther": "Összevonás másik ügyféllel"
+    },
+    "form": {
+      "titleEdit": "Ügyfél szerkesztése",
+      "titleNew": "Új ügyfél felvétele",
+      "fullName": "Teljes Név",
+      "namePlaceholder": "Pl. Kiss Katalin",
+      "phone": "Telefonszám",
+      "phonePlaceholder": "+36 30 123 4567",
+      "email": "Email cím",
+      "emailPlaceholder": "katalin{'@'}example.com",
+      "salonAttributes": "Szalon Jellemzők",
+      "select": "Válassz...",
+      "generalNote": "Általános Megjegyzés",
+      "notePlaceholder": "Olyan információ, ami nem fér be jellemzőként (pl. Általában késik 10 percet...)"
+    },
+    "messages": {
+      "loadFailed": "Nem sikerült betölteni az ügyfeleket vagy a beállításokat.",
+      "saveFailed": "Hiba történt a mentés során.",
+      "deleteFailed": "Hiba történt a törlés során. Lehet, hogy folyamatban lévő foglalása van, ami miatt nem törölhető.",
+      "confirmDelete": "Biztosan törlöd a következő ügyfelet: {name}?",
+      "mergeSuccess": "Sikeres összevonás.",
+      "mergeTotalAppointments": "Összes foglalás: {count}",
+      "mergeDuplicates": "Egyesített duplikált foglalás: {count}"
+    },
+    "merge": {
+      "title": "Ügyfelek összevonása",
+      "selectHint": "Válaszd ki azokat az ügyfeleket, amelyek ugyanazt a személyt jelentik. A foglalásaik egy ügyfélhez kerülnek.",
+      "searchPlaceholder": "Keresés névre, telefonszámra vagy email címre...",
+      "noPhone": "nincs telefonszám",
+      "noResults": "Nincs találat",
+      "finalHint": "Add meg az összevont ügyfél végleges adatait. A mezők alatti gombokkal átvehetők az egyes ügyfelek értékei.",
+      "fields": {
+        "name": "Teljes név",
+        "phone": "Telefonszám",
+        "email": "Email cím",
+        "notes": "Általános megjegyzés"
+      },
+      "attributes": "Jellemzők",
+      "checking": "Foglalások vizsgálata...",
+      "previewTitle": "Foglalások összevonása",
+      "previewTotalPrefix": "Az összevont ügyfélnek összesen ",
+      "previewTotalSuffix": " foglalása lesz.",
+      "previewMovedPrefix": "Átkerül: ",
+      "previewMovedSuffix": " foglalás.",
+      "previewDuplicatePrefix": "Duplikált (azonos időpont és szolgáltatás): ",
+      "previewDuplicateSuffix": " foglalás csak egyszer marad meg.",
+      "back": "Vissza",
+      "nextSelected": "Tovább ({count} kiválasztva)",
+      "submit": "Összevonás",
+      "previewFailed": "Nem sikerült megvizsgálni a foglalásokat.",
+      "httpStatus": " (HTTP {status})",
+      "httpStatusNotFound": " (HTTP {status} – az összevonó végpont nem található, indítsd újra az API-t)",
+      "noConnection": " (nincs kapcsolat a szerverrel)",
+      "confirm": "Biztosan összevonod ezeket az ügyfeleket?\n{names}\n\nA művelet nem vonható vissza.",
+      "failed": "Az összevonás nem sikerült.\n{message}"
+    },
+    "history": {
+      "title": "{name} - Karton & Történet",
+      "generalNotes": "Általános Jegyzetek",
+      "notesPlaceholder": "Ide írhatod a vendég személyes preferenciáit, allergiákat stb...",
+      "formula": "Használt Anyagok / Formula",
+      "newProduct": "Új termék",
+      "noProducts": "Nincs még termék hozzáadva.",
+      "selectProduct": "Válassz terméket...",
+      "quantityPlaceholder": "Menny.",
+      "add": "Hozzáadás",
+      "appointmentsHistory": "Foglalások története",
+      "noAppointments": "Még nem volt egyetlen foglalása sem.",
+      "saveFailed": "Hiba történt a mentés során.",
+      "unitPieces": "db"
+    }
+  }
+}

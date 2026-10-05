@@ -22,8 +22,17 @@ export default {
   },
 
   // Ügyfél módosítása
-  updateCustomer(id, payload) {
+  getCustomerById(id) { return api.get(`/api/customers/${id}`); }, getCustomerAppointments(id) { return api.get(`/api/customers/${id}/appointments`); }, updateCustomer(id, payload) {
     return api.put(`/api/customers/${id}`, payload);
+  },
+
+  // Ügyfelek összevonása (előnézet: semmit nem módosít)
+  previewMergeCustomers(payload) {
+    return api.post('/api/customers/merge/preview', payload);
+  },
+
+  mergeCustomers(payload) {
+    return api.post('/api/customers/merge', payload);
   },
 
   // Ügyfél törlése

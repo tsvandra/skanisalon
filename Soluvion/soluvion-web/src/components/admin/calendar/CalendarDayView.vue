@@ -19,7 +19,7 @@
              class="absolute border-x border-white/50 cursor-pointer transition-all hover:brightness-110 flex items-center justify-center overflow-hidden shadow-sm"
              :style="{ left: app.left + '%', width: app.width + '%', top: app.top + '%', height: app.height + '%', backgroundColor: getCustomerColor(app.customerId) }"
              :title="`${getCustomerName(app.customerId)}: ${formatTime(app.startDateTime)} - ${formatTime(app.endDateTime)}`">
-          <div class="absolute top-0.5 right-0.5 md:top-1 md:right-1 w-1.5 h-1.5 md:w-2 md:h-2 rounded-full shadow-sm border border-white/50" :class="isPending(app.status) ? 'bg-red-500' : 'bg-green-500'"></div>
+          <div class="absolute top-0.5 right-0.5 md:top-1 md:right-1 w-1.5 h-1.5 md:w-2 md:h-2 rounded-full shadow-sm border border-white/50" :class="isNoShow(app.status) ? 'bg-gray-400' : (isPending(app.status) ? 'bg-red-500' : 'bg-green-500')"></div>
           <span v-if="app.width >= 3" class="text-white drop-shadow-sm text-[8px] md:text-[10px] font-bold truncate px-1">{{ getCustomerInitials(app.customerId) }}</span>
         </div>
       </div>
@@ -34,7 +34,7 @@
 
     <div class="mt-8 md:mt-16 space-y-3 md:space-y-4">
       <h3 class="font-bold text-lg md:text-xl text-text border-b border-text/10 pb-2 flex items-center gap-2">
-        <i class="pi pi-list"></i> {{ $t('calendar.dailyAppointmentsDetails') || 'Napi Foglalások Részletei' }}
+        <i class="pi pi-list"></i> {{ $t('calendar.dailyAppointmentsDetails') }}
       </h3>
 
       <AppointmentCard v-for="app in currentDayAppointments" :key="'card-'+app.id"
@@ -45,11 +45,11 @@
                        @click="$emit('appointmentClick', app)" />
 
       <div v-if="currentDayAppointments.length === 0" class="text-center py-8 md:py-12 bg-background rounded-xl md:rounded-2xl border border-dashed border-text/10 text-text-muted">
-        <p class="font-medium text-sm md:text-base">{{ $t('calendar.noAppointmentsForDay') || 'Nincs foglalás erre a napra.' }}</p>
+        <p class="font-medium text-sm md:text-base">{{ $t('calendar.noAppointmentsForDay') }}</p>
       </div>
 
       <button @click="$emit('newAppointment')" class="w-full min-h-[44px] md:min-h-[56px] mt-4 md:mt-6 flex items-center justify-center gap-2 bg-primary text-white rounded-lg md:rounded-xl font-bold text-sm md:text-lg hover:brightness-110 transition-all active:scale-95 shadow-md">
-        <i class="pi pi-plus"></i> {{ $t('calendar.addNewAppointment') || 'Új foglalás hozzáadása' }}
+        <i class="pi pi-plus"></i> {{ $t('calendar.addNewAppointment') }}
       </button>
     </div>
   </div>
@@ -71,25 +71,27 @@
 
   defineEmits(['appointmentClick', 'newAppointment']);
 
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const currentLang = computed(() => locale.value || 'hu-HU');
 
   // Formatters for Timeline ONLY
   const isPending = (status) => status === 0 || status === '0' || (typeof status === 'string' && status.toLowerCase() === 'pending');
+  const isNoShow = (status) => status === 4 || status === '4' || (typeof status === 'string' && status.toLowerCase() === 'noshow');
   const getDayNameLong = (date) => new Date(date).toLocaleString(currentLang.value, { weekday: 'long' });
   const formatDateLong = (date) => new Date(date).toLocaleDateString(currentLang.value, { year: 'numeric', month: 'long', day: 'numeric' });
   const formatTime = (iso) => iso ? new Date(iso).toLocaleTimeString(currentLang.value, { hour: '2-digit', minute: '2-digit' }) : '';
-  const formatDurationStr = (m) => m >= 60 ? `${Math.floor(m / 60)}:${(m % 60).toString().padStart(2, '0')}` : `${m}p`;
+  const formatDurationStr = (m) => m >= 60 ? `${Math.floor(m / 60)}:${(m % 60).toString().padStart(2, '0')}` : `${m}${t('orders.calendar.card.minutesShort')}`;
   const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?';
 
+  const guestPrefix = () => `${t('calendar.guest')} #`;
   const getCustomerName = (id) => {
     const c = props.customersList.find(x => x.id === id);
-    return c && c.name && c.name !== 'Ismeretlen Vendég' ? c.name : `Vendég #${id}`;
+    return c && c.name && c.name !== 'Ismeretlen Vendég' ? c.name : `${guestPrefix()}${id}`;
   };
 
   const getCustomerInitials = (id) => {
     const name = getCustomerName(id);
-    if (name.startsWith('Vendég #')) return `#${id}`;
+    if (name.startsWith(guestPrefix())) return `#${id}`;
     return getInitials(name);
   };
 </script>

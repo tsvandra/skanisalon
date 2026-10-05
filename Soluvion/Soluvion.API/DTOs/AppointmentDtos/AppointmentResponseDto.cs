@@ -1,5 +1,8 @@
-﻿namespace Soluvion.API.DTOs.AppointmentDtos
+namespace Soluvion.API.DTOs.AppointmentDtos
 {
+    using System;
+    using System.Collections.Generic;
+
     public class AppointmentResponseDto
     {
         public int Id { get; set; }
@@ -10,8 +13,13 @@
         public decimal TotalPrice { get; set; }
         public string Status { get; set; } = string.Empty;
         public string? Notes { get; set; }
+        public bool MaterialUsageRecorded { get; set; }
+        public string CustomerName { get; set; } = string.Empty;
+        public string EmployeeName { get; set; } = string.Empty;
+        public string PrimaryServiceName { get; set; } = string.Empty;
+        public string? CustomerNotes { get; set; }
+        public string? ExtraMaterials { get; set; }
         public List<AppointmentItemResponseDto> Items { get; set; } = new();
-
-        // Később ide jöhetnek a Service nevek, Vendég nevek is, 
     }
 }
+

@@ -363,3 +363,11 @@ Bármilyen új kód pusholása a `develop` ágra automatikusan frissíti a bizto
 
 ================================================================================
 
+
+FUTURE PLANS (Jövőbeli Fejlesztési Tervek):
+================================================================================
+1. Finomhangolt Jogosultságkezelés (RBAC - Role-Based Access Control):
+   - A jelenlegi bináris (Admin vs. Munkás) rendszer leváltása egy testreszabható jogosultsági rendszerre.
+   - Minden munkatársnál (User/Employee) egyedileg lehessen beállítani a hozzáféréseket (pl. Naptár olvasása, Raktár módosítása, Ügyfelek törlése).
+   - Felület a Beállításokon belül, ahol a főnök (tulajdonos) bepipálhatja, hogy ki mihez férhet hozzá.
+

@@ -1,10 +1,14 @@
 <script setup>
   import { computed } from 'vue';
+  import { useRoute, useRouter } from 'vue-router';
   import { useTranslationStore } from '@/stores/translationStore';
   import { useI18n } from 'vue-i18n';
+  import { localizedLocation } from '@/router/routeSlugs';
 
   const store = useTranslationStore();
   const { locale } = useI18n();
+  const route = useRoute();
+  const router = useRouter();
 
   const props = defineProps({
     adminMode: {
@@ -28,6 +32,11 @@
       console.error("[LanguageSwitcher] Hiba a váltáskor:", err);
       locale.value = code;
     }
+
+    // Az URL követi a nyelvet: /hu/ugyfelek -> /sk/zakaznici
+    if (route.name && route.params.lang) {
+      router.replace(localizedLocation(route.name, code, { query: route.query, hash: route.hash }));
+    }
   };
 </script>
 
@@ -44,7 +53,7 @@
                   ? '!bg-primary !border-primary !text-black scale-105'
                   : 'bg-transparent border-text/30 text-text hover:bg-text/10 hover:!border-primary hover:text-primary'
               ]"
-              :title="lang.status !== 'Published' ? `Státusz: ${lang.status}` : ''">
+              :title="lang.status !== 'Published' ? $t('appShell.languageSwitcher.status', { status: lang.status }) : ''">
 
         {{ lang.languageCode ? lang.languageCode.toUpperCase() : '?' }}
 
@@ -59,7 +68,7 @@
     </template>
 
     <div v-else-if="adminMode" class="text-xs text-text-muted italic">
-      (Nincs adat)
+      {{ $t('appShell.languageSwitcher.noData') }}
     </div>
 
   </div>

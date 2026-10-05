@@ -1,22 +1,25 @@
-﻿namespace Soluvion.API.DTOs
+namespace Soluvion.API.DTOs
 {
     public class CompanySettingsDto
     {
         public int Id { get; set; }
-        public string Name { get; set; }
-        public string Email { get; set; }
-        public string Phone { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
 
         // SaaS Funkciók és Beállítások
         public List<string> EnabledFeatures { get; set; } = new();
         public bool IsOnlineBookingEnabled { get; set; }
 
+        // Készletkezelés kezdete (UTC). Null = kikapcsolva.
+        public DateTime? StockTrackingStartDate { get; set; }
+
         // Cím
-        public string City { get; set; }
-        public string StreetName { get; set; }
-        public string HouseNumber { get; set; }
-        public string PostalCode { get; set; }
-        public string State { get; set; }
+        public string City { get; set; } = string.Empty;
+        public string StreetName { get; set; } = string.Empty;
+        public string HouseNumber { get; set; } = string.Empty;
+        public string PostalCode { get; set; } = string.Empty;
+        public string State { get; set; } = string.Empty;
 
         // Social
         public string? FacebookUrl { get; set; }

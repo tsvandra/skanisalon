@@ -1,4 +1,4 @@
-﻿using Soluvion.Domain.Models.Enums;
+using Soluvion.Domain.Models.Enums;
 
 namespace Soluvion.Domain.Models
 {
@@ -20,15 +20,16 @@ namespace Soluvion.Domain.Models
 
         public decimal TotalPrice { get; set; }
         
-        // Státusz és Forrás
+        // St�tusz �s Forr�s
         public AppointmentStatus Status { get; set; } = AppointmentStatus.Pending;
         public BookingSource Source { get; set; } = BookingSource.Web;
 
-        // Szöveges mezők (Megjegyzések és Egyezkedés)
-        public string? CustomerNotes { get; set; } // Ezt írta a vendég a weben
-        public string? AdminNotes { get; set; }    // Ezt csak a dolgozók látják (belső info)
-        public string? StatusReason { get; set; }  // Indoklás elutasításhoz vagy átszervezéshez
+        // Sz�veges mezok (Megjegyz�sek �s Egyezked�s)
+        public string? CustomerNotes { get; set; } // Ezt �rta a vend�g a weben
+        public string? AdminNotes { get; set; }    // Ezt csak a dolgoz�k l�tj�k (belso info)
+        public string? StatusReason { get; set; }  // Indokl�s elutas�t�shoz vagy �tszervez�shez
 
-        public ICollection<AppointmentItem> Items { get; set; } = new List<AppointmentItem>();
+        public ICollection<AppointmentItem> Items { get; set; } = new List<AppointmentItem>();        public bool MaterialUsageRecorded { get; set; } = false;
+        public string? ExtraMaterials { get; set; } // JSON array of extra materials
     }
 }

@@ -15,8 +15,8 @@
           <div class="flex gap-1 mt-1 md:mt-2">
             <span v-for="app in dayObj.appointments.slice(0, 3)" :key="app.id"
                   class="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shadow-sm"
-                  :style="{ backgroundColor: getCustomerColor(app.customerId) }"
-                  :title="getCustomerName(app.customerId)"></span>
+                  :style="{ backgroundColor: getAppointmentDotColor(app) }"
+                  :title="isNoShowStatus(app.status) ? `${getCustomerName(app.customerId)} – ${$t('calendar.editor.statusNoShow')}` : getCustomerName(app.customerId)"></span>
           </div>
         </div>
       </div>
@@ -24,7 +24,7 @@
 
     <div class="max-w-5xl mx-auto mt-6 md:mt-8">
       <h3 class="font-bold text-lg md:text-xl text-text border-b border-text/10 pb-2 mb-3 md:mb-4 flex items-center gap-2">
-        <i class="pi pi-calendar-clock text-primary"></i> {{ $t('calendar.remainingWeekAppointments') || 'A hét hátralévő foglalásai' }}
+        <i class="pi pi-calendar-clock text-primary"></i> {{ $t('calendar.remainingWeekAppointments') }}
       </h3>
 
       <div v-if="currentWeekUpcomingAppointments.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
@@ -39,7 +39,7 @@
       </div>
 
       <div v-else class="text-center py-6 md:py-8 bg-surface rounded-xl border border-dashed border-text/10 text-text-muted text-sm md:text-base">
-        {{ $t('calendar.noRemainingWeekAppointments') || 'Nincsenek hátralévő foglalások erre a hétre.' }}
+        {{ $t('calendar.noRemainingWeekAppointments') }}
       </div>
     </div>
   </div>
@@ -48,7 +48,7 @@
 <script setup>
   import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { getCustomerColor } from '@/utils/colorUtils';
+  import { getAppointmentDotColor, isNoShowStatus } from '@/utils/colorUtils';
   import AppointmentCard from './AppointmentCard.vue';
 
   const props = defineProps({
@@ -60,7 +60,7 @@
 
   defineEmits(['dayClick', 'appointmentClick']);
 
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const currentLang = computed(() => locale.value || 'hu-HU');
 
   // Formatters for Grid ONLY
@@ -68,6 +68,6 @@
 
   const getCustomerName = (id) => {
     const c = props.customersList.find(x => x.id === id);
-    return c && c.name && c.name !== 'Ismeretlen Vendég' ? c.name : `Vendég #${id}`;
+    return c && c.name && c.name !== 'Ismeretlen Vendég' ? c.name : `${t('calendar.guest')} #${id}`;
   };
 </script>

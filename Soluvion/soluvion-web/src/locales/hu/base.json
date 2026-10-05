@@ -1,4 +1,16 @@
 {
+  "routes": {
+    "services": "szolgaltatasok",
+    "gallery": "galeria",
+    "contact": "kapcsolat",
+    "booking": "foglalas",
+    "login": "login",
+    "settings": "beallitasok",
+    "dashboard": "vezerlopult",
+    "orders": "megrendelesek",
+    "customers": "ugyfelek",
+    "inventory": "raktar"
+  },
   "common": {
     "loading": "Betöltés...",
     "save": "Mentés",
@@ -17,7 +29,9 @@
     "gallery": "Galéria",
     "contact": "Kapcsolat",
     "customers": "Ügyfelek",
-    "dashboard": "Vezérlőpult"
+    "dashboard": "Vezérlőpult",
+    "orders": "Megrendelések",
+    "inventory": "Raktár"
   },
   "home": {
     "welcome": "Üdvözöllek a {company}-ban!",
@@ -82,7 +96,8 @@
     }
   },
   "footer": {
-    "rights": "Minden jog fenntartva."
+    "rights": "Minden jog fenntartva.",
+    "role": "Szerepkör"
   },
   "booking": {
     "title": "{companyName} - Időpontfoglalás",
@@ -113,7 +128,8 @@
     "adminViewWarning": "ADMIN NÉZET: A publikus vendégek most a \"Hamarosan\" feliratot látják. Ezt csak te látod, mert be vagy jelentkezve!"
   },
   "calendar": {
-    "dashboardTitle": "Vezérlőpult",
+    "title": "Megrendelések",
+    "dashboardTitle": "Megrendelések",
     "role": "Szerepkör",
     "day": "Napi",
     "week": "Heti",
@@ -134,6 +150,8 @@
       "newTitle": "Új foglalás rögzítése",
       "client": "1. Ügyfél",
       "selectFromList": "Válassz a listából...",
+      "searchClient": "Keresés névre vagy telefonszámra...",
+      "noClientFound": "Nincs találat",
       "addNewClient": "+ Új ügyfél rögzítése",
       "fullNameOptional": "Teljes név (opcionális)...",
       "phoneOptional": "Telefonszám (opcionális)...",
@@ -152,9 +170,13 @@
       "status": "Állapot",
       "statusPending": "Függőben",
       "statusApproved": "Jóváhagyva",
+      "statusNoShow": "Nem jelent meg",
       "internalNote": "Belső Megjegyzés",
       "notePlaceholder": "Opcionális feljegyzés...",
       "confirmDelete": "Biztosan véglegesen törlöd ezt a foglalást?",
+      "reverseClosing": "Zárás visszavonása",
+      "confirmReverseClosing": "Biztosan visszavonod a napi zárást? A levont anyagok visszakerülnek a raktárba, és a foglalás újra lezárható lesz.",
+      "reverseClosingError": "Nem sikerült visszavonni a zárást:",
       "overlapWarning": "⚠️ Figyelem! Erre az időpontra már van aktív foglalás. Biztosan rá akarsz könyvelni (párhuzamos foglalás)?",
       "saveError": "Hiba mentéskor:\n",
       "validationMissingVariants": "Válassz variánst a kijelölt szolgáltatásokhoz!",

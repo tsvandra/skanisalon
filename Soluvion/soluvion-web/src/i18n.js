@@ -1,5 +1,5 @@
 import { createI18n } from 'vue-i18n';
-import hu from './locales/hu.json';
+import hu from './locales/hu';
 
 const savedLocale = localStorage.getItem('user-locale') || 'hu';
 

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
 using Soluvion.API.DTOs.CustomerDtos;
 using Soluvion.API.Interfaces;
@@ -63,6 +63,86 @@ namespace Soluvion.API.Services
                     Attributes = dynamicAttributes // Csak a tiszta, egyedi jellemzők mennek a frontendnek
                 };
             }).OrderBy(c => c.Name).ToList();
+        }
+
+        public async Task<CustomerResponseDto> GetCustomerByIdAsync(int id)
+        {
+            int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
+
+            var c = await _context.CompanyCustomers
+                .FirstOrDefaultAsync(x => x.Id == id && x.CompanyId == companyId);
+
+            if (c == null) throw new KeyNotFoundException("Az ügyfél nem található.");
+
+            string displayName = "Ismeretlen Vendég";
+
+            if (c.Attributes != null)
+            {
+                if (c.Attributes.ContainsKey("FullName") && !string.IsNullOrWhiteSpace(c.Attributes["FullName"]))
+                    displayName = c.Attributes["FullName"];
+                else if (c.Attributes.ContainsKey("Name") && !string.IsNullOrWhiteSpace(c.Attributes["Name"]))
+                    displayName = c.Attributes["Name"];
+                else if (c.Attributes.ContainsKey("Phone") && !string.IsNullOrWhiteSpace(c.Attributes["Phone"]))
+                    displayName = c.Attributes["Phone"];
+                else if (c.Attributes.ContainsKey("Email") && !string.IsNullOrWhiteSpace(c.Attributes["Email"]))
+                    displayName = c.Attributes["Email"];
+            }
+
+            var dynamicAttributes = c.Attributes?
+                .Where(kvp => kvp.Key != "FullName" && kvp.Key != "Name" && kvp.Key != "Phone" && kvp.Key != "Email" && kvp.Key != "Notes")
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? new Dictionary<string, string>();
+
+            string? notes = c.Notes;
+            if (string.IsNullOrWhiteSpace(notes) && c.Attributes != null && c.Attributes.ContainsKey("Notes"))
+            {
+                notes = c.Attributes["Notes"];
+            }
+
+            return new CustomerResponseDto
+            {
+                Id = c.Id,
+                Name = displayName,
+                Phone = c.Attributes != null && c.Attributes.ContainsKey("Phone") ? c.Attributes["Phone"] : null,
+                Email = c.Attributes != null && c.Attributes.ContainsKey("Email") ? c.Attributes["Email"] : null,
+                Notes = notes,
+                Attributes = dynamicAttributes
+            };
+        }
+
+        public async Task<List<Soluvion.API.DTOs.AppointmentDtos.AppointmentResponseDto>> GetCustomerAppointmentsAsync(int id)
+        {
+            int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
+
+            var appointments = await _context.Appointments
+                .Include(a => a.Items)
+                    .ThenInclude(i => i.ServiceVariant)
+                    .ThenInclude(sv => sv!.Service)
+                .Include(a => a.Employee)
+                    .ThenInclude(e => e!.User)
+                .Where(a => a.CustomerId == id && a.CompanyId == companyId)
+                .OrderByDescending(a => a.StartDateTime)
+                .ToListAsync();
+
+            return appointments.Select(a => new Soluvion.API.DTOs.AppointmentDtos.AppointmentResponseDto
+            {
+                Id = a.Id,
+                CustomerId = a.CustomerId,
+                CustomerName = "", 
+                EmployeeId = a.EmployeeId,
+                EmployeeName = a.Employee?.User?.Username ?? "Ismeretlen dolgozó",
+                StartDateTime = a.StartDateTime,
+                EndDateTime = a.EndDateTime,
+                Status = a.Status.ToString(),
+                TotalPrice = a.TotalPrice,
+                CustomerNotes = a.CustomerNotes,
+                Items = a.Items.Select(i => new Soluvion.API.DTOs.AppointmentDtos.AppointmentItemResponseDto
+                {
+                    ServiceId = i.ServiceVariant?.ServiceId ?? 0,
+                    ServiceName = (i.ServiceVariant?.Service?.Name != null && i.ServiceVariant.Service.Name.ContainsKey("hu")) ? i.ServiceVariant.Service.Name["hu"] : "Ismeretlen szolgáltatás",
+                    Price = i.Price
+                }).ToList(),
+                MaterialUsageRecorded = a.MaterialUsageRecorded
+            }).ToList();
         }
 
         public async Task<CustomerResponseDto> CreateCustomerAsync(CreateCustomerDto dto)
@@ -171,6 +251,193 @@ namespace Soluvion.API.Services
 
             _context.CompanyCustomers.Remove(customer);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<MergeCustomersResultDto> MergeCustomersAsync(MergeCustomersDto dto, bool dryRun)
+        {
+            int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
+
+            var mergedIds = (dto.MergedCustomerIds ?? new List<int>())
+                .Where(i => i != dto.PrimaryCustomerId)
+                .Distinct()
+                .ToList();
+
+            if (mergedIds.Count == 0)
+                throw new ArgumentException("Összevonáshoz legalább két különböző ügyfelet kell megadni.");
+
+            var allIds = mergedIds.Append(dto.PrimaryCustomerId).ToList();
+
+            var customers = await _context.CompanyCustomers
+                .Where(c => allIds.Contains(c.Id) && c.CompanyId == companyId)
+                .ToListAsync();
+
+            if (customers.Count != allIds.Count)
+                throw new KeyNotFoundException("Valamelyik kiválasztott ügyfél nem található.");
+
+            var primary = customers.First(c => c.Id == dto.PrimaryCustomerId);
+            var duplicates = customers.Where(c => c.Id != primary.Id).ToList();
+
+            var appointments = await _context.Appointments
+                .Include(a => a.Items)
+                .Where(a => a.CompanyId == companyId && allIds.Contains(a.CustomerId))
+                .ToListAsync();
+
+            // Azok a foglalások, amikhez készletmozgás tartozik, nem törölhetők
+            var appointmentIds = appointments.Select(a => a.Id).ToList();
+            var appointmentsWithDocuments = (await _context.InventoryDocuments
+                .Where(d => d.AppointmentId != null && appointmentIds.Contains(d.AppointmentId.Value))
+                .Select(d => d.AppointmentId!.Value)
+                .ToListAsync()).ToHashSet();
+
+            bool IsProtected(Appointment a) => a.MaterialUsageRecorded || appointmentsWithDocuments.Contains(a.Id);
+
+            // Duplikátum = ugyanaz a dolgozó, ugyanaz az időpont és pontosan ugyanazok a szolgáltatások
+            var groups = appointments.GroupBy(a => (
+                a.EmployeeId,
+                a.StartDateTime,
+                Services: string.Join(",", a.Items.Select(i => i.ServiceVariantId).OrderBy(x => x))));
+
+            var toRemove = new List<(Appointment Duplicate, Appointment Keeper)>();
+
+            foreach (var group in groups)
+            {
+                if (group.Count() < 2) continue;
+
+                // A megtartandó: zárolt/készletes > előrehaladottabb státusz > régebbi
+                var ordered = group
+                    .OrderByDescending(a => IsProtected(a))
+                    .ThenByDescending(a => GetStatusRank(a.Status))
+                    .ThenBy(a => a.Id)
+                    .ToList();
+
+                var keeper = ordered[0];
+                foreach (var other in ordered.Skip(1))
+                {
+                    // Készletmozgással rendelkező foglalást nem törlünk, az inkább átkerül az ügyfélhez
+                    if (IsProtected(other)) continue;
+                    toRemove.Add((other, keeper));
+                }
+            }
+
+            var removedSet = toRemove.Select(r => r.Duplicate).ToHashSet();
+            var toMove = appointments.Where(a => !removedSet.Contains(a) && a.CustomerId != primary.Id).ToList();
+
+            var result = new MergeCustomersResultDto
+            {
+                PrimaryCustomerId = primary.Id,
+                MergedCustomerCount = duplicates.Count,
+                MovedAppointments = toMove.Count,
+                RemovedDuplicateAppointments = toRemove.Count,
+                TotalAppointmentsAfterMerge = appointments.Count - toRemove.Count,
+                DryRun = dryRun
+            };
+
+            if (dryRun) return result;
+
+            var final = dto.FinalData ?? new CreateCustomerDto();
+
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
+            // 1) Duplikált foglalások egyesítése: a megjegyzések átmentése, majd törlés
+            foreach (var (duplicate, keeper) in toRemove)
+            {
+                keeper.AdminNotes = AppendNote(keeper.AdminNotes, duplicate.AdminNotes);
+                keeper.CustomerNotes = AppendNote(keeper.CustomerNotes, duplicate.CustomerNotes);
+                if (string.IsNullOrWhiteSpace(keeper.ExtraMaterials)) keeper.ExtraMaterials = duplicate.ExtraMaterials;
+
+                _context.Appointments.Remove(duplicate);
+            }
+
+            // 2) A többi foglalás átkötése a megmaradó ügyfélre
+            foreach (var appointment in toMove)
+            {
+                appointment.CustomerId = primary.Id;
+            }
+
+            // 3) Felhasználói fiók hivatkozás átvétele (ha a megmaradó ügyfélnek még nincs)
+            int? userId = primary.UserId ?? duplicates.FirstOrDefault(d => d.UserId != null)?.UserId;
+            foreach (var d in duplicates) d.UserId = null;
+            await _context.SaveChangesAsync();
+
+            // 4) Végleges adatok a megmaradó ügyfélen
+            var attributes = final.Attributes != null
+                ? new Dictionary<string, string>(final.Attributes)
+                : new Dictionary<string, string>();
+
+            if (!string.IsNullOrWhiteSpace(final.FullName)) attributes["FullName"] = final.FullName.Trim();
+            if (!string.IsNullOrWhiteSpace(final.Phone)) attributes["Phone"] = final.Phone.Trim();
+            if (!string.IsNullOrWhiteSpace(final.Email)) attributes["Email"] = final.Email.Trim();
+            attributes.Remove("Notes");
+
+            // A rendszer által kezelt receptlista (nem látszik az űrlapon) ne vesszen el: egyesítjük
+            if (!attributes.ContainsKey("FormulaList"))
+            {
+                var mergedFormula = MergeFormulaLists(new[] { primary }.Concat(duplicates));
+                if (mergedFormula != null) attributes["FormulaList"] = mergedFormula;
+            }
+
+            primary.Attributes = attributes;
+            primary.Notes = final.Notes?.Trim();
+            primary.UserId = userId;
+
+            // 5) A beolvadt ügyfelek törlése
+            _context.CompanyCustomers.RemoveRange(duplicates);
+            await _context.SaveChangesAsync();
+
+            await transaction.CommitAsync();
+            return result;
+        }
+
+        private static int GetStatusRank(Soluvion.Domain.Models.Enums.AppointmentStatus status) => status switch
+        {
+            Soluvion.Domain.Models.Enums.AppointmentStatus.Completed => 5,
+            Soluvion.Domain.Models.Enums.AppointmentStatus.Confirmed => 4,
+            Soluvion.Domain.Models.Enums.AppointmentStatus.NoShow => 3,
+            Soluvion.Domain.Models.Enums.AppointmentStatus.Pending => 2,
+            Soluvion.Domain.Models.Enums.AppointmentStatus.Rescheduled => 1,
+            _ => 0
+        };
+
+        private static string? AppendNote(string? existing, string? incoming)
+        {
+            if (string.IsNullOrWhiteSpace(incoming)) return existing;
+            if (string.IsNullOrWhiteSpace(existing)) return incoming;
+            if (existing.Contains(incoming.Trim())) return existing;
+            return $"{existing}\n{incoming}";
+        }
+
+        /// <summary>
+        /// A "FormulaList" (alapértelmezett anyagok) JSON tömbjeinek egyesítése productId alapján;
+        /// az első (megmaradó) ügyfél értékei élveznek elsőbbséget.
+        /// </summary>
+        private static string? MergeFormulaLists(IEnumerable<CompanyCustomer> customers)
+        {
+            var merged = new List<System.Text.Json.Nodes.JsonNode>();
+            var seenProductIds = new HashSet<string>();
+
+            foreach (var customer in customers)
+            {
+                if (customer.Attributes == null || !customer.Attributes.TryGetValue("FormulaList", out var json) || string.IsNullOrWhiteSpace(json))
+                    continue;
+
+                try
+                {
+                    if (System.Text.Json.Nodes.JsonNode.Parse(json) is not System.Text.Json.Nodes.JsonArray array) continue;
+                    foreach (var item in array)
+                    {
+                        if (item == null) continue;
+                        var productId = item["productId"]?.ToString() ?? string.Empty;
+                        if (seenProductIds.Add(productId))
+                            merged.Add(item.DeepClone());
+                    }
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    // Hibás JSON-t kihagyjuk
+                }
+            }
+
+            return merged.Count == 0 ? null : new System.Text.Json.Nodes.JsonArray(merged.ToArray()).ToJsonString();
         }
     }
 }

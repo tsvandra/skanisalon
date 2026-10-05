@@ -33,7 +33,7 @@
         <ScrubbableInput v-model="totalPrice" :min="0" :max="50000" :step="1" :decimals="2" suffix="EUR" class="h-8 md:h-9 w-24 md:w-28 text-sm md:text-base font-bold text-primary bg-primary/10 border-primary/30 mt-1" />
       </div>
     </div>
-    <div class="text-right text-[9px] text-text-muted/60 -mt-1 mr-1">Húzd a csúszkát vagy kattints az ár felülbírálásához</div>
+    <div class="text-right text-[9px] text-text-muted/60 -mt-1 mr-1">{{ $t('orders.calendar.cart.priceOverrideHint') }}</div>
   </div>
 </template>
 
