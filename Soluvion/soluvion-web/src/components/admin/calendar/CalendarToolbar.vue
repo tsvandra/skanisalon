@@ -2,9 +2,11 @@
   <div class="sticky top-0 z-20 bg-surface border-b border-text/10 p-3 md:p-4 shadow-sm">
     <div class="max-w-7xl mx-auto w-full flex flex-col xl:flex-row justify-between items-start xl:items-center gap-2 md:gap-4">
 
-      <div class="flex items-baseline gap-2 md:gap-4 w-full xl:w-auto">
-        <h2 class="text-xl md:text-2xl font-bold text-text drop-shadow-sm">{{ $t('calendar.dashboardTitle') }}</h2>
-        <span class="text-xs md:text-sm text-text-muted">{{ $t('calendar.role') }}: <strong class="text-primary">{{ userRole }}</strong></span>
+      <div class="flex items-center gap-2 md:gap-3 w-full xl:w-auto">
+        <h2 class="text-xl md:text-2xl font-bold text-text drop-shadow-sm flex items-center gap-2">
+          <i class="pi pi-calendar text-primary"></i>
+          <span>{{ $t('calendar.title') }}</span>
+        </h2>
       </div>
 
       <div class="flex flex-col md:flex-row items-center gap-2 w-full xl:w-auto mt-1 md:mt-0">

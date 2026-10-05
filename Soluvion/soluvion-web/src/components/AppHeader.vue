@@ -118,11 +118,30 @@
         {{ $t('nav.booking') }}
       </router-link>
 
-      <!-- Munkás: Vezérlőpult -->
-      <router-link v-if="isEmployee" :to="localized('dashboard')" @click="isMenuOpen = false"
-                   class="bg-primary text-white text-center font-bold text-lg p-3 rounded-lg shadow-sm hover:brightness-95 transition-all mb-2 min-h-[48px] flex justify-center items-center">
-        {{ $t('nav.dashboard') }}
-      </router-link>
+      <!-- Munkás: Vezérlőpult és modulok -->
+      <template v-if="isEmployee">
+        <router-link :to="localized('dashboard')" @click="isMenuOpen = false"
+                     class="bg-primary text-white text-center font-bold text-lg p-3 rounded-lg shadow-sm hover:brightness-95 transition-all mb-1 min-h-[48px] flex justify-center items-center gap-2">
+          <i class="pi pi-th-large"></i> {{ $t('nav.dashboard') }}
+        </router-link>
+        <div class="grid grid-cols-3 gap-2 mb-2">
+          <router-link :to="localized('orders')" @click="isMenuOpen = false"
+                       class="bg-surface border border-text/15 text-text hover:border-primary text-center font-semibold text-xs p-2 rounded-lg flex flex-col items-center justify-center gap-1 min-h-[44px]">
+            <i class="pi pi-calendar text-primary text-sm"></i>
+            <span>{{ $t('nav.orders') }}</span>
+          </router-link>
+          <router-link v-if="isAdmin" :to="localized('inventory')" @click="isMenuOpen = false"
+                       class="bg-surface border border-text/15 text-text hover:border-primary text-center font-semibold text-xs p-2 rounded-lg flex flex-col items-center justify-center gap-1 min-h-[44px]">
+            <i class="pi pi-box text-primary text-sm"></i>
+            <span>{{ $t('nav.inventory') }}</span>
+          </router-link>
+          <router-link :to="localized('customers')" @click="isMenuOpen = false"
+                       class="bg-surface border border-text/15 text-text hover:border-primary text-center font-semibold text-xs p-2 rounded-lg flex flex-col items-center justify-center gap-1 min-h-[44px]">
+            <i class="pi pi-users text-primary text-sm"></i>
+            <span>{{ $t('nav.customers') }}</span>
+          </router-link>
+        </div>
+      </template>
 
       <router-link :to="localized('services')" @click="isMenuOpen = false" class="text-text hover:text-primary transition-colors [&.router-link-active]:text-primary font-bold text-lg p-3 rounded-lg hover:bg-text/5">
         {{ $t('nav.services') }}

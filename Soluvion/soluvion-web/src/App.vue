@@ -2,6 +2,7 @@
   import { ref, onMounted, provide, watch, computed, watchEffect } from 'vue';
   import { RouterView, useRoute, useRouter } from 'vue-router';
   import AppHeader from '@/components/AppHeader.vue';
+  import AdminNav from '@/components/admin/AdminNav.vue';
   import TheFooter from '@/components/TheFooter.vue';
   import { useCompanyStore } from '@/stores/companyStore';
   import { useTranslationStore } from '@/stores/translationStore';
@@ -64,6 +65,12 @@
   });
 
   const hasPendingReviews = computed(() => translationStore.pendingReviews.length > 0);
+  const isEmployee = computed(() => ['Admin', 'Owner', 'Employee'].includes(userRole.value));
+  const isAdminRoute = computed(() => {
+    if (!isLoggedIn.value || !isEmployee.value) return false;
+    const adminPages = ['dashboard', 'orders', 'inventory', 'customers', 'settings'];
+    return adminPages.includes(route.name);
+  });
 
   provide('company', computed(() => companyStore.company));
   provide('isLoggedIn', isLoggedIn);
@@ -126,6 +133,8 @@
       <header>
         <AppHeader />
       </header>
+
+      <AdminNav v-if="isAdminRoute" />
 
       <main class="flex-1 flex flex-col">
         <RouterView />

@@ -29,7 +29,9 @@
     "gallery": "Galéria",
     "contact": "Kapcsolat",
     "customers": "Ügyfelek",
-    "dashboard": "Vezérlőpult"
+    "dashboard": "Vezérlőpult",
+    "orders": "Megrendelések",
+    "inventory": "Raktár"
   },
   "home": {
     "welcome": "Üdvözöllek a {company}-ban!",
@@ -94,7 +96,8 @@
     }
   },
   "footer": {
-    "rights": "Minden jog fenntartva."
+    "rights": "Minden jog fenntartva.",
+    "role": "Szerepkör"
   },
   "booking": {
     "title": "{companyName} - Időpontfoglalás",
@@ -125,7 +128,8 @@
     "adminViewWarning": "ADMIN NÉZET: A publikus vendégek most a \"Hamarosan\" feliratot látják. Ezt csak te látod, mert be vagy jelentkezve!"
   },
   "calendar": {
-    "dashboardTitle": "Vezérlőpult",
+    "title": "Megrendelések",
+    "dashboardTitle": "Megrendelések",
     "role": "Szerepkör",
     "day": "Napi",
     "week": "Heti",

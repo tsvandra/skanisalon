@@ -2,6 +2,8 @@
   import { inject, computed } from 'vue';
 
   const company = inject('company');
+  const isLoggedIn = inject('isLoggedIn');
+  const userRole = inject('userRole');
 
   const footerStyle = computed(() => {
     const height = company.value?.footerHeight || 250;
@@ -38,6 +40,11 @@
 
         <p class="text-text-muted text-sm font-medium tracking-wider m-0">
           &copy; {{ new Date().getFullYear() }} {{ company?.name || 'Skani Salon' }}. {{ $t('footer.rights') }}
+        </p>
+
+        <p v-if="isLoggedIn && userRole" class="text-text-muted text-xs mt-2 m-0 flex items-center justify-center gap-1.5">
+          <span>{{ $t('footer.role') }}:</span>
+          <span class="text-primary font-bold">{{ userRole }}</span>
         </p>
       </div>
     </div>
