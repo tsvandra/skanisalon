@@ -82,10 +82,11 @@
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-text/10 pt-4">
           <div>
             <label class="block text-[10px] md:text-xs font-bold text-text-muted mb-2 uppercase">{{ $t('calendar.editor.status') }}</label>
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2">
               <button @click="form.status = 0" class="flex-1 h-[44px] rounded-lg font-bold text-xs md:text-sm border transition-all" :class="form.status === 0 ? 'bg-red-500/10 border-red-500 text-red-500 shadow-sm' : 'border-text/20 text-text hover:bg-text/5'">{{ $t('calendar.editor.statusPending') }}</button>
               <button @click="form.status = 1" class="flex-1 h-[44px] rounded-lg font-bold text-xs md:text-sm border transition-all" :class="form.status === 1 ? 'bg-green-500/10 border-green-500 text-green-500 shadow-sm' : 'border-text/20 text-text hover:bg-text/5'">{{ $t('calendar.editor.statusApproved') }}</button>
               <button @click="form.status = 2" class="flex-1 h-[44px] rounded-lg font-bold text-xs md:text-sm border transition-all" :class="form.status === 2 ? 'bg-primary/10 border-primary text-primary shadow-sm' : 'border-text/20 text-text hover:bg-text/5'">Befejezve</button>
+              <button @click="form.status = 4" class="flex-1 h-[44px] px-2 rounded-lg font-bold text-xs md:text-sm border transition-all whitespace-nowrap" :class="form.status === 4 ? 'bg-gray-500/10 border-gray-500 text-gray-500 shadow-sm' : 'border-text/20 text-text hover:bg-text/5'">{{ $t('calendar.editor.statusNoShow') }}</button>
             </div>
           </div>
           <div>
@@ -97,9 +98,14 @@
       </div>
 
       <div class="p-3 md:p-4 border-t border-text/10 bg-background/50 flex justify-between gap-2 md:gap-3 mt-auto">
-        <button v-if="isEditing" @click="handleDelete" class="px-3 md:px-4 h-[44px] text-red-500 font-bold text-sm md:text-base rounded-lg border border-red-500/30 hover:bg-red-500/10 transition-colors">
-          {{ $t('common.delete') }}
-        </button>
+        <div v-if="isEditing" class="flex gap-2">
+          <button @click="handleDelete" class="px-3 md:px-4 h-[44px] text-red-500 font-bold text-sm md:text-base rounded-lg border border-red-500/30 hover:bg-red-500/10 transition-colors">
+            {{ $t('common.delete') }}
+          </button>
+          <button v-if="editData?.materialUsageRecorded" @click="handleReverseClosing" class="px-3 md:px-4 h-[44px] text-orange-500 font-bold text-sm md:text-base rounded-lg border border-orange-500/30 hover:bg-orange-500/10 transition-colors flex items-center gap-1 md:gap-2">
+            <i class="pi pi-undo"></i> {{ $t('calendar.editor.reverseClosing') }}
+          </button>
+        </div>
         <div v-else></div>
 
         <div class="flex gap-2">
@@ -121,6 +127,7 @@
   import bookingApi from '@/services/bookingApi';
 import productApi from '@/services/productApi';
 import apiClient from '@/services/api';
+import inventoryApi from '@/services/inventoryApi';
   import { useAppointmentStore } from '@/stores/appointmentStore';
 
   // KISZERVEZETT KOMPONENSEK BEHÚZÁSA
@@ -197,6 +204,7 @@ const removeExtraProduct = (idx) => { form.value.extraMaterials.splice(idx, 1); 
   };
 
   const isPending = (status) => status === 0 || status === '0' || (typeof status === 'string' && status.toLowerCase() === 'pending');
+  const isNoShow = (status) => status === 4 || status === '4' || (typeof status === 'string' && status.toLowerCase() === 'noshow');
   const getLocText = (dict) => dict ? (dict[currentLang.value] || dict['hu'] || '') : '';
   const getVariantFullName = (variantId) => {
     for (const s of availableServices.value) {
@@ -209,7 +217,7 @@ const removeExtraProduct = (idx) => { form.value.extraMaterials.splice(idx, 1); 
     if (!props.editData) {
       isEditing.value = false;
       const d = new Date(props.defaultDate.getTime() - (props.defaultDate.getTimezoneOffset() * 60000));
-      form.value = { id: null, customerId: '', customerFullName: '', customerPhone: '', employeeId: 0, date: d.toISOString().split('T')[0], time: '08:00', status: 1, notes: '', items: [] };
+      form.value = { id: null, customerId: '', customerFullName: '', customerPhone: '', employeeId: 0, date: d.toISOString().split('T')[0], time: '08:00', status: 1, notes: '', extraMaterials: [], items: [] };
     } else {
       isEditing.value = true;
       const app = props.editData;
@@ -219,10 +227,24 @@ const removeExtraProduct = (idx) => { form.value.extraMaterials.splice(idx, 1); 
       })) || [];
       const c = customersList.value.find(x => x.id === app.customerId);
 
+      let existingExtras = [];
+      try {
+        const raw = typeof app.extraMaterials === 'string' ? JSON.parse(app.extraMaterials) : app.extraMaterials;
+        if (Array.isArray(raw)) {
+          existingExtras = raw.map(em => ({
+            productId: em.productId,
+            name: em.name || allProducts.value.find(p => p.id === em.productId)?.name || 'Ismeretlen termék',
+            quantity: em.quantity,
+            unit: allProducts.value.find(p => p.id === em.productId)?.unit,
+            saveAsDefault: false
+          }));
+        }
+      } catch (e) { existingExtras = []; }
+
       form.value = {
         id: app.id, customerId: app.customerId, customerFullName: c ? c.name : '', customerPhone: '', employeeId: app.employeeId,
         date: new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0],
-        time: d.toTimeString().substring(0, 5), status: (app.status === 'Completed' || app.status === 2 || app.status === '2') ? 2 : (isPending(app.status) ? 0 : 1), notes: app.notes || '', items: mappedItems
+        time: d.toTimeString().substring(0, 5), status: (app.status === 'Completed' || app.status === 2 || app.status === '2') ? 2 : (isNoShow(app.status) ? 4 : (isPending(app.status) ? 0 : 1)), notes: app.notes || '', extraMaterials: existingExtras, items: mappedItems
       };
     }
     openDropdownId.value = null;
@@ -323,6 +345,17 @@ const removeExtraProduct = (idx) => { form.value.extraMaterials.splice(idx, 1); 
         await store.deleteAppointment(form.value.id);
         emit('deleted');
       } catch (error) { alert(t('calendar.editor.deleteError')); }
+    }
+  };
+
+  const handleReverseClosing = async () => {
+    if (!confirm(t('calendar.editor.confirmReverseClosing'))) return;
+    try {
+      await inventoryApi.reverseAppointmentClosing(form.value.id);
+      emit('saved');
+    } catch (error) {
+      const data = error.response?.data;
+      alert(t('calendar.editor.reverseClosingError') + '\n' + (data?.Error || data?.error || error.message));
     }
   };
 

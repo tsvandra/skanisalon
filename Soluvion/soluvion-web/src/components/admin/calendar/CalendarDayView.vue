@@ -19,7 +19,7 @@
              class="absolute border-x border-white/50 cursor-pointer transition-all hover:brightness-110 flex items-center justify-center overflow-hidden shadow-sm"
              :style="{ left: app.left + '%', width: app.width + '%', top: app.top + '%', height: app.height + '%', backgroundColor: getCustomerColor(app.customerId) }"
              :title="`${getCustomerName(app.customerId)}: ${formatTime(app.startDateTime)} - ${formatTime(app.endDateTime)}`">
-          <div class="absolute top-0.5 right-0.5 md:top-1 md:right-1 w-1.5 h-1.5 md:w-2 md:h-2 rounded-full shadow-sm border border-white/50" :class="isPending(app.status) ? 'bg-red-500' : 'bg-green-500'"></div>
+          <div class="absolute top-0.5 right-0.5 md:top-1 md:right-1 w-1.5 h-1.5 md:w-2 md:h-2 rounded-full shadow-sm border border-white/50" :class="isNoShow(app.status) ? 'bg-gray-400' : (isPending(app.status) ? 'bg-red-500' : 'bg-green-500')"></div>
           <span v-if="app.width >= 3" class="text-white drop-shadow-sm text-[8px] md:text-[10px] font-bold truncate px-1">{{ getCustomerInitials(app.customerId) }}</span>
         </div>
       </div>
@@ -76,6 +76,7 @@
 
   // Formatters for Timeline ONLY
   const isPending = (status) => status === 0 || status === '0' || (typeof status === 'string' && status.toLowerCase() === 'pending');
+  const isNoShow = (status) => status === 4 || status === '4' || (typeof status === 'string' && status.toLowerCase() === 'noshow');
   const getDayNameLong = (date) => new Date(date).toLocaleString(currentLang.value, { weekday: 'long' });
   const formatDateLong = (date) => new Date(date).toLocaleDateString(currentLang.value, { year: 'numeric', month: 'long', day: 'numeric' });
   const formatTime = (iso) => iso ? new Date(iso).toLocaleTimeString(currentLang.value, { hour: '2-digit', minute: '2-digit' }) : '';

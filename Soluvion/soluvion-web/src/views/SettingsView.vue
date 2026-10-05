@@ -16,6 +16,7 @@
   import SettingsAppearance from '@/components/admin/settings/SettingsAppearance.vue';
   import SettingsTranslations from '@/components/admin/settings/SettingsTranslations.vue';
   import SettingsCustomers from '@/components/admin/settings/SettingsCustomers.vue';
+  import SettingsInventory from '@/components/admin/settings/SettingsInventory.vue';
 
   const companyData = ref({});
   const isLoading = ref(false);
@@ -116,6 +117,7 @@
           <Tab value="3">Megjelenés</Tab>
           <Tab value="4">Fordítások</Tab>
           <Tab value="5">Vendég Jellemzők</Tab>
+          <Tab value="6">Raktárkezelés</Tab>
         </TabList>
 
         <TabPanels>
@@ -141,6 +143,10 @@
 
           <TabPanel value="5">
             <SettingsCustomers />
+          </TabPanel>
+
+          <TabPanel value="6">
+            <SettingsInventory :companyData="companyData" @save="saveSettings" />
           </TabPanel>
         </TabPanels>
       </Tabs>

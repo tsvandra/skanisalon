@@ -9,6 +9,8 @@ namespace Soluvion.API.DTOs
         public InventoryDocumentType Type { get; set; }
         public DateTime CreatedAt { get; set; }
         public string? Note { get; set; } public int? AppointmentId { get; set; }
+        public bool IsReversed { get; set; }
+        public int? ReversalOfDocumentId { get; set; }
         public List<InventoryDocumentItemDto> Items { get; set; } = new();
     }
 

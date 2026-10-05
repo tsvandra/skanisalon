@@ -17,8 +17,8 @@
               {{ getCustomerName(app.customerId) }}
             </h4>
             <div class="rounded-full shadow-sm"
-                 :class="[app.status === 'Completed' || app.status === 2 || app.status === '2' ? 'bg-primary' : (isPending(app.status) ? 'bg-red-500' : 'bg-green-500'), mode === 'day' ? 'w-2.5 h-2.5 md:w-3 md:h-3' : 'w-2 h-2']"
-                 :title="app.status === 'Completed' || app.status === 2 || app.status === '2' ? 'Befejezve' : (isPending(app.status) ? 'Függőben' : 'Jóváhagyva')"></div>
+                 :class="[app.status === 'Completed' || app.status === 2 || app.status === '2' ? 'bg-primary' : (isNoShow(app.status) ? 'bg-gray-400' : (isPending(app.status) ? 'bg-red-500' : 'bg-green-500')), mode === 'day' ? 'w-2.5 h-2.5 md:w-3 md:h-3' : 'w-2 h-2']"
+                 :title="app.status === 'Completed' || app.status === 2 || app.status === '2' ? 'Befejezve' : (isNoShow(app.status) ? 'Nem jelent meg' : (isPending(app.status) ? 'Függőben' : 'Jóváhagyva'))"></div>
           </div>
         </div>
       </div>
@@ -87,6 +87,7 @@ const currentLang = computed(() => locale.value || 'hu-HU');
 
 // Formázók
 const isPending = (status) => status === 0 || status === '0' || (typeof status === 'string' && status.toLowerCase() === 'pending');
+const isNoShow = (status) => status === 4 || status === '4' || (typeof status === 'string' && status.toLowerCase() === 'noshow');
 const getDayNameShort = (date) => new Date(date).toLocaleString(currentLang.value, { weekday: 'short' });
 const formatDateShort = (iso) => iso ? new Date(iso).toLocaleDateString(currentLang.value, { month: 'short', day: 'numeric' }) : '';
 const formatTime = (iso) => iso ? new Date(iso).toLocaleTimeString(currentLang.value, { hour: '2-digit', minute: '2-digit' }) : '';

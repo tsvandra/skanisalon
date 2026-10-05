@@ -5,6 +5,15 @@
       <p class="text-text-muted mt-2">Válaszd ki, melyik belső rendszert szeretnéd kezelni.</p>
     </div>
 
+    <!-- Készletkezelés kikapcsolva infó (csak adminnak) -->
+    <div v-if="isAdmin && stockTrackingLoaded && !isStockTrackingEnabled" class="mb-8 bg-text/5 border border-text/10 rounded-2xl p-4 flex items-center gap-3">
+      <i class="pi pi-info-circle text-xl text-text-muted"></i>
+      <p class="m-0 text-sm text-text-muted">
+        A készletkezelés (napi zárás, anyaglevonás) jelenleg ki van kapcsolva.
+        Bekapcsolás: <router-link to="/beallitasok" class="text-primary font-bold">Beállítások → Raktárkezelés</router-link>.
+      </p>
+    </div>
+
     <!-- Esti Napi Zárás Widget -->
     <div v-if="pendingMaterialLogs.length > 0" class="mb-8 bg-red-500/5 border border-red-500/20 rounded-2xl p-6 shadow-sm">
       <div class="flex items-center gap-3 mb-4">
@@ -116,12 +125,17 @@ import apiClient from '@/services/api';
 import MaterialWrapUpModal from '@/components/admin/dashboard/MaterialWrapUpModal.vue';
 import LowStockPlannerModal from '@/components/admin/dashboard/LowStockPlannerModal.vue';
 import { useI18n } from 'vue-i18n';
+import { getCompanyIdFromToken } from '@/utils/jwt';
 
 const { locale } = useI18n();
 const currentLang = ref(locale.value || 'hu-HU');
 
 const userRole = inject('userRole');
 const isAdmin = computed(() => ['Admin', 'Owner'].includes(userRole?.value));
+
+const stockTrackingStart = ref(null);
+const stockTrackingLoaded = ref(false);
+const isStockTrackingEnabled = computed(() => !!stockTrackingStart.value);
 
 const pendingMaterialLogs = ref([]);
 const lowStockProducts = ref([]);
@@ -134,10 +148,13 @@ const selectedAppointment = ref(null);
 
 const getLocText = (dict) => dict ? (dict[currentLang.value] || dict['hu'] || '') : '';
 
+const servicesLoaded = ref(false);
+
 const fetchServices = async () => {
   try {
     const response = await apiClient.get('/api/Service');
     services.value = response.data || [];
+    servicesLoaded.value = true;
   } catch (error) {
     console.error("Hiba a szolgáltatások betöltésekor", error);
   }
@@ -165,7 +182,87 @@ const getServiceName = (app) => {
   return primaryName;
 };
 
+const fetchStockTracking = async () => {
+  try {
+    const companyId = getCompanyIdFromToken();
+    if (!companyId) return;
+    const res = await apiClient.get(`/api/Company/${companyId}`);
+    stockTrackingStart.value = res.data?.stockTrackingStartDate ? new Date(res.data.stockTrackingStartDate) : null;
+  } catch (error) {
+    console.error("Hiba a készletkezelés beállításainak betöltésekor", error);
+    stockTrackingStart.value = null;
+  } finally {
+    stockTrackingLoaded.value = true;
+  }
+};
+
+// Eldönti, hogy egy foglaláshoz tartozik-e bármilyen levonandó anyag.
+// Bizonytalan esetben (pl. ismeretlen variáns, hibás JSON) true-t ad, hogy a foglalás ne tűnjön el a listáról.
+const appointmentHasMaterials = (app, customersById) => {
+  for (const item of app.items || []) {
+    let variantFound = false;
+    for (const s of services.value) {
+      const variant = s.variants?.find(v => v.id === item.serviceVariantId);
+      if (variant) {
+        variantFound = true;
+        if (variant.defaultProducts?.some(dp => dp.defaultQuantity > 0)) return true;
+        break;
+      }
+    }
+    if (!variantFound) return true;
+  }
+
+  if (app.extraMaterials) {
+    try {
+      const extra = typeof app.extraMaterials === 'string' ? JSON.parse(app.extraMaterials) : app.extraMaterials;
+      if (Array.isArray(extra) && extra.some(e => e.quantity > 0)) return true;
+    } catch (e) { return true; }
+  }
+
+  const formulaRaw = customersById.get(app.customerId)?.attributes?.FormulaList;
+  if (formulaRaw) {
+    try {
+      const formula = JSON.parse(formulaRaw);
+      if (Array.isArray(formula) && formula.some(f => f.quantity > 0)) return true;
+    } catch (e) { return true; }
+  }
+
+  return false;
+};
+
+// Az anyag nélküli foglalásokat automatikusan lezárja (mint az üres "Mentés & Levonás"), és kiszűri a listából.
+const skipAppointmentsWithoutMaterials = async (candidates) => {
+  if (candidates.length === 0 || !servicesLoaded.value) return candidates;
+
+  let customersById;
+  try {
+    const custRes = await apiClient.get('/api/customers');
+    const customers = custRes.data?.$values || custRes.data || [];
+    customersById = new Map(customers.map(c => [c.id, c]));
+  } catch (error) {
+    console.error("Hiba az ügyfelek betöltésekor", error);
+    return candidates;
+  }
+
+  const withMaterials = [];
+  const withoutMaterials = [];
+  candidates.forEach(a => (appointmentHasMaterials(a, customersById) ? withMaterials : withoutMaterials).push(a));
+
+  const results = await Promise.allSettled(
+    withoutMaterials.map(a => apiClient.post(`/api/Appointment/${a.id}/mark-materials-recorded`))
+  );
+
+  // Amit nem sikerült lezárni, az maradjon a listán
+  results.forEach((r, i) => { if (r.status === 'rejected') withMaterials.push(withoutMaterials[i]); });
+
+  return withMaterials.sort((x, y) => new Date(x.startDateTime) - new Date(y.startDateTime));
+};
+
 const fetchPendingLogs = async () => {
+  if (!isStockTrackingEnabled.value) {
+    pendingMaterialLogs.value = [];
+    return;
+  }
   try {
     const end = new Date();
     const start = new Date();
@@ -174,13 +271,23 @@ const fetchPendingLogs = async () => {
     const response = await appointmentApi.getAppointments(start, end);
     const all = response.data || [];
     
-    pendingMaterialLogs.value = all.filter(a => (a.status === 'Completed' || a.status === '2' || a.status === 2) && !a.materialUsageRecorded);
+    const candidates = all.filter(a =>
+      (a.status === 'Completed' || a.status === '2' || a.status === 2) &&
+      !a.materialUsageRecorded &&
+      new Date(a.startDateTime) >= stockTrackingStart.value
+    );
+
+    pendingMaterialLogs.value = await skipAppointmentsWithoutMaterials(candidates);
   } catch (error) {
     console.error("Hiba az elmaradt zárások betöltésekor", error);
   }
 };
 
 const fetchLowStockProducts = async () => {
+  if (!isStockTrackingEnabled.value) {
+    lowStockProducts.value = [];
+    return;
+  }
   try {
     const response = await apiClient.get('/api/products');
     const allProducts = response.data || [];
@@ -261,8 +368,8 @@ const handleWrapUpSaved = () => {
   fetchLowStockProducts();
 };
 
-onMounted(() => {
-  fetchServices();
+onMounted(async () => {
+  await Promise.all([fetchServices(), fetchStockTracking()]);
   fetchPendingLogs();
   fetchLowStockProducts();
 });

@@ -9,6 +9,9 @@ export default {
     },
     createDocument(data) {
         return api.post('/api/inventory', data);
+    },
+    reverseAppointmentClosing(appointmentId) {
+        return api.post(`/api/inventory/appointment/${appointmentId}/reverse`);
     }
 };
 

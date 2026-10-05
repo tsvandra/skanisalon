@@ -1,9 +1,0 @@
-﻿const fs = require('fs');
-let content = fs.readFileSync('soluvion-web/src/views/CustomersView.vue', 'utf8');
-
-const targetHtml = Buffer.from('PHNwYW4gdi1mb3I9Iih2YWwsIGtleSkgaW4gY3VzdG9tZXIuYXR0cmlidXRlcyIgOmtleT0ia2V5IiBjbGFzcz0idGV4dC1bMTBweF0gYmctcHJpbWFyeS8xMCB0ZXh0LXByaW1hcnkgcHgtMiBweS0wLjUgcm91bmRlZC1tZCBmb250LWJvbGQgYm9yZGVyIGJvcmRlci1wcmltYXJ5LzIwIiA6dGl0bGU9ImtleSI+CiAgICAgICAgICAgICAge3sgZ2V0QXR0cmlidXRlTGFiZWwoa2V5KSB9fToge3sgdmFsIH19CiAgICAgICAgICAgIDwvc3Bhbj4=', 'base64').toString('utf8');
-const newHtml = Buffer.from('PHRlbXBsYXRlIHYtZm9yPSIodmFsLCBrZXkpIGluIGN1c3RvbWVyLmF0dHJpYnV0ZXMiIDprZXk9ImtleSI+CiAgICAgICAgICAgICAgPHNwYW4gdi1pZj0ia2V5ICE9PSAnRm9ybXVsYUxpc3QnIiBjbGFzcz0idGV4dC1bMTBweF0gYmctcHJpbWFyeS8xMCB0ZXh0LXByaW1hcnkgcHgtMiBweS0wLjUgcm91bmRlZC1tZCBmb250LWJvbGQgYm9yZGVyIGJvcmRlci1wcmltYXJ5LzIwIiA6dGl0bGU9ImtleSI+CiAgICAgICAgICAgICAgICB7eyBnZXRBdHRyaWJ1dGVMYWJlbChrZXkpIH19OiB7eyB2YWwgfX0KICAgICAgICAgICAgICA8L3NwYW4+CiAgICAgICAgICAgIDwvdGVtcGxhdGU+', 'base64').toString('utf8');
-
-content = content.replace(targetHtml, newHtml);
-
-fs.writeFileSync('soluvion-web/src/views/CustomersView.vue', content, 'utf8');

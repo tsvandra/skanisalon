@@ -321,7 +321,7 @@ const saveWrapUp = async () => {
     close();
   } catch (error) {
     console.error("Hiba a levonás során", error);
-    alert("Hiba történt a mentés során. Lehet, hogy nincs elég készlet a raktárban?");
+    alert(error.response?.data?.Error || "Hiba történt a mentés során. Lehet, hogy nincs elég készlet a raktárban?");
   } finally {
     saving.value = false;
   }

@@ -19,6 +19,12 @@ namespace Soluvion.Domain.Models
         public Company? Company { get; set; } public int? AppointmentId { get; set; } public Appointment? Appointment { get; set; }
 
         public ICollection<InventoryDocumentItem> Items { get; set; } = new List<InventoryDocumentItem>();
+
+        /// <summary>Igaz, ha a bizonylatot sztornózták (pl. a napi zárás visszavonásakor).</summary>
+        public bool IsReversed { get; set; } = false;
+
+        /// <summary>Sztornó bizonylatnál: az eredeti (sztornózott) bizonylat azonosítója.</summary>
+        public int? ReversalOfDocumentId { get; set; }
     }
 }
 

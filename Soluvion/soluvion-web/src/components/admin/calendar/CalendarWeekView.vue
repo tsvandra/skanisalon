@@ -15,8 +15,8 @@
           <div class="flex gap-1 mt-1 md:mt-2">
             <span v-for="app in dayObj.appointments.slice(0, 3)" :key="app.id"
                   class="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shadow-sm"
-                  :style="{ backgroundColor: getCustomerColor(app.customerId) }"
-                  :title="getCustomerName(app.customerId)"></span>
+                  :style="{ backgroundColor: getAppointmentDotColor(app) }"
+                  :title="isNoShowStatus(app.status) ? `${getCustomerName(app.customerId)} – Nem jelent meg` : getCustomerName(app.customerId)"></span>
           </div>
         </div>
       </div>
@@ -48,7 +48,7 @@
 <script setup>
   import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { getCustomerColor } from '@/utils/colorUtils';
+  import { getAppointmentDotColor, isNoShowStatus } from '@/utils/colorUtils';
   import AppointmentCard from './AppointmentCard.vue';
 
   const props = defineProps({

@@ -1,4 +1,4 @@
-﻿using Soluvion.Domain.Models.Enums;
+using Soluvion.Domain.Models.Enums;
 
 namespace Soluvion.API.DTOs.AppointmentDtos
 {
@@ -10,5 +10,6 @@ namespace Soluvion.API.DTOs.AppointmentDtos
         public string? Notes { get; set; }
         public AppointmentStatus Status { get; set; }
         public bool Force { get; set; } = false;
+        public string? ExtraMaterials { get; set; } // JSON tömb: [{ productId, quantity, name }]
     }
 }

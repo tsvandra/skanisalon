@@ -7,11 +7,14 @@ namespace Soluvion.API.DTOs
         public string Email { get; set; } = string.Empty;
         public string Phone { get; set; } = string.Empty;
 
-        // SaaS FunkciÛk Ès Be·llÌt·sok
+        // SaaS Funkci√≥k √©s Be√°ll√≠t√°sok
         public List<string> EnabledFeatures { get; set; } = new();
         public bool IsOnlineBookingEnabled { get; set; }
 
-        // CÌm
+        // K√©szletkezel√©s kezdete (UTC). Null = kikapcsolva.
+        public DateTime? StockTrackingStartDate { get; set; }
+
+        // C√≠m
         public string City { get; set; } = string.Empty;
         public string StreetName { get; set; } = string.Empty;
         public string HouseNumber { get; set; } = string.Empty;
@@ -24,7 +27,7 @@ namespace Soluvion.API.DTOs
         public string? TikTokUrl { get; set; }
         public string? MapEmbedUrl { get; set; }
 
-        // Nyitvatart·s
+        // Nyitvatart√°s
         public Dictionary<string, string> OpeningHoursTitle { get; set; } = new();
         public Dictionary<string, string> OpeningHoursDescription { get; set; } = new();
         public Dictionary<string, string> OpeningTimeSlots { get; set; } = new();
@@ -36,7 +39,7 @@ namespace Soluvion.API.DTOs
         public int FooterHeight { get; set; }
         public int LogoHeight { get; set; }
 
-        // KÈpek
+        // K√©pek
         public string? LogoUrl { get; set; }
         public string? HeroImageUrl { get; set; }
         public string? FooterImageUrl { get; set; }

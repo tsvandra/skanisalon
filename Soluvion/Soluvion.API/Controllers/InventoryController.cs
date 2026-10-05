@@ -46,6 +46,17 @@ namespace Soluvion.API.Controllers
 
             return CreatedAtAction(nameof(GetById), new { id = document!.Id }, document);
         }
+
+        /// <summary>Egy foglalás napi zárásának visszavonása (sztornó).</summary>
+        [HttpPost("appointment/{appointmentId:int}/reverse")]
+        public async Task<IActionResult> ReverseAppointmentClosing(int appointmentId)
+        {
+            var (success, reversedDocuments, error) = await _inventoryService.ReverseAppointmentClosingAsync(appointmentId);
+
+            if (!success) return BadRequest(new { Error = error });
+
+            return Ok(new { ReversedDocuments = reversedDocuments });
+        }
     }
 }
 

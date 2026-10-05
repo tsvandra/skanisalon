@@ -32,7 +32,10 @@ namespace Soluvion.API.Services
                 Id = d.Id,
                 Type = d.Type,
                 CreatedAt = d.CreatedAt,
-                Note = d.Note
+                Note = d.Note,
+                AppointmentId = d.AppointmentId,
+                IsReversed = d.IsReversed,
+                ReversalOfDocumentId = d.ReversalOfDocumentId
             });
         }
 
@@ -52,6 +55,9 @@ namespace Soluvion.API.Services
                 Type = doc.Type,
                 CreatedAt = doc.CreatedAt,
                 Note = doc.Note,
+                AppointmentId = doc.AppointmentId,
+                IsReversed = doc.IsReversed,
+                ReversalOfDocumentId = doc.ReversalOfDocumentId,
                 Items = doc.Items.Select(i => new InventoryDocumentItemDto
                 {
                     Id = i.Id,
@@ -84,6 +90,9 @@ namespace Soluvion.API.Services
                     var appointment = await _context.Appointments.FirstOrDefaultAsync(a => a.Id == dto.AppointmentId.Value && a.CompanyId == GetCurrentCompanyId());
                     if (appointment != null)
                     {
+                        if (appointment.MaterialUsageRecorded && dto.Type == InventoryDocumentType.Issue)
+                            return (false, null, "Ennek a foglalásnak a napi zárása már rögzítve van. Előbb vond vissza a zárást, ha módosítani szeretnél.");
+
                         appointment.MaterialUsageRecorded = true;
                     }
                 }
@@ -138,6 +147,79 @@ namespace Soluvion.API.Services
             {
                 await transaction.RollbackAsync();
                 return (false, null, "Hiba történt a bizonylat mentése során: " + ex.Message);
+            }
+        }
+
+        public async Task<(bool Success, int ReversedDocuments, string? Error)> ReverseAppointmentClosingAsync(int appointmentId)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var companyId = GetCurrentCompanyId();
+
+                var appointment = await _context.Appointments
+                    .FirstOrDefaultAsync(a => a.Id == appointmentId && a.CompanyId == companyId);
+
+                if (appointment == null)
+                    return (false, 0, "A foglalás nem található.");
+
+                if (!appointment.MaterialUsageRecorded)
+                    return (false, 0, "Ennek a foglalásnak a napi zárása nincs rögzítve, így nincs mit visszavonni.");
+
+                // A foglaláshoz tartozó, még nem sztornózott kiadási bizonylatok
+                var documents = await _context.InventoryDocuments
+                    .Include(d => d.Items)
+                    .Where(d => d.AppointmentId == appointmentId
+                                && d.Type == InventoryDocumentType.Issue
+                                && !d.IsReversed)
+                    .ToListAsync();
+
+                foreach (var original in documents)
+                {
+                    var reversal = new InventoryDocument
+                    {
+                        CompanyId = companyId,
+                        Type = InventoryDocumentType.Receipt,
+                        CreatedAt = DateTime.UtcNow,
+                        Note = $"Sztornó: napi zárás visszavonása (Foglalás ID: {appointmentId}, bizonylat #{original.Id})",
+                        AppointmentId = appointmentId,
+                        ReversalOfDocumentId = original.Id,
+                        Items = new List<InventoryDocumentItem>()
+                    };
+
+                    foreach (var item in original.Items)
+                    {
+                        reversal.Items.Add(new InventoryDocumentItem
+                        {
+                            ProductId = item.ProductId,
+                            Quantity = item.Quantity,
+                            CostPrice = item.CostPrice
+                        });
+
+                        // Készlet visszaírása (a beszerzési árat nem módosítjuk)
+                        var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId);
+                        if (product != null)
+                        {
+                            product.CurrentStock += item.Quantity;
+                        }
+                    }
+
+                    original.IsReversed = true;
+                    _context.InventoryDocuments.Add(reversal);
+                }
+
+                // Újra lezárhatóvá tesszük a foglalást
+                appointment.MaterialUsageRecorded = false;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return (true, documents.Count, null);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return (false, 0, "Hiba történt a zárás visszavonása során: " + ex.Message);
             }
         }
     }

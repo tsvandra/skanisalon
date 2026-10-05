@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
 using Soluvion.API.DTOs.AppointmentDtos;
 using Soluvion.API.Interfaces;
@@ -54,7 +54,7 @@ namespace Soluvion.API.Services
                 StartDateTime = a.StartDateTime,
                 EndDateTime = a.EndDateTime,
                 TotalPrice = a.TotalPrice,
-                Status = a.Status.ToString(), MaterialUsageRecorded = a.MaterialUsageRecorded, CustomerName = a.Customer != null && a.Customer.Attributes != null && a.Customer.Attributes.ContainsKey("FullName") ? a.Customer.Attributes["FullName"] : "Ismeretlen",
+                Status = a.Status.ToString(), MaterialUsageRecorded = a.MaterialUsageRecorded, ExtraMaterials = a.ExtraMaterials, CustomerName = a.Customer != null && a.Customer.Attributes != null && a.Customer.Attributes.ContainsKey("FullName") ? a.Customer.Attributes["FullName"] : "Ismeretlen",
                 Notes = (a.CustomerNotes != null && a.CustomerNotes != "") ? a.CustomerNotes : a.AdminNotes,
 
                 Items = a.Items.Select(i => new AppointmentItemResponseDto
@@ -117,6 +117,7 @@ namespace Soluvion.API.Services
                 Status = dto.Status,
                 Source = BookingSource.System,
                 AdminNotes = dto.Notes,
+                ExtraMaterials = NormalizeExtraMaterials(dto.ExtraMaterials),
                 Items = new List<AppointmentItem>()
             };
 
@@ -181,6 +182,7 @@ namespace Soluvion.API.Services
             appointment.TotalPrice = totalPrice;
             appointment.Status = dto.Status;
             appointment.AdminNotes = dto.Notes;
+            appointment.ExtraMaterials = NormalizeExtraMaterials(dto.ExtraMaterials);
 
             var oldItems = await _context.AppointmentItems.Where(i => i.AppointmentId == appointment.Id).ToListAsync();
             _context.AppointmentItems.RemoveRange(oldItems);
@@ -206,6 +208,26 @@ namespace Soluvion.API.Services
             await SyncCustomerAttributesFromVariantsAsync(dto.CustomerId, variantIds);
 
             return appointment;
+        }
+
+        /// <summary>
+        /// A foglaláshoz mentett extra anyagok JSON-jának ellenőrzése: csak érvényes, nem üres JSON tömb marad meg, minden más null.
+        /// </summary>
+        private static string? NormalizeExtraMaterials(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return null;
+
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Array || doc.RootElement.GetArrayLength() == 0)
+                    return null;
+                return json;
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                return null;
+            }
         }
 
         public async Task<bool> DeleteAppointmentAsync(int appointmentId, string username)

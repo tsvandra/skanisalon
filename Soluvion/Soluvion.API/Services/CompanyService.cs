@@ -98,6 +98,7 @@ namespace Soluvion.API.Services
                 // SaaS logika
                 EnabledFeatures = GetEnabledFeatures(c.SubscriptionPlan),
                 IsOnlineBookingEnabled = c.IsOnlineBookingEnabled,
+                StockTrackingStartDate = c.StockTrackingStartDate,
 
                 City = c.City,
                 StreetName = c.StreetName,
@@ -129,6 +130,12 @@ namespace Soluvion.API.Services
 
             // Beállítás mentése (A jogosultságot nem itt állítjuk, az a belso rendszer dolga)
             existing.IsOnlineBookingEnabled = dto.IsOnlineBookingEnabled;
+            // Készletkezelés kezdete: mindig UTC-ként tároljuk (null = kikapcsolva)
+            existing.StockTrackingStartDate = dto.StockTrackingStartDate.HasValue
+                ? (dto.StockTrackingStartDate.Value.Kind == DateTimeKind.Unspecified
+                    ? DateTime.SpecifyKind(dto.StockTrackingStartDate.Value, DateTimeKind.Utc)
+                    : dto.StockTrackingStartDate.Value.ToUniversalTime())
+                : null;
 
             existing.Name = dto.Name;
             existing.Email = dto.Email;
