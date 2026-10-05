@@ -1,50 +1,50 @@
 <template>
   <div class="p-6">
     <div class="flex justify-between items-center mb-6">
-      <h1 class="text-3xl font-bold">Raktár & Termékek</h1>
+      <h1 class="text-3xl font-bold">{{ $t('inventory.view.title') }}</h1>
       <div class="flex gap-2">
-        <Button label="Új termék" icon="pi pi-plus" @click="openProductDialog" />
-        <Button label="Inventúra / Mozgás" icon="pi pi-box" severity="secondary" @click="openStockDialog" />
+        <Button :label="$t('inventory.view.newProduct')" icon="pi pi-plus" @click="openProductDialog" />
+        <Button :label="$t('inventory.view.stockMovement')" icon="pi pi-box" severity="secondary" @click="openStockDialog" />
       </div>
     </div>
 
     <!-- PrimeVue DataTable -->
     <DataTable :value="products" responsiveLayout="scroll" :loading="loading" class="p-datatable-sm shadow-sm rounded-lg">
-      <Column header="Név" :sortable="true" field="name">
+      <Column :header="$t('inventory.view.columns.name')" :sortable="true" field="name">
         <template #body="slotProps">
-          <span class="cursor-pointer text-primary font-bold hover:underline" @click="editProduct(slotProps.data)" title="Termékkártya szerkesztése">
+          <span class="cursor-pointer text-primary font-bold hover:underline" @click="editProduct(slotProps.data)" :title="$t('inventory.view.editProductTitle')">
             {{ slotProps.data.name }}
           </span>
         </template>
       </Column>
-      <Column field="ean" header="Vonalkód / EAN" :sortable="true" headerClass="hidden md:table-cell" bodyClass="hidden md:table-cell"></Column>
-      <Column header="Típus" headerClass="hidden md:table-cell" bodyClass="hidden md:table-cell">
+      <Column field="ean" :header="$t('inventory.view.columns.ean')" :sortable="true" headerClass="hidden md:table-cell" bodyClass="hidden md:table-cell"></Column>
+      <Column :header="$t('inventory.view.columns.type')" headerClass="hidden md:table-cell" bodyClass="hidden md:table-cell">
         <template #body="slotProps">
-          <Badge v-if="slotProps.data.isProfessional" value="Professzionális" severity="info" class="mr-2 px-1" />
-          <Badge v-if="slotProps.data.isRetail" value="Lakossági" severity="success" class="px-1" />
+          <Badge v-if="slotProps.data.isProfessional" :value="$t('inventory.view.professional')" severity="info" class="mr-2 px-1" />
+          <Badge v-if="slotProps.data.isRetail" :value="$t('inventory.view.retail')" severity="success" class="px-1" />
         </template>
       </Column>
-      <Column field="packageSize" header="Kiszerelés" headerClass="whitespace-nowrap !pr-6" bodyClass="whitespace-nowrap !pr-6">
+      <Column field="packageSize" :header="$t('inventory.view.columns.packageSize')" headerClass="whitespace-nowrap !pr-6" bodyClass="whitespace-nowrap !pr-6">
         <template #body="slotProps">
           {{ slotProps.data.packageSize }} {{ getUnitName(slotProps.data.unit) }}
         </template>
       </Column>
-      <Column field="currentStock" header="Készlet" :sortable="true" headerClass="whitespace-nowrap !min-w-[6rem]" bodyClass="whitespace-nowrap !min-w-[6rem]">
+      <Column field="currentStock" :header="$t('inventory.view.columns.stock')" :sortable="true" headerClass="whitespace-nowrap !min-w-[6rem]" bodyClass="whitespace-nowrap !min-w-[6rem]">
         <template #body="slotProps">
           <div 
             class="cursor-pointer inline-flex items-center gap-2 px-3 py-1 rounded-md hover:bg-surface-200 transition-colors" 
             :class="{'text-red-500 font-bold': slotProps.data.currentStock <= slotProps.data.lowStockThreshold, 'font-bold': true}"
             @click="openQuickStock(slotProps.data)"
-            title="Készlet gyors módosítása"
+            :title="$t('inventory.view.quickStockTitle')"
           >
-            {{ slotProps.data.currentStock }} db
+            {{ slotProps.data.currentStock }} {{ $t('inventory.units.short.pcs') }}
             <i class="pi pi-pencil text-xs opacity-50"></i>
           </div>
         </template>
       </Column>
       
       <template #empty>
-        Még nincsenek termékek felvéve.
+        {{ $t('inventory.view.empty') }}
       </template>
     </DataTable>
 
@@ -78,6 +78,9 @@ import productApi from '@/services/productApi';
 import ProductDialog from './components/ProductDialog.vue';
 import StockAdjustmentDialog from './components/StockAdjustmentDialog.vue';
 import QuickStockDialog from './components/QuickStockDialog.vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const products = ref([]);
 const loading = ref(false);
@@ -102,7 +105,13 @@ const fetchProducts = async () => {
 };
 
 const getUnitName = (unitEnum) => {
-  const units = ['ml', 'g', 'db', 'm', 'cm'];
+  const units = [
+    t('inventory.units.short.ml'),
+    t('inventory.units.short.g'),
+    t('inventory.units.short.pcs'),
+    t('inventory.units.short.m'),
+    t('inventory.units.short.cm')
+  ];
   return units[unitEnum] || '';
 };
 

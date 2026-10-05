@@ -9,8 +9,10 @@
   import { useDragAndDrop } from '@/composables/useDragAndDrop';
   import { useTranslation } from '@/composables/useTranslation';
   import ServiceRecipeModal from '@/components/admin/ServiceRecipeModal.vue';
+  import { pickLocalized } from '@/utils/localizedText';
+  import { DEFAULT_LANG } from '@/router/routeSlugs';
 
-  const { locale } = useI18n();
+  const { t, locale } = useI18n();
   const isLoggedIn = inject('isLoggedIn');
   const companyStore = useCompanyStore();
   const services = ref([]);
@@ -59,7 +61,7 @@
 
   const formatCurrency = (val) => {
     if (val === null || val === undefined || val === 0) return '';
-    return val.toLocaleString('hu-HU', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+    return val.toLocaleString(locale.value, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
   };
 
   const autoResize = (event) => {
@@ -109,16 +111,16 @@
 
   const buildNestedStructure = (flatServices) => {
     const groups = [];
-    const defaultLang = company.value?.defaultLanguage || 'hu';
+    const defaultLang = company.value?.defaultLanguage || DEFAULT_LANG;
 
     flatServices.sort((a, b) => a.orderIndex - b.orderIndex);
 
     flatServices.forEach(service => {
       const catDict = ensureDict(service.category, "Egyéb");
-      const catNameStr = catDict[defaultLang] || catDict['hu'] || "Egyéb";
+      const catNameStr = pickLocalized(catDict, defaultLang, defaultLang, "Egyéb");
 
       let group = groups.find(g => {
-        const gName = g.categoryName[defaultLang] || g.categoryName['hu'] || "";
+        const gName = pickLocalized(g.categoryName, defaultLang, defaultLang, "");
         return gName === catNameStr;
       });
 
@@ -233,8 +235,9 @@
       'items',
       saveService,
       (item, group) => {
-        const itemCatName = item.category['hu'];
-        const groupCatName = group.categoryName['hu'];
+        const catLang = company.value?.defaultLanguage || DEFAULT_LANG;
+        const itemCatName = pickLocalized(item.category, catLang, catLang);
+        const groupCatName = pickLocalized(group.categoryName, catLang, catLang);
         if (itemCatName !== groupCatName) {
           item.category = JSON.parse(JSON.stringify(group.categoryName));
           return true;
@@ -329,18 +332,18 @@
   const createNewCategory = async () => {
     if (!isLoggedIn.value) return;
     const newService = {
-      name: { [currentLang.value]: "Új szolgáltatás" },
-      category: { [currentLang.value]: "ÚJ KATEGÓRIA" },
+      name: { [currentLang.value]: t('services.newServiceName') },
+      category: { [currentLang.value]: t('services.newCategoryName') },
       defaultPrice: 0,
       orderIndex: 99999,
-      variants: [{ variantName: { [currentLang.value]: "Normál" }, price: 0, duration: 30, profileModifiers: {} }],
+      variants: [{ variantName: { [currentLang.value]: t('services.normal') }, price: 0, duration: 30, profileModifiers: {} }],
       description: { [currentLang.value]: "" }
     };
     await postNewService(newService);
   };
 
   const addServiceToGroupEnd = async (group) => {
-    let variants = [{ variantName: { [currentLang.value]: "Normál" }, price: 0, duration: 30, profileModifiers: {} }];
+    let variants = [{ variantName: { [currentLang.value]: t('services.normal') }, price: 0, duration: 30, profileModifiers: {} }];
     if (group.headerVariants && group.headerVariants.length > 0) {
       variants = group.headerVariants.map(v => ({
         variantName: JSON.parse(JSON.stringify(v.variantName)),
@@ -350,7 +353,7 @@
       }));
     }
     const newService = {
-      name: { [currentLang.value]: "Új szolgáltatás" },
+      name: { [currentLang.value]: t('services.newServiceName') },
       category: JSON.parse(JSON.stringify(group.categoryName)),
       defaultPrice: 0,
       orderIndex: 99999,
@@ -371,7 +374,7 @@
   };
 
   const deleteService = async (id) => {
-    if (!confirm("Biztosan törölni akarod?")) return;
+    if (!confirm(t('services.confirmDelete'))) return;
     try {
       await apiClient.delete(`/api/Service/${id}`);
       await fetchServicesAndAttributes();
@@ -388,7 +391,7 @@
     if (!service.variants) service.variants = [];
     service.variants.push({
       id: 0,
-      variantName: { [currentLang.value]: "Extra" },
+      variantName: { [currentLang.value]: t('services.extra') },
       price: 0,
       duration: 30,
       profileModifiers: {}
@@ -472,7 +475,7 @@
 
             <div class="bg-text/5 p-3 md:p-4 border-b border-text/10 flex items-center justify-between gap-4">
               <div class="flex items-center flex-grow">
-                <div v-if="isLoggedIn" class="cursor-grab text-2xl text-primary flex items-center justify-center min-w-[40px] min-h-[40px] drag-handle-cat transition-colors hover:text-primary/80" title="Kategória mozgatása">⋮⋮</div>
+                <div v-if="isLoggedIn" class="cursor-grab text-2xl text-primary flex items-center justify-center min-w-[40px] min-h-[40px] drag-handle-cat transition-colors hover:text-primary/80" :title="$t('services.moveCategory')">⋮⋮</div>
 
                 <div class="relative w-full flex items-center group/tools flex-grow">
                   <input v-if="isLoggedIn"
@@ -484,7 +487,7 @@
 
                   <button v-if="isLoggedIn"
                           @click="translateCategoryName(group)"
-                          class="opacity-100 md:opacity-0 bg-transparent border-none text-primary cursor-pointer flex items-center justify-center min-w-[40px] min-h-[40px] text-lg transition-opacity duration-200 md:group-hover/tools:opacity-100 hover:scale-110 shrink-0" title="Fordítás">
+                          class="opacity-100 md:opacity-0 bg-transparent border-none text-primary cursor-pointer flex items-center justify-center min-w-[40px] min-h-[40px] text-lg transition-opacity duration-200 md:group-hover/tools:opacity-100 hover:scale-110 shrink-0" :title="$t('services.translate')">
                     <i v-if="translatingField === `${group.id || 'cat'}-categoryName-${currentLang}`" class="pi pi-spin pi-spinner"></i>
                     <i v-else class="pi pi-sparkles"></i>
                   </button>
@@ -514,12 +517,12 @@
                                 class="mt-1 border border-primary/20 bg-primary/5 text-primary text-[9px] md:text-[10px] font-bold rounded hover:bg-primary hover:text-white transition-colors py-0.5 px-2 flex items-center justify-center gap-1 cursor-pointer"
                                 :class="{'!bg-primary/20': v.profileModifiers && Object.keys(v.profileModifiers).length > 0}">
                           <i class="pi pi-bolt"></i>
-                          <span class="hidden md:inline">{{ (v.profileModifiers && Object.keys(v.profileModifiers).length > 0) ? 'Aktív' : 'Beállítás' }}</span>
+                          <span class="hidden md:inline">{{ (v.profileModifiers && Object.keys(v.profileModifiers).length > 0) ? $t('services.modifierActive') : $t('services.modifierSetup') }}</span>
                         </button>
 
                         <button v-if="isLoggedIn"
                                 @click="translateHeaderVariant(group, v, vIndex)"
-                                class="absolute -top-6 md:-top-5 right-0 opacity-100 md:opacity-0 bg-transparent border-none text-primary cursor-pointer flex items-center justify-center w-[24px] h-[24px] text-xs transition-opacity duration-200 md:group-hover/tools:opacity-100 hover:scale-110" title="Fordítás">
+                                class="absolute -top-6 md:-top-5 right-0 opacity-100 md:opacity-0 bg-transparent border-none text-primary cursor-pointer flex items-center justify-center w-[24px] h-[24px] text-xs transition-opacity duration-200 md:group-hover/tools:opacity-100 hover:scale-110" :title="$t('services.translate')">
                           <i v-if="translatingField === `header-${vIndex}-variantName-${currentLang}`" class="pi pi-spin pi-spinner"></i>
                           <i v-else class="pi pi-sparkles"></i>
                         </button>
@@ -549,7 +552,7 @@
 
                             <button v-if="isLoggedIn"
                                     @click="translateServiceField(service, 'name')"
-                                    class="opacity-100 md:opacity-0 bg-transparent border-none text-primary cursor-pointer flex items-center justify-center min-w-[40px] min-h-[44px] text-lg transition-opacity duration-200 md:group-hover/tools:opacity-100 hover:scale-110 shrink-0" title="Fordítás">
+                                    class="opacity-100 md:opacity-0 bg-transparent border-none text-primary cursor-pointer flex items-center justify-center min-w-[40px] min-h-[44px] text-lg transition-opacity duration-200 md:group-hover/tools:opacity-100 hover:scale-110 shrink-0" :title="$t('services.translate')">
                               <i v-if="translatingField === `${service.id}-name-${currentLang}`" class="pi pi-spin pi-spinner"></i>
                               <i v-else class="pi pi-sparkles"></i>
                             </button>
@@ -568,16 +571,16 @@
                             <div class="w-full flex flex-col justify-center gap-1">
                               <InputNumber v-if="isLoggedIn"
                                            v-model="variant.price"
-                                           mode="currency" currency="EUR" locale="hu-HU" :minFractionDigits="0"
+                                           mode="currency" currency="EUR" :locale="locale" :minFractionDigits="0"
                                            class="w-full max-w-[90px] md:max-w-[100px] [&_input]:border-none [&_input]:bg-background [&_input]:text-center [&_input]:text-text [&_input]:min-h-[38px] [&_input]:w-full [&_input]:focus:ring-1 [&_input]:focus:ring-primary [&_input]:transition-all [&_input]:rounded-md [&_input]:shadow-inner"
                                            @update:modelValue="saveService(service, false)"
                                            @blur="saveService(service, false)" />
                               <span v-else class="text-text font-inherit transition-colors">{{ formatCurrency(variant.price) }}</span>
                             </div>
 
-                            <button v-if="isLoggedIn" @click="openRecipeModal(service, variant, group, vIndex)" class="text-[10px] text-text-muted hover:text-primary flex items-center justify-center gap-1 mt-1" :title="variant.defaultProducts?.length ? 'Anyagfelhasználás beállítva' : 'Alapértelmezett anyagok beállítása'">
+                            <button v-if="isLoggedIn" @click="openRecipeModal(service, variant, group, vIndex)" class="text-[10px] text-text-muted hover:text-primary flex items-center justify-center gap-1 mt-1" :title="variant.defaultProducts?.length ? $t('services.recipeConfigured') : $t('services.recipeSetDefault')">
                               <i class="pi pi-box" :class="variant.defaultProducts?.length ? 'text-primary' : ''"></i>
-                              <span v-if="variant.defaultProducts?.length">{{ variant.defaultProducts.length }} termék</span>
+                              <span v-if="variant.defaultProducts?.length">{{ $t('services.productCount', { count: variant.defaultProducts.length }) }}</span>
                             </button>
 
                             <button v-if="isLoggedIn" @click="removeVariant(service, vIndex, group)" class="absolute -top-2 md:-top-3 right-0 border-none bg-transparent text-red-500 opacity-100 md:opacity-0 cursor-pointer flex items-center justify-center w-[24px] h-[24px] md:group-hover/variant:opacity-100 transition-opacity text-xl font-bold hover:scale-110 bg-surface rounded-full shadow-sm">&times;</button>
@@ -609,7 +612,7 @@
 
                           <button v-if="isLoggedIn"
                                   @click="translateServiceField(service, 'description')"
-                                  class="opacity-100 md:opacity-0 bg-transparent border-none text-primary cursor-pointer flex items-center justify-center min-w-[40px] min-h-[40px] text-lg transition-opacity duration-200 md:group-hover/tools:opacity-100 hover:scale-110 shrink-0" title="Fordítás">
+                                  class="opacity-100 md:opacity-0 bg-transparent border-none text-primary cursor-pointer flex items-center justify-center min-w-[40px] min-h-[40px] text-lg transition-opacity duration-200 md:group-hover/tools:opacity-100 hover:scale-110 shrink-0" :title="$t('services.translate')">
                             <i v-if="translatingField === `${service.id}-description-${currentLang}`" class="pi pi-spin pi-spinner"></i>
                             <i v-else class="pi pi-sparkles"></i>
                           </button>
@@ -640,17 +643,17 @@
 
         <div class="p-5 border-b border-text/10 bg-background/50">
           <h3 class="font-bold text-lg text-text flex items-center gap-2">
-            <i class="pi pi-bolt text-primary"></i> Automatikus Profil Frissítés
+            <i class="pi pi-bolt text-primary"></i> {{ $t('services.modifierModal.title') }}
           </h3>
           <p class="text-xs text-text-muted mt-1 leading-tight">
-            Amikor a vendég ezt a variánst lefoglalja, a rendszer automatikusan a lenti értékekre frissíti a profilját.
+            {{ $t('services.modifierModal.description') }}
           </p>
         </div>
 
         <div class="p-5 space-y-4 overflow-y-auto max-h-[60vh]">
 
           <div v-if="companyAttributes.length === 0" class="text-sm text-text-muted text-center py-4 italic">
-            Előbb hozz létre jellemzőket a Beállítások > Vendég Jellemzők menüben!
+            {{ $t('services.modifierModal.noAttributes') }}
           </div>
 
           <div v-else class="space-y-4">
@@ -659,11 +662,11 @@
 
               <select v-if="attr.dataType === 'select'" v-model="editingVariant.profileModifiers[attr.key]"
                       class="w-full h-10 bg-background border border-text/20 rounded-lg px-3 text-sm focus:outline-none focus:border-primary">
-                <option value="">- Ne módosítsa -</option>
+                <option value="">{{ $t('services.modifierModal.noModify') }}</option>
                 <option v-for="opt in attr.options" :key="opt" :value="opt">{{ opt }}</option>
               </select>
 
-              <input v-else type="text" v-model="editingVariant.profileModifiers[attr.key]" placeholder="Üresen hagyva nem módosítja"
+              <input v-else type="text" v-model="editingVariant.profileModifiers[attr.key]" :placeholder="$t('services.modifierModal.emptyPlaceholder')"
                      class="w-full h-10 bg-background border border-text/20 rounded-lg px-3 text-sm focus:outline-none focus:border-primary">
             </div>
           </div>
@@ -671,7 +674,7 @@
 
         <div class="p-5 border-t border-text/10 flex justify-end gap-3 bg-background/50">
           <button @click="closeModifierModal" class="px-6 h-10 bg-primary text-white font-bold rounded-lg hover:brightness-110 shadow-md transition-transform active:scale-95 flex items-center gap-2">
-            <i class="pi pi-check"></i> Kész & Mentés
+            <i class="pi pi-check"></i> {{ $t('services.modifierModal.done') }}
           </button>
         </div>
 

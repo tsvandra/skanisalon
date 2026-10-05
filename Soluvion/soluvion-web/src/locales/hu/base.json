@@ -1,4 +1,16 @@
 {
+  "routes": {
+    "services": "szolgaltatasok",
+    "gallery": "galeria",
+    "contact": "kapcsolat",
+    "booking": "foglalas",
+    "login": "login",
+    "settings": "beallitasok",
+    "dashboard": "vezerlopult",
+    "orders": "megrendelesek",
+    "customers": "ugyfelek",
+    "inventory": "raktar"
+  },
   "common": {
     "loading": "Betöltés...",
     "save": "Mentés",

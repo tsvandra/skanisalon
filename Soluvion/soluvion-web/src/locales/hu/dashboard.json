@@ -1,0 +1,61 @@
+{
+  "dashboard": {
+    "title": "Vezérlőpult",
+    "subtitle": "Válaszd ki, melyik belső rendszert szeretnéd kezelni.",
+    "stockDisabledInfo": "A készletkezelés (napi zárás, anyaglevonás) jelenleg ki van kapcsolva. Bekapcsolás: {link}.",
+    "stockDisabledLink": "Beállítások → Raktárkezelés",
+    "dailyClose": {
+      "title": "Napi Zárás - Elmaradt adminisztráció",
+      "description": "Az alábbi vendégek már befejezettként (fizetve) lettek megjelölve a naptárban, de a felhasznált anyagok még nem lettek levonva a raktárból. Kattints rájuk a levonáshoz!",
+      "unknownGuest": "Ismeretlen Vendég"
+    },
+    "serviceName": {
+      "unknown": "Ismeretlen szolgáltatás",
+      "default": "Szolgáltatás",
+      "moreItems": "{name} (+{extra} tétel)"
+    },
+    "cards": {
+      "orders": {
+        "title": "Megrendelések / Naptár",
+        "description": "Időpontok, foglalások kezelése, napi beosztás megtekintése."
+      },
+      "inventory": {
+        "title": "Raktár & Termékek",
+        "description": "Készletkezelés, bevételezések, kiadások és leltározás."
+      },
+      "customers": {
+        "title": "Ügyfelek (CRM)",
+        "description": "Vendég adatbázis, vendégprofilok és szolgáltatási előzmények."
+      }
+    },
+    "lowStock": {
+      "title": "Kifogyóban lévő termékek",
+      "description": "Az alábbi termékek készletszintje a beállított minimum szint alá csökkent. Javasolt a beszerzésük.",
+      "stockLine": "Készlet: {stock} (Minimum: {min} db)",
+      "pieces": "{n} db",
+      "forecast": "30 napos várható fogyás: {n} db"
+    }
+  },
+  "login": {
+    "title": "Admin Belépés",
+    "username": "Felhasználónév",
+    "usernamePlaceholder": "Írd be a neved...",
+    "password": "Jelszó",
+    "submit": "Belépés",
+    "submitting": "Belépés folyamatban...",
+    "invalidCredentials": "Hibás felhasználónév vagy jelszó!"
+  },
+  "appShell": {
+    "pendingReviews": "Figyelem: {count} új nyelv fordítása elkészült és ellenőrzésre vár!",
+    "goToSettings": "Ugrás a beállításokhoz",
+    "serverConnectionError": "Nem sikerült csatlakozni a szerverhez.",
+    "openMenu": "Menü megnyitása",
+    "languageSwitcher": {
+      "status": "Státusz: {status}",
+      "noData": "(Nincs adat)"
+    },
+    "scrubbableInput": {
+      "hint": "Húzd balra/jobbra, vagy KATTINTS a gépeléshez"
+    }
+  }
+}

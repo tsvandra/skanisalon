@@ -2,10 +2,10 @@
   import { computed } from 'vue';
   import Button from 'primevue/button';
   import Card from 'primevue/card';
-  import { useRouter } from 'vue-router';
+  import { useLocalizedRoute } from '@/composables/useLocalizedRoute';
   import { useCompanyStore } from '@/stores/companyStore';
 
-  const router = useRouter();
+  const { go } = useLocalizedRoute();
   const companyStore = useCompanyStore();
 
   const company = computed(() => companyStore.company);
@@ -14,9 +14,9 @@
     return company.value?.heroImageUrl || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80';
   });
 
-  const goToServices = () => { router.push('/szolgaltatasok'); }
-  const goToContact = () => { router.push('/kapcsolat'); }
-  const goToGallery = () => { router.push('/galeria'); }
+  const goToServices = () => { go('services'); }
+  const goToContact = () => { go('contact'); }
+  const goToGallery = () => { go('gallery'); }
 </script>
 
 <template>
@@ -56,7 +56,7 @@
               <i class="pi pi-camera mr-4 text-2xl text-primary"></i>
               <div>
                 <span class="block font-bold text-text">{{ $t('nav.gallery') }}</span>
-                <span class="text-sm opacity-80">Tekintsd meg legújabb munkáinkat</span>
+                <span class="text-sm opacity-80">{{ $t('home.viewLatestWorks') }}</span>
               </div>
               <i class="pi pi-chevron-right ml-auto text-text/50"></i>
             </button>
@@ -66,7 +66,7 @@
     </div>
 
     <div class="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-surface/95 backdrop-blur-md border-t border-primary/20 shadow-[0_-5px_15px_rgba(0,0,0,0.2)] z-50">
-      <Button :label="$t('nav.contact') + ' / Időpont'"
+      <Button :label="$t('home.contactOrAppointment')"
               icon="pi pi-calendar"
               class="w-full !bg-primary !border-none !text-white !font-bold !text-lg !rounded-xl !min-h-[56px] shadow-lg"
               @click="goToContact" />

@@ -15,7 +15,7 @@
   import { useToast } from 'primevue/usetoast';
 
   const store = useTranslationStore();
-  const { messages } = useI18n();
+  const { messages, t } = useI18n();
   const toast = useToast();
 
   const selectedLang = ref('hu');
@@ -87,9 +87,9 @@
       });
 
       await store.loadOverrides(store.activeCompanyId, selectedLang.value);
-      toast.add({ severity: 'success', summary: 'Mentve', detail: 'A szöveg frissült.', life: 2000 });
+      toast.add({ severity: 'success', summary: t('adminSettings.uiTranslations.toast.savedSummary'), detail: t('adminSettings.uiTranslations.toast.savedDetail'), life: 2000 });
     } catch (err) {
-      toast.add({ severity: 'error', summary: 'Hiba', detail: 'Nem sikerült menteni.', life: 3000 });
+      toast.add({ severity: 'error', summary: t('adminSettings.uiTranslations.toast.errorSummary'), detail: t('adminSettings.uiTranslations.toast.saveFailed'), life: 3000 });
     }
   };
 
@@ -106,8 +106,14 @@
         await saveOverride(item.key, res.data.translatedText);
       }
     } catch (err) {
-      console.error("Fordítási hiba:", err);
-      toast.add({ severity: 'error', summary: 'Hiba', detail: 'Fordítás sikertelen.', life: 3000 });
+      const serverMessage = typeof err.response?.data === 'string' ? err.response.data : err.response?.data?.message;
+      console.error(`Fordítási hiba (${item.key}):`, err.response?.status, serverMessage || err);
+      toast.add({
+        severity: 'error',
+        summary: t('adminSettings.uiTranslations.toast.errorSummary'),
+        detail: serverMessage ? t('adminSettings.uiTranslations.toast.translateFailedWithMessage', { message: serverMessage }) : t('adminSettings.uiTranslations.toast.translateFailed'),
+        life: 8000
+      });
     } finally {
       translatingItems.value[item.key] = false;
     }
@@ -119,7 +125,7 @@
     if (!store.activeCompanyId || selectedLang.value === 'hu') return;
 
     translatingGroups.value[groupName] = true;
-    toast.add({ severity: 'info', summary: 'Fordítás indítva', detail: `${groupName.toUpperCase()} csoport fordítása folyamatban...`, life: 3000 });
+    toast.add({ severity: 'info', summary: t('adminSettings.uiTranslations.toast.groupStartedSummary'), detail: t('adminSettings.uiTranslations.toast.groupStartedDetail', { group: groupName.toUpperCase() }), life: 3000 });
 
     try {
       // Egymás után fordítunk, hogy ne terheljük túl az OpenAI Rate Limitjét
@@ -148,7 +154,7 @@
       }
       // Újratöltjük a store-t a végén, hogy mindenhol frissüljön
       await store.loadOverrides(store.activeCompanyId, selectedLang.value);
-      toast.add({ severity: 'success', summary: 'Kész', detail: `${groupName.toUpperCase()} csoport lefordítva!`, life: 3000 });
+      toast.add({ severity: 'success', summary: t('adminSettings.uiTranslations.toast.groupDoneSummary'), detail: t('adminSettings.uiTranslations.toast.groupDoneDetail', { group: groupName.toUpperCase() }), life: 3000 });
     } finally {
       translatingGroups.value[groupName] = false;
     }
@@ -170,15 +176,15 @@
 
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b border-text/10 pb-4">
       <div>
-        <h3 class="text-2xl font-light tracking-wide text-primary m-0 mb-1">Szövegek testreszabása</h3>
-        <p class="text-text-muted text-sm m-0 leading-snug">Itt írhatod át a weboldal fix szövegeit. Töröld ki a mezőt az alapértelmezett érték visszaállításához.</p>
+        <h3 class="text-2xl font-light tracking-wide text-primary m-0 mb-1">{{ $t('adminSettings.uiTranslations.title') }}</h3>
+        <p class="text-text-muted text-sm m-0 leading-snug">{{ $t('adminSettings.uiTranslations.subtitle') }}</p>
       </div>
 
       <Select v-model="selectedLang"
               :options="languageOptions"
               optionLabel="label"
               optionValue="value"
-              placeholder="Nyelv választása"
+              :placeholder="$t('adminSettings.uiTranslations.selectLanguage')"
               class="w-full sm:w-[200px] !bg-background !border-text/20 !text-text hover:!border-primary focus:!border-primary focus:!ring-1 focus:!ring-primary transition-colors shadow-sm"
               pt:panel:class="!bg-surface !border !border-text/10 !text-text !shadow-xl !rounded-lg"
               pt:list:class="!p-1"
@@ -200,7 +206,7 @@
 
             <Button v-if="selectedLang !== 'hu'"
                     icon="pi pi-sparkles"
-                    label="Csoport AI fordítása"
+                    :label="$t('adminSettings.uiTranslations.groupAiTranslate')"
                     @click="(e) => autoTranslateGroup(groupName, items, e)"
                     :loading="translatingGroups[groupName]"
                     class="!bg-primary/10 !text-primary !border-none !py-1 !px-3 !text-xs hover:!bg-primary hover:!text-black transition-colors" />
@@ -213,7 +219,7 @@
 
             <div class="flex flex-col w-full md:w-5/12 shrink-0">
               <span class="font-bold text-sm text-text-muted tracking-wide break-all">{{ item.key }}</span>
-              <small class="text-xs text-text/50 mt-1 italic leading-tight">Alap (HU): {{ item.original }}</small>
+              <small class="text-xs text-text/50 mt-1 italic leading-tight">{{ $t('adminSettings.uiTranslations.original', { text: item.original }) }}</small>
             </div>
 
             <div class="w-full md:w-7/12 flex-grow">
@@ -228,12 +234,12 @@
                         @click="autoTranslateItem(item)"
                         :loading="translatingItems[item.key]"
                         class="!bg-surface !text-primary !border-none border-l border-text/10 !rounded-none !w-12 hover:!bg-primary/20 transition-all shrink-0"
-                        title="AI Fordítás" />
+                        :title="$t('adminSettings.uiTranslations.aiTranslate')" />
 
                 <Button icon="pi pi-check"
                         @click="saveOverride(item.key, overrides[item.key])"
                         class="!bg-primary !text-black !border-none !rounded-none !w-12 hover:!brightness-110 transition-all shrink-0"
-                        title="Mentés" />
+                        :title="$t('adminSettings.uiTranslations.save')" />
               </div>
             </div>
 

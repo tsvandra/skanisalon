@@ -4,7 +4,8 @@ import { ref, computed } from 'vue';
 // Cseréljük az API importot a dedikált szervizre!
 import { translationApi } from '@/services/translationApi';
 import i18n from '@/i18n';
-import masterMessages from '@/locales/hu.json'; // A HU az alap (Master Template)
+import masterMessages from '@/locales/hu'; // A HU az alap (Master Template)
+import { notifySlugsChanged } from '@/router/routeSlugs';
 
 export const useTranslationStore = defineStore('translation', () => {
   // --- STATE ---
@@ -147,6 +148,7 @@ export const useTranslationStore = defineStore('translation', () => {
 
       // 4. Beállítjuk a kész objektumot az i18n-be
       i18n.global.setLocaleMessage(langCode, newMessages);
+      notifySlugsChanged();
 
       console.log(`[Store] A(z) ${langCode} nyelv sikeresen beállítva.`);
 
@@ -154,6 +156,7 @@ export const useTranslationStore = defineStore('translation', () => {
       console.warn('Hiba a felülírások betöltésekor:', error);
       // Fallback: hiba esetén is beállítjuk a mastert, hogy a UI ne haljon meg
       i18n.global.setLocaleMessage(langCode, JSON.parse(JSON.stringify(masterMessages)));
+      notifySlugsChanged();
     }
   };
 
@@ -162,6 +165,7 @@ export const useTranslationStore = defineStore('translation', () => {
       await loadOverrides(activeCompanyId.value, langCode);
     } else {
       i18n.global.setLocaleMessage(langCode, JSON.parse(JSON.stringify(masterMessages)));
+      notifySlugsChanged();
     }
 
     i18n.global.locale.value = langCode;

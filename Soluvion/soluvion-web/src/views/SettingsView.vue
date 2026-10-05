@@ -1,5 +1,6 @@
 <script setup>
   import { ref, onMounted } from 'vue';
+  import { useI18n } from 'vue-i18n';
   import Button from 'primevue/button';
   import Tabs from 'primevue/tabs';
   import TabList from 'primevue/tablist';
@@ -19,6 +20,7 @@
   import SettingsInventory from '@/components/admin/settings/SettingsInventory.vue';
 
   const companyData = ref({});
+  const { t } = useI18n();
   const isLoading = ref(false);
   const isSaving = ref(false);
   const successMsg = ref('');
@@ -27,7 +29,7 @@
   const loadCompanyData = async () => {
     const companyId = getCompanyIdFromToken();
     if (!companyId) {
-      errorMsg.value = "Nem található cégazonosító. Kérjük, jelentkezz be újra!";
+      errorMsg.value = t('adminSettings.view.noCompanyId');
       return;
     }
 
@@ -41,7 +43,7 @@
       companyData.value = { ...data };
     } catch (err) {
       console.error("Hiba a betöltéskor:", err);
-      errorMsg.value = "Nem sikerült betölteni a cég adatait.";
+      errorMsg.value = t('adminSettings.view.loadFailed');
     } finally {
       isLoading.value = false;
     }
@@ -58,7 +60,7 @@
     try {
       await api.put(`/api/Company/${companyId}`, companyData.value);
 
-      successMsg.value = "A változtatások sikeresen mentve!";
+      successMsg.value = t('adminSettings.view.saveSuccess');
 
       if (companyData.value.primaryColor) {
         document.documentElement.style.setProperty('--primary-color', companyData.value.primaryColor);
@@ -69,7 +71,7 @@
 
     } catch (err) {
       console.error("Mentési hiba:", err);
-      errorMsg.value = err.response?.data || "Hiba történt a mentés során.";
+      errorMsg.value = err.response?.data || t('adminSettings.view.saveFailed');
     } finally {
       isSaving.value = false;
     }
@@ -84,8 +86,8 @@
   <div class="max-w-[1000px] mx-auto p-4 md:p-8 text-text">
 
     <div class="mb-8">
-      <h1 class="text-3xl font-light tracking-wide text-primary m-0 mb-2">Cégbeállítások</h1>
-      <p class="text-text-muted m-0">Itt módosíthatja a weboldalán megjelenő adatokat és a dizájnt.</p>
+      <h1 class="text-3xl font-light tracking-wide text-primary m-0 mb-2">{{ $t('adminSettings.view.title') }}</h1>
+      <p class="text-text-muted m-0">{{ $t('adminSettings.view.subtitle') }}</p>
     </div>
 
     <div v-if="successMsg" class="p-4 rounded-lg mb-6 text-center font-bold bg-green-500/10 text-green-400 border border-green-500/30 flex items-center justify-center gap-2 shadow-sm">
@@ -97,7 +99,7 @@
     </div>
 
     <div v-if="isLoading" class="p-4 rounded-lg mb-6 text-center font-bold bg-text/5 text-text-muted border border-text/10 flex items-center justify-center gap-2 shadow-sm">
-      <i class="pi pi-spin pi-spinner"></i> Adatok betöltése...
+      <i class="pi pi-spin pi-spinner"></i> {{ $t('adminSettings.view.loading') }}
     </div>
 
     <div v-if="!isLoading && companyData" class="bg-text/5 border border-text/10 p-4 md:p-6 rounded-2xl shadow-xl backdrop-blur-sm">
@@ -111,13 +113,13 @@
         [&_.p-tabpanels]:bg-transparent [&_.p-tabpanels]:text-text [&_.p-tabpanels]:p-0 [&_.p-tabpanels]:pt-6">
 
         <TabList class="mb-2">
-          <Tab value="0">Elérhetőségek</Tab>
-          <Tab value="1">Nyitvatartás</Tab>
-          <Tab value="2">Közösségi & Térkép</Tab>
-          <Tab value="3">Megjelenés</Tab>
-          <Tab value="4">Fordítások</Tab>
-          <Tab value="5">Vendég Jellemzők</Tab>
-          <Tab value="6">Raktárkezelés</Tab>
+          <Tab value="0">{{ $t('adminSettings.view.tabs.contact') }}</Tab>
+          <Tab value="1">{{ $t('adminSettings.view.tabs.openingHours') }}</Tab>
+          <Tab value="2">{{ $t('adminSettings.view.tabs.social') }}</Tab>
+          <Tab value="3">{{ $t('adminSettings.view.tabs.appearance') }}</Tab>
+          <Tab value="4">{{ $t('adminSettings.view.tabs.translations') }}</Tab>
+          <Tab value="5">{{ $t('adminSettings.view.tabs.customers') }}</Tab>
+          <Tab value="6">{{ $t('adminSettings.view.tabs.inventory') }}</Tab>
         </TabList>
 
         <TabPanels>
@@ -152,7 +154,7 @@
       </Tabs>
 
       <div class="mt-10 flex justify-end border-t border-text/10 pt-6">
-        <Button :label="isSaving ? 'Mentés folyamatban...' : 'Alap Beállítások Mentése'"
+        <Button :label="isSaving ? $t('adminSettings.view.saving') : $t('adminSettings.view.saveButton')"
                 :icon="isSaving ? 'pi pi-spin pi-spinner' : 'pi pi-check'"
                 :disabled="isSaving"
                 @click="saveSettings"

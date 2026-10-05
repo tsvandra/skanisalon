@@ -5,7 +5,7 @@
       <div class="p-5 border-b border-text/10 flex justify-between items-center bg-background/50 shrink-0">
         <h2 class="text-xl font-bold text-text flex items-center gap-2">
           <i class="pi pi-sitemap text-primary"></i>
-          Ügyfelek összevonása
+          {{ $t('customers.merge.title') }}
           <span class="text-xs font-bold text-text-muted ml-2">{{ step }}/2</span>
         </h2>
         <button @click="$emit('close')" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-text/10 text-text-muted transition-colors">
@@ -15,11 +15,11 @@
 
       <!-- 1. LÉPÉS: ügyfelek kiválasztása -->
       <div v-if="step === 1" class="p-5 flex flex-col gap-4 overflow-hidden">
-        <p class="text-sm text-text-muted">Válaszd ki azokat az ügyfeleket, amelyek ugyanazt a személyt jelentik. A foglalásaik egy ügyfélhez kerülnek.</p>
+        <p class="text-sm text-text-muted">{{ $t('customers.merge.selectHint') }}</p>
 
         <div class="relative">
           <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"></i>
-          <input type="text" v-model="search" placeholder="Keresés névre, telefonszámra vagy email címre..."
+          <input type="text" v-model="search" :placeholder="$t('customers.merge.searchPlaceholder')"
                  class="w-full h-[44px] pl-10 pr-4 bg-background border border-text/20 rounded-xl text-sm focus:outline-none focus:border-primary">
         </div>
 
@@ -38,19 +38,19 @@
             <div class="min-w-0 flex-1">
               <div class="text-sm font-bold text-text truncate">{{ c.name }}</div>
               <div class="text-xs text-text-muted truncate">
-                {{ c.phone || 'nincs telefonszám' }}<span v-if="c.email"> · {{ c.email }}</span>
+                {{ c.phone || $t('customers.merge.noPhone') }}<span v-if="c.email"> · {{ c.email }}</span>
               </div>
             </div>
             <span class="text-[10px] font-mono text-text-muted shrink-0">#{{ c.id }}</span>
           </label>
-          <div v-if="filtered.length === 0" class="p-6 text-center text-sm text-text-muted">Nincs találat</div>
+          <div v-if="filtered.length === 0" class="p-6 text-center text-sm text-text-muted">{{ $t('customers.merge.noResults') }}</div>
         </div>
       </div>
 
       <!-- 2. LÉPÉS: végleges adatok -->
       <div v-else class="p-5 flex flex-col gap-5 overflow-y-auto">
         <p class="text-sm text-text-muted">
-          Add meg az összevont ügyfél végleges adatait. A mezők alatti gombokkal átvehetők az egyes ügyfelek értékei.
+          {{ $t('customers.merge.finalHint') }}
         </p>
 
         <div v-for="field in baseFields" :key="field.key">
@@ -73,7 +73,7 @@
 
         <div v-if="attributeKeys.length > 0">
           <div class="h-px bg-text/10 mb-4"></div>
-          <label class="block text-xs font-bold text-text-muted mb-3 uppercase flex items-center gap-1"><i class="pi pi-tags"></i> Jellemzők</label>
+          <label class="block text-xs font-bold text-text-muted mb-3 uppercase flex items-center gap-1"><i class="pi pi-tags"></i> {{ $t('customers.merge.attributes') }}</label>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div v-for="key in attributeKeys" :key="key">
               <label class="block text-xs font-bold text-text-muted mb-1.5 uppercase">{{ attributeLabel(key) }}</label>
@@ -91,14 +91,14 @@
         </div>
 
         <div class="rounded-xl border p-4 text-sm" :class="previewError ? 'border-red-500/30 bg-red-500/5 text-red-500' : 'border-primary/20 bg-primary/5 text-text'">
-          <div v-if="loadingPreview" class="flex items-center gap-2 text-text-muted"><i class="pi pi-spinner pi-spin"></i> Foglalások vizsgálata...</div>
+          <div v-if="loadingPreview" class="flex items-center gap-2 text-text-muted"><i class="pi pi-spinner pi-spin"></i> {{ $t('customers.merge.checking') }}</div>
           <div v-else-if="previewError">{{ previewError }}</div>
           <div v-else-if="preview" class="space-y-1">
-            <div class="font-bold flex items-center gap-2"><i class="pi pi-calendar text-primary"></i> Foglalások összevonása</div>
-            <div>Az összevont ügyfélnek összesen <b>{{ preview.totalAppointmentsAfterMerge }}</b> foglalása lesz.</div>
-            <div v-if="preview.movedAppointments > 0">Átkerül: <b>{{ preview.movedAppointments }}</b> foglalás.</div>
+            <div class="font-bold flex items-center gap-2"><i class="pi pi-calendar text-primary"></i> {{ $t('customers.merge.previewTitle') }}</div>
+            <div>{{ $t('customers.merge.previewTotalPrefix') }}<b>{{ preview.totalAppointmentsAfterMerge }}</b>{{ $t('customers.merge.previewTotalSuffix') }}</div>
+            <div v-if="preview.movedAppointments > 0">{{ $t('customers.merge.previewMovedPrefix') }}<b>{{ preview.movedAppointments }}</b>{{ $t('customers.merge.previewMovedSuffix') }}</div>
             <div v-if="preview.removedDuplicateAppointments > 0">
-              Duplikált (azonos időpont és szolgáltatás): <b>{{ preview.removedDuplicateAppointments }}</b> foglalás csak egyszer marad meg.
+              {{ $t('customers.merge.previewDuplicatePrefix') }}<b>{{ preview.removedDuplicateAppointments }}</b>{{ $t('customers.merge.previewDuplicateSuffix') }}
             </div>
           </div>
         </div>
@@ -106,17 +106,17 @@
 
       <div class="p-5 border-t border-text/10 bg-background/50 flex justify-between gap-3 shrink-0">
         <button v-if="step === 2" @click="step = 1" :disabled="merging" class="px-5 h-[44px] text-text text-sm font-bold rounded-xl hover:bg-text/10 transition-colors flex items-center gap-2">
-          <i class="pi pi-arrow-left"></i> Vissza
+          <i class="pi pi-arrow-left"></i> {{ $t('customers.merge.back') }}
         </button>
-        <button v-else @click="$emit('close')" class="px-5 h-[44px] text-text text-sm font-bold rounded-xl hover:bg-text/10 transition-colors">Mégsem</button>
+        <button v-else @click="$emit('close')" class="px-5 h-[44px] text-text text-sm font-bold rounded-xl hover:bg-text/10 transition-colors">{{ $t('common.cancel') }}</button>
 
         <button v-if="step === 1" @click="goToStep2" :disabled="selectedIds.length < 2"
                 class="px-6 h-[44px] bg-primary text-white text-sm font-bold rounded-xl hover:brightness-110 shadow-md transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-          Tovább ({{ selectedIds.length }} kiválasztva) <i class="pi pi-arrow-right"></i>
+          {{ $t('customers.merge.nextSelected', { count: selectedIds.length }) }} <i class="pi pi-arrow-right"></i>
         </button>
         <button v-else @click="submit" :disabled="!canSubmit"
                 class="px-6 h-[44px] bg-primary text-white text-sm font-bold rounded-xl hover:brightness-110 shadow-md transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-          <i class="pi" :class="merging ? 'pi-spinner pi-spin' : 'pi-check'"></i> Összevonás
+          <i class="pi" :class="merging ? 'pi-spinner pi-spin' : 'pi-check'"></i> {{ $t('customers.merge.submit') }}
         </button>
       </div>
     </div>
@@ -125,7 +125,10 @@
 
 <script setup>
 import { ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import bookingApi from '@/services/bookingApi';
+
+const { t } = useI18n();
 
 const props = defineProps({
   customers: { type: Array, required: true },
@@ -144,12 +147,12 @@ const previewError = ref('');
 
 const final = ref({ name: '', phone: '', email: '', notes: '', attributes: {} });
 
-const baseFields = [
-  { key: 'name', label: 'Teljes név', required: true },
-  { key: 'phone', label: 'Telefonszám', type: 'tel' },
-  { key: 'email', label: 'Email cím', type: 'email' },
-  { key: 'notes', label: 'Általános megjegyzés', multiline: true }
-];
+const baseFields = computed(() => [
+  { key: 'name', label: t('customers.merge.fields.name'), required: true },
+  { key: 'phone', label: t('customers.merge.fields.phone'), type: 'tel' },
+  { key: 'email', label: t('customers.merge.fields.email'), type: 'email' },
+  { key: 'notes', label: t('customers.merge.fields.notes'), multiline: true }
+]);
 
 const normalize = (s) => (s || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
@@ -233,8 +236,8 @@ const goToStep2 = async () => {
     const data = err.response?.data;
     const detail = typeof data === 'string' ? data : (data?.message || '');
     const status = err.response?.status;
-    previewError.value = 'Nem sikerült megvizsgálni a foglalásokat.'
-      + (status ? ` (HTTP ${status}${status === 404 && !detail ? ' – az összevonó végpont nem található, indítsd újra az API-t' : ''})` : ' (nincs kapcsolat a szerverrel)')
+    previewError.value = t('customers.merge.previewFailed')
+      + (status ? (status === 404 && !detail ? t('customers.merge.httpStatusNotFound', { status }) : t('customers.merge.httpStatus', { status })) : t('customers.merge.noConnection'))
       + (detail ? ` ${detail}` : '');
   } finally {
     loadingPreview.value = false;
@@ -248,7 +251,7 @@ const canSubmit = computed(() =>
 const submit = async () => {
   if (!canSubmit.value) return;
   const names = selectedCustomers.value.map(c => c.name).join(', ');
-  if (!confirm(`Biztosan összevonod ezeket az ügyfeleket?\n${names}\n\nA művelet nem vonható vissza.`)) return;
+  if (!confirm(t('customers.merge.confirm', { names }))) return;
 
   merging.value = true;
   try {
@@ -257,7 +260,7 @@ const submit = async () => {
   } catch (err) {
     console.error('Hiba az összevonás során:', err);
     const msg = typeof err.response?.data === 'string' ? err.response.data : (err.response?.data?.message || err.message);
-    alert('Az összevonás nem sikerült.\n' + msg);
+    alert(t('customers.merge.failed', { message: msg }));
   } finally {
     merging.value = false;
   }

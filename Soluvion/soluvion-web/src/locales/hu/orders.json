@@ -1,0 +1,34 @@
+{
+  "orders": {
+    "calendar": {
+      "card": {
+        "goToCustomer": "Ugrás az ügyfélhez",
+        "statusCompleted": "Befejezve",
+        "minutesShort": "p"
+      },
+      "cart": {
+        "priceOverrideHint": "Húzd a csúszkát vagy kattints az ár felülbírálásához"
+      },
+      "customerPicker": {
+        "goToCustomerCard": "Ugrás az ügyfél kartonjára",
+        "customerCard": "Karton"
+      },
+      "servicePicker": {
+        "otherCategory": "Egyéb"
+      },
+      "editor": {
+        "extraMaterials": "További felhasznált anyagok",
+        "savedAsCustomerDefault": "Alapértelmezettként mentve az ügyfélhez",
+        "unitPiece": "db",
+        "selectProduct": "Válassz terméket...",
+        "productInStock": "{name} ({stock} {unit} raktáron)",
+        "quantity": "mennyiség",
+        "addProductToCustomerDefaults": "Termék hozzáadása az ügyfél alapértelmezett anyagaihoz is",
+        "add": "Hozzáad",
+        "addNewMaterial": "Új anyag hozzáadása",
+        "statusCompleted": "Befejezve",
+        "unknownProduct": "Ismeretlen termék"
+      }
+    }
+  }
+}

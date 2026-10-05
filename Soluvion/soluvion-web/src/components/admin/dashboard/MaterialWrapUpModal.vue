@@ -9,10 +9,10 @@
       <div class="p-4 md:p-6 flex items-center justify-between border-b border-text/10">
         <div>
           <h2 class="text-xl md:text-2xl font-bold text-text flex items-center gap-2">
-            <i class="pi pi-box text-primary"></i> Esti Zárás - Anyaglevonás
+            <i class="pi pi-box text-primary"></i> {{ $t('inventory.wrapUp.title') }}
           </h2>
           <p class="text-sm text-text-muted mt-1">
-            {{ formatDateTime(appointment?.startDateTime) }} &bull; {{ appointment?.items?.length || 0 }} szolgáltatás
+            {{ formatDateTime(appointment?.startDateTime) }} &bull; {{ $t('inventory.wrapUp.servicesCount', { count: appointment?.items?.length || 0 }) }}
           </p>
         </div>
         <button @click="close" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-text/10 text-text-muted transition-colors">
@@ -29,13 +29,13 @@
         <template v-else>
           <!-- Szolgáltatások -->
           <div>
-            <h3 class="text-sm font-bold text-text-muted uppercase mb-3">Igénybe vett szolgáltatások</h3>
+            <h3 class="text-sm font-bold text-text-muted uppercase mb-3">{{ $t('inventory.wrapUp.usedServices') }}</h3>
             <div class="flex flex-wrap gap-2">
               <span v-for="item in appointment?.items" :key="item.id" class="px-3 py-1 bg-background border border-text/10 rounded-full text-sm font-medium">
                 {{ getVariantName(item.serviceVariantId) }}
               </span>
               <span v-if="!appointment?.items || appointment.items.length === 0" class="text-text-muted italic text-sm">
-                Nem található szolgáltatás (hibás foglalás).
+                {{ $t('inventory.wrapUp.noServices') }}
               </span>
             </div>
           </div>
@@ -43,14 +43,14 @@
           <!-- Anyagfelhasználás -->
           <div>
             <div class="flex items-center justify-between mb-3">
-              <h3 class="text-sm font-bold text-text-muted uppercase">Felhasznált anyagok</h3>
+              <h3 class="text-sm font-bold text-text-muted uppercase">{{ $t('inventory.wrapUp.usedMaterials') }}</h3>
               <button @click="showAddProduct = true" class="text-xs font-bold text-primary hover:brightness-110 flex items-center gap-1">
-                <i class="pi pi-plus"></i> Új termék
+                <i class="pi pi-plus"></i> {{ $t('inventory.wrapUp.newProduct') }}
               </button>
             </div>
 
             <div v-if="wrapUpItems.length === 0" class="text-center p-6 bg-background rounded-xl border border-text/5 text-text-muted italic">
-              Nincs alapértelmezett anyagfelhasználás beállítva ehhez a foglaláshoz.
+              {{ $t('inventory.wrapUp.noDefaults') }}
             </div>
 
             <div v-else class="space-y-2">
@@ -63,9 +63,9 @@
                 }">
                 <div class="flex-1">
                   <div class="font-bold text-sm" :class="{ 'text-red-500': getStockStatus(item.productId, item.quantity) === 'error' }">{{ item.productName }}</div>
-                  <div v-if="getStockStatus(item.productId, item.quantity) === 'error'" class="text-[10px] font-bold text-red-500 uppercase mt-0.5"><i class="pi pi-exclamation-triangle"></i> Nincs elég készlet!</div>
-                  <div v-else-if="getStockStatus(item.productId, item.quantity) === 'warning'" class="text-[10px] font-bold text-yellow-500 uppercase mt-0.5"><i class="pi pi-exclamation-circle"></i> Minimum alá esik</div>
-                  <div v-else-if="getStockStatus(item.productId, item.quantity) === 'info'" class="text-[10px] font-bold text-blue-500 uppercase mt-0.5"><i class="pi pi-info-circle"></i> Pont a minimumon marad</div>
+                  <div v-if="getStockStatus(item.productId, item.quantity) === 'error'" class="text-[10px] font-bold text-red-500 uppercase mt-0.5"><i class="pi pi-exclamation-triangle"></i> {{ $t('inventory.wrapUp.notEnoughStock') }}</div>
+                  <div v-else-if="getStockStatus(item.productId, item.quantity) === 'warning'" class="text-[10px] font-bold text-yellow-500 uppercase mt-0.5"><i class="pi pi-exclamation-circle"></i> {{ $t('inventory.wrapUp.belowMinimum') }}</div>
+                  <div v-else-if="getStockStatus(item.productId, item.quantity) === 'info'" class="text-[10px] font-bold text-blue-500 uppercase mt-0.5"><i class="pi pi-info-circle"></i> {{ $t('inventory.wrapUp.atMinimum') }}</div>
                 </div>
                 
                 <div class="flex items-center gap-3">
@@ -86,11 +86,11 @@
           
           <!-- Új termék hozzáadása Dropdown -->
           <div v-if="showAddProduct" class="p-3 border border-primary/30 bg-primary/5 rounded-xl flex flex-col sm:flex-row gap-3">
-            <Dropdown v-model="selectedNewProduct" :options="allProducts" optionLabel="name" placeholder="Válassz terméket..." filter class="flex-1 bg-background border border-text/20 rounded-lg focus:outline-none focus:border-primary px-3 py-2 flex items-center h-[44px]" />
+            <Dropdown v-model="selectedNewProduct" :options="allProducts" optionLabel="name" :placeholder="$t('inventory.wrapUp.selectProduct')" filter class="flex-1 bg-background border border-text/20 rounded-lg focus:outline-none focus:border-primary px-3 py-2 flex items-center h-[44px]" />
             <div class="flex items-center gap-2">
-              <InputNumber v-model="newQuantity" :min="0" :maxFractionDigits="2" class="w-24 h-[44px]" inputClass="w-full h-full text-center" placeholder="Menny." />
+              <InputNumber v-model="newQuantity" :min="0" :maxFractionDigits="2" class="w-24 h-[44px]" inputClass="w-full h-full text-center" :placeholder="$t('inventory.wrapUp.quantityPlaceholder')" />
               <span class="text-xs font-bold text-text-muted w-6 text-center">{{ selectedNewProduct ? getUnit(selectedNewProduct.id) : '-' }}</span>
-              <button @click="addNewProduct" class="cursor-pointer h-[44px] px-4 bg-primary text-white font-bold rounded-lg hover:brightness-110 disabled:opacity-50" :disabled="!selectedNewProduct || !newQuantity">Hozzáad</button>
+              <button @click="addNewProduct" class="cursor-pointer h-[44px] px-4 bg-primary text-white font-bold rounded-lg hover:brightness-110 disabled:opacity-50" :disabled="!selectedNewProduct || !newQuantity">{{ $t('inventory.wrapUp.add') }}</button>
               <button @click="showAddProduct = false" class="cursor-pointer h-[44px] px-3 bg-background border border-text/20 text-text rounded-lg hover:bg-text/5"><i class="pi pi-times"></i></button>
             </div>
           </div>
@@ -100,10 +100,10 @@
 
       <!-- Footer -->
       <div class="p-4 md:p-6 border-t border-text/10 bg-background/50 flex justify-end gap-3 rounded-b-2xl">
-        <button @click="close" class="px-4 h-[44px] text-text font-bold rounded-lg hover:bg-text/10 transition-colors">Mégsem</button>
+        <button @click="close" class="px-4 h-[44px] text-text font-bold rounded-lg hover:bg-text/10 transition-colors">{{ $t('common.cancel') }}</button>
         <button @click="saveWrapUp" :disabled="saving || loading" class="px-6 h-[44px] bg-primary text-white font-bold rounded-lg hover:brightness-110 shadow-md transition-transform active:scale-95 disabled:opacity-50 flex items-center gap-2">
           <i v-if="saving" class="pi pi-spin pi-spinner"></i>
-          <i v-else class="pi pi-check"></i> Mentés & Levonás
+          <i v-else class="pi pi-check"></i> {{ $t('inventory.wrapUp.saveAndDeduct') }}
         </button>
       </div>
     </div>
@@ -120,6 +120,7 @@ import productApi from '@/services/productApi';
 import apiClient from '@/services/api';
 import bookingApi from '@/services/bookingApi';
 import { useI18n } from 'vue-i18n';
+import { useLocalizedText } from '@/composables/useLocalizedText';
 
 const props = defineProps({
   isOpen: Boolean,
@@ -127,7 +128,7 @@ const props = defineProps({
 });
 const emit = defineEmits(['close', 'saved']);
 
-const { locale } = useI18n();
+const { t, locale } = useI18n();
 const currentLang = ref(locale.value || 'hu-HU');
 
 const loading = ref(false);
@@ -143,24 +144,30 @@ const newQuantity = ref(1);
 const formatDateTime = (iso) => {
   if (!iso) return '';
   const d = new Date(iso);
-  return d.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString(locale.value, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString(locale.value, { hour: '2-digit', minute: '2-digit' });
 };
 
-const getLocText = (dict) => dict ? (dict[currentLang.value] || dict['hu'] || '') : '';
+const { getLocText } = useLocalizedText();
 
 const getVariantName = (variantId) => {
   for (const s of services.value) {
     const v = s.variants?.find(vx => vx.id === variantId);
     if (v) return `${getLocText(s.name)} - ${getLocText(v.variantName)}`;
   }
-  return `Tétel #${variantId}`;
+  return t('inventory.wrapUp.itemFallback', { id: variantId });
 };
 
 const getUnit = (productId) => {
   const p = allProducts.value.find(x => x.id === productId);
-  if (!p) return 'db';
-  const units = ['ml', 'g', 'db', 'm', 'cm'];
-  return units[p.unit] || 'db';
+  if (!p) return t('inventory.units.short.pcs');
+  const units = [
+    t('inventory.units.short.ml'),
+    t('inventory.units.short.g'),
+    t('inventory.units.short.pcs'),
+    t('inventory.units.short.m'),
+    t('inventory.units.short.cm')
+  ];
+  return units[p.unit] || t('inventory.units.short.pcs');
 };
 
 const decreaseQty = (item) => { if (item.quantity > 0) item.quantity = Math.max(0, item.quantity - 0.5); };
@@ -248,7 +255,7 @@ const loadData = async () => {
           } else {
             productMap.set(ei.productId, {
               productId: ei.productId,
-              productName: ei.name || 'Ismeretlen termék',
+              productName: ei.name || t('inventory.wrapUp.unknownProduct'),
               quantity: ei.quantity,
               costPrice: 0
             });
@@ -321,7 +328,7 @@ const saveWrapUp = async () => {
     close();
   } catch (error) {
     console.error("Hiba a levonás során", error);
-    alert(error.response?.data?.Error || "Hiba történt a mentés során. Lehet, hogy nincs elég készlet a raktárban?");
+    alert(error.response?.data?.Error || t('inventory.wrapUp.saveError'));
   } finally {
     saving.value = false;
   }

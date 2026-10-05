@@ -2,8 +2,8 @@
   <div>
     <label class="block text-[10px] md:text-xs font-bold text-text-muted mb-1.5 uppercase flex items-center justify-between">
       <div class="flex items-center gap-1"><i class="pi pi-user"></i> {{ $t('calendar.editor.client') }}</div>
-      <button v-if="modelValue && modelValue !== 'new'" @click.stop="goToCustomer" class="text-primary hover:text-primary/70 transition-colors flex items-center gap-1" title="Ugrás az ügyfél kartonjára">
-        <i class="pi pi-external-link"></i> Karton
+      <button v-if="modelValue && modelValue !== 'new'" @click.stop="goToCustomer" class="text-primary hover:text-primary/70 transition-colors flex items-center gap-1" :title="$t('orders.calendar.customerPicker.goToCustomerCard')">
+        <i class="pi pi-external-link"></i> {{ $t('orders.calendar.customerPicker.customerCard') }}
       </button>
     </label>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -52,10 +52,10 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { useRouter } from 'vue-router';
+import { useLocalizedRoute } from '@/composables/useLocalizedRoute';
 import { useI18n } from 'vue-i18n';
 
-const router = useRouter();
+const { go } = useLocalizedRoute();
 const { t } = useI18n();
 
 const props = defineProps({
@@ -69,7 +69,7 @@ const emit = defineEmits(['update:modelValue', 'update:customerFullName', 'updat
 
 const goToCustomer = () => {
   if (props.modelValue && props.modelValue !== 'new') {
-    router.push({ path: '/ugyfelek', query: { customerId: props.modelValue } });
+    go('customers', { query: { customerId: props.modelValue } });
   }
 };
 

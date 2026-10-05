@@ -1,9 +1,8 @@
 <template>
-  <Dialog :visible="visible" @update:visible="$emit('update:visible', $event)" :style="{width: '600px'}" header="Alapértelmezett Anyagfelhasználás" :modal="true" class="p-fluid">
+  <Dialog :visible="visible" @update:visible="$emit('update:visible', $event)" :style="{width: '600px'}" :header="$t('inventory.serviceRecipe.header')" :modal="true" class="p-fluid">
     <div v-if="variant" class="mb-4">
       <div class="text-sm text-text-muted mb-4">
-        Állítsd be, hogy ehhez a szolgáltatás-variánshoz (<strong class="text-primary">{{ serviceName }} - {{ variantName }}</strong>) 
-        milyen termékeket és mekkora mennyiséget készítsen be a rendszer alapértelmezetten a Napi Záráskor.
+        {{ $t('inventory.serviceRecipe.introBefore') }}<strong class="text-primary">{{ serviceName }} - {{ variantName }}</strong>{{ $t('inventory.serviceRecipe.introAfter') }}
       </div>
 
       <div v-if="loading" class="flex justify-center p-4">
@@ -13,11 +12,11 @@
         <!-- Hozzáadás sor -->
         <div class="flex gap-2 mb-4 items-end bg-surface p-3 rounded-lg border border-text/10">
           <div class="flex-grow flex flex-col gap-1">
-            <label class="font-bold text-xs">Termék kiválasztása</label>
-            <Dropdown v-model="selectedProduct" :options="allProducts" optionLabel="name" placeholder="Keress egy terméket..." class="w-full" filter />
+            <label class="font-bold text-xs">{{ $t('inventory.serviceRecipe.selectProduct') }}</label>
+            <Dropdown v-model="selectedProduct" :options="allProducts" optionLabel="name" :placeholder="$t('inventory.serviceRecipe.searchPlaceholder')" class="w-full" filter />
           </div>
           <div class="w-32 flex flex-col gap-1">
-            <label class="font-bold text-xs">Mennyiség {{ selectedProduct ? '(' + getUnit(selectedProduct.id) + ')' : '' }}</label>
+            <label class="font-bold text-xs">{{ $t('inventory.serviceRecipe.quantity') }} {{ selectedProduct ? '(' + getUnit(selectedProduct.id) + ')' : '' }}</label>
             <InputNumber v-model="quantity" mode="decimal" :minFractionDigits="0" :maxFractionDigits="2" class="w-full" />
           </div>
           <Button icon="pi pi-plus" @click="addProduct" :disabled="!selectedProduct || quantity <= 0" class="w-12 h-10 shrink-0" />
@@ -25,7 +24,7 @@
 
         <!-- Jelenlegi lista -->
         <div v-if="recipeProducts.length === 0" class="text-center p-4 text-text-muted italic bg-background rounded-lg border border-text/5">
-          Nincs beállítva alapértelmezett anyagfelhasználás.
+          {{ $t('inventory.serviceRecipe.empty') }}
         </div>
         <div v-else class="flex flex-col gap-2">
           <div v-for="(rp, index) in recipeProducts" :key="index" class="flex items-center justify-between p-2 bg-background rounded border border-text/10">
@@ -42,8 +41,8 @@
     </div>
 
     <template #footer>
-      <Button label="Mégse" icon="pi pi-times" text @click="hideDialog" />
-      <Button label="Mentés" icon="pi pi-check" @click="saveRecipe" :loading="saving" />
+      <Button :label="$t('inventory.serviceRecipe.cancel')" icon="pi pi-times" text @click="hideDialog" />
+      <Button :label="$t('inventory.serviceRecipe.save')" icon="pi pi-check" @click="saveRecipe" :loading="saving" />
     </template>
   </Dialog>
 </template>
@@ -55,8 +54,11 @@ import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
 import Dropdown from 'primevue/dropdown';
 import InputNumber from 'primevue/inputnumber';
+import { useI18n } from 'vue-i18n';
 import productApi from '@/services/productApi';
 import api from '@/services/api'; // direct api for recipe saving
+
+const { t } = useI18n();
 
 const props = defineProps({
   visible: Boolean,
@@ -86,7 +88,13 @@ const loadProducts = async () => {
 const getUnit = (id) => {
   const p = allProducts.value.find(x => x.id === id);
   if (!p) return '';
-  const units = ['ml', 'g', 'db', 'm', 'cm'];
+  const units = [
+    t('inventory.units.short.ml'),
+    t('inventory.units.short.g'),
+    t('inventory.units.short.pcs'),
+    t('inventory.units.short.m'),
+    t('inventory.units.short.cm')
+  ];
   return units[p.unit] || '';
 };
 

@@ -3,12 +3,12 @@
     :visible="visible" 
     @update:visible="$emit('update:visible', $event)" 
     :style="{width: '600px'}" 
-    header="Készletmódosítás / Inventúra" 
+    :header="$t('inventory.stockDialog.header')" 
     :modal="true" 
     class="p-fluid"
   >
     <div class="flex flex-col gap-1 mb-4">
-      <label for="type" class="font-bold">Művelet típusa *</label>
+      <label for="type" class="font-bold">{{ $t('inventory.stockDialog.type') }}</label>
       <Dropdown 
         id="type" 
         v-model="movement.type" 
@@ -20,18 +20,18 @@
     </div>
 
     <div class="flex flex-col gap-1 mb-4">
-      <label for="note" class="font-bold">Megjegyzés</label>
-      <InputText id="note" v-model="movement.note" placeholder="Pl. Havi leltár, árkezés, sérült áru..." class="w-full" />
+      <label for="note" class="font-bold">{{ $t('inventory.stockDialog.note') }}</label>
+      <InputText id="note" v-model="movement.note" :placeholder="$t('inventory.stockDialog.notePlaceholder')" class="w-full" />
     </div>
 
     <div class="mb-4">
-      <label class="font-bold">Termékek hozzáadása</label>
+      <label class="font-bold">{{ $t('inventory.stockDialog.addProducts') }}</label>
       <div class="flex gap-2 mb-2">
         <Dropdown 
           v-model="selectedProduct" 
           :options="products" 
           optionLabel="name" 
-          placeholder="Válassz terméket..." 
+          :placeholder="$t('inventory.stockDialog.selectProduct')" 
           filter 
           class="flex-1"
         />
@@ -41,13 +41,13 @@
 
     <div v-if="movement.items.length > 0" class="mb-4">
       <DataTable :value="movement.items" class="p-datatable-sm">
-        <Column field="productName" header="Termék"></Column>
-        <Column header="Mennyiség">
+        <Column field="productName" :header="$t('inventory.stockDialog.columns.product')"></Column>
+        <Column :header="$t('inventory.stockDialog.columns.quantity')">
           <template #body="slotProps">
             <InputNumber v-model="slotProps.data.quantity" mode="decimal" class="w-full" />
           </template>
         </Column>
-        <Column v-if="movement.type === 0" header="Beszerzési ár">
+        <Column v-if="movement.type === 0" :header="$t('inventory.stockDialog.columns.costPrice')">
           <template #body="slotProps">
             <InputNumber v-model="slotProps.data.costPrice" mode="currency" currency="EUR" locale="sk-SK" class="w-full" />
           </template>
@@ -61,14 +61,14 @@
     </div>
 
     <template #footer>
-      <Button label="Mégse" icon="pi pi-times" text @click="hideDialog" />
-      <Button label="Mentés" icon="pi pi-check" @click="saveMovement" :loading="saving" :disabled="movement.items.length === 0 ? true : false" />
+      <Button :label="$t('inventory.stockDialog.cancel')" icon="pi pi-times" text @click="hideDialog" />
+      <Button :label="$t('inventory.stockDialog.save')" icon="pi pi-check" @click="saveMovement" :loading="saving" :disabled="movement.items.length === 0 ? true : false" />
     </template>
   </Dialog>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import InputText from 'primevue/inputtext';
@@ -76,7 +76,10 @@ import InputNumber from 'primevue/inputnumber';
 import Button from 'primevue/button';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
+import { useI18n } from 'vue-i18n';
 import inventoryApi from '@/services/inventoryApi';
+
+const { t } = useI18n();
 
 const props = defineProps({
   visible: Boolean,
@@ -86,10 +89,10 @@ const props = defineProps({
 const emit = defineEmits(['update:visible', 'saved']);
 
 // 0: Receipt, 1: Issue, 2: Adjustment
-const typeOptions = [
-  { label: 'Bevételezés (Készlet növelése)', value: 0 },
-  { label: 'Kiadás / Selejtezés (Készlet csökkentése)', value: 1 }
-];
+const typeOptions = computed(() => [
+  { label: t('inventory.stockDialog.typeReceipt'), value: 0 },
+  { label: t('inventory.stockDialog.typeIssue'), value: 1 }
+]);
 
 const selectedProduct = ref(null);
 const saving = ref(false);

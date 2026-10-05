@@ -1,0 +1,40 @@
+{
+  "services": {
+    "newServiceName": "Új szolgáltatás",
+    "newCategoryName": "ÚJ KATEGÓRIA",
+    "confirmDelete": "Biztosan törölni akarod?",
+    "translate": "Fordítás",
+    "moveCategory": "Kategória mozgatása",
+    "modifierActive": "Aktív",
+    "modifierSetup": "Beállítás",
+    "recipeConfigured": "Anyagfelhasználás beállítva",
+    "recipeSetDefault": "Alapértelmezett anyagok beállítása",
+    "productCount": "{count} termék",
+    "modifierModal": {
+      "title": "Automatikus Profil Frissítés",
+      "description": "Amikor a vendég ezt a variánst lefoglalja, a rendszer automatikusan a lenti értékekre frissíti a profilját.",
+      "noAttributes": "Előbb hozz létre jellemzőket a Beállítások > Vendég Jellemzők menüben!",
+      "noModify": "- Ne módosítsa -",
+      "emptyPlaceholder": "Üresen hagyva nem módosítja",
+      "done": "Kész & Mentés"
+    }
+  },
+  "gallery": {
+    "newGalleryName": "Új galéria",
+    "uncategorized": "Egyéb / Nem kategorizált",
+    "confirmDeleteCategory": "Törlöd a \"{name}\" mappát?",
+    "deleteFailed": "Nem sikerült törölni.",
+    "confirmDeleteImage": "Törlöd a képet?",
+    "moveGallery": "Galéria mozgatása",
+    "translate": "Fordítás",
+    "imageTitlePlaceholder": "Cím...",
+    "swipe": "SWIPE"
+  },
+  "home": {
+    "viewLatestWorks": "Tekintsd meg legújabb munkáinkat",
+    "contactOrAppointment": "Kapcsolat / Időpont"
+  },
+  "contact": {
+    "map": "Térkép"
+  }
+}

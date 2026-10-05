@@ -3,7 +3,7 @@
     :visible="visible" 
     @update:visible="$emit('update:visible', $event)" 
     :style="{width: '500px'}" 
-    :header="isEdit ? 'Termék szerkesztése' : 'Új termék felvitele'" 
+    :header="isEdit ? $t('inventory.productDialog.titleEdit') : $t('inventory.productDialog.titleNew')" 
     :modal="true" 
     class="p-fluid"
     :pt="{
@@ -16,56 +16,56 @@
     }"
   >
     <div class="flex flex-col mb-5 mt-2">
-      <label for="name" class="text-sm font-bold text-text-muted mb-1">Termék neve *</label>
+      <label for="name" class="text-sm font-bold text-text-muted mb-1">{{ $t('inventory.productDialog.name') }}</label>
       <InputText id="name" v-model.trim="product.name" required autofocus class="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text" />
     </div>
 
     <div class="flex flex-col mb-5">
-      <label for="ean" class="text-sm font-bold text-text-muted mb-1">Vonalkód (EAN)</label>
+      <label for="ean" class="text-sm font-bold text-text-muted mb-1">{{ $t('inventory.productDialog.ean') }}</label>
       <InputText id="ean" v-model.trim="product.ean" class="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text" />
     </div>
 
     <div class="flex flex-col sm:flex-row gap-4 mb-5">
       <div class="flex-1 flex flex-col">
-        <label for="unit" class="text-sm font-bold text-text-muted mb-1">Mértékegység</label>
-        <Dropdown id="unit" v-model="product.unit" :options="unitOptions" optionLabel="label" optionValue="value" placeholder="Válassz..." class="w-full bg-background border border-text/20 rounded-lg focus:outline-none focus:border-primary px-3 py-2.5 flex items-center" />
+        <label for="unit" class="text-sm font-bold text-text-muted mb-1">{{ $t('inventory.productDialog.unit') }}</label>
+        <Dropdown id="unit" v-model="product.unit" :options="unitOptions" optionLabel="label" optionValue="value" :placeholder="$t('inventory.productDialog.unitPlaceholder')" class="w-full bg-background border border-text/20 rounded-lg focus:outline-none focus:border-primary px-3 py-2.5 flex items-center" />
       </div>
       <div class="flex-1 flex flex-col">
-        <label for="packageSize" class="text-sm font-bold text-text-muted mb-1">Kiszerelés</label>
+        <label for="packageSize" class="text-sm font-bold text-text-muted mb-1">{{ $t('inventory.productDialog.packageSize') }}</label>
         <InputNumber id="packageSize" v-model="product.packageSize" mode="decimal" inputClass="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text" />
       </div>
     </div>
 
     <div class="flex flex-col sm:flex-row gap-4 mb-5">
       <div class="flex-1 flex flex-col">
-        <label for="costPrice" class="text-sm font-bold text-text-muted mb-1">Beszerzési ár</label>
+        <label for="costPrice" class="text-sm font-bold text-text-muted mb-1">{{ $t('inventory.productDialog.costPrice') }}</label>
         <InputNumber id="costPrice" v-model="product.costPrice" mode="currency" currency="EUR" locale="sk-SK" inputClass="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text" />
       </div>
       <div class="flex-1 flex flex-col">
-        <label for="retailPrice" class="text-sm font-bold text-text-muted mb-1">Eladási ár</label>
+        <label for="retailPrice" class="text-sm font-bold text-text-muted mb-1">{{ $t('inventory.productDialog.retailPrice') }}</label>
         <InputNumber id="retailPrice" v-model="product.retailPrice" mode="currency" currency="EUR" locale="sk-SK" inputClass="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text" />
       </div>
     </div>
 
     <div class="flex flex-col mb-5">
-      <label for="lowStockThreshold" class="text-sm font-bold text-text-muted mb-1">Minimum készlet (Figyelmeztetéshez)</label>
+      <label for="lowStockThreshold" class="text-sm font-bold text-text-muted mb-1">{{ $t('inventory.productDialog.lowStockThreshold') }}</label>
       <InputNumber id="lowStockThreshold" v-model="product.lowStockThreshold" mode="decimal" inputClass="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text" />
     </div>
 
     <div class="flex gap-4 mb-4">
       <div class="flex items-center">
         <Checkbox v-model="product.isProfessional" inputId="isProfessional" :binary="true" :pt="{ box: ({ context }) => ({ class: context.checked ? '' : '!border-2 !border-text/40 !bg-background' }) }" />
-        <label for="isProfessional" class="ml-2 font-medium">Professzionális (Szalonhasználat)</label>
+        <label for="isProfessional" class="ml-2 font-medium">{{ $t('inventory.productDialog.professional') }}</label>
       </div>
       <div class="flex items-center">
         <Checkbox v-model="product.isRetail" inputId="isRetail" :binary="true" :pt="{ box: ({ context }) => ({ class: context.checked ? '' : '!border-2 !border-text/40 !bg-background' }) }" />
-        <label for="isRetail" class="ml-2 font-medium">Lakossági (Eladható)</label>
+        <label for="isRetail" class="ml-2 font-medium">{{ $t('inventory.productDialog.retail') }}</label>
       </div>
     </div>
 
     <template #footer>
-      <Button label="Mégse" icon="pi pi-times" class="bg-background text-text border border-text/20 hover:bg-text/5 px-4 py-2 font-bold" @click="hideDialog" />
-      <Button label="Mentés" icon="pi pi-check" class="bg-primary text-white hover:brightness-110 px-4 py-2 font-bold" @click="saveProduct" :loading="saving" />
+      <Button :label="$t('inventory.productDialog.cancel')" icon="pi pi-times" class="bg-background text-text border border-text/20 hover:bg-text/5 px-4 py-2 font-bold" @click="hideDialog" />
+      <Button :label="$t('inventory.productDialog.save')" icon="pi pi-check" class="bg-primary text-white hover:brightness-110 px-4 py-2 font-bold" @click="saveProduct" :loading="saving" />
     </template>
   </Dialog>
 </template>
@@ -78,7 +78,10 @@ import InputNumber from 'primevue/inputnumber';
 import Dropdown from 'primevue/dropdown';
 import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
+import { useI18n } from 'vue-i18n';
 import productApi from '@/services/productApi';
+
+const { t } = useI18n();
 
 const props = defineProps({
   visible: Boolean,
@@ -102,13 +105,13 @@ const product = ref({
 const saving = ref(false);
 const isEdit = computed(() => !!props.productData?.id);
 
-const unitOptions = [
-  { label: 'Milliliter (ml)', value: 0 },
-  { label: 'Gramm (g)', value: 1 },
-  { label: 'Darab (db)', value: 2 },
-  { label: 'Méter (m)', value: 3 },
-  { label: 'Centiméter (cm)', value: 4 }
-];
+const unitOptions = computed(() => [
+  { label: t('inventory.units.full.ml'), value: 0 },
+  { label: t('inventory.units.full.g'), value: 1 },
+  { label: t('inventory.units.full.pcs'), value: 2 },
+  { label: t('inventory.units.full.m'), value: 3 },
+  { label: t('inventory.units.full.cm'), value: 4 }
+]);
 
 watch(() => props.visible, (newVal) => {
   if (newVal) {

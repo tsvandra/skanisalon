@@ -3,15 +3,15 @@
     <div class="max-w-7xl mx-auto w-full flex flex-col xl:flex-row justify-between items-start xl:items-center gap-2 md:gap-4">
 
       <div class="flex items-baseline gap-2 md:gap-4 w-full xl:w-auto">
-        <h2 class="text-xl md:text-2xl font-bold text-text drop-shadow-sm">{{ $t('calendar.dashboardTitle') || 'Vezérlőpult' }}</h2>
-        <span class="text-xs md:text-sm text-text-muted">{{ $t('calendar.role') || 'Szerepkör' }}: <strong class="text-primary">{{ userRole }}</strong></span>
+        <h2 class="text-xl md:text-2xl font-bold text-text drop-shadow-sm">{{ $t('calendar.dashboardTitle') }}</h2>
+        <span class="text-xs md:text-sm text-text-muted">{{ $t('calendar.role') }}: <strong class="text-primary">{{ userRole }}</strong></span>
       </div>
 
       <div class="flex flex-col md:flex-row items-center gap-2 w-full xl:w-auto mt-1 md:mt-0">
 
         <div class="flex flex-row w-full md:w-auto gap-2">
           <button @click="$emit('today')" class="flex-1 md:flex-none px-3 md:px-5 min-h-[44px] font-bold text-sm bg-background border border-text/10 hover:border-primary/50 transition-colors rounded-xl text-text shadow-sm flex items-center justify-center gap-1.5">
-            <i class="pi pi-calendar-times text-primary"></i> <span>{{ $t('calendar.today') || 'Ma' }}</span>
+            <i class="pi pi-calendar-times text-primary"></i> <span>{{ $t('calendar.today') }}</span>
           </button>
 
           <div class="flex flex-1 md:flex-none bg-background rounded-xl p-1 shadow-inner border border-text/5">
@@ -20,7 +20,7 @@
                     class="flex-1 min-h-[36px] md:min-h-[44px] px-2 md:px-4 rounded-lg font-bold text-xs md:text-sm flex items-center justify-center gap-1 md:gap-2 transition-all"
                     :class="currentView === view.id ? 'bg-surface text-primary shadow-sm ring-1 ring-text/10' : 'text-text-muted hover:text-text hover:bg-text/5'">
               <i :class="view.icon"></i>
-              <span class="hidden sm:inline">{{ $t(`calendar.${view.id}`) || view.label }}</span>
+              <span class="hidden sm:inline">{{ $t(`calendar.${view.id}`) }}</span>
             </button>
           </div>
         </div>
@@ -63,8 +63,8 @@
   defineEmits(['update:currentView', 'prev', 'next', 'today']);
 
   const views = [
-    { id: 'day', icon: 'pi pi-clock', label: 'Napi' },
-    { id: 'week', icon: 'pi pi-list', label: 'Heti' },
-    { id: 'month', icon: 'pi pi-calendar', label: 'Havi' }
+    { id: 'day', icon: 'pi pi-clock' },
+    { id: 'week', icon: 'pi pi-list' },
+    { id: 'month', icon: 'pi pi-calendar' }
   ];
 </script>

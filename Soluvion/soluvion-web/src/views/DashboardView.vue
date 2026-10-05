@@ -1,16 +1,19 @@
 <template>
   <div class="max-w-7xl mx-auto px-4 py-8">
     <div class="mb-8">
-      <h1 class="text-3xl font-bold text-text">Vezérlőpult</h1>
-      <p class="text-text-muted mt-2">Válaszd ki, melyik belső rendszert szeretnéd kezelni.</p>
+      <h1 class="text-3xl font-bold text-text">{{ $t('dashboard.title') }}</h1>
+      <p class="text-text-muted mt-2">{{ $t('dashboard.subtitle') }}</p>
     </div>
 
     <!-- Készletkezelés kikapcsolva infó (csak adminnak) -->
     <div v-if="isAdmin && stockTrackingLoaded && !isStockTrackingEnabled" class="mb-8 bg-text/5 border border-text/10 rounded-2xl p-4 flex items-center gap-3">
       <i class="pi pi-info-circle text-xl text-text-muted"></i>
       <p class="m-0 text-sm text-text-muted">
-        A készletkezelés (napi zárás, anyaglevonás) jelenleg ki van kapcsolva.
-        Bekapcsolás: <router-link to="/beallitasok" class="text-primary font-bold">Beállítások → Raktárkezelés</router-link>.
+        <i18n-t keypath="dashboard.stockDisabledInfo" scope="global">
+          <template #link>
+            <router-link :to="localized('settings')" class="text-primary font-bold">{{ $t('dashboard.stockDisabledLink') }}</router-link>
+          </template>
+        </i18n-t>
       </p>
     </div>
 
@@ -18,18 +21,18 @@
     <div v-if="pendingMaterialLogs.length > 0" class="mb-8 bg-red-500/5 border border-red-500/20 rounded-2xl p-6 shadow-sm">
       <div class="flex items-center gap-3 mb-4">
         <i class="pi pi-bell text-2xl text-red-500"></i>
-        <h2 class="text-xl font-bold text-red-500">Napi Zárás - Elmaradt adminisztráció</h2>
+        <h2 class="text-xl font-bold text-red-500">{{ $t('dashboard.dailyClose.title') }}</h2>
         <span class="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">{{ pendingMaterialLogs.length }}</span>
       </div>
       <p class="text-sm text-text-muted mb-4">
-        Az alábbi vendégek már befejezettként (fizetve) lettek megjelölve a naptárban, de a felhasznált anyagok még nem lettek levonva a raktárból. Kattints rájuk a levonáshoz!
+        {{ $t('dashboard.dailyClose.description') }}
       </p>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div v-for="app in pendingMaterialLogs" :key="app.id" @click="openWrapUp(app)" 
              class="bg-background border border-red-500/30 p-4 rounded-xl cursor-pointer hover:bg-red-500/10 hover:border-red-500/50 transition-all flex items-center justify-between group">
           <div>
             <div class="font-bold text-text group-hover:text-primary transition-colors flex items-center gap-2">
-              <i class="pi pi-user text-text-muted text-sm"></i> {{ app.customerName || 'Ismeretlen Vendég' }}
+              <i class="pi pi-user text-text-muted text-sm"></i> {{ app.customerName || $t('dashboard.dailyClose.unknownGuest') }}
             </div>
             <div class="text-xs text-text-muted mt-1 font-medium">
               {{ formatDateShort(app.startDateTime) }} {{ formatTime(app.startDateTime) }} &bull; {{ getServiceName(app) }}
@@ -42,35 +45,35 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <!-- Megrendelések / Naptár -->
-      <router-link to="/megrendelesek" class="block group no-underline">
+      <router-link :to="localized('orders')" class="block group no-underline">
         <div class="bg-surface border border-text/10 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-full flex flex-col items-center text-center">
           <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
             <i class="pi pi-calendar text-3xl"></i>
           </div>
-          <h2 class="text-xl font-bold text-text mb-2 group-hover:text-primary transition-colors">Megrendelések / Naptár</h2>
-          <p class="text-sm text-text-muted">Időpontok, foglalások kezelése, napi beosztás megtekintése.</p>
+          <h2 class="text-xl font-bold text-text mb-2 group-hover:text-primary transition-colors">{{ $t('dashboard.cards.orders.title') }}</h2>
+          <p class="text-sm text-text-muted">{{ $t('dashboard.cards.orders.description') }}</p>
         </div>
       </router-link>
 
       <!-- Raktár -->
-      <router-link v-if="isAdmin" to="/raktar" class="block group no-underline">
+      <router-link v-if="isAdmin" :to="localized('inventory')" class="block group no-underline">
         <div class="bg-surface border border-text/10 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-full flex flex-col items-center text-center">
           <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
             <i class="pi pi-box text-3xl"></i>
           </div>
-          <h2 class="text-xl font-bold text-text mb-2 group-hover:text-primary transition-colors">Raktár & Termékek</h2>
-          <p class="text-sm text-text-muted">Készletkezelés, bevételezések, kiadások és leltározás.</p>
+          <h2 class="text-xl font-bold text-text mb-2 group-hover:text-primary transition-colors">{{ $t('dashboard.cards.inventory.title') }}</h2>
+          <p class="text-sm text-text-muted">{{ $t('dashboard.cards.inventory.description') }}</p>
         </div>
       </router-link>
 
       <!-- Ügyfelek -->
-      <router-link to="/ugyfelek" class="block group no-underline">
+      <router-link :to="localized('customers')" class="block group no-underline">
         <div class="bg-surface border border-text/10 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-full flex flex-col items-center text-center">
           <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
             <i class="pi pi-users text-3xl"></i>
           </div>
-          <h2 class="text-xl font-bold text-text mb-2 group-hover:text-primary transition-colors">Ügyfelek (CRM)</h2>
-          <p class="text-sm text-text-muted">Vendég adatbázis, vendégprofilok és szolgáltatási előzmények.</p>
+          <h2 class="text-xl font-bold text-text mb-2 group-hover:text-primary transition-colors">{{ $t('dashboard.cards.customers.title') }}</h2>
+          <p class="text-sm text-text-muted">{{ $t('dashboard.cards.customers.description') }}</p>
         </div>
       </router-link>
     </div>
@@ -79,11 +82,11 @@
     <div v-if="isAdmin && lowStockProducts.length > 0" class="mt-8 bg-orange-500/5 border border-orange-500/20 rounded-2xl p-6 shadow-sm">
       <div class="flex items-center gap-3 mb-4">
         <i class="pi pi-exclamation-triangle text-2xl text-orange-500"></i>
-        <h2 class="text-xl font-bold text-orange-500">Kifogyóban lévő termékek</h2>
+        <h2 class="text-xl font-bold text-orange-500">{{ $t('dashboard.lowStock.title') }}</h2>
         <span class="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full">{{ lowStockProducts.length }}</span>
       </div>
       <p class="text-sm text-text-muted mb-4">
-        Az alábbi termékek készletszintje a beállított minimum szint alá csökkent. Javasolt a beszerzésük.
+        {{ $t('dashboard.lowStock.description') }}
       </p>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div v-for="product in lowStockProducts" :key="product.id" @click="openPlanner(product)"
@@ -93,10 +96,13 @@
               <i class="pi pi-box text-text-muted text-sm"></i> {{ product.name }}
             </div>
             <div class="text-xs text-text-muted mt-1 font-medium">
-              Készlet: <span class="text-orange-500 font-bold">{{ product.currentStock }} db</span> (Minimum: {{ product.lowStockThreshold }} db)
+              <i18n-t keypath="dashboard.lowStock.stockLine" scope="global">
+                <template #stock><span class="text-orange-500 font-bold">{{ $t('dashboard.lowStock.pieces', { n: product.currentStock }) }}</span></template>
+                <template #min>{{ product.lowStockThreshold }}</template>
+              </i18n-t>
             </div>
             <div v-if="product.upcoming30DaysUsage !== undefined" class="text-xs font-bold text-orange-500 mt-2 flex items-center gap-1">
-              <i class="pi pi-calendar"></i> 30 napos várható fogyás: {{ product.upcoming30DaysUsage }} db
+              <i class="pi pi-calendar"></i> {{ $t('dashboard.lowStock.forecast', { n: product.upcoming30DaysUsage }) }}
             </div>
           </div>
           <i class="pi pi-angle-right text-text-muted group-hover:text-orange-500 transition-colors ml-2"></i>
@@ -125,9 +131,12 @@ import apiClient from '@/services/api';
 import MaterialWrapUpModal from '@/components/admin/dashboard/MaterialWrapUpModal.vue';
 import LowStockPlannerModal from '@/components/admin/dashboard/LowStockPlannerModal.vue';
 import { useI18n } from 'vue-i18n';
+import { useLocalizedText } from '@/composables/useLocalizedText';
 import { getCompanyIdFromToken } from '@/utils/jwt';
+import { useLocalizedRoute } from '@/composables/useLocalizedRoute';
 
-const { locale } = useI18n();
+const { locale, t } = useI18n();
+const { to: localized } = useLocalizedRoute();
 const currentLang = ref(locale.value || 'hu-HU');
 
 const userRole = inject('userRole');
@@ -146,7 +155,7 @@ const selectedLowStockProduct = ref(null);
 const openPlanner = (p) => { selectedLowStockProduct.value = p; isPlannerOpen.value = true; };
 const selectedAppointment = ref(null);
 
-const getLocText = (dict) => dict ? (dict[currentLang.value] || dict['hu'] || '') : '';
+const { getLocText } = useLocalizedText();
 
 const servicesLoaded = ref(false);
 
@@ -161,10 +170,10 @@ const fetchServices = async () => {
 };
 
 const getServiceName = (app) => {
-  if (!app.items || app.items.length === 0) return 'Ismeretlen szolgáltatás';
+  if (!app.items || app.items.length === 0) return t('dashboard.serviceName.unknown');
   
   const firstItem = app.items[0];
-  let primaryName = 'Szolgáltatás';
+  let primaryName = t('dashboard.serviceName.default');
   
   for (const s of services.value) {
     const variant = s.variants?.find(v => v.id === firstItem.serviceVariantId);
@@ -177,7 +186,7 @@ const getServiceName = (app) => {
   }
 
   if (app.items.length > 1) {
-    return `${primaryName} (+${app.items.length - 1} tétel)`;
+    return t('dashboard.serviceName.moreItems', { name: primaryName, extra: app.items.length - 1 });
   }
   return primaryName;
 };
@@ -354,8 +363,8 @@ const fetchLowStockProducts = async () => {
   }
 };
 
-const formatDateShort = (iso) => iso ? new Date(iso).toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' }) : '';
-const formatTime = (iso) => iso ? new Date(iso).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }) : '';
+const formatDateShort = (iso) => iso ? new Date(iso).toLocaleDateString(locale.value, { month: 'short', day: 'numeric' }) : '';
+const formatTime = (iso) => iso ? new Date(iso).toLocaleTimeString(locale.value, { hour: '2-digit', minute: '2-digit' }) : '';
 
 const openWrapUp = (app) => {
   selectedAppointment.value = app;

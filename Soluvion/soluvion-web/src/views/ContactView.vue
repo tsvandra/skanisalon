@@ -2,6 +2,7 @@
   import { ref, computed } from 'vue';
   import { useCompanyStore } from '@/stores/companyStore';
   import { useI18n } from 'vue-i18n';
+  import { useLocalizedText } from '@/composables/useLocalizedText';
   import api from '@/services/api';
 
   import Card from 'primevue/card';
@@ -11,6 +12,7 @@
   import Message from 'primevue/message';
 
   const { t } = useI18n();
+  const { getLocText } = useLocalizedText();
   const companyStore = useCompanyStore();
   const company = computed(() => companyStore.company);
 
@@ -116,21 +118,21 @@
               <div class="mb-4">
                 <i class="pi pi-calendar-clock text-4xl text-primary mb-3"></i>
                 <h3 class="m-0 text-text font-bold text-lg">
-                  {{ company.openingHoursTitle?.[$i18n.locale] || company.openingHoursTitle?.['hu'] || $t('contact.openingHours') }}
+                  {{ getLocText(company.openingHoursTitle) || $t('contact.openingHours') }}
                 </h3>
               </div>
 
-              <p v-if="company.openingHoursDescription?.[$i18n.locale] || company.openingHoursDescription?.['hu']" class="leading-relaxed text-text-muted mb-4">
-                {{ company.openingHoursDescription?.[$i18n.locale] || company.openingHoursDescription?.['hu'] }}
+              <p v-if="getLocText(company.openingHoursDescription)" class="leading-relaxed text-text-muted mb-4">
+                {{ getLocText(company.openingHoursDescription) }}
               </p>
 
-              <div v-if="company.openingTimeSlots?.[$i18n.locale] || company.openingTimeSlots?.['hu']"
+              <div v-if="getLocText(company.openingTimeSlots)"
                    class="bg-background text-text my-4 p-4 rounded-xl border-l-4 border-primary shadow-sm text-left"
-                   v-html="company.openingTimeSlots?.[$i18n.locale] || company.openingTimeSlots?.['hu']">
+                   v-html="getLocText(company.openingTimeSlots)">
               </div>
 
-              <p v-if="company.openingExtraInfo?.[$i18n.locale] || company.openingExtraInfo?.['hu']" class="text-sm mt-5 text-text-muted italic">
-                {{ company.openingExtraInfo?.[$i18n.locale] || company.openingExtraInfo?.['hu'] }}
+              <p v-if="getLocText(company.openingExtraInfo)" class="text-sm mt-5 text-text-muted italic">
+                {{ getLocText(company.openingExtraInfo) }}
               </p>
 
               <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
@@ -191,7 +193,7 @@
                   class="border-0 w-full"
                   allowfullscreen=""
                   loading="lazy"
-                  title="Térkép">
+                  :title="$t('contact.map')">
           </iframe>
         </div>
 

@@ -2,7 +2,7 @@
   <div class="relative flex items-center justify-center bg-background border border-text/20 rounded-lg px-2 cursor-ew-resize select-none hover:border-primary/50 transition-colors group overflow-hidden"
        style="touch-action: none;"
        @pointerdown="startDrag"
-       title="Húzd balra/jobbra, vagy KATTINTS a gépeléshez">
+       :title="$t('appShell.scrubbableInput.hint')">
 
     <template v-if="!isEditing">
       <i class="pi pi-chevron-left absolute left-1.5 text-text/20 group-hover:text-primary/50 transition-colors text-[10px] pointer-events-none"></i>

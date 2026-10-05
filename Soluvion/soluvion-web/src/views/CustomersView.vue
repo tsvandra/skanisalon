@@ -5,33 +5,33 @@
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-surface p-4 md:p-6 rounded-2xl shadow-sm border border-text/10">
         <div>
           <h1 class="text-2xl md:text-3xl font-black text-primary flex items-center gap-3">
-            <i class="pi pi-users"></i> Ügyfelek kezelése
+            <i class="pi pi-users"></i> {{ $t('customers.title') }}
           </h1>
-          <p class="text-text-muted text-sm md:text-base mt-1">Vendégek adatainak, jellemzőinek és megjegyzéseinek karbantartása.</p>
+          <p class="text-text-muted text-sm md:text-base mt-1">{{ $t('customers.subtitle') }}</p>
         </div>
 
         <div class="flex flex-col sm:flex-row w-full md:w-auto gap-3">
           <div class="relative w-full sm:w-64">
             <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"></i>
-            <input type="text" v-model="searchQuery" placeholder="Keresés név alapján..."
+            <input type="text" v-model="searchQuery" :placeholder="$t('customers.searchPlaceholder')"
                    class="w-full h-[44px] pl-10 pr-4 bg-background border border-text/20 rounded-xl text-sm focus:outline-none focus:border-primary transition-colors">
           </div>
           <button @click="openMergeModal()" class="h-[44px] px-5 bg-surface text-text border border-text/20 font-bold rounded-xl shadow-sm hover:border-primary hover:text-primary active:scale-95 transition-all flex items-center justify-center gap-2 whitespace-nowrap">
-            <i class="pi pi-sitemap"></i> Összevonás
+            <i class="pi pi-sitemap"></i> {{ $t('customers.actions.merge') }}
           </button>
           <button @click="openCreateModal" class="h-[44px] px-5 bg-primary text-white font-bold rounded-xl shadow-md hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 whitespace-nowrap">
-            <i class="pi pi-plus"></i> Új ügyfél
+            <i class="pi pi-plus"></i> {{ $t('customers.actions.newCustomer') }}
           </button>
         </div>
       </div>
 
       <div v-if="loading" class="text-center py-12 text-text-muted font-bold animate-pulse">
-        <i class="pi pi-spinner pi-spin text-2xl text-primary mb-2"></i><br>Adatok betöltése...
+        <i class="pi pi-spinner pi-spin text-2xl text-primary mb-2"></i><br>{{ $t('customers.loadingData') }}
       </div>
 
       <div v-else-if="filteredCustomers.length === 0" class="text-center py-16 bg-surface rounded-2xl border border-dashed border-text/20 text-text-muted">
         <i class="pi pi-user-minus text-4xl text-text/30 mb-3"></i>
-        <p class="font-medium text-lg">Nincs találat vagy még nincsenek ügyfelek.</p>
+        <p class="font-medium text-lg">{{ $t('customers.emptyState') }}</p>
       </div>
 
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -39,16 +39,16 @@
              class="bg-surface rounded-2xl p-5 shadow-sm border border-text/10 flex flex-col gap-4 hover:border-primary/40 transition-colors relative group">
 
           <div class="absolute top-4 right-4 flex gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-            <button @click="openHistoryModal(customer)" class="w-8 h-8 rounded-full bg-purple-500/10 text-purple-500 flex items-center justify-center hover:bg-purple-500 hover:text-white transition-colors" title="Karton & Történet">
+            <button @click="openHistoryModal(customer)" class="w-8 h-8 rounded-full bg-purple-500/10 text-purple-500 flex items-center justify-center hover:bg-purple-500 hover:text-white transition-colors" :title="$t('customers.actions.history')">
               <i class="pi pi-book text-sm"></i>
             </button>
-            <button @click="openEditModal(customer)" class="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-colors" title="Szerkesztés">
+            <button @click="openEditModal(customer)" class="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-colors" :title="$t('common.edit')">
               <i class="pi pi-pencil text-sm"></i>
             </button>
-            <button @click="openMergeModal(customer)" class="w-8 h-8 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center hover:bg-amber-500 hover:text-white transition-colors" title="Összevonás másik ügyféllel">
+            <button @click="openMergeModal(customer)" class="w-8 h-8 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center hover:bg-amber-500 hover:text-white transition-colors" :title="$t('customers.actions.mergeWithOther')">
               <i class="pi pi-sitemap text-sm"></i>
             </button>
-            <button @click="confirmDelete(customer)" class="w-8 h-8 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors" title="Törlés">
+            <button @click="confirmDelete(customer)" class="w-8 h-8 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors" :title="$t('common.delete')">
               <i class="pi pi-trash text-sm"></i>
             </button>
           </div>
@@ -67,11 +67,11 @@
           <div class="space-y-2 mt-2">
             <div class="flex items-center gap-2 text-sm text-text-muted">
               <i class="pi pi-phone text-primary/70 shrink-0"></i>
-              <span class="truncate">{{ customer.phone || 'Nincs megadva telefonszám' }}</span>
+              <span class="truncate">{{ customer.phone || $t('customers.noPhone') }}</span>
             </div>
             <div class="flex items-center gap-2 text-sm text-text-muted">
               <i class="pi pi-envelope text-primary/70 shrink-0"></i>
-              <span class="truncate">{{ customer.email || 'Nincs megadva email' }}</span>
+              <span class="truncate">{{ customer.email || $t('customers.noEmail') }}</span>
             </div>
           </div>
 
@@ -99,7 +99,7 @@
         <div class="p-5 border-b border-text/10 flex justify-between items-center bg-background/50 shrink-0">
           <h2 class="text-xl font-bold text-text flex items-center gap-2">
             <i class="pi" :class="isEditing ? 'pi-user-edit text-primary' : 'pi-user-plus text-primary'"></i>
-            {{ isEditing ? 'Ügyfél szerkesztése' : 'Új ügyfél felvétele' }}
+            {{ isEditing ? $t('customers.form.titleEdit') : $t('customers.form.titleNew') }}
           </h2>
           <button @click="closeModal" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-text/10 text-text-muted transition-colors">
             <i class="pi pi-times"></i>
@@ -110,19 +110,19 @@
 
           <div class="space-y-4">
             <div>
-              <label class="block text-xs font-bold text-text-muted mb-1.5 uppercase">Teljes Név <span class="text-red-500">*</span></label>
-              <input type="text" v-model="form.name" name="cust_name" autocomplete="off" data-1p-ignore data-lpignore="true" placeholder="Pl. Kiss Katalin" class="w-full h-[44px] bg-background border border-text/20 rounded-xl px-4 text-sm focus:outline-none focus:border-primary font-medium">
+              <label class="block text-xs font-bold text-text-muted mb-1.5 uppercase">{{ $t('customers.form.fullName') }} <span class="text-red-500">*</span></label>
+              <input type="text" v-model="form.name" name="cust_name" autocomplete="off" data-1p-ignore data-lpignore="true" :placeholder="$t('customers.form.namePlaceholder')" class="w-full h-[44px] bg-background border border-text/20 rounded-xl px-4 text-sm focus:outline-none focus:border-primary font-medium">
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label class="block text-xs font-bold text-text-muted mb-1.5 uppercase">Telefonszám</label>
-                <input type="tel" v-model="form.phone" name="cust_phone" autocomplete="off" data-1p-ignore data-lpignore="true" placeholder="+36 30 123 4567" class="w-full h-[44px] bg-background border border-text/20 rounded-xl px-4 text-sm focus:outline-none focus:border-primary font-medium">
+                <label class="block text-xs font-bold text-text-muted mb-1.5 uppercase">{{ $t('customers.form.phone') }}</label>
+                <input type="tel" v-model="form.phone" name="cust_phone" autocomplete="off" data-1p-ignore data-lpignore="true" :placeholder="$t('customers.form.phonePlaceholder')" class="w-full h-[44px] bg-background border border-text/20 rounded-xl px-4 text-sm focus:outline-none focus:border-primary font-medium">
               </div>
 
               <div>
-                <label class="block text-xs font-bold text-text-muted mb-1.5 uppercase">Email cím</label>
-                <input type="email" v-model="form.email" name="cust_email" autocomplete="off" data-1p-ignore data-lpignore="true" placeholder="katalin@example.com" class="w-full h-[44px] bg-background border border-text/20 rounded-xl px-4 text-sm focus:outline-none focus:border-primary font-medium">
+                <label class="block text-xs font-bold text-text-muted mb-1.5 uppercase">{{ $t('customers.form.email') }}</label>
+                <input type="email" v-model="form.email" name="cust_email" autocomplete="off" data-1p-ignore data-lpignore="true" :placeholder="$t('customers.form.emailPlaceholder')" class="w-full h-[44px] bg-background border border-text/20 rounded-xl px-4 text-sm focus:outline-none focus:border-primary font-medium">
               </div>
             </div>
           </div>
@@ -130,7 +130,7 @@
           <div v-if="companyAttributes.length > 0">
             <div class="h-px bg-text/10 mb-6"></div>
             <label class="block text-xs font-bold text-text-muted mb-4 uppercase flex items-center gap-1">
-              <i class="pi pi-tags"></i> Szalon Jellemzők
+              <i class="pi pi-tags"></i> {{ $t('customers.form.salonAttributes') }}
             </label>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -144,7 +144,7 @@
 
                 <select v-else-if="attr.dataType === 'select'" v-model="form.attributes[attr.key]"
                         class="w-full h-[40px] bg-background border border-text/20 rounded-xl px-3 text-sm focus:outline-none focus:border-primary font-medium appearance-none">
-                  <option value="" disabled>Válassz...</option>
+                  <option value="" disabled>{{ $t('customers.form.select') }}</option>
                   <option v-for="opt in attr.options" :key="opt" :value="opt">{{ opt }}</option>
                 </select>
               </div>
@@ -155,18 +155,18 @@
 
           <div>
             <label class="block text-xs font-bold text-text-muted mb-1.5 uppercase flex items-center gap-1">
-              <i class="pi pi-align-left"></i> Általános Megjegyzés
+              <i class="pi pi-align-left"></i> {{ $t('customers.form.generalNote') }}
             </label>
-            <textarea v-model="form.notes" rows="2" placeholder="Olyan információ, ami nem fér be jellemzőként (pl. Általában késik 10 percet...)" class="w-full bg-background border border-text/20 rounded-xl p-3 text-sm focus:outline-none focus:border-primary resize-none font-medium"></textarea>
+            <textarea v-model="form.notes" rows="2" :placeholder="$t('customers.form.notePlaceholder')" class="w-full bg-background border border-text/20 rounded-xl p-3 text-sm focus:outline-none focus:border-primary resize-none font-medium"></textarea>
           </div>
         </div>
 
         <div class="p-5 border-t border-text/10 bg-background/50 flex justify-end gap-3 shrink-0">
           <button @click="closeModal" class="px-5 h-[44px] text-text text-sm font-bold rounded-xl hover:bg-text/10 transition-colors">
-            Mégsem
+            {{ $t('common.cancel') }}
           </button>
           <button @click="saveCustomer" :disabled="!isFormValid || saving" class="px-6 h-[44px] bg-primary text-white text-sm font-bold rounded-xl hover:brightness-110 shadow-md transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-            <i class="pi" :class="saving ? 'pi-spinner pi-spin' : 'pi-save'"></i> Mentés
+            <i class="pi" :class="saving ? 'pi-spinner pi-spin' : 'pi-save'"></i> {{ $t('common.save') }}
           </button>
         </div>
 
@@ -194,6 +194,7 @@
 <script setup>
   import { ref, computed, onMounted, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
+  import { useI18n } from 'vue-i18n';
   import bookingApi from '@/services/bookingApi';
   import attributesApi from '@/services/companyAttributesApi'; // <- Fontos: Itt hívjuk meg az új API-t!
   import { getCustomerColor } from '@/utils/colorUtils';
@@ -202,6 +203,7 @@
 
   const route = useRoute();
   const router = useRouter();
+  const { t } = useI18n();
   const customers = ref([]);
   const companyAttributes = ref([]); // Itt tároljuk a dinamikus űrlap szabályait
   const loading = ref(true);
@@ -225,8 +227,8 @@
   const onMerged = async (result) => {
     isMergeModalOpen.value = false;
     await fetchData();
-    alert(`Sikeres összevonás.\nÖsszes foglalás: ${result.totalAppointmentsAfterMerge}` +
-      (result.removedDuplicateAppointments > 0 ? `\nEgyesített duplikált foglalás: ${result.removedDuplicateAppointments}` : ''));
+    alert(`${t('customers.messages.mergeSuccess')}\n${t('customers.messages.mergeTotalAppointments', { count: result.totalAppointmentsAfterMerge })}` +
+      (result.removedDuplicateAppointments > 0 ? `\n${t('customers.messages.mergeDuplicates', { count: result.removedDuplicateAppointments })}` : ''));
   };
 
   const form = ref({
@@ -289,7 +291,7 @@
       }
     } catch (error) {
       console.error("Hiba az adatok lekérésekor:", error);
-      alert("Nem sikerült betölteni az ügyfeleket vagy a beállításokat.");
+      alert(t('customers.messages.loadFailed'));
     } finally {
       loading.value = false;
     }
@@ -381,20 +383,20 @@
       closeModal();
     } catch (error) {
       console.error("Hiba a mentés során:", error);
-      alert("Hiba történt a mentés során.");
+      alert(t('customers.messages.saveFailed'));
     } finally {
       saving.value = false;
     }
   };
 
   const confirmDelete = async (customer) => {
-    if (confirm(`Biztosan törlöd a következő ügyfelet: ${customer.name}?`)) {
+    if (confirm(t('customers.messages.confirmDelete', { name: customer.name }))) {
       try {
         await bookingApi.deleteCustomer(customer.id);
         await fetchData();
       } catch (error) {
         console.error("Hiba a törlés során:", error);
-        alert("Hiba történt a törlés során. Lehet, hogy folyamatban lévő foglalása van, ami miatt nem törölhető.");
+        alert(t('customers.messages.deleteFailed'));
       }
     }
   };

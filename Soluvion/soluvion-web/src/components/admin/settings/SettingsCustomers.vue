@@ -3,19 +3,19 @@
     <div class="flex justify-between items-center bg-surface p-4 md:p-6 rounded-2xl shadow-sm border border-text/10">
       <div>
         <h2 class="text-xl md:text-2xl font-black text-primary flex items-center gap-2">
-          <i class="pi pi-tags"></i> Vendég Jellemzők (Attribútumok)
+          <i class="pi pi-tags"></i> {{ $t('adminSettings.customers.title') }}
         </h2>
         <p class="text-text-muted text-sm mt-1">
-          Itt állíthatod be, milyen egyedi adatokat (pl. Hajhossz, Allergia) szeretnél tárolni a vendégeidről.
+          {{ $t('adminSettings.customers.subtitle') }}
         </p>
       </div>
       <button @click="openModal()" class="h-10 px-4 bg-primary text-white font-bold rounded-xl shadow-md hover:brightness-110 transition-all flex items-center gap-2">
-        <i class="pi pi-plus"></i> Új jellemző
+        <i class="pi pi-plus"></i> {{ $t('adminSettings.customers.newAttribute') }}
       </button>
     </div>
 
     <div v-if="loading" class="text-center py-8 text-primary font-bold animate-pulse">
-      <i class="pi pi-spinner pi-spin text-2xl mb-2"></i><br>Betöltés...
+      <i class="pi pi-spinner pi-spin text-2xl mb-2"></i><br>{{ $t('common.loading') }}
     </div>
 
     <div v-else-if="attributes.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -32,15 +32,15 @@
         </div>
 
         <h3 class="font-bold text-text text-lg pr-12">{{ attr.label }}</h3>
-        <p class="text-xs text-text-muted font-mono mb-3">Belső kulcs: {{ attr.key }}</p>
+        <p class="text-xs text-text-muted font-mono mb-3">{{ $t('adminSettings.customers.internalKey', { key: attr.key }) }}</p>
 
         <div class="flex flex-wrap gap-2 text-[10px] font-bold uppercase">
           <span class="bg-surface-alt px-2 py-1 rounded border border-text/5 text-text-muted">
             <i class="pi" :class="attr.dataType === 'select' ? 'pi-list' : 'pi-align-left'"></i>
-            {{ attr.dataType === 'select' ? 'Legördülő' : 'Szöveges' }}
+            {{ attr.dataType === 'select' ? $t('adminSettings.customers.typeSelect') : $t('adminSettings.customers.typeText') }}
           </span>
           <span v-if="attr.isRequired" class="bg-red-500/10 text-red-500 px-2 py-1 rounded border border-red-500/20">
-            Kötelező
+            {{ $t('adminSettings.customers.required') }}
           </span>
         </div>
 
@@ -54,7 +54,7 @@
 
     <div v-else class="text-center py-12 bg-surface rounded-2xl border border-dashed border-text/20 text-text-muted">
       <i class="pi pi-id-card text-4xl text-text/30 mb-3"></i>
-      <p class="font-medium text-lg">Még nincsenek egyedi jellemzők beállítva.</p>
+      <p class="font-medium text-lg">{{ $t('adminSettings.customers.empty') }}</p>
     </div>
 
     <div v-if="isModalOpen" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -62,7 +62,7 @@
 
         <div class="p-5 border-b border-text/10 flex justify-between items-center bg-background/50">
           <h3 class="font-bold text-lg text-text">
-            {{ form.id ? 'Jellemző szerkesztése' : 'Új jellemző hozzáadása' }}
+            {{ form.id ? $t('adminSettings.customers.editTitle') : $t('adminSettings.customers.addTitle') }}
           </h3>
           <button @click="isModalOpen = false" class="text-text-muted hover:text-text">
             <i class="pi pi-times"></i>
@@ -72,55 +72,55 @@
         <div class="p-5 space-y-4 overflow-y-auto max-h-[70vh]">
 
           <div>
-            <label class="block text-xs font-bold text-text-muted mb-1 uppercase">Megnevezés (pl. Hajhossz) *</label>
-            <input type="text" v-model="form.label" @input="autoGenerateKey" placeholder="A vendég kártyán megjelenő név"
+            <label class="block text-xs font-bold text-text-muted mb-1 uppercase">{{ $t('adminSettings.customers.labelField') }}</label>
+            <input type="text" v-model="form.label" @input="autoGenerateKey" :placeholder="$t('adminSettings.customers.labelPlaceholder')"
                    class="w-full h-10 px-3 rounded-lg border border-text/20 bg-background text-sm focus:border-primary focus:outline-none">
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-text-muted mb-1 uppercase">Rendszer Kulcs *</label>
-            <input type="text" v-model="form.key" :disabled="!!form.id" placeholder="pl. hajhossz (csak betűk és alulvonás)"
+            <label class="block text-xs font-bold text-text-muted mb-1 uppercase">{{ $t('adminSettings.customers.keyField') }}</label>
+            <input type="text" v-model="form.key" :disabled="!!form.id" :placeholder="$t('adminSettings.customers.keyPlaceholder')"
                    class="w-full h-10 px-3 rounded-lg border border-text/20 bg-background text-sm focus:border-primary focus:outline-none disabled:opacity-50">
-            <p v-if="!!form.id" class="text-[10px] text-text-muted mt-1">A kulcs mentés után már nem módosítható!</p>
+            <p v-if="!!form.id" class="text-[10px] text-text-muted mt-1">{{ $t('adminSettings.customers.keyLocked') }}</p>
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-text-muted mb-1 uppercase">Típus *</label>
+            <label class="block text-xs font-bold text-text-muted mb-1 uppercase">{{ $t('adminSettings.customers.typeField') }}</label>
             <select v-model="form.dataType" class="w-full h-10 px-3 rounded-lg border border-text/20 bg-background text-sm focus:border-primary focus:outline-none">
-              <option value="text">Szabadon beírható szöveg</option>
-              <option value="select">Legördülő lista (Választó)</option>
+              <option value="text">{{ $t('adminSettings.customers.typeTextOption') }}</option>
+              <option value="select">{{ $t('adminSettings.customers.typeSelectOption') }}</option>
             </select>
           </div>
 
           <div v-if="form.dataType === 'select'" class="bg-background/50 p-3 rounded-lg border border-text/10">
-            <label class="block text-xs font-bold text-text-muted mb-2 uppercase">Választható Opciók</label>
+            <label class="block text-xs font-bold text-text-muted mb-2 uppercase">{{ $t('adminSettings.customers.optionsField') }}</label>
             <div class="space-y-2 mb-2">
               <div v-for="(opt, idx) in form.options" :key="idx" class="flex gap-2">
-                <input type="text" v-model="form.options[idx]" placeholder="pl. Rövid" class="flex-1 h-8 px-2 rounded-md border border-text/20 text-xs">
+                <input type="text" v-model="form.options[idx]" :placeholder="$t('adminSettings.customers.optionPlaceholder')" class="flex-1 h-8 px-2 rounded-md border border-text/20 text-xs">
                 <button @click="form.options.splice(idx, 1)" class="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-500/10 rounded-md">
                   <i class="pi pi-times"></i>
                 </button>
               </div>
             </div>
             <button @click="form.options.push('')" class="text-xs font-bold text-primary flex items-center gap-1 hover:underline">
-              <i class="pi pi-plus"></i> Új opció hozzáadása
+              <i class="pi pi-plus"></i> {{ $t('adminSettings.customers.addOption') }}
             </button>
           </div>
 
           <div class="flex items-center gap-3 pt-2">
             <input type="checkbox" v-model="form.isRequired" id="req" class="w-4 h-4 text-primary rounded border-text/20">
-            <label for="req" class="text-sm font-bold text-text cursor-pointer">Kötelező kitölteni</label>
+            <label for="req" class="text-sm font-bold text-text cursor-pointer">{{ $t('adminSettings.customers.requiredField') }}</label>
           </div>
 
         </div>
 
         <div class="p-5 border-t border-text/10 flex justify-end gap-3 bg-background/50">
           <button @click="isModalOpen = false" class="px-4 h-10 font-bold text-text-muted hover:text-text transition-colors">
-            Mégsem
+            {{ $t('common.cancel') }}
           </button>
           <button @click="saveAttribute" :disabled="saving || !form.label || !form.key"
                   class="px-6 h-10 bg-primary text-white font-bold rounded-lg hover:brightness-110 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-            <i class="pi" :class="saving ? 'pi-spinner pi-spin' : 'pi-save'"></i> Mentés
+            <i class="pi" :class="saving ? 'pi-spinner pi-spin' : 'pi-save'"></i> {{ $t('common.save') }}
           </button>
         </div>
 
@@ -132,7 +132,10 @@
 
 <script setup>
   import { ref, onMounted } from 'vue';
+  import { useI18n } from 'vue-i18n';
   import api from '@/services/api'; // <--- Ide beírjuk a meglévő fő API hívódat
+
+  const { t } = useI18n();
 
   const attributes = ref([]);
   const loading = ref(true);
@@ -201,14 +204,14 @@
       isModalOpen.value = false;
     } catch (error) {
       console.error("Mentési hiba:", error);
-      alert(error.response?.data?.message || "Hiba történt a mentés során.");
+      alert(error.response?.data?.message || t('adminSettings.customers.saveFailed'));
     } finally {
       saving.value = false;
     }
   };
 
   const deleteAttribute = async (id) => {
-    if (confirm("Biztosan törlöd ezt az attribútumot? A meglévő vendégek adatai a háttérben megmaradnak, de az űrlapon nem fognak többé megjelenni.")) {
+    if (confirm(t('adminSettings.customers.deleteConfirm'))) {
       try {
         await api.delete(`/api/company-attributes/${id}`);
         await loadAttributes();

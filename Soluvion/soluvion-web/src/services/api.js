@@ -1,6 +1,7 @@
 // src/services/api.js
 import axios from 'axios';
 import { DEFAULT_COMPANY_ID } from '@/config'; // Vagy import.meta.env közvetlenül
+import { localizedPath } from '@/router/routeSlugs';
 
 // Létrehozunk egy alap kapcsolatot a környezeti változók alapján
 const api = axios.create({
@@ -50,11 +51,12 @@ api.interceptors.response.use(
       localStorage.removeItem('salon_token'); // Töröljük a rossz tokent
 
       const currentPath = window.location.pathname + window.location.search;
+      const loginPath = localizedPath('login');
 
-      if (window.location.pathname !== '/login') {
-        window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`; // Visszairányítjuk a bejelentkezéshez
+      if (window.location.pathname !== loginPath) {
+        window.location.href = `${loginPath}?redirect=${encodeURIComponent(currentPath)}`; // Visszairányítjuk a bejelentkezéshez
       } else {
-        window.location.href = '/login'; // Ha már a login oldalon vagyunk, csak frissítjük
+        window.location.href = loginPath; // Ha már a login oldalon vagyunk, csak frissítjük
       }
     }
     // ----------------------------------------------------

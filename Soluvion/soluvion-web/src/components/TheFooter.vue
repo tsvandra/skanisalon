@@ -37,7 +37,7 @@
         </h3>
 
         <p class="text-text-muted text-sm font-medium tracking-wider m-0">
-          &copy; {{ new Date().getFullYear() }} {{ company?.name || 'Skani Salon' }}. {{ $t('footer.rights') || 'Minden jog fenntartva.' }}
+          &copy; {{ new Date().getFullYear() }} {{ company?.name || 'Skani Salon' }}. {{ $t('footer.rights') }}
         </p>
       </div>
     </div>

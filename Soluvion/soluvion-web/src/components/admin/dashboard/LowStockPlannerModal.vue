@@ -6,10 +6,10 @@
       <div class="p-4 md:p-6 border-b border-text/10 flex justify-between items-center bg-surface-50">
         <div>
           <h2 class="text-xl font-bold text-orange-500 flex items-center gap-2">
-            <i class="pi pi-chart-line text-orange-500"></i> Készlet tervező: {{ product?.name }}
+            <i class="pi pi-chart-line text-orange-500"></i> {{ $t('inventory.lowStockPlanner.title') }} {{ product?.name }}
           </h2>
           <p class="text-xs text-text-muted mt-1">
-            Jelenlegi készlet: <strong class="text-orange-500">{{ product?.currentStock }} db</strong> (Minimum: {{ product?.lowStockThreshold }} db)
+            {{ $t('inventory.lowStockPlanner.currentStock') }} <strong class="text-orange-500">{{ product?.currentStock }} {{ $t('inventory.units.short.pcs') }}</strong> ({{ $t('inventory.lowStockPlanner.minimum') }} {{ product?.lowStockThreshold }} {{ $t('inventory.units.short.pcs') }})
           </p>
         </div>
         <button @click="close" class="w-8 h-8 rounded-full hover:bg-text/10 flex items-center justify-center text-text-muted">
@@ -24,17 +24,17 @@
             <i class="pi pi-calendar text-2xl text-orange-500"></i>
           </div>
           <div>
-            <div class="text-xs font-bold text-text-muted uppercase">Várható fogyás a következő 30 napban</div>
-            <div class="text-xl font-black text-orange-500">{{ product?.upcoming30DaysUsage || 0 }} db ({{ product?.rawUpcomingUsage || 0 }} {{ getUnit(product) }})</div>
+            <div class="text-xs font-bold text-text-muted uppercase">{{ $t('inventory.lowStockPlanner.upcomingUsage') }}</div>
+            <div class="text-xl font-black text-orange-500">{{ product?.upcoming30DaysUsage || 0 }} {{ $t('inventory.units.short.pcs') }} ({{ product?.rawUpcomingUsage || 0 }} {{ getUnit(product) }})</div>
           </div>
         </div>
 
         <div>
-          <h3 class="text-sm font-bold text-text-muted uppercase mb-3"><i class="pi pi-list"></i> Kapcsolódó Foglalások (30 nap)</h3>
+          <h3 class="text-sm font-bold text-text-muted uppercase mb-3"><i class="pi pi-list"></i> {{ $t('inventory.lowStockPlanner.relatedBookings') }}</h3>
           
           <div v-if="loading" class="flex justify-center p-6 text-primary"><i class="pi pi-spin pi-spinner text-2xl"></i></div>
           <div v-else-if="appointments.length === 0" class="text-center p-6 bg-background rounded-xl border border-text/5 text-text-muted italic text-sm">
-            Nincs olyan jövőbeli foglalás, ami ezt a terméket igényelné.
+            {{ $t('inventory.lowStockPlanner.noBookings') }}
           </div>
           <div v-else class="space-y-2">
             <div v-for="app in appointments" :key="app.id" @click="goToCalendar(app.startDateTime)" class="p-3 bg-background border border-text/10 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 hover:border-orange-500/50 cursor-pointer transition-colors">
@@ -42,10 +42,10 @@
                 <div class="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md inline-block mb-1">
                   {{ formatDate(app.startDateTime) }}
                 </div>
-                <div class="text-sm font-bold text-text"><i class="pi pi-user text-[10px] text-text-muted mr-1"></i> {{ app.customerName || 'Ismeretlen Vendég' }}</div>
+                <div class="text-sm font-bold text-text"><i class="pi pi-user text-[10px] text-text-muted mr-1"></i> {{ app.customerName || $t('inventory.lowStockPlanner.unknownGuest') }}</div>
               </div>
               <div class="text-right">
-                <div class="text-xs font-bold text-text-muted">Szükséges mennyiség:</div>
+                <div class="text-xs font-bold text-text-muted">{{ $t('inventory.lowStockPlanner.requiredQuantity') }}</div>
                 <div class="text-sm font-black text-orange-500">{{ app.productUsage }} {{ getUnit(product) }}</div>
               </div>
             </div>
@@ -55,7 +55,7 @@
 
       <!-- Footer -->
       <div class="p-4 border-t border-text/10 bg-background/50 flex justify-end gap-3 rounded-b-2xl">
-        <button @click="close" class="px-5 py-2 text-text font-bold hover:bg-text/10 rounded-lg">Bezárás</button>
+        <button @click="close" class="px-5 py-2 text-text font-bold hover:bg-text/10 rounded-lg">{{ $t('inventory.lowStockPlanner.close') }}</button>
       </div>
     </div>
   </div>
@@ -63,9 +63,12 @@
 
 <script setup>
 import { ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
+import { useLocalizedRoute } from '@/composables/useLocalizedRoute';
 import appointmentApi from '@/services/appointmentApi';
 import apiClient from '@/services/api';
+
+const { t, locale } = useI18n();
 
 const props = defineProps({
   isOpen: Boolean,
@@ -73,21 +76,29 @@ const props = defineProps({
   services: Array
 });
 const emit = defineEmits(['close']);
-const router = useRouter();
+const { go } = useLocalizedRoute();
 
 const goToCalendar = (dateStr) => {
   emit('close');
-  router.push({ path: '/megrendelesek', query: { date: dateStr, view: 'month' } });
+  go('orders', { query: { date: dateStr, view: 'month' } });
 };
 
 const appointments = ref([]);
 const loading = ref(false);
 
-const unitMap = { 0: 'ml', 1: 'g', 2: 'db', 3: 'm', 4: 'cm' };
-const getUnit = (p) => p ? (unitMap[p.unit] || 'db') : 'db';
+const getUnit = (p) => {
+  const unitMap = {
+    0: t('inventory.units.short.ml'),
+    1: t('inventory.units.short.g'),
+    2: t('inventory.units.short.pcs'),
+    3: t('inventory.units.short.m'),
+    4: t('inventory.units.short.cm')
+  };
+  return p ? (unitMap[p.unit] || t('inventory.units.short.pcs')) : t('inventory.units.short.pcs');
+};
 
 const formatDate = (dateStr) => {
-  return new Date(dateStr).toLocaleString('hu-HU', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return new Date(dateStr).toLocaleString(locale.value, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
 const loadAppointments = async () => {
@@ -137,7 +148,7 @@ const loadAppointments = async () => {
       if (usage > 0) {
         filteredApps.push({
           ...app,
-          customerName: customer ? (customer.name || customer.attributes?.FullName) : 'Vendég',
+          customerName: customer ? (customer.name || customer.attributes?.FullName) : t('inventory.lowStockPlanner.guest'),
           productUsage: usage
         });
       }

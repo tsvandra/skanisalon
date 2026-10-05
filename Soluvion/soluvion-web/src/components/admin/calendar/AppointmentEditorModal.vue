@@ -43,38 +43,38 @@
         </div>
 
         <div class="border-t border-text/10 pt-4">
-          <label class="block text-[10px] md:text-xs font-bold text-text-muted mb-2 uppercase flex items-center gap-1"><i class="pi pi-box"></i> További felhasznált anyagok</label>
+          <label class="block text-[10px] md:text-xs font-bold text-text-muted mb-2 uppercase flex items-center gap-1"><i class="pi pi-box"></i> {{ $t('orders.calendar.editor.extraMaterials') }}</label>
           <div class="bg-background border border-text/10 rounded-xl p-3 flex flex-col gap-2 mb-4">
             <div v-for="(em, idx) in form.extraMaterials" :key="idx" class="flex justify-between items-center bg-surface p-2 rounded-lg border border-text/5">
               <div class="flex flex-col">
                 <span class="text-xs font-bold text-text">{{ em.name }}</span>
-                <span v-if="em.saveAsDefault" class="text-[10px] text-green-500 font-bold"><i class="pi pi-check"></i> Alapértelmezettként mentve az ügyfélhez</span>
+                <span v-if="em.saveAsDefault" class="text-[10px] text-green-500 font-bold"><i class="pi pi-check"></i> {{ $t('orders.calendar.editor.savedAsCustomerDefault') }}</span>
               </div>
               <div class="flex items-center gap-3">
-                <span class="text-sm font-black text-orange-500">{{ em.quantity }} {{ em.unit || 'db' }}</span>
+                <span class="text-sm font-black text-orange-500">{{ em.quantity }} {{ em.unit || $t('orders.calendar.editor.unitPiece') }}</span>
                 <button @click="removeExtraProduct(idx)" class="text-red-500 hover:bg-red-500/10 w-6 h-6 rounded flex items-center justify-center transition-colors"><i class="pi pi-trash text-xs"></i></button>
               </div>
             </div>
             <div v-if="showAddExtraProduct" class="bg-surface p-3 rounded-lg border border-primary/20 flex flex-col gap-3 mt-2">
               <select v-model="newExtraProduct" class="w-full h-[40px] bg-background border border-text/20 rounded-lg px-2 text-sm font-bold text-text">
-                <option :value="null" disabled>Válassz terméket...</option>
-                <option v-for="p in allProducts" :key="p.id" :value="p.id">{{ p.name }} ({{ p.currentStock }} {{ p.unit || 'db' }} raktáron)</option>
+                <option :value="null" disabled>{{ $t('orders.calendar.editor.selectProduct') }}</option>
+                <option v-for="p in allProducts" :key="p.id" :value="p.id">{{ $t('orders.calendar.editor.productInStock', { name: p.name, stock: p.currentStock, unit: p.unit || $t('orders.calendar.editor.unitPiece') }) }}</option>
               </select>
               <div class="flex items-center gap-2">
                 <input type="number" v-model="newExtraQty" class="w-20 h-[40px] bg-background border border-text/20 rounded-lg px-2 text-sm text-center font-bold text-text" min="1">
-                <span class="text-xs text-text-muted font-bold">{{ newExtraProduct ? (allProducts.find(p => p.id === newExtraProduct)?.unit || "db") : "mennyiség" }}</span>
+                <span class="text-xs text-text-muted font-bold">{{ newExtraProduct ? (allProducts.find(p => p.id === newExtraProduct)?.unit || $t('orders.calendar.editor.unitPiece')) : $t('orders.calendar.editor.quantity') }}</span>
               </div>
               <label class="flex items-center gap-2 cursor-pointer mt-1">
                 <input type="checkbox" v-model="newExtraSaveDefault" class="w-4 h-4 text-primary rounded border-text/30 focus:ring-primary">
-                <span class="text-xs font-bold text-text">Termék hozzáadása az ügyfél alapértelmezett anyagaihoz is</span>
+                <span class="text-xs font-bold text-text">{{ $t('orders.calendar.editor.addProductToCustomerDefaults') }}</span>
               </label>
               <div class="flex justify-end gap-2 mt-2">
-                <button @click="showAddExtraProduct = false" class="px-3 h-[32px] rounded-lg text-xs font-bold text-text hover:bg-text/10">Mégsem</button>
-                <button @click="addExtraProduct" :disabled="!newExtraProduct" class="px-4 h-[32px] rounded-lg text-xs font-bold bg-primary text-white hover:brightness-110 disabled:opacity-50">Hozzáad</button>
+                <button @click="showAddExtraProduct = false" class="px-3 h-[32px] rounded-lg text-xs font-bold text-text hover:bg-text/10">{{ $t('common.cancel') }}</button>
+                <button @click="addExtraProduct" :disabled="!newExtraProduct" class="px-4 h-[32px] rounded-lg text-xs font-bold bg-primary text-white hover:brightness-110 disabled:opacity-50">{{ $t('orders.calendar.editor.add') }}</button>
               </div>
             </div>
             <button v-else @click="showAddExtraProduct = true" class="text-xs font-bold text-primary hover:brightness-110 flex items-center justify-center gap-1 py-2 border border-dashed border-primary/30 rounded-lg hover:bg-primary/5 transition-colors">
-              <i class="pi pi-plus"></i> Új anyag hozzáadása
+              <i class="pi pi-plus"></i> {{ $t('orders.calendar.editor.addNewMaterial') }}
             </button>
           </div>
         </div>
@@ -85,7 +85,7 @@
             <div class="flex flex-wrap gap-2">
               <button @click="form.status = 0" class="flex-1 h-[44px] rounded-lg font-bold text-xs md:text-sm border transition-all" :class="form.status === 0 ? 'bg-red-500/10 border-red-500 text-red-500 shadow-sm' : 'border-text/20 text-text hover:bg-text/5'">{{ $t('calendar.editor.statusPending') }}</button>
               <button @click="form.status = 1" class="flex-1 h-[44px] rounded-lg font-bold text-xs md:text-sm border transition-all" :class="form.status === 1 ? 'bg-green-500/10 border-green-500 text-green-500 shadow-sm' : 'border-text/20 text-text hover:bg-text/5'">{{ $t('calendar.editor.statusApproved') }}</button>
-              <button @click="form.status = 2" class="flex-1 h-[44px] rounded-lg font-bold text-xs md:text-sm border transition-all" :class="form.status === 2 ? 'bg-primary/10 border-primary text-primary shadow-sm' : 'border-text/20 text-text hover:bg-text/5'">Befejezve</button>
+              <button @click="form.status = 2" class="flex-1 h-[44px] rounded-lg font-bold text-xs md:text-sm border transition-all" :class="form.status === 2 ? 'bg-primary/10 border-primary text-primary shadow-sm' : 'border-text/20 text-text hover:bg-text/5'">{{ $t('orders.calendar.editor.statusCompleted') }}</button>
               <button @click="form.status = 4" class="flex-1 h-[44px] px-2 rounded-lg font-bold text-xs md:text-sm border transition-all whitespace-nowrap" :class="form.status === 4 ? 'bg-gray-500/10 border-gray-500 text-gray-500 shadow-sm' : 'border-text/20 text-text hover:bg-text/5'">{{ $t('calendar.editor.statusNoShow') }}</button>
             </div>
           </div>
@@ -124,6 +124,7 @@
 <script setup>
   import { ref, computed, onMounted, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import { useLocalizedText } from '@/composables/useLocalizedText';
   import bookingApi from '@/services/bookingApi';
 import productApi from '@/services/productApi';
 import apiClient from '@/services/api';
@@ -205,7 +206,7 @@ const removeExtraProduct = (idx) => { form.value.extraMaterials.splice(idx, 1); 
 
   const isPending = (status) => status === 0 || status === '0' || (typeof status === 'string' && status.toLowerCase() === 'pending');
   const isNoShow = (status) => status === 4 || status === '4' || (typeof status === 'string' && status.toLowerCase() === 'noshow');
-  const getLocText = (dict) => dict ? (dict[currentLang.value] || dict['hu'] || '') : '';
+  const { getLocText } = useLocalizedText();
   const getVariantFullName = (variantId) => {
     for (const s of availableServices.value) {
       const v = s.variants?.find(vx => vx.id === variantId);
@@ -233,7 +234,7 @@ const removeExtraProduct = (idx) => { form.value.extraMaterials.splice(idx, 1); 
         if (Array.isArray(raw)) {
           existingExtras = raw.map(em => ({
             productId: em.productId,
-            name: em.name || allProducts.value.find(p => p.id === em.productId)?.name || 'Ismeretlen termék',
+            name: em.name || allProducts.value.find(p => p.id === em.productId)?.name || t('orders.calendar.editor.unknownProduct'),
             quantity: em.quantity,
             unit: allProducts.value.find(p => p.id === em.productId)?.unit,
             saveAsDefault: false
