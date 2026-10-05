@@ -20,15 +20,16 @@ namespace Soluvion.Domain.Models
 
         public decimal TotalPrice { get; set; }
         
-        // Státusz és Forrás
+        // Stï¿½tusz ï¿½s Forrï¿½s
         public AppointmentStatus Status { get; set; } = AppointmentStatus.Pending;
         public BookingSource Source { get; set; } = BookingSource.Web;
 
-        // Szöveges mezok (Megjegyzések és Egyezkedés)
-        public string? CustomerNotes { get; set; } // Ezt írta a vendég a weben
-        public string? AdminNotes { get; set; }    // Ezt csak a dolgozók látják (belso info)
-        public string? StatusReason { get; set; }  // Indoklás elutasításhoz vagy átszervezéshez
+        // Szï¿½veges mezok (Megjegyzï¿½sek ï¿½s Egyezkedï¿½s)
+        public string? CustomerNotes { get; set; } // Ezt ï¿½rta a vendï¿½g a weben
+        public string? AdminNotes { get; set; }    // Ezt csak a dolgozï¿½k lï¿½tjï¿½k (belso info)
+        public string? StatusReason { get; set; }  // Indoklï¿½s elutasï¿½tï¿½shoz vagy ï¿½tszervezï¿½shez
 
         public ICollection<AppointmentItem> Items { get; set; } = new List<AppointmentItem>();        public bool MaterialUsageRecorded { get; set; } = false;
+        public string? ExtraMaterials { get; set; } // JSON array of extra materials
     }
 }

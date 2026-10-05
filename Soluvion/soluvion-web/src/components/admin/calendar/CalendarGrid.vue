@@ -51,7 +51,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted, watch } from 'vue';
+  import { ref, computed, onMounted, watch } from "vue"; import { useRoute } from "vue-router";
   import { useI18n } from 'vue-i18n';
   import { useAppointmentStore } from '@/stores/appointmentStore';
   import bookingApi from '@/services/bookingApi';
@@ -68,8 +68,8 @@
   const currentLang = computed(() => locale.value || 'hu-HU');
 
   // --- ALAP NÉZET ÉS NAPTÁR LOGIKA ---
-  const currentView = ref('month');
-  const currentDate = ref(new Date());
+  const route = useRoute(); const currentView = ref(route.query.view ? route.query.view : (route.query.date ? "day" : "month"));
+  const currentDate = ref(route.query.date ? new Date(route.query.date) : new Date());
 
   const currentMonthName = computed(() => currentDate.value.toLocaleString(currentLang.value, { month: 'long' }).toUpperCase());
   const currentYear = computed(() => currentDate.value.getFullYear());

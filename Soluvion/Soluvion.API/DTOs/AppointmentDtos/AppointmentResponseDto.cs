@@ -15,7 +15,10 @@ namespace Soluvion.API.DTOs.AppointmentDtos
         public string? Notes { get; set; }
         public bool MaterialUsageRecorded { get; set; }
         public string CustomerName { get; set; } = string.Empty;
+        public string EmployeeName { get; set; } = string.Empty;
         public string PrimaryServiceName { get; set; } = string.Empty;
+        public string? CustomerNotes { get; set; }
+        public string? ExtraMaterials { get; set; }
         public List<AppointmentItemResponseDto> Items { get; set; } = new();
     }
 }

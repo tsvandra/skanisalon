@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
 using Soluvion.API.DTOs.CustomerDtos;
 using Soluvion.API.Interfaces;
@@ -63,6 +63,86 @@ namespace Soluvion.API.Services
                     Attributes = dynamicAttributes // Csak a tiszta, egyedi jellemzők mennek a frontendnek
                 };
             }).OrderBy(c => c.Name).ToList();
+        }
+
+        public async Task<CustomerResponseDto> GetCustomerByIdAsync(int id)
+        {
+            int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
+
+            var c = await _context.CompanyCustomers
+                .FirstOrDefaultAsync(x => x.Id == id && x.CompanyId == companyId);
+
+            if (c == null) throw new KeyNotFoundException("Az ügyfél nem található.");
+
+            string displayName = "Ismeretlen Vendég";
+
+            if (c.Attributes != null)
+            {
+                if (c.Attributes.ContainsKey("FullName") && !string.IsNullOrWhiteSpace(c.Attributes["FullName"]))
+                    displayName = c.Attributes["FullName"];
+                else if (c.Attributes.ContainsKey("Name") && !string.IsNullOrWhiteSpace(c.Attributes["Name"]))
+                    displayName = c.Attributes["Name"];
+                else if (c.Attributes.ContainsKey("Phone") && !string.IsNullOrWhiteSpace(c.Attributes["Phone"]))
+                    displayName = c.Attributes["Phone"];
+                else if (c.Attributes.ContainsKey("Email") && !string.IsNullOrWhiteSpace(c.Attributes["Email"]))
+                    displayName = c.Attributes["Email"];
+            }
+
+            var dynamicAttributes = c.Attributes?
+                .Where(kvp => kvp.Key != "FullName" && kvp.Key != "Name" && kvp.Key != "Phone" && kvp.Key != "Email" && kvp.Key != "Notes")
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? new Dictionary<string, string>();
+
+            string? notes = c.Notes;
+            if (string.IsNullOrWhiteSpace(notes) && c.Attributes != null && c.Attributes.ContainsKey("Notes"))
+            {
+                notes = c.Attributes["Notes"];
+            }
+
+            return new CustomerResponseDto
+            {
+                Id = c.Id,
+                Name = displayName,
+                Phone = c.Attributes != null && c.Attributes.ContainsKey("Phone") ? c.Attributes["Phone"] : null,
+                Email = c.Attributes != null && c.Attributes.ContainsKey("Email") ? c.Attributes["Email"] : null,
+                Notes = notes,
+                Attributes = dynamicAttributes
+            };
+        }
+
+        public async Task<List<Soluvion.API.DTOs.AppointmentDtos.AppointmentResponseDto>> GetCustomerAppointmentsAsync(int id)
+        {
+            int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
+
+            var appointments = await _context.Appointments
+                .Include(a => a.Items)
+                    .ThenInclude(i => i.ServiceVariant)
+                    .ThenInclude(sv => sv!.Service)
+                .Include(a => a.Employee)
+                    .ThenInclude(e => e!.User)
+                .Where(a => a.CustomerId == id && a.CompanyId == companyId)
+                .OrderByDescending(a => a.StartDateTime)
+                .ToListAsync();
+
+            return appointments.Select(a => new Soluvion.API.DTOs.AppointmentDtos.AppointmentResponseDto
+            {
+                Id = a.Id,
+                CustomerId = a.CustomerId,
+                CustomerName = "", 
+                EmployeeId = a.EmployeeId,
+                EmployeeName = a.Employee?.User?.Username ?? "Ismeretlen dolgozó",
+                StartDateTime = a.StartDateTime,
+                EndDateTime = a.EndDateTime,
+                Status = a.Status.ToString(),
+                TotalPrice = a.TotalPrice,
+                CustomerNotes = a.CustomerNotes,
+                Items = a.Items.Select(i => new Soluvion.API.DTOs.AppointmentDtos.AppointmentItemResponseDto
+                {
+                    ServiceId = i.ServiceVariant?.ServiceId ?? 0,
+                    ServiceName = (i.ServiceVariant?.Service?.Name != null && i.ServiceVariant.Service.Name.ContainsKey("hu")) ? i.ServiceVariant.Service.Name["hu"] : "Ismeretlen szolgáltatás",
+                    Price = i.Price
+                }).ToList(),
+                MaterialUsageRecorded = a.MaterialUsageRecorded
+            }).ToList();
         }
 
         public async Task<CustomerResponseDto> CreateCustomerAsync(CreateCustomerDto dto)

@@ -1,7 +1,10 @@
 <template>
   <div>
-    <label class="block text-[10px] md:text-xs font-bold text-text-muted mb-1.5 uppercase flex items-center gap-1">
-      <i class="pi pi-user"></i> {{ $t('calendar.editor.client') }}
+    <label class="block text-[10px] md:text-xs font-bold text-text-muted mb-1.5 uppercase flex items-center justify-between">
+      <div class="flex items-center gap-1"><i class="pi pi-user"></i> {{ $t('calendar.editor.client') }}</div>
+      <button v-if="modelValue && modelValue !== 'new'" @click.stop="goToCustomer" class="text-primary hover:text-primary/70 transition-colors flex items-center gap-1" title="Ugrás az ügyfél kartonjára">
+        <i class="pi pi-external-link"></i> Karton
+      </button>
     </label>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
       <div class="relative transition-all" :class="{'md:col-span-2': modelValue !== 'new'}">
@@ -23,6 +26,14 @@
 </template>
 
 <script setup>
+import { useRouter } from 'vue-router';
+const router = useRouter();
+
+const goToCustomer = () => {
+  if (props.modelValue && props.modelValue !== 'new') {
+    router.push({ path: '/ugyfelek', query: { customerId: props.modelValue } });
+  }
+};
 const props = defineProps({
   modelValue: { type: [String, Number], required: true }, // customerId
   customerFullName: { type: String, default: '' },

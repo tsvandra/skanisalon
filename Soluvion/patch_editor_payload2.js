@@ -1,0 +1,9 @@
+﻿const fs = require('fs');
+let content = fs.readFileSync('soluvion-web/src/components/admin/calendar/AppointmentEditorModal.vue', 'utf8');
+
+const r = "      // Update customer default formulas if requested\n      const defaultsToAdd = form.value.extraMaterials.filter(em => em.saveAsDefault);\n      if (defaultsToAdd.length > 0 && finalCustId && finalCustId !== 'new') {\n        try {\n          const custRes = await bookingApi.getCustomerById(finalCustId);\n          const customer = custRes.data;\n          let formula = [];\n          if (customer.attributes && customer.attributes.FormulaList) {\n             try { formula = JSON.parse(customer.attributes.FormulaList); } catch(e){}\n          }\n          defaultsToAdd.forEach(d => {\n             const existing = formula.find(f => f.productId === d.productId);\n             if (existing) { existing.quantity += d.quantity; }\n             else { formula.push({ productId: d.productId, quantity: d.quantity, notes: 'Hozzáadva foglalás szerkesztésből' }); }\n          });\n          if (!customer.attributes) customer.attributes = {};\n          customer.attributes.FormulaList = JSON.stringify(formula);\n          await apiClient.put('/api/CompanyAttributes/customer-attributes/' + customer.id, customer.attributes);\n        } catch(err) {\n          console.error('Nem sikerült menteni az ügyfél alapértelmezett anyagait', err);\n        }\n      }\n\n      const basePayload = {\n        extraMaterials: JSON.stringify(form.value.extraMaterials.map(em => ({ productId: em.productId, quantity: em.quantity, name: em.name }))),";
+
+if (!content.includes('extraMaterials: JSON.stringify')) {
+    content = content.replace("const basePayload = {", r);
+    fs.writeFileSync('soluvion-web/src/components/admin/calendar/AppointmentEditorModal.vue', content, 'utf8');
+}

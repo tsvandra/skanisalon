@@ -54,8 +54,19 @@
             </div>
 
             <div v-else class="space-y-2">
-              <div v-for="(item, index) in wrapUpItems" :key="index" class="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-background rounded-xl border border-text/10 shadow-sm">
-                <div class="flex-1 font-bold text-sm">{{ item.productName }}</div>
+              <div v-for="(item, index) in wrapUpItems" :key="index" class="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl border shadow-sm transition-colors"
+                :class="{
+                  'border-red-500/50 bg-red-500/5': getStockStatus(item.productId, item.quantity) === 'error',
+                  'border-yellow-500/50 bg-yellow-500/5': getStockStatus(item.productId, item.quantity) === 'warning',
+                  'border-blue-500/50 bg-blue-500/5': getStockStatus(item.productId, item.quantity) === 'info',
+                  'border-text/10 bg-background': getStockStatus(item.productId, item.quantity) === 'ok' || !getStockStatus(item.productId, item.quantity)
+                }">
+                <div class="flex-1">
+                  <div class="font-bold text-sm" :class="{ 'text-red-500': getStockStatus(item.productId, item.quantity) === 'error' }">{{ item.productName }}</div>
+                  <div v-if="getStockStatus(item.productId, item.quantity) === 'error'" class="text-[10px] font-bold text-red-500 uppercase mt-0.5"><i class="pi pi-exclamation-triangle"></i> Nincs elég készlet!</div>
+                  <div v-else-if="getStockStatus(item.productId, item.quantity) === 'warning'" class="text-[10px] font-bold text-yellow-500 uppercase mt-0.5"><i class="pi pi-exclamation-circle"></i> Minimum alá esik</div>
+                  <div v-else-if="getStockStatus(item.productId, item.quantity) === 'info'" class="text-[10px] font-bold text-blue-500 uppercase mt-0.5"><i class="pi pi-info-circle"></i> Pont a minimumon marad</div>
+                </div>
                 
                 <div class="flex items-center gap-3">
                   <div class="flex items-center border border-text/20 rounded-lg overflow-hidden h-9 w-32 bg-surface">
@@ -107,6 +118,7 @@ import InputNumber from 'primevue/inputnumber';
 import inventoryApi from '@/services/inventoryApi';
 import productApi from '@/services/productApi';
 import apiClient from '@/services/api';
+import bookingApi from '@/services/bookingApi';
 import { useI18n } from 'vue-i18n';
 
 const props = defineProps({
@@ -175,14 +187,28 @@ const addNewProduct = () => {
   showAddProduct.value = false;
 };
 
+const getStockStatus = (productId, requestedQuantity) => {
+  const p = allProducts.value.find(x => x.id === productId);
+  if (!p) return null;
+  const pkgSize = (p.packageSize && p.packageSize > 0) ? p.packageSize : 1;
+  const requiredStock = requestedQuantity / pkgSize;
+  const remaining = p.currentStock - requiredStock;
+  
+  if (remaining < 0) return 'error';
+  if (remaining < p.lowStockThreshold) return 'warning';
+  if (remaining === p.lowStockThreshold) return 'info';
+  return 'ok';
+};
+
 const loadData = async () => {
   if (!props.appointment || !props.isOpen) return;
   loading.value = true;
   wrapUpItems.value = [];
   try {
-    const [svcRes, prodRes] = await Promise.all([
+    const [svcRes, prodRes, custRes] = await Promise.all([
       apiClient.get('/api/Service'),
-      productApi.getAllProducts()
+      productApi.getAllProducts(),
+      bookingApi.getCustomerById(props.appointment.customerId).catch(() => null)
     ]);
     services.value = svcRes.data || [];
     allProducts.value = prodRes.data || [];
@@ -209,6 +235,48 @@ const loadData = async () => {
         }
       }
     });
+
+    // Øgyfél mentett formuláinak/anyagainak betöltése
+        // Foglalás extra anyagainak betöltése
+    if (props.appointment.extraMaterials) {
+      try {
+        const extraItems = typeof props.appointment.extraMaterials === 'string' ? JSON.parse(props.appointment.extraMaterials) : props.appointment.extraMaterials;
+        extraItems.forEach(ei => {
+          const existing = productMap.get(ei.productId);
+          if (existing) {
+            existing.quantity += ei.quantity;
+          } else {
+            productMap.set(ei.productId, {
+              productId: ei.productId,
+              productName: ei.name || 'Ismeretlen termék',
+              quantity: ei.quantity,
+              costPrice: 0
+            });
+          }
+        });
+      } catch(e) { console.error('Hiba az extra anyagok betöltésekor', e); }
+    }
+
+if (custRes && custRes.data && custRes.data.attributes && custRes.data.attributes.FormulaList) {
+      try {
+        const formulaItems = JSON.parse(custRes.data.attributes.FormulaList);
+        formulaItems.forEach(fi => {
+          const existing = productMap.get(fi.productId);
+          if (existing) {
+            existing.quantity += fi.quantity;
+          } else {
+            productMap.set(fi.productId, {
+              productId: fi.productId,
+              productName: fi.productName,
+              quantity: fi.quantity,
+              costPrice: 0
+            });
+          }
+        });
+      } catch(e) {
+        console.error("Hiba a formula betöltésekor", e);
+      }
+    }
 
     wrapUpItems.value = Array.from(productMap.values());
   } catch (error) {

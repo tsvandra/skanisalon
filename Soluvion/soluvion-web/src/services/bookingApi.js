@@ -22,7 +22,7 @@ export default {
   },
 
   // Ügyfél módosítása
-  updateCustomer(id, payload) {
+  getCustomerById(id) { return api.get(`/api/customers/${id}`); }, getCustomerAppointments(id) { return api.get(`/api/customers/${id}/appointments`); }, updateCustomer(id, payload) {
     return api.put(`/api/customers/${id}`, payload);
   },
 

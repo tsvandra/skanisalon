@@ -5,7 +5,7 @@
        :style="{ borderLeftWidth: mode === 'day' ? '6px' : '5px', borderLeftColor: getCustomerColorDarker(app.customerId) }">
 
     <div class="flex justify-between items-start" :class="{'mb-1': mode !== 'day'}">
-      <div class="flex items-center gap-2 md:gap-3">
+      <div class="flex items-center gap-2 md:gap-3 hover:opacity-80 transition-opacity" @click.stop="goToCustomer(app.customerId)" title="Ugrás az ügyfélhez">
         <div class="flex items-center justify-center rounded-full font-bold text-white drop-shadow-sm shadow-sm"
              :class="mode === 'day' ? 'w-8 h-8 md:w-12 md:h-12 text-xs md:text-lg' : 'w-7 h-7 md:w-9 md:h-9 text-[10px] md:text-xs'"
              :style="{ backgroundColor: getCustomerColor(app.customerId) }">
@@ -64,8 +64,14 @@
 
 <script setup>
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { getCustomerColor, getCustomerColorDarker } from '@/utils/colorUtils';
+
+const router = useRouter();
+const goToCustomer = (id) => {
+  if(id) router.push({ path: '/ugyfelek', query: { customerId: id } });
+};
 
 const props = defineProps({
   app: { type: Object, required: true },

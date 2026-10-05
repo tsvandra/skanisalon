@@ -1,0 +1,5 @@
+﻿const fs = require('fs');
+const newCode = Buffer.from('Y29uc3QgZ2V0U3RvY2tTdGF0dXMgPSAocHJvZHVjdElkLCByZXF1ZXN0ZWRRdWFudGl0eSkgPT4gewogIGNvbnN0IHAgPSBhbGxQcm9kdWN0cy52YWx1ZS5maW5kKHggPT4geC5pZCA9PT0gcHJvZHVjdElkKTsKICBpZiAoIXApIHJldHVybiBudWxsOwogIGNvbnN0IHBrZ1NpemUgPSAocC5wYWNrYWdlU2l6ZSAmJiBwLnBhY2thZ2VTaXplID4gMCkgPyBwLnBhY2thZ2VTaXplIDogMTsKICBjb25zdCByZXF1aXJlZFN0b2NrID0gcmVxdWVzdGVkUXVhbnRpdHkgLyBwa2dTaXplOwogIGNvbnN0IHJlbWFpbmluZyA9IHAuY3VycmVudFN0b2NrIC0gcmVxdWlyZWRTdG9jazsKICAKICBpZiAocmVtYWluaW5nIDwgMCkgcmV0dXJuICdlcnJvcic7CiAgaWYgKHJlbWFpbmluZyA8IHAubG93U3RvY2tUaHJlc2hvbGQpIHJldHVybiAnd2FybmluZyc7CiAgaWYgKHJlbWFpbmluZyA9PT0gcC5sb3dTdG9ja1RocmVzaG9sZCkgcmV0dXJuICdpbmZvJzsKICByZXR1cm4gJ29rJzsKfTsKCmNvbnN0IGxvYWREYXRhID0gYXN5bmMgKCkgPT4gew==', 'base64').toString('utf8');
+let content = fs.readFileSync('soluvion-web/src/components/admin/dashboard/MaterialWrapUpModal.vue', 'utf8');
+content = content.replace('const loadData = async () => {', newCode);
+fs.writeFileSync('soluvion-web/src/components/admin/dashboard/MaterialWrapUpModal.vue', content, 'utf8');

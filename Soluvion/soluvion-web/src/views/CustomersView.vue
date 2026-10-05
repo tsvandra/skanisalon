@@ -36,6 +36,9 @@
              class="bg-surface rounded-2xl p-5 shadow-sm border border-text/10 flex flex-col gap-4 hover:border-primary/40 transition-colors relative group">
 
           <div class="absolute top-4 right-4 flex gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+            <button @click="openHistoryModal(customer)" class="w-8 h-8 rounded-full bg-purple-500/10 text-purple-500 flex items-center justify-center hover:bg-purple-500 hover:text-white transition-colors" title="Karton & Történet">
+              <i class="pi pi-book text-sm"></i>
+            </button>
             <button @click="openEditModal(customer)" class="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-colors" title="Szerkesztés">
               <i class="pi pi-pencil text-sm"></i>
             </button>
@@ -67,9 +70,11 @@
           </div>
 
           <div v-if="customer.attributes && Object.keys(customer.attributes).length > 0" class="flex flex-wrap gap-1.5 mt-2">
-            <span v-for="(val, key) in customer.attributes" :key="key" class="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md font-bold border border-primary/20" :title="key">
-              {{ getAttributeLabel(key) }}: {{ val }}
-            </span>
+            <template v-for="(val, key) in customer.attributes" :key="key">
+              <span v-if="key !== 'FormulaList'" class="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md font-bold border border-primary/20" :title="key">
+                {{ getAttributeLabel(key) }}: {{ val }}
+              </span>
+            </template>
           </div>
 
           <div v-if="customer.notes" class="mt-auto pt-4 border-t border-text/5">
@@ -161,15 +166,26 @@
 
       </div>
     </div>
+    
+    <CustomerHistoryModal 
+      v-if="isHistoryModalOpen" 
+      :customerData="selectedCustomerHistory"
+      @close="closeHistoryModal" 
+      @updated="fetchData"
+    />
   </div>
 </template>
 
 <script setup>
-  import { ref, computed, onMounted } from 'vue';
+  import { ref, computed, onMounted, watch } from 'vue';
+  import { useRoute, useRouter } from 'vue-router';
   import bookingApi from '@/services/bookingApi';
   import attributesApi from '@/services/companyAttributesApi'; // <- Fontos: Itt hívjuk meg az új API-t!
   import { getCustomerColor } from '@/utils/colorUtils';
+  import CustomerHistoryModal from '@/components/admin/customers/CustomerHistoryModal.vue';
 
+  const route = useRoute();
+  const router = useRouter();
   const customers = ref([]);
   const companyAttributes = ref([]); // Itt tároljuk a dinamikus űrlap szabályait
   const loading = ref(true);
@@ -178,6 +194,9 @@
 
   const isModalOpen = ref(false);
   const isEditing = ref(false);
+
+  const isHistoryModalOpen = ref(false);
+  const selectedCustomerHistory = ref(null);
 
   const form = ref({
     id: null,
@@ -233,6 +252,10 @@
       const allAttrs = attrRes.data.$values || attrRes.data || [];
       companyAttributes.value = allAttrs.filter(a => a.isActive);
 
+      if (route.query.customerId) {
+        const c = customers.value.find(x => x.id == route.query.customerId);
+        if (c) openHistoryModal(c);
+      }
     } catch (error) {
       console.error("Hiba az adatok lekérésekor:", error);
       alert("Nem sikerült betölteni az ügyfeleket vagy a beállításokat.");
@@ -273,6 +296,21 @@
       attributes: mergedAttrs
     };
     isModalOpen.value = true;
+  };
+
+  const openHistoryModal = (customer) => {
+    selectedCustomerHistory.value = customer;
+    isHistoryModalOpen.value = true;
+  };
+
+  const closeHistoryModal = () => {
+    isHistoryModalOpen.value = false;
+    selectedCustomerHistory.value = null;
+    if (route.query.customerId) {
+      const q = { ...route.query };
+      delete q.customerId;
+      router.replace({ query: q });
+    }
   };
 
   const closeModal = () => {
@@ -334,6 +372,15 @@
     if (!name || name.startsWith('Vendég #')) return '?';
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
+
+  watch(() => route.query.customerId, (newId) => {
+    if (newId) {
+      const c = customers.value.find(x => x.id == newId);
+      if (c) openHistoryModal(c);
+    } else {
+      isHistoryModalOpen.value = false;
+    }
+  });
 
   onMounted(() => {
     fetchData();

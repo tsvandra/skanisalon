@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Soluvion.API.DTOs.CustomerDtos;
 using Soluvion.API.Interfaces;
@@ -22,6 +22,27 @@ namespace Soluvion.API.Controllers
         public async Task<IActionResult> GetCustomers()
         {
             var result = await _customerService.GetCompanyCustomersAsync();
+            return Ok(result);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetCustomerById(int id)
+        {
+            try
+            {
+                var result = await _customerService.GetCustomerByIdAsync(id);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+        }
+
+        [HttpGet("{id}/appointments")]
+        public async Task<IActionResult> GetCustomerAppointments(int id)
+        {
+            var result = await _customerService.GetCustomerAppointmentsAsync(id);
             return Ok(result);
         }
 

@@ -42,7 +42,44 @@
                            @remove="removeFormItem" />
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-text/10 pt-4">
+        <div class="border-t border-text/10 pt-4">
+          <label class="block text-[10px] md:text-xs font-bold text-text-muted mb-2 uppercase flex items-center gap-1"><i class="pi pi-box"></i> További felhasznált anyagok</label>
+          <div class="bg-background border border-text/10 rounded-xl p-3 flex flex-col gap-2 mb-4">
+            <div v-for="(em, idx) in form.extraMaterials" :key="idx" class="flex justify-between items-center bg-surface p-2 rounded-lg border border-text/5">
+              <div class="flex flex-col">
+                <span class="text-xs font-bold text-text">{{ em.name }}</span>
+                <span v-if="em.saveAsDefault" class="text-[10px] text-green-500 font-bold"><i class="pi pi-check"></i> Alapértelmezettként mentve az ügyfélhez</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="text-sm font-black text-orange-500">{{ em.quantity }} {{ em.unit || 'db' }}</span>
+                <button @click="removeExtraProduct(idx)" class="text-red-500 hover:bg-red-500/10 w-6 h-6 rounded flex items-center justify-center transition-colors"><i class="pi pi-trash text-xs"></i></button>
+              </div>
+            </div>
+            <div v-if="showAddExtraProduct" class="bg-surface p-3 rounded-lg border border-primary/20 flex flex-col gap-3 mt-2">
+              <select v-model="newExtraProduct" class="w-full h-[40px] bg-background border border-text/20 rounded-lg px-2 text-sm font-bold text-text">
+                <option :value="null" disabled>Válassz terméket...</option>
+                <option v-for="p in allProducts" :key="p.id" :value="p.id">{{ p.name }} ({{ p.currentStock }} {{ p.unit || 'db' }} raktáron)</option>
+              </select>
+              <div class="flex items-center gap-2">
+                <input type="number" v-model="newExtraQty" class="w-20 h-[40px] bg-background border border-text/20 rounded-lg px-2 text-sm text-center font-bold text-text" min="1">
+                <span class="text-xs text-text-muted font-bold">{{ newExtraProduct ? (allProducts.find(p => p.id === newExtraProduct)?.unit || "db") : "mennyiség" }}</span>
+              </div>
+              <label class="flex items-center gap-2 cursor-pointer mt-1">
+                <input type="checkbox" v-model="newExtraSaveDefault" class="w-4 h-4 text-primary rounded border-text/30 focus:ring-primary">
+                <span class="text-xs font-bold text-text">Termék hozzáadása az ügyfél alapértelmezett anyagaihoz is</span>
+              </label>
+              <div class="flex justify-end gap-2 mt-2">
+                <button @click="showAddExtraProduct = false" class="px-3 h-[32px] rounded-lg text-xs font-bold text-text hover:bg-text/10">Mégsem</button>
+                <button @click="addExtraProduct" :disabled="!newExtraProduct" class="px-4 h-[32px] rounded-lg text-xs font-bold bg-primary text-white hover:brightness-110 disabled:opacity-50">Hozzáad</button>
+              </div>
+            </div>
+            <button v-else @click="showAddExtraProduct = true" class="text-xs font-bold text-primary hover:brightness-110 flex items-center justify-center gap-1 py-2 border border-dashed border-primary/30 rounded-lg hover:bg-primary/5 transition-colors">
+              <i class="pi pi-plus"></i> Új anyag hozzáadása
+            </button>
+          </div>
+        </div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-text/10 pt-4">
           <div>
             <label class="block text-[10px] md:text-xs font-bold text-text-muted mb-2 uppercase">{{ $t('calendar.editor.status') }}</label>
             <div class="flex gap-2">
@@ -82,6 +119,8 @@
   import { ref, computed, onMounted, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import bookingApi from '@/services/bookingApi';
+import productApi from '@/services/productApi';
+import apiClient from '@/services/api';
   import { useAppointmentStore } from '@/stores/appointmentStore';
 
   // KISZERVEZETT KOMPONENSEK BEHÚZÁSA
@@ -104,12 +143,18 @@
   const availableServices = ref([]);
   const customersList = ref([]);
   const isEditing = ref(false);
+  const allProducts = ref([]);
+  const showAddExtraProduct = ref(false);
+  const newExtraProduct = ref(null);
+  const newExtraQty = ref(1);
+  const newExtraSaveDefault = ref(false);
 
   const openDropdownId = ref(null); // ServicePicker vezérli ezen keresztül
 
   const form = ref({
-    id: null, customerId: '', customerFullName: '', customerPhone: '', employeeId: 1,
-    date: '', time: '08:00', status: 1, notes: '', items: []
+    id: null, customerId: '', customerFullName: '', customerPhone: '', employeeId: 0,
+    date: '', time: '08:00', status: 1, notes: '',
+  extraMaterials: [], items: []
   });
 
   const closeAllDropdowns = () => {
@@ -117,6 +162,14 @@
   };
 
   // Kosár logikák
+  const addExtraProduct = () => {
+  if (newExtraProduct.value) {
+    const prod = allProducts.value.find(p => p.id === newExtraProduct.value);
+    form.value.extraMaterials.push({ productId: prod.id, name: prod.name, quantity: newExtraQty.value, unit: prod.unit, saveAsDefault: newExtraSaveDefault.value });
+    newExtraProduct.value = null; newExtraQty.value = 1; newExtraSaveDefault.value = false; showAddExtraProduct.value = false;
+  }
+};
+const removeExtraProduct = (idx) => { form.value.extraMaterials.splice(idx, 1); };
   const handleNewItems = (newItems) => {
     form.value.items.push(...newItems);
   };
@@ -156,7 +209,7 @@
     if (!props.editData) {
       isEditing.value = false;
       const d = new Date(props.defaultDate.getTime() - (props.defaultDate.getTimezoneOffset() * 60000));
-      form.value = { id: null, customerId: '', customerFullName: '', customerPhone: '', employeeId: 1, date: d.toISOString().split('T')[0], time: '08:00', status: 1, notes: '', items: [] };
+      form.value = { id: null, customerId: '', customerFullName: '', customerPhone: '', employeeId: 0, date: d.toISOString().split('T')[0], time: '08:00', status: 1, notes: '', items: [] };
     } else {
       isEditing.value = true;
       const app = props.editData;
@@ -201,7 +254,31 @@
         finalCustId = parseInt(form.value.customerId);
       }
 
+            // Update customer default formulas if requested
+      const defaultsToAdd = form.value.extraMaterials.filter(em => em.saveAsDefault);
+      if (defaultsToAdd.length > 0 && finalCustId && finalCustId !== 'new') {
+        try {
+          const custRes = await bookingApi.getCustomerById(finalCustId);
+          const customer = custRes.data;
+          let formula = [];
+          if (customer.attributes && customer.attributes.FormulaList) {
+             try { formula = JSON.parse(customer.attributes.FormulaList); } catch(e){}
+          }
+          defaultsToAdd.forEach(d => {
+             const existing = formula.find(f => f.productId === d.productId);
+             if (existing) { existing.quantity += d.quantity; }
+             else { formula.push({ productId: d.productId, quantity: d.quantity, notes: 'Hozzáadva foglalás szerkesztésből' }); }
+          });
+          if (!customer.attributes) customer.attributes = {};
+          customer.attributes.FormulaList = JSON.stringify(formula);
+          await apiClient.put('/api/CompanyAttributes/customer-attributes/' + customer.id, customer.attributes);
+        } catch(err) {
+          console.error('Nem sikerült menteni az ügyfél alapértelmezett anyagait', err);
+        }
+      }
+
       const basePayload = {
+        extraMaterials: JSON.stringify(form.value.extraMaterials.map(em => ({ productId: em.productId, quantity: em.quantity, name: em.name }))),
         customerId: finalCustId,
         startDateTime: new Date(`${form.value.date}T${form.value.time}:00`).toISOString(),
         items: form.value.items.map(i => ({ serviceVariantId: parseInt(i.variantId), durationMinutes: parseInt(i.duration) })),
@@ -260,6 +337,7 @@
   });
 
   onMounted(() => {
+    productApi.getAllProducts().then(res => allProducts.value = res.data || []).catch(e => console.error(e));
     fetchServicesForAdmin();
     fetchCustomers();
   });
