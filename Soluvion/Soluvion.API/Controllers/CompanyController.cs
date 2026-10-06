@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Soluvion.API.DTOs;
 using Soluvion.API.Interfaces;
@@ -65,6 +65,10 @@ namespace Soluvion.API.Controllers
         [HttpPost("upload/footer")]
         [Authorize]
         public async Task<IActionResult> UploadFooter(IFormFile file) => await UploadBrandingImage(file, "footer");
+
+        [HttpPost("upload/favicon")]
+        [Authorize]
+        public async Task<IActionResult> UploadFavicon(IFormFile file) => await UploadBrandingImage(file, "favicon");
 
         private async Task<IActionResult> UploadBrandingImage(IFormFile file, string type)
         {

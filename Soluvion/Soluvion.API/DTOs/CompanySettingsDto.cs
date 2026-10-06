@@ -43,5 +43,6 @@ namespace Soluvion.API.DTOs
         public string? LogoUrl { get; set; }
         public string? HeroImageUrl { get; set; }
         public string? FooterImageUrl { get; set; }
+        public string? FaviconUrl { get; set; }
     }
 }

@@ -1,4 +1,4 @@
-﻿using Soluvion.Domain.Models;
+using Soluvion.Domain.Models;
 
 namespace Soluvion.API.DTOs
 {
@@ -17,6 +17,7 @@ namespace Soluvion.API.DTOs
         public string? FooterImageUrl { get; set; }
         public int FooterHeight { get; set; }
         public string? HeroImageUrl { get; set; }
+        public string? FaviconUrl { get; set; }
         public string PrimaryColor { get; set; } = string.Empty;
         public string SecondaryColor { get; set; } = string.Empty;
 

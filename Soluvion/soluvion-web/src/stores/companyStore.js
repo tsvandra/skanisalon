@@ -28,12 +28,27 @@ export const useCompanyStore = defineStore('company', {
         // Tab cím beállítása
         document.title = this.company?.name || 'Skani Salon';
 
+        // Favicon beállítása
+        this.applyFavicon(this.company?.faviconUrl);
+
       } catch (err) {
         console.error("Nem sikerült betölteni a cég adatait:", err);
         this.error = err;
       } finally {
         this.loading = false;
       }
+    },
+
+    applyFavicon(url) {
+      if (!url) return;
+      let link = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.removeAttribute('type');
+      link.href = url;
     },
 
     applyTheme(companyData) {

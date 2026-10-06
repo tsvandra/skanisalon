@@ -49,6 +49,7 @@ namespace Soluvion.API.Services
                 LogoUrl = company.LogoUrl,
                 LogoHeight = company.LogoHeight,
                 FooterImageUrl = company.FooterImageUrl,
+                FaviconUrl = company.FaviconUrl,
                 FooterHeight = company.FooterHeight,
                 HeroImageUrl = company.HeroImageUrl,
                 PrimaryColor = company.PrimaryColor,
@@ -119,7 +120,8 @@ namespace Soluvion.API.Services
                 LogoHeight = c.LogoHeight,
                 LogoUrl = c.LogoUrl,
                 HeroImageUrl = c.HeroImageUrl,
-                FooterImageUrl = c.FooterImageUrl
+                FooterImageUrl = c.FooterImageUrl,
+                FaviconUrl = c.FaviconUrl
             };
         }
 
@@ -178,6 +180,7 @@ namespace Soluvion.API.Services
                 "logo" => company.LogoPublicId,
                 "hero" => company.HeroImagePublicId,
                 "footer" => company.FooterImagePublicId,
+                "favicon" => company.FaviconPublicId,
                 _ => null
             };
 
@@ -199,6 +202,10 @@ namespace Soluvion.API.Services
                 case "footer":
                     company.FooterImageUrl = uploadResult.Value.Url;
                     company.FooterImagePublicId = uploadResult.Value.PublicId;
+                    break;
+                case "favicon":
+                    company.FaviconUrl = uploadResult.Value.Url;
+                    company.FaviconPublicId = uploadResult.Value.PublicId;
                     break;
             }
 

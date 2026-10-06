@@ -3,6 +3,7 @@
   import { useI18n } from 'vue-i18n';
   import Button from 'primevue/button';
   import api from '@/services/api';
+  import { useCompanyStore } from '@/stores/companyStore';
 
   const props = defineProps({
     companyData: {
@@ -12,11 +13,13 @@
   });
 
   const { t } = useI18n();
+  const companyStore = useCompanyStore();
 
   const isUploading = ref(false);
   const logoInputRef = ref(null);
   const heroInputRef = ref(null);
   const footerInputRef = ref(null);
+  const faviconInputRef = ref(null);
 
   const handleUpload = async (event, type) => {
     const file = event.target.files[0];
@@ -29,6 +32,7 @@
     let endpoint = '';
     if (type === 'logo') endpoint = '/api/Company/upload/logo';
     else if (type === 'hero') endpoint = '/api/Company/upload/hero';
+    else if (type === 'favicon') endpoint = '/api/Company/upload/favicon';
     else endpoint = '/api/Company/upload/footer';
 
     try {
@@ -38,6 +42,10 @@
 
       if (type === 'logo') props.companyData.logoUrl = res.data.url;
       else if (type === 'hero') props.companyData.heroImageUrl = res.data.url;
+      else if (type === 'favicon') {
+        props.companyData.faviconUrl = res.data.url;
+        companyStore.applyFavicon(res.data.url);
+      }
       else props.companyData.footerImageUrl = res.data.url;
 
     } catch (err) {
@@ -74,6 +82,26 @@
             </div>
             <input type="range" v-model="companyData.logoHeight" min="30" max="150" step="2" class="w-full cursor-pointer accent-primary" />
           </div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="border-0 border-t border-text/10 my-10" />
+
+    <div class="mb-10">
+      <h3 class="text-lg font-light text-primary mb-6 uppercase tracking-widest border-b border-text/10 pb-2">{{ $t('adminSettings.appearance.faviconTitle') }}</h3>
+
+      <div class="flex flex-col md:flex-row gap-6 items-start">
+        <div class="w-full md:w-64 h-32 border border-dashed border-text/20 bg-text/5 rounded-xl flex items-center justify-center overflow-hidden relative shadow-inner">
+          <img v-if="companyData.faviconUrl" :src="companyData.faviconUrl" alt="Favicon" class="w-16 h-16 object-contain" />
+          <span v-else class="text-text-muted text-sm font-medium tracking-wide">{{ $t('adminSettings.appearance.noFavicon') }}</span>
+        </div>
+
+        <div class="flex-1 flex flex-col gap-2 w-full">
+          <Button :label="$t('adminSettings.appearance.uploadFavicon')" icon="pi pi-upload" @click="faviconInputRef.click()"
+                  class="!bg-transparent !text-text !border !border-text/30 hover:!border-primary hover:!text-primary !rounded-lg !px-6 !py-2.5 transition-colors w-fit" :loading="isUploading" />
+          <input type="file" ref="faviconInputRef" hidden @change="(e) => handleUpload(e, 'favicon')" accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml,image/*" />
+          <small class="text-xs text-text-muted mt-1 italic">{{ $t('adminSettings.appearance.faviconHint') }}</small>
         </div>
       </div>
     </div>

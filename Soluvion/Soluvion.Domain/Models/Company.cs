@@ -90,6 +90,12 @@ namespace Soluvion.Domain.Models
         public string? FooterImagePublicId { get; set; }
         public int FooterHeight { get; set; } = 250;
 
+        [MaxLength(500)]
+        public string? FaviconUrl { get; set; }
+
+        [MaxLength(200)]
+        public string? FaviconPublicId { get; set; }
+
         [MaxLength (20)]
         public string PrimaryColor {  get; set; } = "#d4af37";
         [MaxLength(20)]
