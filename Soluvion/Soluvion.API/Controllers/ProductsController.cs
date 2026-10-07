@@ -54,6 +54,36 @@ namespace Soluvion.API.Controllers
             if (!success) return NotFound();
             return NoContent();
         }
+
+        [HttpPost("ai-scan")]
+        [RequestSizeLimit(35_000_000)]
+        public async Task<ActionResult<ProductAiScanResultDto>> AiScan(
+            [FromForm] List<IFormFile> images,
+            [FromServices] IProductAiScannerService aiScannerService)
+        {
+            if (images == null || images.Count == 0)
+            {
+                return BadRequest(new { message = "Legalább 1 képet fel kell tölteni a termékről." });
+            }
+
+            try
+            {
+                var result = await aiScannerService.ScanProductImagesAsync(images);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Hiba a termék AI beolvasása során: {ex.Message}" });
+            }
+        }
     }
 }
 

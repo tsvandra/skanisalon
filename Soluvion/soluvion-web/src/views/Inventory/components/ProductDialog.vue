@@ -15,9 +15,30 @@
       closeButton: { class: 'hover:bg-text/10 p-2 rounded-full transition-colors w-8 h-8 flex items-center justify-center text-text-muted' }
     }"
   >
-    <div class="flex flex-col mb-5 mt-2">
+    <!-- AI fotó beolvasó gomb -->
+    <div class="mb-4 mt-1">
+      <button 
+        type="button" 
+        @click="aiScannerVisible = true" 
+        class="w-full py-2.5 px-4 rounded-xl border border-primary/30 bg-primary/10 text-primary font-bold text-xs sm:text-sm hover:bg-primary/20 active:scale-98 transition-all flex items-center justify-center gap-2 shadow-2xs"
+      >
+        <i class="pi pi-sparkles text-sm"></i>
+        <span>{{ $t('inventory.aiScanner.fillFromAi') }}</span>
+      </button>
+
+      <!-- Sikeres AI beolvasás visszajelzés -->
+      <div v-if="aiSuccessMessage" class="mt-2 p-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs flex items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5">
+          <i class="pi pi-check-circle text-sm shrink-0"></i>
+          <span>{{ $t('inventory.aiScanner.successAlert') }}</span>
+        </div>
+        <button type="button" @click="aiSuccessMessage = false" class="hover:text-white"><i class="pi pi-times"></i></button>
+      </div>
+    </div>
+
+    <div class="flex flex-col mb-4">
       <label for="name" class="text-sm font-bold text-text-muted mb-1">{{ $t('inventory.productDialog.name') }}</label>
-      <InputText id="name" v-model.trim="product.name" required autofocus class="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text" />
+      <InputText id="name" v-model.trim="product.name" required autofocus class="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text font-bold" />
     </div>
 
     <div class="flex flex-col sm:flex-row gap-4 mb-4">
@@ -74,6 +95,12 @@
       <Button :label="$t('inventory.productDialog.save')" icon="pi pi-check" class="bg-primary text-white hover:brightness-110 px-4 py-2 font-bold" @click="saveProduct" :loading="saving" />
     </template>
   </Dialog>
+
+  <!-- AI Fotó Beolvasó Modális Ablak -->
+  <AiProductScannerModal 
+    v-model:visible="aiScannerVisible" 
+    @scanned="onAiScanned" 
+  />
 </template>
 
 <script setup>
@@ -86,6 +113,7 @@ import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
 import { useI18n } from 'vue-i18n';
 import productApi from '@/services/productApi';
+import AiProductScannerModal from './AiProductScannerModal.vue';
 
 const { t } = useI18n();
 
@@ -95,6 +123,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:visible', 'saved']);
+
+const aiScannerVisible = ref(false);
+const aiSuccessMessage = ref(false);
 
 const product = ref({
   name: '',
@@ -122,6 +153,7 @@ const unitOptions = computed(() => [
 
 watch(() => props.visible, (newVal) => {
   if (newVal) {
+    aiSuccessMessage.value = false;
     if (props.productData) {
       product.value = { ...props.productData };
     } else {
@@ -131,6 +163,18 @@ watch(() => props.visible, (newVal) => {
     }
   }
 });
+
+const onAiScanned = (scannedData) => {
+  if (!scannedData) return;
+  if (scannedData.name) product.value.name = scannedData.name;
+  if (scannedData.shade) product.value.shade = scannedData.shade;
+  if (scannedData.ean) product.value.ean = scannedData.ean;
+  if (scannedData.packageSize) product.value.packageSize = scannedData.packageSize;
+  if (scannedData.unit !== undefined && scannedData.unit !== null) product.value.unit = scannedData.unit;
+  if (scannedData.isProfessional !== undefined) product.value.isProfessional = scannedData.isProfessional;
+  if (scannedData.isRetail !== undefined) product.value.isRetail = scannedData.isRetail;
+  aiSuccessMessage.value = true;
+};
 
 const hideDialog = () => {
   emit('update:visible', false);

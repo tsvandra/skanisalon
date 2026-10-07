@@ -20,6 +20,7 @@
       "title": "Raktár & Termékek",
       "newProduct": "Új termék",
       "stockMovement": "Inventúra / Mozgás",
+      "aiScan": "Fotózás (AI)",
       "searchPlaceholder": "Keresés név vagy vonalkód alapján...",
       "all": "Összes",
       "lowStockFilter": "Kevés készlet",
@@ -145,6 +146,24 @@
       "itemFallback": "Tétel #{id}",
       "unknownProduct": "Ismeretlen termék",
       "saveError": "Hiba történt a mentés során. Lehet, hogy nincs elég készlet a raktárban?"
+    },
+    "aiScanner": {
+      "title": "Termék beolvasása fotók alapján",
+      "subtitle": "Készíts 1-4 fotót a termékről a telefonoddal, és a mesterséges intelligencia azonnal kiolvassa az adatokat!",
+      "takePhoto": "Fotózás kamerával",
+      "chooseFromGallery": "Képek a galériából",
+      "addMore": "Újabb fotó hozzáadása",
+      "tipFront": "Előlap: Márka & Név",
+      "tipBack": "Hátlap: Kiszerelés & Vonalkód",
+      "tipShade": "Kód: Árnyalat / Színkód",
+      "imagesCount": "{count} / 5 fotó rögzítve",
+      "analyzeBtn": "Adatok kiolvasása AI-val",
+      "analyzing": "A mesterséges intelligencia elemzi a fotókat...",
+      "analyzingSub": "Kiolvassuk a márkát, méretet, színkódot és vonalkódot...",
+      "cancel": "Mégse",
+      "errorTitle": "Sikertelen beolvasás",
+      "successAlert": "Az AI sikeresen felismerte a terméket! Kérlek ellenőrizd az adatokat, add meg az árat, majd mentsd el.",
+      "fillFromAi": "Kitöltés fotókból (AI)"
     }
   }
 }

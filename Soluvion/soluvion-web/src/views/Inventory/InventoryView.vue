@@ -24,10 +24,19 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 sm:flex items-center gap-2.5 w-full md:w-auto">
+        <div class="grid grid-cols-3 sm:flex items-center gap-2 w-full md:w-auto">
+          <button 
+            @click="openAiScanner" 
+            class="h-[44px] px-2.5 sm:px-4 bg-primary/15 text-primary border border-primary/30 font-bold text-xs sm:text-sm rounded-xl shadow-2xs hover:bg-primary hover:text-white active:scale-95 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
+            :title="$t('inventory.view.aiScan')"
+          >
+            <i class="pi pi-sparkles text-xs sm:text-sm"></i>
+            <span class="truncate">{{ $t('inventory.view.aiScan') }}</span>
+          </button>
+
           <button 
             @click="openStockDialog" 
-            class="h-[44px] px-3.5 sm:px-5 bg-surface text-text border border-text/20 font-bold text-xs sm:text-sm rounded-xl shadow-sm hover:border-primary hover:text-primary active:scale-95 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+            class="h-[44px] px-2.5 sm:px-4 bg-surface text-text border border-text/20 font-bold text-xs sm:text-sm rounded-xl shadow-sm hover:border-primary hover:text-primary active:scale-95 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
           >
             <i class="pi pi-arrow-right-arrow-left text-xs sm:text-sm"></i>
             <span class="truncate">{{ $t('inventory.view.stockMovement') }}</span>
@@ -35,7 +44,7 @@
           
           <button 
             @click="openProductDialog" 
-            class="h-[44px] px-3.5 sm:px-5 bg-primary text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+            class="h-[44px] px-2.5 sm:px-5 bg-primary text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
           >
             <i class="pi pi-plus text-xs sm:text-sm"></i>
             <span class="truncate">{{ $t('inventory.view.newProduct') }}</span>
@@ -358,6 +367,10 @@
         :product="selectedProductForStock"
         @saved="fetchProducts" 
       />
+      <AiProductScannerModal 
+        v-model:visible="aiScannerVisible" 
+        @scanned="onAiScanned" 
+      />
     </div>
   </div>
 </template>
@@ -372,6 +385,7 @@ import productApi from '@/services/productApi';
 import ProductDialog from './components/ProductDialog.vue';
 import StockAdjustmentDialog from './components/StockAdjustmentDialog.vue';
 import QuickStockDialog from './components/QuickStockDialog.vue';
+import AiProductScannerModal from './components/AiProductScannerModal.vue';
 import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
@@ -385,6 +399,7 @@ const viewMode = ref('cards'); // 'cards' alapértelmezetten (mobilon tökélete
 const productDialogVisible = ref(false);
 const stockDialogVisible = ref(false);
 const quickStockVisible = ref(false);
+const aiScannerVisible = ref(false);
 
 const selectedProduct = ref(null);
 const selectedProductForStock = ref(null);
@@ -461,6 +476,26 @@ const formatCurrency = (val) => {
 
 const openProductDialog = () => {
   selectedProduct.value = null;
+  productDialogVisible.value = true;
+};
+
+const openAiScanner = () => {
+  aiScannerVisible.value = true;
+};
+
+const onAiScanned = (scannedData) => {
+  selectedProduct.value = {
+    name: scannedData.name || '',
+    shade: scannedData.shade || '',
+    ean: scannedData.ean || '',
+    packageSize: scannedData.packageSize || 1,
+    unit: scannedData.unit ?? 0,
+    isProfessional: scannedData.isProfessional ?? true,
+    isRetail: scannedData.isRetail ?? false,
+    costPrice: 0,
+    retailPrice: scannedData.estimatedPrice || 0,
+    lowStockThreshold: 0
+  };
   productDialogVisible.value = true;
 };
 
