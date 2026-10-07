@@ -19,6 +19,10 @@ namespace Soluvion.Domain.Models
         [MaxLength(50)]
         public string? EAN { get; set; }
 
+        // Kód / Árnyalat (pl. festékek színkódja: 15.2, 7.1, 6/00)
+        [MaxLength(50)]
+        public string? Shade { get; set; }
+
         // Belső szakmai használatra való-e
         public bool IsProfessional { get; set; } = true;
 

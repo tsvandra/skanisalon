@@ -8,6 +8,7 @@ namespace Soluvion.API.DTOs
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string? EAN { get; set; }
+        public string? Shade { get; set; }
         public bool IsProfessional { get; set; }
         public bool IsRetail { get; set; }
         public UnitOfMeasure Unit { get; set; }
@@ -23,6 +24,7 @@ namespace Soluvion.API.DTOs
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string? EAN { get; set; }
+        public string? Shade { get; set; }
         public bool IsProfessional { get; set; } = true;
         public bool IsRetail { get; set; } = false;
         public UnitOfMeasure Unit { get; set; } = UnitOfMeasure.Milliliter;
@@ -37,6 +39,7 @@ namespace Soluvion.API.DTOs
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string? EAN { get; set; }
+        public string? Shade { get; set; }
         public bool IsProfessional { get; set; }
         public bool IsRetail { get; set; }
         public UnitOfMeasure Unit { get; set; }

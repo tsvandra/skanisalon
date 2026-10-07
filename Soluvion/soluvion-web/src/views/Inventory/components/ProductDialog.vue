@@ -2,15 +2,15 @@
   <Dialog 
     :visible="visible" 
     @update:visible="$emit('update:visible', $event)" 
-    :style="{width: '500px'}" 
+    :style="{ width: '95vw', maxWidth: '520px' }" 
     :header="isEdit ? $t('inventory.productDialog.titleEdit') : $t('inventory.productDialog.titleNew')" 
     :modal="true" 
     class="p-fluid"
     :pt="{
       root: { class: 'bg-surface border border-text/10 rounded-2xl overflow-hidden shadow-2xl' },
-      header: { class: 'px-6 py-4 border-b border-text/10 bg-background/50' },
-      title: { class: 'text-xl font-bold text-text' },
-      content: { class: 'p-6 bg-surface' },
+      header: { class: 'px-5 py-4 border-b border-text/10 bg-background/50' },
+      title: { class: 'text-lg md:text-xl font-bold text-text' },
+      content: { class: 'p-4 sm:p-6 bg-surface max-h-[75vh] overflow-y-auto' },
       footer: { class: 'p-4 border-t border-text/10 bg-background/50 flex justify-end gap-2' },
       closeButton: { class: 'hover:bg-text/10 p-2 rounded-full transition-colors w-8 h-8 flex items-center justify-center text-text-muted' }
     }"
@@ -20,9 +20,15 @@
       <InputText id="name" v-model.trim="product.name" required autofocus class="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text" />
     </div>
 
-    <div class="flex flex-col mb-5">
-      <label for="ean" class="text-sm font-bold text-text-muted mb-1">{{ $t('inventory.productDialog.ean') }}</label>
-      <InputText id="ean" v-model.trim="product.ean" class="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text" />
+    <div class="flex flex-col sm:flex-row gap-4 mb-4">
+      <div class="flex-1 flex flex-col">
+        <label for="shade" class="text-sm font-bold text-text-muted mb-1">{{ $t('inventory.productDialog.shade') }}</label>
+        <InputText id="shade" v-model.trim="product.shade" :placeholder="$t('inventory.productDialog.shadePlaceholder')" class="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text font-semibold" />
+      </div>
+      <div class="flex-1 flex flex-col">
+        <label for="ean" class="text-sm font-bold text-text-muted mb-1">{{ $t('inventory.productDialog.ean') }}</label>
+        <InputText id="ean" v-model.trim="product.ean" class="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text" />
+      </div>
     </div>
 
     <div class="flex flex-col sm:flex-row gap-4 mb-5">
@@ -92,6 +98,7 @@ const emit = defineEmits(['update:visible', 'saved']);
 
 const product = ref({
   name: '',
+  shade: '',
   ean: '',
   unit: 0,
   packageSize: 0,
@@ -119,7 +126,7 @@ watch(() => props.visible, (newVal) => {
       product.value = { ...props.productData };
     } else {
       product.value = {
-        name: '', ean: '', unit: 0, packageSize: 0, costPrice: 0, retailPrice: 0, lowStockThreshold: 0, isProfessional: true, isRetail: false
+        name: '', shade: '', ean: '', unit: 0, packageSize: 0, costPrice: 0, retailPrice: 0, lowStockThreshold: 0, isProfessional: true, isRetail: false
       };
     }
   }
