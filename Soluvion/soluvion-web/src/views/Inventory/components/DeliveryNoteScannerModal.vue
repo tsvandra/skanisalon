@@ -187,8 +187,8 @@
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="text-xs font-bold text-text">{{ row.name }}</span>
-                <span v-if="row.shade" class="text-[11px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-bold">
-                  [{{ row.shade }}]
+                <span v-if="cleanShade(row.shade)" class="text-[11px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-bold">
+                  [{{ cleanShade(row.shade) }}]
                 </span>
                 <span v-if="row.packageSize && row.packageSize > 1" class="text-[10px] text-text-muted">
                   ({{ row.packageSize }} {{ getUnitShort(row.unit) }})
@@ -230,7 +230,7 @@
                     :key="cand.product.id" 
                     :value="cand.product.id"
                   >
-                    {{ cand.score >= 50 ? '⭐ ' : '' }}{{ cand.product.name }} {{ cand.product.shade ? `[${cand.product.shade}]` : '' }} (Egyezés: {{ cand.score }}% - Készlet: {{ cand.product.currentStock }})
+                    {{ cand.score >= 50 ? '⭐ ' : '' }}{{ cand.product.name }} {{ cleanShade(cand.product.shade) ? `[${cleanShade(cand.product.shade)}]` : '' }} (Egyezés: {{ cand.score }}% - Készlet: {{ cand.product.currentStock }})
                   </option>
                 </optgroup>
               </select>
@@ -413,48 +413,118 @@ const getUnitShort = (unitEnum) => {
   return map[unitEnum] || 'db';
 };
 
-// Intelligens hasonlóság számítás egy kiolvasott tétel és egy létező raktári termék között
-const calculateSimilarity = (item, prod) => {
-  let score = 0;
+const cleanShade = (s) => {
+  if (!s) return null;
+  const str = String(s).trim();
+  if (['null', 'undefined', 'none', 'n/a', '-', 'false', 'ismeretlen'].includes(str.toLowerCase())) return null;
+  return str;
+};
 
-  // 1. EAN egyezés
-  if (item.ean && prod.ean && item.ean.trim() === prod.ean.trim()) {
-    return 100;
+// Ékezetmentesítés és tisztítás összehasonlításhoz
+const normalizeStr = (str) => {
+  if (!str) return '';
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+// Bigram Dice együttható (0.0 - 1.0)
+const diceCoefficient = (s1, s2) => {
+  if (!s1 || !s2) return 0;
+  if (s1 === s2) return 1.0;
+  if (s1.length < 2 || s2.length < 2) return s1 === s2 ? 1.0 : 0;
+
+  const bigrams1 = new Map();
+  for (let i = 0; i < s1.length - 1; i++) {
+    const bg = s1.substr(i, 2);
+    bigrams1.set(bg, (bigrams1.get(bg) || 0) + 1);
   }
 
-  // 2. Kód / Árnyalat egyezés
-  const iShade = (item.shade || item.code || '').trim().toLowerCase();
-  const pShade = (prod.shade || '').trim().toLowerCase();
-  if (iShade && pShade) {
-    if (iShade === pShade) {
-      score += 45;
-    } else if (iShade.includes(pShade) || pShade.includes(iShade)) {
-      score += 30;
+  let intersection = 0;
+  for (let i = 0; i < s2.length - 1; i++) {
+    const bg = s2.substr(i, 2);
+    const count = bigrams1.get(bg) || 0;
+    if (count > 0) {
+      bigrams1.set(bg, count - 1);
+      intersection++;
     }
   }
 
-  // 3. Név egyezés (szó alapú átfedés)
-  const cleanTokens = (str) => (str || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9áéíóöőúüű]/gi, ' ')
-    .split(/\s+/)
-    .filter(w => w.length > 1);
+  return (2.0 * intersection) / ((s1.length - 1) + (s2.length - 1));
+};
 
-  const itemTokens = cleanTokens(`${item.name} ${item.rawName || ''}`);
-  const prodTokens = cleanTokens(prod.name);
-
-  if (itemTokens.length > 0 && prodTokens.length > 0) {
-    let matchCount = 0;
-    prodTokens.forEach(pt => {
-      if (itemTokens.some(it => it.includes(pt) || pt.includes(it))) {
-        matchCount++;
-      }
-    });
-    const tokenScore = (matchCount / Math.max(prodTokens.length, 1)) * 50;
-    score += tokenScore;
+// Intelligens hasonlóság számítás egy kiolvasott tétel és egy létező raktári termék között
+const calculateSimilarity = (item, prod) => {
+  // 1. EAN egyezés: ha mindkettőnél szerepel és megegyezik -> 100%
+  const itemEan = cleanShade(item.ean);
+  const prodEan = cleanShade(prod.ean);
+  if (itemEan && prodEan && itemEan === prodEan) {
+    return 100;
   }
 
-  return Math.min(Math.round(score), 99);
+  const sItemName = normalizeStr(item.name || '');
+  const sItemRaw = normalizeStr(item.rawName || '');
+  const sProdName = normalizeStr(prod.name || '');
+
+  // 2. Név alapú hasonlóság:
+  // a) Teljes név Dice hasonlóság
+  const diceName = Math.max(
+    diceCoefficient(sItemName, sProdName),
+    diceCoefficient(sItemRaw, sProdName)
+  );
+
+  // b) Szó (token) szintű fuzzy hasonlóság (kezeli ha a szavak sorrendje eltér, pl. 'Vitamino Color Shampoo' vs 'Color Shampoo Vitamino')
+  const itemTokens = Array.from(new Set(`${sItemName} ${sItemRaw}`.split(' ').filter(w => w.length > 1)));
+  const prodTokens = Array.from(new Set(sProdName.split(' ').filter(w => w.length > 1)));
+
+  let tokenMatchSum = 0;
+  if (prodTokens.length > 0 && itemTokens.length > 0) {
+    for (const pToken of prodTokens) {
+      let bestWordSim = 0;
+      for (const iToken of itemTokens) {
+        if (pToken === iToken) {
+          bestWordSim = 1.0;
+          break;
+        }
+        if (pToken.includes(iToken) || iToken.includes(pToken)) {
+          bestWordSim = Math.max(bestWordSim, 0.9);
+        } else {
+          const wordDice = diceCoefficient(pToken, iToken);
+          if (wordDice > bestWordSim) bestWordSim = wordDice;
+        }
+      }
+      tokenMatchSum += bestWordSim;
+    }
+  }
+  const tokenSim = prodTokens.length > 0 ? (tokenMatchSum / prodTokens.length) : 0;
+
+  // Alap pontszám a név egyezése alapján (0 - 100)
+  let nameScore = Math.round(Math.max(diceName, tokenSim) * 100);
+
+  // 3. Kód / Árnyalat ellenőrzése és finomhangolása:
+  const iShade = normalizeStr(cleanShade(item.shade || item.code) || '');
+  const pShade = normalizeStr(cleanShade(prod.shade) || '');
+
+  if (iShade && pShade) {
+    if (iShade === pShade) {
+      // Mindkettőnek van árnyalata és PONTOSAN egyezik -> bónusz 98-100%
+      nameScore = Math.max(nameScore, 98);
+    } else {
+      // Mindkettőnek van árnyalata, de ELTÉRŐ (pl. 10.12 vs 7.1) -> szigorú büntetés, mert eltérő szín!
+      nameScore = Math.round(nameScore * 0.25);
+    }
+  } else if (!iShade && pShade) {
+    // A raktári terméknek van kódja/árnyalata (pl. C51309 vagy 15.2), nézzük meg, hogy a számla szövegében szerepel-e
+    if (sItemRaw.includes(pShade) || sItemName.includes(pShade)) {
+      nameScore = Math.min(100, nameScore + 10);
+    }
+  }
+
+  return Math.max(0, Math.min(nameScore, 100));
 };
 
 const startScan = async () => {
@@ -469,9 +539,9 @@ const startScan = async () => {
     const data = response.data;
 
     deliveryData.value = {
-      documentNumber: data.documentNumber || '',
-      supplier: data.supplier || '',
-      issueDate: data.issueDate || '',
+      documentNumber: cleanShade(data.documentNumber) || '',
+      supplier: cleanShade(data.supplier) || '',
+      issueDate: cleanShade(data.issueDate) || '',
       items: data.items || []
     };
 
@@ -479,19 +549,27 @@ const startScan = async () => {
     const allProds = props.products || [];
     
     processedItems.value = (data.items || []).map(item => {
+      const sanitizedItem = {
+        ...item,
+        name: cleanShade(item.name) || item.rawName || 'Termék',
+        shade: cleanShade(item.shade),
+        code: cleanShade(item.code),
+        ean: cleanShade(item.ean),
+        costPrice: item.unitPrice || 0,
+        quantity: item.quantity || 1
+      };
+
       // Minden meglévő termékhez kiszámoljuk a pontszámot
       const candidates = allProds.map(p => ({
         product: p,
-        score: calculateSimilarity(item, p)
+        score: calculateSimilarity(sanitizedItem, p)
       })).sort((a, b) => b.score - a.score);
 
       const topCandidate = candidates[0];
       const hasStrongMatch = topCandidate && topCandidate.score >= 50;
 
       return {
-        ...item,
-        costPrice: item.unitPrice || 0,
-        quantity: item.quantity || 1,
+        ...sanitizedItem,
         candidates,
         action: hasStrongMatch ? 'match' : 'create',
         selectedTarget: hasStrongMatch ? topCandidate.product.id : '__CREATE_NEW__'
@@ -586,3 +664,4 @@ const confirmImport = async () => {
   }
 };
 </script>
+

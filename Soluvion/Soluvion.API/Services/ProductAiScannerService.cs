@@ -244,6 +244,22 @@ IMPORTANT:
             return cleaned.Trim();
         }
 
+        private static string? SanitizeValue(string? val)
+        {
+            if (string.IsNullOrWhiteSpace(val)) return null;
+            var trimmed = val.Trim();
+            if (string.Equals(trimmed, "null", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "undefined", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "none", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "n/a", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "ismeretlen", StringComparison.OrdinalIgnoreCase) ||
+                trimmed == "-")
+            {
+                return null;
+            }
+            return trimmed;
+        }
+
         private ProductAiScanResultDto ParseProductAiResponse(string rawJson)
         {
             try
@@ -259,7 +275,11 @@ IMPORTANT:
                 var dto = JsonSerializer.Deserialize<ProductAiScanResultDto>(cleaned, options) 
                           ?? new ProductAiScanResultDto();
 
-                if (string.IsNullOrWhiteSpace(dto.Name))
+                dto.Shade = SanitizeValue(dto.Shade);
+                dto.EAN = SanitizeValue(dto.EAN);
+                dto.Description = SanitizeValue(dto.Description);
+
+                if (string.IsNullOrWhiteSpace(dto.Name) || string.Equals(dto.Name, "null", StringComparison.OrdinalIgnoreCase))
                 {
                     dto.Name = "Felismeretlen termék";
                 }
@@ -292,11 +312,18 @@ IMPORTANT:
                 var dto = JsonSerializer.Deserialize<DeliveryNoteScanResultDto>(cleaned, options) 
                           ?? new DeliveryNoteScanResultDto();
 
+                dto.DocumentNumber = SanitizeValue(dto.DocumentNumber);
+                dto.Supplier = SanitizeValue(dto.Supplier);
+                dto.IssueDate = SanitizeValue(dto.IssueDate);
                 dto.Items ??= new List<DeliveryNoteItemDto>();
 
                 foreach (var item in dto.Items)
                 {
-                    if (string.IsNullOrWhiteSpace(item.Name))
+                    item.Shade = SanitizeValue(item.Shade);
+                    item.Code = SanitizeValue(item.Code);
+                    item.EAN = SanitizeValue(item.EAN);
+
+                    if (string.IsNullOrWhiteSpace(item.Name) || string.Equals(item.Name, "null", StringComparison.OrdinalIgnoreCase))
                     {
                         item.Name = !string.IsNullOrWhiteSpace(item.RawName) ? item.RawName : "Ismeretlen tétel";
                     }
@@ -320,3 +347,4 @@ IMPORTANT:
         }
     }
 }
+

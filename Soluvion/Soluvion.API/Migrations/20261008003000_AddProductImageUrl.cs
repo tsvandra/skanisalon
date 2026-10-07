@@ -27,3 +27,4 @@ namespace Soluvion.API.Migrations
         }
     }
 }
+
