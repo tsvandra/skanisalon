@@ -21,7 +21,7 @@
       "newProduct": "Új termék",
       "stockMovement": "Inventúra / Mozgás",
       "aiScan": "Fotózás (AI)",
-      "deliveryScan": "Dodací list (AI)",
+      "deliveryScan": "Szállítólevél (AI)",
       "searchPlaceholder": "Keresés név vagy vonalkód alapján...",
       "all": "Összes",
       "lowStockFilter": "Kevés készlet",
@@ -167,7 +167,7 @@
       "fillFromAi": "Kitöltés fotókból (AI)"
     },
     "deliveryNote": {
-      "title": "Szállítólevél (Dodací list) beolvasás",
+      "title": "Szállítólevél beolvasás (AI)",
       "subtitleUpload": "Fotózd le a szállítólevél vagy számla oldalait a telefonoddal",
       "subtitleReview": "Ellenőrizd a kiolvasott tételeket, párosítsd raktári termékekkel, vagy hozz létre újakat!",
       "uploadTitle": "Fotózd le a szállítólevelet",
