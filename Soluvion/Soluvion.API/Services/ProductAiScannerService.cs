@@ -169,8 +169,7 @@ namespace Soluvion.API.Services
 
             var options = new ChatCompletionOptions
             {
-                ResponseFormat = ChatResponseFormat.CreateJsonObjectFormat(),
-                Temperature = 0.1f
+                ResponseFormat = ChatResponseFormat.CreateJsonObjectFormat()
             };
 
             var completion = await client.CompleteChatAsync(messages, options);
