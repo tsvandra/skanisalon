@@ -147,7 +147,9 @@ namespace Soluvion.API.Services
 
         private async Task<string> ScanWithOpenAiAsync(List<(byte[] Bytes, string ContentType)> images, string apiKey, string systemPrompt)
         {
-            var model = _configuration["OpenAI:VisionModel"] ?? "gpt-4o-mini";
+            var model = _configuration["OpenAI:VisionModel"] 
+                     ?? _configuration["OpenAI:Model"] 
+                     ?? "gpt-5.6-luna";
             var client = new ChatClient(model, new ApiKeyCredential(apiKey));
 
             var contentParts = new List<ChatMessageContentPart>
