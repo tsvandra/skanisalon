@@ -48,6 +48,7 @@ namespace Soluvion.API.Services
                 Name = dto.Name,
                 Description = dto.Description,
                 EAN = dto.EAN,
+                Shade = dto.Shade,
                 IsProfessional = dto.IsProfessional,
                 IsRetail = dto.IsRetail,
                 Unit = dto.Unit,
@@ -75,6 +76,7 @@ namespace Soluvion.API.Services
             product.Name = dto.Name;
             product.Description = dto.Description;
             product.EAN = dto.EAN;
+            product.Shade = dto.Shade;
             product.IsProfessional = dto.IsProfessional;
             product.IsRetail = dto.IsRetail;
             product.Unit = dto.Unit;
@@ -108,6 +110,7 @@ namespace Soluvion.API.Services
                 Name = p.Name,
                 Description = p.Description,
                 EAN = p.EAN,
+                Shade = p.Shade,
                 IsProfessional = p.IsProfessional,
                 IsRetail = p.IsRetail,
                 Unit = p.Unit,
