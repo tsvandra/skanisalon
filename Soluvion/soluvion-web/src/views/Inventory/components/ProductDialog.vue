@@ -36,6 +36,36 @@
       </div>
     </div>
 
+    <!-- Termékkép előnézet és feltöltés -->
+    <div class="mb-4 flex items-center gap-3 p-3 bg-background/50 border border-text/10 rounded-xl">
+      <div class="w-16 h-16 rounded-xl overflow-hidden border border-text/20 bg-background flex items-center justify-center shrink-0 relative">
+        <img v-if="product.imageUrl" :src="product.imageUrl" class="w-full h-full object-cover" alt="Termékkép" />
+        <i v-else class="pi pi-image text-2xl text-text-muted"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-xs font-bold text-text-muted mb-1">Termékkép</div>
+        <div class="flex flex-wrap items-center gap-2">
+          <label class="cursor-pointer px-2.5 py-1 rounded-lg border border-primary/40 bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-all flex items-center gap-1.5">
+            <i class="pi pi-upload text-xs"></i>
+            <span>{{ product.imageUrl ? 'Kép cseréje' : 'Kép feltöltése' }}</span>
+            <input type="file" accept="image/*" class="hidden" @change="onManualImageUpload" :disabled="uploadingImage" />
+          </label>
+          <button 
+            v-if="product.imageUrl" 
+            type="button" 
+            @click="product.imageUrl = null" 
+            class="px-2 py-1 rounded-lg border border-red-500/30 text-red-400 text-xs font-bold hover:bg-red-500/10 transition-all"
+          >
+            Törlés
+          </button>
+        </div>
+        <div v-if="uploadingImage" class="text-[11px] text-primary mt-1 flex items-center gap-1">
+          <i class="pi pi-spinner pi-spin text-xs"></i>
+          <span>Feltöltés folyamatban...</span>
+        </div>
+      </div>
+    </div>
+
     <div class="flex flex-col mb-4">
       <label for="name" class="text-sm font-bold text-text-muted mb-1">{{ $t('inventory.productDialog.name') }}</label>
       <InputText id="name" v-model.trim="product.name" required autofocus class="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text font-bold" />
@@ -126,11 +156,13 @@ const emit = defineEmits(['update:visible', 'saved']);
 
 const aiScannerVisible = ref(false);
 const aiSuccessMessage = ref(false);
+const uploadingImage = ref(false);
 
 const product = ref({
   name: '',
   shade: '',
   ean: '',
+  imageUrl: null,
   unit: 0,
   packageSize: 0,
   costPrice: 0,
@@ -158,17 +190,34 @@ watch(() => props.visible, (newVal) => {
       product.value = { ...props.productData };
     } else {
       product.value = {
-        name: '', shade: '', ean: '', unit: 0, packageSize: 0, costPrice: 0, retailPrice: 0, lowStockThreshold: 0, isProfessional: true, isRetail: false
+        name: '', shade: '', ean: '', imageUrl: null, unit: 0, packageSize: 0, costPrice: 0, retailPrice: 0, lowStockThreshold: 0, isProfessional: true, isRetail: false
       };
     }
   }
 });
+
+const onManualImageUpload = async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  uploadingImage.value = true;
+  try {
+    const res = await productApi.uploadImage(file);
+    product.value.imageUrl = res.data.imageUrl;
+  } catch (error) {
+    console.error('Hiba a képfeltöltés során:', error);
+  } finally {
+    uploadingImage.value = false;
+    event.target.value = '';
+  }
+};
 
 const onAiScanned = (scannedData) => {
   if (!scannedData) return;
   if (scannedData.name) product.value.name = scannedData.name;
   if (scannedData.shade) product.value.shade = scannedData.shade;
   if (scannedData.ean) product.value.ean = scannedData.ean;
+  if (scannedData.imageUrl) product.value.imageUrl = scannedData.imageUrl;
   if (scannedData.packageSize) product.value.packageSize = scannedData.packageSize;
   if (scannedData.unit !== undefined && scannedData.unit !== null) product.value.unit = scannedData.unit;
   if (scannedData.isProfessional !== undefined) product.value.isProfessional = scannedData.isProfessional;

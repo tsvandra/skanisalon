@@ -21,6 +21,7 @@
       "newProduct": "Új termék",
       "stockMovement": "Inventúra / Mozgás",
       "aiScan": "Fotózás (AI)",
+      "deliveryScan": "Dodací list (AI)",
       "searchPlaceholder": "Keresés név vagy vonalkód alapján...",
       "all": "Összes",
       "lowStockFilter": "Kevés készlet",
@@ -164,6 +165,24 @@
       "errorTitle": "Sikertelen beolvasás",
       "successAlert": "Az AI sikeresen felismerte a terméket! Kérlek ellenőrizd az adatokat, add meg az árat, majd mentsd el.",
       "fillFromAi": "Kitöltés fotókból (AI)"
+    },
+    "deliveryNote": {
+      "title": "Szállítólevél (Dodací list) beolvasás",
+      "subtitleUpload": "Fotózd le a szállítólevél vagy számla oldalait a telefonoddal",
+      "subtitleReview": "Ellenőrizd a kiolvasott tételeket, párosítsd raktári termékekkel, vagy hozz létre újakat!",
+      "uploadTitle": "Fotózd le a szállítólevelet",
+      "uploadHint": "Készíts éles, jó megvilágítású fotókat a szállítólevélről (1–4 oldal). Az AI felismeri a tételeket, darabszámokat és árakat.",
+      "takePhoto": "Fotózás kamerával",
+      "chooseGallery": "Képek galériából",
+      "analyzing": "A mesterséges intelligencia olvassa a szállítólevelet...",
+      "analyzingSub": "Tételek, kódok, darabszámok és egységárak kinyerése...",
+      "errorTitle": "Hiba történt a szállítólevél elemzésekor",
+      "docNumber": "Szállítólevél / Számla száma",
+      "supplier": "Beszállító cég neve",
+      "matchingHint": "Az AI automatikusan megkereste a leginkább hasonló termékeket a raktáradban. Ha a tétel egy létező termék, a darabszáma bevételezésre kerül. Ha új termék, a rendszer automatikusan létrehozza!",
+      "cancel": "Mégsem",
+      "startScanBtn": "Szállítólevél elemzése",
+      "analyzingBtn": "Feldolgozás..."
     }
   }
 }

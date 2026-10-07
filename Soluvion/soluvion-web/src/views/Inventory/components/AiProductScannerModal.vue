@@ -113,22 +113,43 @@
           <div 
             v-for="(item, idx) in images" 
             :key="idx" 
-            class="relative aspect-square rounded-xl overflow-hidden border border-text/20 group bg-background shadow-2xs"
+            class="relative aspect-square rounded-xl overflow-hidden border group bg-background shadow-2xs cursor-pointer transition-all"
+            :class="selectedPrimaryIndex === idx ? 'border-amber-400 ring-2 ring-amber-400/50' : 'border-text/20 hover:border-text/40'"
+            @click="selectedPrimaryIndex = idx"
           >
             <img :src="item.previewUrl" class="w-full h-full object-cover" alt="Fotó" />
             
             <button 
               type="button" 
-              @click="removeImage(idx)"
-              class="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/75 text-white flex items-center justify-center text-xs hover:bg-red-500 transition-colors shadow-sm"
+              @click.stop="removeImage(idx)"
+              class="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/75 text-white flex items-center justify-center text-xs hover:bg-red-500 transition-colors shadow-sm z-10"
               title="Törlés"
             >
               <i class="pi pi-times text-[10px]"></i>
             </button>
 
-            <span class="absolute bottom-1 left-1 px-1.5 py-0.2 rounded bg-black/60 text-white text-[10px] font-bold">
-              #{{ idx + 1 }}
-            </span>
+            <!-- Termékkép jelvény vagy választó -->
+            <div class="absolute bottom-1 left-1 right-1 flex items-center justify-between">
+              <span 
+                v-if="selectedPrimaryIndex === idx" 
+                class="px-1.5 py-0.5 rounded bg-amber-500 text-black text-[10px] font-black shadow flex items-center gap-1"
+              >
+                <i class="pi pi-star-fill text-[9px]"></i>
+                <span>Termékkép</span>
+              </span>
+              <button 
+                v-else 
+                type="button" 
+                @click.stop="selectedPrimaryIndex = idx"
+                class="px-1.5 py-0.5 rounded bg-black/60 hover:bg-black/90 text-white text-[9px] font-medium backdrop-blur-xs transition-colors"
+              >
+                Legyen kép
+              </button>
+
+              <span class="px-1 py-0.2 rounded bg-black/60 text-white text-[9px] font-mono ml-auto">
+                #{{ idx + 1 }}
+              </span>
+            </div>
           </div>
 
           <!-- Újabb fotó hozzáadása gomb (ha < 5) -->
@@ -141,6 +162,11 @@
             <i class="pi pi-plus text-base"></i>
             <span class="text-[10px] font-bold">+ Fotó</span>
           </button>
+        </div>
+
+        <div class="text-[11px] text-text-muted flex items-center gap-1.5 bg-background/40 p-2 rounded-lg border border-text/10">
+          <i class="pi pi-info-circle text-amber-400 shrink-0"></i>
+          <span>A sárgával csillagozott fotó lesz a termék profilképe a Cloudinary tárhelyen. Kattints bármelyik képre a kiválasztáshoz!</span>
         </div>
 
         <!-- További feltöltési opciók -->
@@ -221,6 +247,7 @@ const cameraInput = ref(null);
 const galleryInput = ref(null);
 
 const images = ref([]); // { file: File, previewUrl: string }
+const selectedPrimaryIndex = ref(0);
 const scanning = ref(false);
 const errorMessage = ref('');
 
@@ -251,6 +278,11 @@ const handleFilesSelected = (event) => {
     });
   });
 
+  // Ha eddig nem volt kiválasztott index, állítsuk az elsőre
+  if (selectedPrimaryIndex.value >= images.value.length) {
+    selectedPrimaryIndex.value = 0;
+  }
+
   // Input mező alaphelyzetbe állítása, hogy ugyanazt a fájlt is újra lehessen választani ha kell
   event.target.value = '';
 };
@@ -260,11 +292,15 @@ const removeImage = (index) => {
   if (removed && removed.previewUrl) {
     URL.revokeObjectURL(removed.previewUrl);
   }
+  if (selectedPrimaryIndex.value >= images.value.length) {
+    selectedPrimaryIndex.value = Math.max(0, images.value.length - 1);
+  }
 };
 
 const clearAllImages = () => {
   images.value.forEach(img => URL.revokeObjectURL(img.previewUrl));
   images.value = [];
+  selectedPrimaryIndex.value = 0;
   errorMessage.value = '';
 };
 
@@ -282,7 +318,7 @@ const startScan = async () => {
 
   try {
     const rawFiles = images.value.map(i => i.file);
-    const response = await productApi.aiScan(rawFiles);
+    const response = await productApi.aiScan(rawFiles, selectedPrimaryIndex.value);
     
     // Sikeres kiolvasás
     const productData = response.data;
@@ -301,3 +337,4 @@ const startScan = async () => {
   }
 };
 </script>
+

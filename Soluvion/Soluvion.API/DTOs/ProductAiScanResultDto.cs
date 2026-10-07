@@ -13,5 +13,7 @@ namespace Soluvion.API.DTOs
         public bool IsRetail { get; set; } = false;
         public string? Description { get; set; }
         public decimal? EstimatedPrice { get; set; }
+        public string? ImageUrl { get; set; }
     }
 }
+

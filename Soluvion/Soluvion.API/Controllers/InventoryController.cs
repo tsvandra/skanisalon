@@ -57,6 +57,51 @@ namespace Soluvion.API.Controllers
 
             return Ok(new { ReversedDocuments = reversedDocuments });
         }
+
+        /// <summary>Szállítólevél (dodací list) képek AI elemzése.</summary>
+        [HttpPost("scan-delivery-note")]
+        [RequestSizeLimit(35_000_000)]
+        public async Task<ActionResult<DeliveryNoteScanResultDto>> ScanDeliveryNote(
+            [FromForm] List<IFormFile> images,
+            [FromServices] IProductAiScannerService aiScannerService)
+        {
+            if (images == null || images.Count == 0)
+            {
+                return BadRequest(new { message = "Legalább 1 képet fel kell tölteni a szállítólevélről." });
+            }
+
+            try
+            {
+                var result = await aiScannerService.ScanDeliveryNoteImagesAsync(images);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Hiba a szállítólevél AI elemzése során: {ex.Message}" });
+            }
+        }
+
+        /// <summary>Szállítólevél alapján új termékek létrehozása és készlet bevételezése.</summary>
+        [HttpPost("import-delivery-note")]
+        public async Task<ActionResult<ImportDeliveryNoteResultDto>> ImportDeliveryNote([FromBody] ImportDeliveryNoteDto dto)
+        {
+            var (success, result, error) = await _inventoryService.ImportDeliveryNoteAsync(dto);
+
+            if (!success)
+            {
+                return BadRequest(new { message = error });
+            }
+
+            return Ok(result);
+        }
     }
 }
 

@@ -55,11 +55,41 @@ namespace Soluvion.API.Controllers
             return NoContent();
         }
 
+        [HttpPost("upload-image")]
+        [RequestSizeLimit(15_000_000)]
+        public async Task<ActionResult> UploadImage(
+            IFormFile file,
+            [FromServices] IImageService imageService,
+            [FromServices] ITenantContext tenantContext)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new { message = "Nem található feltöltendő képfájl." });
+            }
+
+            int companyId = tenantContext.CurrentCompany?.Id ?? 0;
+            if (companyId == 0)
+            {
+                return BadRequest(new { message = "Érvénytelen szalon azonosító." });
+            }
+
+            var uploadResult = await imageService.UploadImageAsync(file, $"soluvion/company_{companyId}/products", 1200);
+            if (uploadResult == null)
+            {
+                return StatusCode(500, new { message = "Hiba a termékkép Cloudinary feltöltése során." });
+            }
+
+            return Ok(new { imageUrl = uploadResult.Value.Url });
+        }
+
         [HttpPost("ai-scan")]
         [RequestSizeLimit(35_000_000)]
         public async Task<ActionResult<ProductAiScanResultDto>> AiScan(
             [FromForm] List<IFormFile> images,
-            [FromServices] IProductAiScannerService aiScannerService)
+            [FromForm] int? primaryImageIndex,
+            [FromServices] IProductAiScannerService aiScannerService,
+            [FromServices] IImageService imageService,
+            [FromServices] ITenantContext tenantContext)
         {
             if (images == null || images.Count == 0)
             {
@@ -69,6 +99,22 @@ namespace Soluvion.API.Controllers
             try
             {
                 var result = await aiScannerService.ScanProductImagesAsync(images);
+
+                // Ha van kijelölt termékkép, töltsük fel a Cloudinary-ba a szalon saját mappájába
+                if (primaryImageIndex.HasValue && primaryImageIndex.Value >= 0 && primaryImageIndex.Value < images.Count)
+                {
+                    int companyId = tenantContext.CurrentCompany?.Id ?? 0;
+                    if (companyId > 0)
+                    {
+                        var primaryFile = images[primaryImageIndex.Value];
+                        var uploadResult = await imageService.UploadImageAsync(primaryFile, $"soluvion/company_{companyId}/products", 1200);
+                        if (uploadResult != null)
+                        {
+                            result.ImageUrl = uploadResult.Value.Url;
+                        }
+                    }
+                }
+
                 return Ok(result);
             }
             catch (ArgumentException ex)

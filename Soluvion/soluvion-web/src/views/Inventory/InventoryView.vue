@@ -24,10 +24,10 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-3 sm:flex items-center gap-2 w-full md:w-auto">
+        <div class="grid grid-cols-2 sm:grid-cols-4 md:flex items-center gap-2 w-full md:w-auto">
           <button 
             @click="openAiScanner" 
-            class="h-[44px] px-2.5 sm:px-4 bg-primary/15 text-primary border border-primary/30 font-bold text-xs sm:text-sm rounded-xl shadow-2xs hover:bg-primary hover:text-white active:scale-95 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
+            class="h-[44px] px-2.5 sm:px-3.5 bg-primary/15 text-primary border border-primary/30 font-bold text-xs sm:text-sm rounded-xl shadow-2xs hover:bg-primary hover:text-white active:scale-95 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
             :title="$t('inventory.view.aiScan')"
           >
             <i class="pi pi-sparkles text-xs sm:text-sm"></i>
@@ -35,8 +35,17 @@
           </button>
 
           <button 
+            @click="openDeliveryScanner" 
+            class="h-[44px] px-2.5 sm:px-3.5 bg-sky-500/15 text-sky-400 border border-sky-500/30 font-bold text-xs sm:text-sm rounded-xl shadow-2xs hover:bg-sky-500 hover:text-white active:scale-95 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
+            :title="$t('inventory.view.deliveryScan')"
+          >
+            <i class="pi pi-file-arrow-up text-xs sm:text-sm"></i>
+            <span class="truncate">{{ $t('inventory.view.deliveryScan') }}</span>
+          </button>
+
+          <button 
             @click="openStockDialog" 
-            class="h-[44px] px-2.5 sm:px-4 bg-surface text-text border border-text/20 font-bold text-xs sm:text-sm rounded-xl shadow-sm hover:border-primary hover:text-primary active:scale-95 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
+            class="h-[44px] px-2.5 sm:px-3.5 bg-surface text-text border border-text/20 font-bold text-xs sm:text-sm rounded-xl shadow-sm hover:border-primary hover:text-primary active:scale-95 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
           >
             <i class="pi pi-arrow-right-arrow-left text-xs sm:text-sm"></i>
             <span class="truncate">{{ $t('inventory.view.stockMovement') }}</span>
@@ -44,7 +53,7 @@
           
           <button 
             @click="openProductDialog" 
-            class="h-[44px] px-2.5 sm:px-5 bg-primary text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
+            class="h-[44px] px-2.5 sm:px-4 bg-primary text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
           >
             <i class="pi pi-plus text-xs sm:text-sm"></i>
             <span class="truncate">{{ $t('inventory.view.newProduct') }}</span>
@@ -174,6 +183,25 @@
           :key="product.id"
           class="bg-surface rounded-xl p-3 sm:p-3.5 shadow-2xs border border-text/10 hover:border-primary/40 transition-all flex items-center justify-between gap-3 group"
         >
+          <!-- Termékkép miniatűr (kattintásra lightbox-ban kinyílik) -->
+          <div 
+            v-if="product.imageUrl" 
+            class="relative w-12 h-12 rounded-xl overflow-hidden border border-text/15 bg-background shrink-0 cursor-pointer hover:opacity-90 group/img transition-all shadow-2xs"
+            @click.stop="openImagePreview(product)"
+            title="Kép megtekintése nagyban"
+          >
+            <img :src="product.imageUrl" class="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-300" alt="Termékkép" />
+            <div class="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white text-xs">
+              <i class="pi pi-search-plus"></i>
+            </div>
+          </div>
+          <div 
+            v-else 
+            class="w-12 h-12 rounded-xl border border-text/10 bg-background/50 flex items-center justify-center shrink-0 text-text-muted/30"
+          >
+            <i class="pi pi-image text-lg"></i>
+          </div>
+
           <!-- Bal oldal: Név, Címkék, Kiszerelés, Ár (kattintásra termékszerkesztés) -->
           <div class="flex-1 min-w-0 cursor-pointer" @click="editProduct(product)">
             <!-- 1. sor: Név teljes terjedelmében + Kiemelt Kód / Árnyalat plakett -->
@@ -280,20 +308,34 @@
         >
           <Column :header="$t('inventory.view.columns.name')" :sortable="true" field="name">
             <template #body="slotProps">
-              <div class="flex items-center gap-2">
-                <span 
-                  class="cursor-pointer text-primary font-bold hover:underline" 
-                  @click="editProduct(slotProps.data)" 
-                  :title="$t('inventory.view.editProductTitle')"
+              <div class="flex items-center gap-2.5">
+                <div 
+                  v-if="slotProps.data.imageUrl" 
+                  class="w-9 h-9 rounded-lg overflow-hidden border border-text/15 bg-background shrink-0 cursor-pointer hover:opacity-80"
+                  @click.stop="openImagePreview(slotProps.data)"
+                  title="Kép megtekintése nagyban"
                 >
-                  {{ slotProps.data.name }}
-                </span>
-                <span 
-                  v-if="slotProps.data.shade" 
-                  class="text-[11px] font-black bg-primary/15 text-primary border border-primary/30 px-1.5 py-0.2 rounded-md shrink-0"
-                >
-                  {{ slotProps.data.shade }}
-                </span>
+                  <img :src="slotProps.data.imageUrl" class="w-full h-full object-cover" alt="Kép" />
+                </div>
+                <div v-else class="w-9 h-9 rounded-lg border border-text/10 bg-background/40 flex items-center justify-center shrink-0 text-text-muted/30">
+                  <i class="pi pi-image text-xs"></i>
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span 
+                    class="cursor-pointer text-primary font-bold hover:underline" 
+                    @click="editProduct(slotProps.data)" 
+                    :title="$t('inventory.view.editProductTitle')"
+                  >
+                    {{ slotProps.data.name }}
+                  </span>
+                  <span 
+                    v-if="slotProps.data.shade" 
+                    class="text-[11px] font-black bg-primary/15 text-primary border border-primary/30 px-1.5 py-0.2 rounded-md shrink-0"
+                  >
+                    {{ slotProps.data.shade }}
+                  </span>
+                </div>
               </div>
             </template>
           </Column>
@@ -371,6 +413,40 @@
         v-model:visible="aiScannerVisible" 
         @scanned="onAiScanned" 
       />
+      <DeliveryNoteScannerModal
+        v-model:visible="deliveryScannerVisible"
+        :products="products"
+        @saved="fetchProducts"
+      />
+
+      <!-- Nagyított termékkép megtekintése (Lightbox) -->
+      <Dialog 
+        v-model:visible="imagePreviewVisible" 
+        :modal="true" 
+        :dismissableMask="true"
+        :style="{ width: '92vw', maxWidth: '540px' }"
+        :pt="{
+          root: { class: 'bg-surface border border-text/10 rounded-2xl overflow-hidden shadow-2xl' },
+          header: { class: 'px-4 py-3 border-b border-text/10 bg-background/50' },
+          content: { class: 'p-3 sm:p-4 bg-background flex flex-col items-center justify-center' },
+          closeButton: { class: 'hover:bg-text/10 p-2 rounded-full transition-colors w-8 h-8 flex items-center justify-center text-text-muted' }
+        }"
+      >
+        <template #header>
+          <div class="min-w-0 pr-4">
+            <h3 class="font-bold text-sm sm:text-base text-text truncate">{{ previewProduct?.name }}</h3>
+            <p v-if="previewProduct?.shade" class="text-xs font-mono text-primary font-bold">[{{ previewProduct.shade }}]</p>
+          </div>
+        </template>
+        <div class="w-full max-h-[70vh] flex items-center justify-center rounded-xl overflow-hidden bg-black/20">
+          <img 
+            v-if="previewProduct?.imageUrl" 
+            :src="previewProduct.imageUrl" 
+            class="max-w-full max-h-[68vh] object-contain rounded-lg shadow-lg"
+            :alt="previewProduct?.name"
+          />
+        </div>
+      </Dialog>
     </div>
   </div>
 </template>
@@ -380,12 +456,14 @@ import { ref, computed, onMounted } from 'vue';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Badge from 'primevue/badge';
+import Dialog from 'primevue/dialog';
 
 import productApi from '@/services/productApi';
 import ProductDialog from './components/ProductDialog.vue';
 import StockAdjustmentDialog from './components/StockAdjustmentDialog.vue';
 import QuickStockDialog from './components/QuickStockDialog.vue';
 import AiProductScannerModal from './components/AiProductScannerModal.vue';
+import DeliveryNoteScannerModal from './components/DeliveryNoteScannerModal.vue';
 import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
@@ -400,6 +478,9 @@ const productDialogVisible = ref(false);
 const stockDialogVisible = ref(false);
 const quickStockVisible = ref(false);
 const aiScannerVisible = ref(false);
+const deliveryScannerVisible = ref(false);
+const imagePreviewVisible = ref(false);
+const previewProduct = ref(null);
 
 const selectedProduct = ref(null);
 const selectedProductForStock = ref(null);
@@ -483,11 +564,21 @@ const openAiScanner = () => {
   aiScannerVisible.value = true;
 };
 
+const openDeliveryScanner = () => {
+  deliveryScannerVisible.value = true;
+};
+
+const openImagePreview = (product) => {
+  previewProduct.value = product;
+  imagePreviewVisible.value = true;
+};
+
 const onAiScanned = (scannedData) => {
   selectedProduct.value = {
     name: scannedData.name || '',
     shade: scannedData.shade || '',
     ean: scannedData.ean || '',
+    imageUrl: scannedData.imageUrl || null,
     packageSize: scannedData.packageSize || 1,
     unit: scannedData.unit ?? 0,
     isProfessional: scannedData.isProfessional ?? true,
