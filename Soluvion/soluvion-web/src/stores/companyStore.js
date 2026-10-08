@@ -111,6 +111,13 @@ export const useCompanyStore = defineStore('company', {
       document.body.style.color = 'var(--text-color)';
 
       // 4. BÖNGÉSZŐ FORM ÉS MOBIL TÉMA (dinamikusan 'dark' vagy 'light' a háttér alapján)
+      if (isDark) {
+        root.classList.add('dark');
+        root.classList.remove('light');
+      } else {
+        root.classList.add('light');
+        root.classList.remove('dark');
+      }
       root.style.colorScheme = colorScheme;
       root.style.setProperty('color-scheme', colorScheme);
     }

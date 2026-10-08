@@ -26,20 +26,44 @@
     color-scheme: light dark;
   }
 
-  /* Natív dátum és idő választók: dinamikusan öröklik a root témát (SaaS kompatibilis) */
+  /* Alapértelmezett és sötét mód (pl. Skani szalon): kötelezően dark natív űrlap elemek */
   input[type="date"],
   input[type="time"],
-  input[type="datetime-local"] {
-    color-scheme: inherit;
-    color: var(--text-color, currentColor);
+  input[type="datetime-local"],
+  html.dark input[type="date"],
+  html.dark input[type="time"],
+  html.dark input[type="datetime-local"] {
+    color-scheme: dark !important;
+    color: var(--text-color, #ffffff) !important;
   }
 
-  /* iOS Safari WebKit belső érték és ikon: a téma szerinti szövegszínhez igazodik */
+  /* Világos témájú tenantok esetén: automatikusan light natív űrlap elemek */
+  html.light input[type="date"],
+  html.light input[type="time"],
+  html.light input[type="datetime-local"] {
+    color-scheme: light !important;
+    color: var(--text-color, #111827) !important;
+  }
+
+  /* iOS Safari és WebKit belső szövegmező sötét módban: fehér szöveg */
   input[type="date"]::-webkit-date-and-time-value,
   input[type="time"]::-webkit-date-and-time-value,
-  input[type="datetime-local"]::-webkit-date-and-time-value {
-    color: var(--text-color, currentColor) !important;
-    -webkit-text-fill-color: var(--text-color, currentColor) !important;
+  input[type="datetime-local"]::-webkit-date-and-time-value,
+  html.dark input[type="date"]::-webkit-date-and-time-value,
+  html.dark input[type="time"]::-webkit-date-and-time-value,
+  html.dark input[type="datetime-local"]::-webkit-date-and-time-value {
+    color: var(--text-color, #ffffff) !important;
+    -webkit-text-fill-color: var(--text-color, #ffffff) !important;
+    min-height: 1.5em;
+    text-align: left;
+  }
+
+  /* iOS Safari és WebKit belső szövegmező világos módban: sötét szöveg */
+  html.light input[type="date"]::-webkit-date-and-time-value,
+  html.light input[type="time"]::-webkit-date-and-time-value,
+  html.light input[type="datetime-local"]::-webkit-date-and-time-value {
+    color: var(--text-color, #111827) !important;
+    -webkit-text-fill-color: var(--text-color, #111827) !important;
     min-height: 1.5em;
     text-align: left;
   }
