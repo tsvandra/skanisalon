@@ -85,6 +85,10 @@ export const useCompanyStore = defineStore('company', {
       // 3. BODY FELÜLÍRÁSA
       document.body.style.backgroundColor = 'var(--background-color)';
       document.body.style.color = 'var(--text-color)';
+
+      // 4. BÖNGÉSZŐ FORM ÉS MOBIL TÉMA (color-scheme beállítása a natív inputokhoz, pl. date/time picker)
+      root.style.colorScheme = 'dark';
+      root.style.setProperty('color-scheme', 'dark');
     }
   }
 });

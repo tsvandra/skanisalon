@@ -12,7 +12,11 @@
 
       <div class="flex flex-col gap-1">
         <label class="text-sm text-text-muted">{{ $t('booking.dateTimeLabel') }}</label>
-        <input v-model="localDateTime" type="datetime-local" class="p-3 rounded border border-text/20 bg-background focus:border-primary focus:outline-none text-lg" />
+        <input v-model="localDateTime"
+               type="datetime-local"
+               style="color-scheme: dark;"
+               @click="$event.target.showPicker?.()"
+               class="p-3 rounded border border-text/20 bg-background text-text focus:border-primary focus:outline-none text-lg cursor-pointer" />
       </div>
 
       <div v-if="errorMessage" class="p-3 bg-red-100 text-red-700 rounded-lg text-sm border border-red-200">
