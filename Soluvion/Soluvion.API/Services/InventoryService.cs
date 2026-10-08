@@ -222,6 +222,132 @@ namespace Soluvion.API.Services
                 return (false, 0, "Hiba történt a zárás visszavonása során: " + ex.Message);
             }
         }
+
+        public async Task<(bool Success, ImportDeliveryNoteResultDto? Result, string? Error)> ImportDeliveryNoteAsync(ImportDeliveryNoteDto dto)
+        {
+            if (dto == null || dto.Items == null || dto.Items.Count == 0)
+            {
+                return (false, null, "Legalább egy tételt meg kell adni a bevételezéshez.");
+            }
+
+            int companyId = GetCurrentCompanyId();
+            if (companyId == 0)
+            {
+                return (false, null, "Érvénytelen szalon azonosító.");
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                int createdCount = 0;
+                int matchedCount = 0;
+
+                var document = new InventoryDocument
+                {
+                    CompanyId = companyId,
+                    Type = InventoryDocumentType.Receipt,
+                    CreatedAt = DateTime.UtcNow,
+                    Note = $"Szállítólevél bevételezés: {dto.DocumentNumber} - {dto.Supplier}. {dto.Note}".Trim(),
+                    Items = new List<InventoryDocumentItem>()
+                };
+
+                foreach (var item in dto.Items)
+                {
+                    if (item.Action == "skip") continue;
+                    if (item.Quantity <= 0) continue;
+
+                    int targetProductId;
+
+                    if (item.Action == "create" && item.NewProduct != null)
+                    {
+                        var newProd = new Product
+                        {
+                            CompanyId = companyId,
+                            Name = item.NewProduct.Name,
+                            Description = item.NewProduct.Description,
+                            EAN = item.NewProduct.EAN,
+                            Shade = item.NewProduct.Shade,
+                            ImageUrl = item.NewProduct.ImageUrl,
+                            IsProfessional = item.NewProduct.IsProfessional,
+                            IsRetail = item.NewProduct.IsRetail,
+                            Unit = item.NewProduct.Unit,
+                            PackageSize = item.NewProduct.PackageSize > 0 ? item.NewProduct.PackageSize : 1,
+                            CostPrice = item.CostPrice > 0 ? item.CostPrice : item.NewProduct.CostPrice,
+                            RetailPrice = item.NewProduct.RetailPrice,
+                            LowStockThreshold = item.NewProduct.LowStockThreshold,
+                            CurrentStock = 0,
+                            CreationDate = DateTime.UtcNow,
+                            IsDeleted = false
+                        };
+
+                        _context.Products.Add(newProd);
+                        await _context.SaveChangesAsync();
+
+                        targetProductId = newProd.Id;
+                        createdCount++;
+                    }
+                    else if (item.MatchedProductId.HasValue)
+                    {
+                        targetProductId = item.MatchedProductId.Value;
+                        var existingProd = await _context.Products.FirstOrDefaultAsync(p => p.Id == targetProductId && !p.IsDeleted);
+                        if (existingProd == null)
+                        {
+                            return (false, null, $"A párosított termék (ID: {targetProductId}) nem található.");
+                        }
+
+                        // Ha van megadott beszerzési ár és nagyobb mint 0, frissítjük a termék nyilvántartott beszerzési árát
+                        if (item.CostPrice > 0)
+                        {
+                            existingProd.CostPrice = item.CostPrice;
+                        }
+                        matchedCount++;
+                    }
+                    else
+                    {
+                        continue;
+                    }
+
+                    // Hozzáadjuk a bevételezési bizonylathoz és frissítjük a készletet
+                    var docItem = new InventoryDocumentItem
+                    {
+                        ProductId = targetProductId,
+                        Quantity = item.Quantity,
+                        CostPrice = item.CostPrice
+                    };
+                    document.Items.Add(docItem);
+
+                    var productToUpdate = await _context.Products.FirstOrDefaultAsync(p => p.Id == targetProductId);
+                    if (productToUpdate != null)
+                    {
+                        productToUpdate.CurrentStock += item.Quantity;
+                    }
+                }
+
+                if (document.Items.Count == 0)
+                {
+                    return (false, null, "Nem lett egyetlen tétel sem kiválasztva a bevételezéshez.");
+                }
+
+                _context.InventoryDocuments.Add(document);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                var result = new ImportDeliveryNoteResultDto
+                {
+                    DocumentId = document.Id,
+                    CreatedProductsCount = createdCount,
+                    MatchedItemsCount = matchedCount,
+                    TotalItemsCount = document.Items.Count
+                };
+
+                return (true, result, null);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return (false, null, $"Hiba a szállítólevél bevételezése során: {ex.Message}");
+            }
+        }
     }
 }
 

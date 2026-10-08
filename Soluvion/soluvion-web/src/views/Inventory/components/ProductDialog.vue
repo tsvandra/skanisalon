@@ -15,9 +15,60 @@
       closeButton: { class: 'hover:bg-text/10 p-2 rounded-full transition-colors w-8 h-8 flex items-center justify-center text-text-muted' }
     }"
   >
-    <div class="flex flex-col mb-5 mt-2">
+    <!-- AI fotó beolvasó gomb -->
+    <div class="mb-4 mt-1">
+      <button 
+        type="button" 
+        @click="aiScannerVisible = true" 
+        class="w-full py-2.5 px-4 rounded-xl border border-primary/30 bg-primary/10 text-primary font-bold text-xs sm:text-sm hover:bg-primary/20 active:scale-98 transition-all flex items-center justify-center gap-2 shadow-2xs"
+      >
+        <i class="pi pi-sparkles text-sm"></i>
+        <span>{{ $t('inventory.aiScanner.fillFromAi') }}</span>
+      </button>
+
+      <!-- Sikeres AI beolvasás visszajelzés -->
+      <div v-if="aiSuccessMessage" class="mt-2 p-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs flex items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5">
+          <i class="pi pi-check-circle text-sm shrink-0"></i>
+          <span>{{ $t('inventory.aiScanner.successAlert') }}</span>
+        </div>
+        <button type="button" @click="aiSuccessMessage = false" class="hover:text-white"><i class="pi pi-times"></i></button>
+      </div>
+    </div>
+
+    <!-- Termékkép előnézet és feltöltés -->
+    <div class="mb-4 flex items-center gap-3 p-3 bg-background/50 border border-text/10 rounded-xl">
+      <div class="w-16 h-16 rounded-xl overflow-hidden border border-text/20 bg-background flex items-center justify-center shrink-0 relative">
+        <img v-if="product.imageUrl" :src="product.imageUrl" class="w-full h-full object-cover" alt="Termékkép" />
+        <i v-else class="pi pi-image text-2xl text-text-muted"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-xs font-bold text-text-muted mb-1">Termékkép</div>
+        <div class="flex flex-wrap items-center gap-2">
+          <label class="cursor-pointer px-2.5 py-1 rounded-lg border border-primary/40 bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-all flex items-center gap-1.5">
+            <i class="pi pi-upload text-xs"></i>
+            <span>{{ product.imageUrl ? 'Kép cseréje' : 'Kép feltöltése' }}</span>
+            <input type="file" accept="image/*" class="hidden" @change="onManualImageUpload" :disabled="uploadingImage" />
+          </label>
+          <button 
+            v-if="product.imageUrl" 
+            type="button" 
+            @click="product.imageUrl = null" 
+            class="px-2 py-1 rounded-lg border border-red-500/30 text-red-400 text-xs font-bold hover:bg-red-500/10 transition-all"
+          >
+            Törlés
+          </button>
+        </div>
+        <div v-if="uploadingImage" class="text-[11px] text-primary mt-1 flex items-center gap-1">
+          <i class="pi pi-spinner pi-spin text-xs"></i>
+          <span>Feltöltés folyamatban...</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex flex-col mb-4">
       <label for="name" class="text-sm font-bold text-text-muted mb-1">{{ $t('inventory.productDialog.name') }}</label>
-      <InputText id="name" v-model.trim="product.name" required autofocus class="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text" />
+      <InputText id="name" v-model.trim="product.name" required autofocus class="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text font-bold" />
     </div>
 
     <div class="flex flex-col sm:flex-row gap-4 mb-4">
@@ -74,6 +125,12 @@
       <Button :label="$t('inventory.productDialog.save')" icon="pi pi-check" class="bg-primary text-white hover:brightness-110 px-4 py-2 font-bold" @click="saveProduct" :loading="saving" />
     </template>
   </Dialog>
+
+  <!-- AI Fotó Beolvasó Modális Ablak -->
+  <AiProductScannerModal 
+    v-model:visible="aiScannerVisible" 
+    @scanned="onAiScanned" 
+  />
 </template>
 
 <script setup>
@@ -86,6 +143,7 @@ import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
 import { useI18n } from 'vue-i18n';
 import productApi from '@/services/productApi';
+import AiProductScannerModal from './AiProductScannerModal.vue';
 
 const { t } = useI18n();
 
@@ -96,10 +154,15 @@ const props = defineProps({
 
 const emit = defineEmits(['update:visible', 'saved']);
 
+const aiScannerVisible = ref(false);
+const aiSuccessMessage = ref(false);
+const uploadingImage = ref(false);
+
 const product = ref({
   name: '',
   shade: '',
   ean: '',
+  imageUrl: null,
   unit: 0,
   packageSize: 0,
   costPrice: 0,
@@ -122,15 +185,45 @@ const unitOptions = computed(() => [
 
 watch(() => props.visible, (newVal) => {
   if (newVal) {
+    aiSuccessMessage.value = false;
     if (props.productData) {
       product.value = { ...props.productData };
     } else {
       product.value = {
-        name: '', shade: '', ean: '', unit: 0, packageSize: 0, costPrice: 0, retailPrice: 0, lowStockThreshold: 0, isProfessional: true, isRetail: false
+        name: '', shade: '', ean: '', imageUrl: null, unit: 0, packageSize: 0, costPrice: 0, retailPrice: 0, lowStockThreshold: 0, isProfessional: true, isRetail: false
       };
     }
   }
 });
+
+const onManualImageUpload = async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  uploadingImage.value = true;
+  try {
+    const res = await productApi.uploadImage(file);
+    product.value.imageUrl = res.data.imageUrl;
+  } catch (error) {
+    console.error('Hiba a képfeltöltés során:', error);
+  } finally {
+    uploadingImage.value = false;
+    event.target.value = '';
+  }
+};
+
+const onAiScanned = (scannedData) => {
+  if (!scannedData) return;
+  if (scannedData.name) product.value.name = scannedData.name;
+  if (scannedData.shade) product.value.shade = scannedData.shade;
+  if (scannedData.ean) product.value.ean = scannedData.ean;
+  if (scannedData.imageUrl) product.value.imageUrl = scannedData.imageUrl;
+  if (scannedData.packageSize) product.value.packageSize = scannedData.packageSize;
+  if (scannedData.unit !== undefined && scannedData.unit !== null) product.value.unit = scannedData.unit;
+  if (scannedData.isProfessional !== undefined) product.value.isProfessional = scannedData.isProfessional;
+  if (scannedData.isRetail !== undefined) product.value.isRetail = scannedData.isRetail;
+  aiSuccessMessage.value = true;
+};
 
 const hideDialog = () => {
   emit('update:visible', false);

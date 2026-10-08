@@ -1,4 +1,4 @@
-﻿using OpenAI.Chat;
+using OpenAI.Chat;
 using Soluvion.API.Interfaces;
 using System.ClientModel;
 
@@ -7,7 +7,6 @@ namespace Soluvion.API.Services
     public class OpenAiTranslationService : ITranslationService
     {
         private readonly ChatClient _chatClient;
-        private const string MODEL_ID = "gpt-5.2";
 
         public OpenAiTranslationService(IConfiguration configuration)
         {
@@ -16,7 +15,10 @@ namespace Soluvion.API.Services
             {
                 throw new InvalidOperationException("OpenAI API Key nincs beállítva!");
             }
-            _chatClient = new ChatClient(MODEL_ID, new ApiKeyCredential(apiKey));
+            var model = configuration["OpenAI:TranslationModel"] 
+                     ?? configuration["OpenAI:Model"] 
+                     ?? "gpt-5.6-luna";
+            _chatClient = new ChatClient(model, new ApiKeyCredential(apiKey));
         }
 
         // MÓDOSÍTÁS: companyType paraméter fogadása

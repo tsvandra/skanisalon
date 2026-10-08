@@ -23,6 +23,10 @@ namespace Soluvion.Domain.Models
         [MaxLength(50)]
         public string? Shade { get; set; }
 
+        // Termékkép URL (Cloudinary)
+        [MaxLength(500)]
+        public string? ImageUrl { get; set; }
+
         // Belső szakmai használatra való-e
         public bool IsProfessional { get; set; } = true;
 

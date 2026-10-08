@@ -23,5 +23,32 @@
     --text-color: #1f2937;
     --text-muted-color: #6b7280;
     --font-family: 'Inter', sans-serif;
+    color-scheme: light dark;
+  }
+
+  /* Natív dátum és idő választók: dinamikusan öröklik a root témát (SaaS kompatibilis) */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    color-scheme: inherit;
+    color: var(--text-color, currentColor);
+  }
+
+  /* iOS Safari WebKit belső érték és ikon: a téma szerinti szövegszínhez igazodik */
+  input[type="date"]::-webkit-date-and-time-value,
+  input[type="time"]::-webkit-date-and-time-value,
+  input[type="datetime-local"]::-webkit-date-and-time-value {
+    color: var(--text-color, currentColor) !important;
+    -webkit-text-fill-color: var(--text-color, currentColor) !important;
+    min-height: 1.5em;
+    text-align: left;
+  }
+
+  /* Ikonok láthatósága és jobb kattinthatósága */
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator,
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.85;
   }
 }
