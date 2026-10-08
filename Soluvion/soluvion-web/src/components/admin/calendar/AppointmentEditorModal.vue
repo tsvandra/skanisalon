@@ -24,7 +24,6 @@
             <label class="block text-[10px] md:text-xs font-bold text-text-muted mb-1.5 uppercase flex items-center gap-1"><i class="pi pi-calendar"></i> {{ $t('calendar.editor.date') }}</label>
             <input type="date"
                    v-model="form.date"
-                   style="color-scheme: dark;"
                    @click="$event.target.showPicker?.()"
                    class="w-full h-[44px] bg-background border border-text/20 rounded-lg px-3 text-sm text-text font-bold focus:outline-none focus:border-primary cursor-pointer">
           </div>
@@ -32,7 +31,6 @@
             <label class="block text-[10px] md:text-xs font-bold text-text-muted mb-1.5 uppercase flex items-center gap-1"><i class="pi pi-clock"></i> {{ $t('calendar.editor.startTime') }}</label>
             <input type="time"
                    v-model="form.time"
-                   style="color-scheme: dark;"
                    @click="$event.target.showPicker?.()"
                    class="w-full h-[44px] bg-background border border-text/20 rounded-lg px-3 text-sm text-text font-bold focus:outline-none focus:border-primary cursor-pointer">
           </div>

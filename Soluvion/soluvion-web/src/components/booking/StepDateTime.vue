@@ -14,7 +14,6 @@
         <label class="text-sm text-text-muted">{{ $t('booking.dateTimeLabel') }}</label>
         <input v-model="localDateTime"
                type="datetime-local"
-               style="color-scheme: dark;"
                @click="$event.target.showPicker?.()"
                class="p-3 rounded border border-text/20 bg-background text-text focus:border-primary focus:outline-none text-lg cursor-pointer" />
       </div>

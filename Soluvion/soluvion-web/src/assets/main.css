@@ -23,23 +23,23 @@
     --text-color: #1f2937;
     --text-muted-color: #6b7280;
     --font-family: 'Inter', sans-serif;
-    color-scheme: dark;
+    color-scheme: light dark;
   }
 
-  /* Natív dátum és idő választók mobilos és dark/light kompatibilitása (iOS Safari, Android Chrome) */
+  /* Natív dátum és idő választók: dinamikusan öröklik a root témát (SaaS kompatibilis) */
   input[type="date"],
   input[type="time"],
   input[type="datetime-local"] {
-    color-scheme: dark;
-    color: var(--text-color, #ffffff);
+    color-scheme: inherit;
+    color: var(--text-color, currentColor);
   }
 
-  /* iOS Safari WebKit belső érték és ikon igazítás: megakadályozza a fekete szöveg / fekete doboz hibát */
+  /* iOS Safari WebKit belső érték és ikon: a téma szerinti szövegszínhez igazodik */
   input[type="date"]::-webkit-date-and-time-value,
   input[type="time"]::-webkit-date-and-time-value,
   input[type="datetime-local"]::-webkit-date-and-time-value {
-    color: var(--text-color, #ffffff) !important;
-    -webkit-text-fill-color: var(--text-color, #ffffff) !important;
+    color: var(--text-color, currentColor) !important;
+    -webkit-text-fill-color: var(--text-color, currentColor) !important;
     min-height: 1.5em;
     text-align: left;
   }

@@ -78,7 +78,6 @@
         <label class="block mb-2 font-bold text-text-muted text-xs uppercase tracking-wider">{{ $t('adminSettings.inventory.startLabel') }}</label>
         <input v-model="localValue"
                type="datetime-local"
-               style="color-scheme: dark;"
                @click="$event.target.showPicker?.()"
                class="w-full bg-background border border-text/20 text-text hover:border-primary focus:border-primary focus:ring-1 focus:ring-primary transition-colors rounded-lg p-3 shadow-sm cursor-pointer" />
         <p class="text-xs text-text-muted mt-2 mb-0">

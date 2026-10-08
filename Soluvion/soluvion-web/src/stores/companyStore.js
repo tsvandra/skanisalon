@@ -2,6 +2,24 @@
 import { defineStore } from 'pinia';
 import { companyApi } from '@/services/companyApi';
 
+// Relatív fénysűrűség (Luminance) számítása (W3C szabvány) a dinamikus SaaS témákhoz
+const isDarkColor = (hexColor) => {
+  if (!hexColor) return true;
+  let hex = hexColor.toString().replace('#', '').trim();
+  if (hex.length === 3) {
+    hex = hex.split('').map(c => c + c).join('');
+  }
+  if (hex.length !== 6) return true;
+  const r = parseInt(hex.substring(0, 2), 16) / 255;
+  const g = parseInt(hex.substring(2, 4), 16) / 255;
+  const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+  const toLinear = (c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const luminance = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+
+  return luminance < 0.45; // 0.45 alatt sötét, felette világos téma
+};
+
 export const useCompanyStore = defineStore('company', {
   state: () => ({
     company: null,
@@ -72,23 +90,29 @@ export const useCompanyStore = defineStore('company', {
       root.style.setProperty('--primary-color', primaryHex);
       root.style.setProperty('--secondary-color', secondaryHex);
 
-      // Háttér és felület színek dinamikus számolása (biztonságos toLowerCase hívás)
+      // Háttér és felület színek dinamikus számolása
       const bg = secondaryHex.toLowerCase() === '#1a1a1a' ? '#0a0a0a' : secondaryHex;
       root.style.setProperty('--background-color', bg);
       root.style.setProperty('--surface-color', secondaryHex);
 
-      // Szövegszínek és Betűtípus
-      root.style.setProperty('--text-color', '#ffffff');
-      root.style.setProperty('--text-muted-color', '#9ca3af');
+      // DINAMIKUS SAAS KONTRASZT: A tenant által választott háttér sötét vagy világos?
+      const isDark = isDarkColor(bg);
+      const textColor = isDark ? '#ffffff' : '#111827';
+      const textMutedColor = isDark ? '#9ca3af' : '#4b5563';
+      const colorScheme = isDark ? 'dark' : 'light';
+
+      // Szövegszínek és Betűtípus automatikus beállítása
+      root.style.setProperty('--text-color', textColor);
+      root.style.setProperty('--text-muted-color', textMutedColor);
       root.style.setProperty('--font-family', "'Playfair Display', serif");
 
       // 3. BODY FELÜLÍRÁSA
       document.body.style.backgroundColor = 'var(--background-color)';
       document.body.style.color = 'var(--text-color)';
 
-      // 4. BÖNGÉSZŐ FORM ÉS MOBIL TÉMA (color-scheme beállítása a natív inputokhoz, pl. date/time picker)
-      root.style.colorScheme = 'dark';
-      root.style.setProperty('color-scheme', 'dark');
+      // 4. BÖNGÉSZŐ FORM ÉS MOBIL TÉMA (dinamikusan 'dark' vagy 'light' a háttér alapján)
+      root.style.colorScheme = colorScheme;
+      root.style.setProperty('color-scheme', colorScheme);
     }
   }
 });
