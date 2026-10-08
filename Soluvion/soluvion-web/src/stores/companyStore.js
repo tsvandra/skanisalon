@@ -116,3 +116,4 @@ export const useCompanyStore = defineStore('company', {
     }
   }
 });
+
