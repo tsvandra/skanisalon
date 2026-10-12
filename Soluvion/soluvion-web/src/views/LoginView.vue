@@ -3,10 +3,12 @@
   import { useRouter, useRoute } from 'vue-router';
   import { useI18n } from 'vue-i18n';
   import api from '@/services/api';
+  import { useAuthStore } from '@/stores/authStore';
 
   const { t } = useI18n();
   const router = useRouter();
   const route = useRoute();
+  const authStore = useAuthStore();
   const username = ref('');
   const password = ref('');
   const errorMsg = ref('');
@@ -16,27 +18,17 @@
     errorMsg.value = '';
     isLoading.value = true;
 
-    console.log("Bejelentkezés megkezdése...", username.value); // Debug log
-
     try {
-      // Az API controller Query paramétereket vár (url?username=...&password=...)
-      // Az axios ezt a 'params' objektummal kezeli elegánsan
       const res = await api.post('/api/Auth/login', {
         username: username.value,
         password: password.value
       });
-      // A backend sima szövegként (string) adja vissza a tokent,
-      // az axios ezt is a .data-ba teszi
-      console.log("Sikeres válasz:", res.data);
-      const token = res.data.token;
 
-      localStorage.setItem('salon_token', token);
+      const token = res.data.token;
+      authStore.setToken(token);
 
       const redirectPath = route.query.redirect || '/';
-
       router.push(redirectPath);
-      setTimeout(() => window.location.reload(), 100);
-
     } catch (err) {
       console.error("Hiba történt:", err);
       errorMsg.value = err.response?.data || t('login.invalidCredentials');

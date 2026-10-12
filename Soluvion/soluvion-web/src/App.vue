@@ -6,18 +6,19 @@
   import TheFooter from '@/components/TheFooter.vue';
   import { useCompanyStore } from '@/stores/companyStore';
   import { useTranslationStore } from '@/stores/translationStore';
+  import { useAuthStore } from '@/stores/authStore';
   import { useLocalizedRoute } from '@/composables/useLocalizedRoute';
   import Toast from 'primevue/toast';
-  import { jwtDecode } from "jwt-decode";
 
   const companyStore = useCompanyStore();
   const translationStore = useTranslationStore();
+  const authStore = useAuthStore();
   const route = useRoute();
   const router = useRouter();
   const { to: localized } = useLocalizedRoute();
 
-  const isLoggedIn = ref(false);
-  const userRole = ref(null);
+  const isLoggedIn = computed(() => authStore.isAuthenticated);
+  const userRole = computed(() => authStore.userRole);
   const isAppReady = ref(false);
 
   // --- SaaS DINAMIKUS TÉMA INJEKTÁLÁSA A :ROOT-BA ---
@@ -31,31 +32,23 @@
 
   // --- AUTH STATUS ELLENŐRZÉSE ---
   const checkAuthStatus = async () => {
-    const token = localStorage.getItem('salon_token');
-    isLoggedIn.value = !!token;
-    if (!token) userRole.value = null;
+    authStore.initAuth();
 
-    if (token) {
+    if (authStore.isAuthenticated && authStore.companyId) {
       try {
-        const decoded = jwtDecode(token);
-        const companyId = parseInt(decoded.CompanyId || decoded.companyId || 0);
-        const roleClaim = decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || decoded.role || decoded.Role;
-        userRole.value = roleClaim || 'Customer';
+        const companyId = authStore.companyId;
+        const defaultLang = companyStore.company?.defaultLanguage || 'hu';
+        translationStore.initCompany(companyId, defaultLang);
+        await translationStore.fetchLanguages(companyId);
 
-        if (companyId) {
-          const defaultLang = companyStore.company?.defaultLanguage || 'hu';
-          translationStore.initCompany(companyId, defaultLang);
-          await translationStore.fetchLanguages(companyId);
-
-          const savedLang = localStorage.getItem('user-locale');
-          const targetLang = route.params.lang || savedLang || defaultLang;
-          if (targetLang && targetLang !== translationStore.currentLanguage) {
-            console.log(`🌍 Induló nyelv beállítása (Admin): ${targetLang}`);
-            await translationStore.setLanguage(targetLang);
-          }
+        const savedLang = localStorage.getItem('user-locale');
+        const targetLang = route.params.lang || savedLang || defaultLang;
+        if (targetLang && targetLang !== translationStore.currentLanguage) {
+          console.log(`🌍 Induló nyelv beállítása (Admin): ${targetLang}`);
+          await translationStore.setLanguage(targetLang);
         }
       } catch (e) {
-        console.error("Token decode hiba:", e);
+        console.error("Auth status inicializálási hiba:", e);
       }
     }
   };

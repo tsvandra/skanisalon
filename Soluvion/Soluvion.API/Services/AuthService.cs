@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Soluvion.API.Data;
 using Soluvion.Domain.Models;
@@ -128,9 +128,11 @@ namespace Soluvion.API.Services
 
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
 
+            var expirationDays = _configuration.GetValue<int>("AppSettings:TokenExpirationDays", 14);
+
             var token = new JwtSecurityToken(
                     claims: claims,
-                    expires: DateTime.Now.AddDays(14),
+                    expires: DateTime.UtcNow.AddDays(expirationDays),
                     signingCredentials: creds
                 );
 
