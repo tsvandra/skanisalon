@@ -7,6 +7,7 @@
   import { useTranslation } from '@/composables/useTranslation';
   import draggable from 'vuedraggable';
   import { useI18n } from 'vue-i18n';
+  import { compressImage } from '@/utils/imageCompressor';
 
   const { t, locale } = useI18n();
   const isLoggedIn = inject('isLoggedIn');
@@ -183,7 +184,10 @@
     const files = event.target.files;
     if (!files || files.length === 0 || !currentUploadCategory.value) return;
     for (let i = 0; i < files.length; i++) {
-      try { await uploadImage(files[i], '/api/Gallery', { categoryId: currentUploadCategory.value.id }); }
+      try {
+        const compressed = await compressImage(files[i], { maxWidth: 1920, maxHeight: 1920, quality: 0.85 });
+        await uploadImage(compressed, '/api/Gallery', { categoryId: currentUploadCategory.value.id });
+      }
       catch (err) { console.error("Hiba:", err); }
     }
     await fetchData();

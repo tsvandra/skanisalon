@@ -221,12 +221,12 @@
       <button 
         type="button" 
         @click="startScan" 
-        :disabled="images.length === 0 || scanning" 
+        :disabled="images.length === 0 || scanning || compressing" 
         class="h-10 px-5 rounded-xl text-xs md:text-sm font-bold bg-primary text-white shadow-md hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
       >
-        <i v-if="scanning" class="pi pi-spinner pi-spin text-xs"></i>
+        <i v-if="scanning || compressing" class="pi pi-spinner pi-spin text-xs"></i>
         <i v-else class="pi pi-sparkles text-xs"></i>
-        <span>{{ $t('inventory.aiScanner.analyzeBtn') }}</span>
+        <span>{{ compressing ? 'Optimalizálás...' : $t('inventory.aiScanner.analyzeBtn') }}</span>
       </button>
     </template>
   </Dialog>
@@ -236,6 +236,7 @@
 import { ref } from 'vue';
 import Dialog from 'primevue/dialog';
 import productApi from '@/services/productApi';
+import { compressImages } from '@/utils/imageCompressor';
 
 const props = defineProps({
   visible: Boolean
@@ -249,6 +250,7 @@ const galleryInput = ref(null);
 const images = ref([]); // { file: File, previewUrl: string }
 const selectedPrimaryIndex = ref(0);
 const scanning = ref(false);
+const compressing = ref(false);
 const errorMessage = ref('');
 
 const triggerCamera = () => {
@@ -263,7 +265,7 @@ const triggerGallery = () => {
   }
 };
 
-const handleFilesSelected = (event) => {
+const handleFilesSelected = async (event) => {
   errorMessage.value = '';
   const files = Array.from(event.target.files || []);
   if (!files.length) return;
@@ -271,20 +273,38 @@ const handleFilesSelected = (event) => {
   const remainingSlots = 5 - images.value.length;
   const toAdd = files.slice(0, remainingSlots);
 
-  toAdd.forEach(file => {
-    images.value.push({
-      file,
-      previewUrl: URL.createObjectURL(file)
+  compressing.value = true;
+  try {
+    // Termékfotók optimalizálása kliensoldalon max 1600x1600px-re (kisebb hálózati forgalom & gyorsabb feltöltés)
+    const compressedFiles = await compressImages(toAdd, {
+      maxWidth: 1600,
+      maxHeight: 1600,
+      quality: 0.82
     });
-  });
 
-  // Ha eddig nem volt kiválasztott index, állítsuk az elsőre
-  if (selectedPrimaryIndex.value >= images.value.length) {
-    selectedPrimaryIndex.value = 0;
+    compressedFiles.forEach(file => {
+      images.value.push({
+        file,
+        previewUrl: URL.createObjectURL(file)
+      });
+    });
+
+    // Ha eddig nem volt kiválasztott index, állítsuk az elsőre
+    if (selectedPrimaryIndex.value >= images.value.length) {
+      selectedPrimaryIndex.value = 0;
+    }
+  } catch (err) {
+    console.error('Képtömörítési hiba:', err);
+    toAdd.forEach(file => {
+      images.value.push({
+        file,
+        previewUrl: URL.createObjectURL(file)
+      });
+    });
+  } finally {
+    compressing.value = false;
+    event.target.value = '';
   }
-
-  // Input mező alaphelyzetbe állítása, hogy ugyanazt a fájlt is újra lehessen választani ha kell
-  event.target.value = '';
 };
 
 const removeImage = (index) => {

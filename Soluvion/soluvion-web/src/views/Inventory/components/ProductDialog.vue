@@ -144,6 +144,7 @@ import Button from 'primevue/button';
 import { useI18n } from 'vue-i18n';
 import productApi from '@/services/productApi';
 import AiProductScannerModal from './AiProductScannerModal.vue';
+import { compressImage } from '@/utils/imageCompressor';
 
 const { t } = useI18n();
 
@@ -202,7 +203,8 @@ const onManualImageUpload = async (event) => {
 
   uploadingImage.value = true;
   try {
-    const res = await productApi.uploadImage(file);
+    const compressed = await compressImage(file, { maxWidth: 1200, maxHeight: 1200, quality: 0.82 });
+    const res = await productApi.uploadImage(compressed);
     product.value.imageUrl = res.data.imageUrl;
   } catch (error) {
     console.error('Hiba a képfeltöltés során:', error);
