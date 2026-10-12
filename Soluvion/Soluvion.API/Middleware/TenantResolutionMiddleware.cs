@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
 using Soluvion.API.Interfaces;
 
@@ -129,8 +129,11 @@ namespace Soluvion.API.Middleware
                 }
             }
 
-            // 5. Fallback DefaultTenantId konfigurációból (fejlesztéshez / teszteléshez)
-            if (tenantContext.CurrentCompany == null)
+            // 5. Fallback DefaultTenantId konfigurációból (kivéve Auth végpontok, ahol új céget regisztrálnak)
+            var requestPath = context.Request.Path.Value?.ToLowerInvariant() ?? "";
+            bool isAuthEndpoint = requestPath.StartsWith("/api/auth");
+
+            if (tenantContext.CurrentCompany == null && !isAuthEndpoint)
             {
                 var defaultTenantId = configuration.GetValue<int?>("AppSettings:DefaultTenantId");
                 if (defaultTenantId.HasValue && defaultTenantId.Value > 0)

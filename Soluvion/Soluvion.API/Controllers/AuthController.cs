@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Soluvion.API.DTOs;
 using Soluvion.API.Interfaces;
 
@@ -31,6 +31,14 @@ namespace Soluvion.API.Controllers
             }
 
             return Ok(new { Message = "Sikeres regisztráció!" });
+        }
+
+        [HttpGet("company-types")]
+        public async Task<IActionResult> GetCompanyTypes([FromServices] Data.AppDbContext db)
+        {
+            var types = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
+                db.CompanyTypes.Select(ct => new { ct.Id, ct.Name }));
+            return Ok(types);
         }
 
         [HttpPost("login")]
