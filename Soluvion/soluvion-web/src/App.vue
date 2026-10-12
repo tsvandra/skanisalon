@@ -70,6 +70,19 @@
     checkAuthStatus();
   });
 
+  watch(() => route.query.forceTenant, async (newVal, oldVal) => {
+    if (newVal !== oldVal) {
+      if (newVal) {
+        sessionStorage.setItem('soluvion_force_tenant', newVal);
+      } else if (newVal === '0' || newVal === 'clear' || newVal === 'reset') {
+        sessionStorage.removeItem('soluvion_force_tenant');
+      }
+      console.log(`🏢 Tenant váltás észlelve az URL-ből: ${oldVal} -> ${newVal}`);
+      await companyStore.fetchPublicConfig();
+      await checkAuthStatus();
+    }
+  });
+
   const hasPendingReviews = computed(() => translationStore.pendingReviews.length > 0);
   const isEmployee = computed(() => ['Admin', 'Owner', 'Employee'].includes(userRole.value));
   const isAdminRoute = computed(() => {

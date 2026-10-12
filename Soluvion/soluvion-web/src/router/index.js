@@ -124,7 +124,11 @@ router.beforeEach(async (to) => {
         authStore.logout();
       }
       return localizedLocation('login', lang, {
-        query: { ...to.query, redirect: to.fullPath },
+        query: {
+          ...to.query,
+          error: isTenantMismatch ? 'tenant_mismatch' : undefined,
+          redirect: to.fullPath
+        },
         hash: to.hash,
         replace: true,
       });

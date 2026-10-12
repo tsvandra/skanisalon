@@ -1,5 +1,5 @@
 <script setup>
-  import { ref, computed } from 'vue';
+  import { ref, computed, onMounted } from 'vue';
   import { useRouter, useRoute } from 'vue-router';
   import { useI18n } from 'vue-i18n';
   import api from '@/services/api';
@@ -20,6 +20,12 @@
   const errorMsg = ref('');
   const isLoading = ref(false);
 
+  onMounted(() => {
+    if (route.query.error === 'tenant_mismatch') {
+      errorMsg.value = 'A korábbi munkamenet egy másik szalonhoz tartozott, ezért a rendszer kijelentkeztetett.';
+    }
+  });
+
   const handleLogin = async () => {
     errorMsg.value = '';
     isLoading.value = true;
@@ -32,6 +38,11 @@
 
       const token = res.data.token;
       authStore.setToken(token);
+
+      // Bejelentkezés után szinkronizáljuk a companyStore-t a bejelentkezett szalonra
+      if (authStore.companyId && companyStore.company?.id !== authStore.companyId) {
+        await companyStore.fetchPublicConfig();
+      }
 
       const redirectPath = route.query.redirect;
       if (redirectPath) {
