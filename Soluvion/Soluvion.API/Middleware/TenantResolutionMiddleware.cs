@@ -7,73 +7,146 @@ namespace Soluvion.API.Middleware
     public class TenantResolutionMiddleware
     {
         private readonly RequestDelegate _next;
+        private readonly ILogger<TenantResolutionMiddleware> _logger;
 
-        public TenantResolutionMiddleware(RequestDelegate next)
+        public TenantResolutionMiddleware(RequestDelegate next, ILogger<TenantResolutionMiddleware> logger)
         {
             _next = next;
+            _logger = logger;
         }
 
-        // Fontos: A Scoped service-eket (AppDbContext, ITenantContext) itt, az InvokeAsync-ban kérjük el,
-        // NEM a konstruktorban, mert a Middleware maga Singleton (egyszer jön létre), de a DbContext kérésenként új.
-        public async Task InvokeAsync(HttpContext context, ITenantContext tenantContext, AppDbContext db)
+        public async Task InvokeAsync(HttpContext context, ITenantContext tenantContext, AppDbContext db, IConfiguration configuration)
         {
             int? tenantId = null;
             string? domain = null;
 
-            // 1. Fejlesztői felülbírálás Query Paraméterrel (pl. ?forceTenant=2)
-            if (context.Request.Query.TryGetValue("forceTenant", out var forceTenantValue))
+            // 1. Hitelesített felhasználó tokenjéből (ClaimTypes / "CompanyId")
+            // Ha a felhasználó be van jelentkezve, a JWT CompanyId a legbiztonságosabb forrás
+            if (context.User.Identity?.IsAuthenticated == true)
             {
-                if (int.TryParse(forceTenantValue, out int parsedId))
+                var companyClaim = context.User.FindFirst("CompanyId") ?? context.User.FindFirst("companyId");
+                if (companyClaim != null && int.TryParse(companyClaim.Value, out int claimCompanyId) && claimCompanyId > 0)
+                {
+                    tenantId = claimCompanyId;
+                }
+            }
+
+            // 2. Fejlesztői felülbírálás Query paraméterrel (?forceTenant=2)
+            if (tenantId == null && context.Request.Query.TryGetValue("forceTenant", out var forceTenantValue))
+            {
+                if (int.TryParse(forceTenantValue, out int parsedId) && parsedId > 0)
                 {
                     tenantId = parsedId;
                 }
             }
 
-            // 2. API Tesztelés Headerrel (pl. X-Tenant-ID: 2)
-            if (tenantId == null && context.Request.Headers.TryGetValue("X-Tenant-ID", out var headerTenantValue))
-            {
-                if (int.TryParse(headerTenantValue, out int parsedId))
-                {
-                    tenantId = parsedId;
-                }
-            }
-
-            // 3. Domain alapú feloldás (Production)
-            // Ha nincs ID megadva, megnézzük a hívó Host-ot (pl. skanisalon.sk)
+            // 3. API Fejlécek (X-Tenant-ID vagy X-Company-Id)
             if (tenantId == null)
             {
-                // A Host tartalmazhat portot is (localhost:5000), azt levágjuk ha kell, de most egyszerűsítünk
-                domain = context.Request.Host.Host;
+                if (context.Request.Headers.TryGetValue("X-Tenant-ID", out var headerTenant) && int.TryParse(headerTenant, out int id1) && id1 > 0)
+                {
+                    tenantId = id1;
+                }
+                else if (context.Request.Headers.TryGetValue("X-Company-Id", out var headerCompany) && int.TryParse(headerCompany, out int id2) && id2 > 0)
+                {
+                    tenantId = id2;
+                }
             }
 
-            // --- ADATBÁZIS KERESÉS ---
+            // 4. Domain alapú feloldás (X-Tenant-Domain fejléc a frontend SPA-tól, vagy Origin / Referer / Host)
+            if (tenantId == null)
+            {
+                if (context.Request.Headers.TryGetValue("X-Tenant-Domain", out var tenantDomainHeader) && !string.IsNullOrWhiteSpace(tenantDomainHeader))
+                {
+                    domain = tenantDomainHeader.ToString().Trim();
+                }
+                else if (context.Request.Headers.TryGetValue("Origin", out var originHeader) && Uri.TryCreate(originHeader, UriKind.Absolute, out var originUri))
+                {
+                    domain = originUri.Host;
+                }
+                else if (context.Request.Headers.TryGetValue("Referer", out var refererHeader) && Uri.TryCreate(refererHeader, UriKind.Absolute, out var refererUri))
+                {
+                    domain = refererUri.Host;
+                }
+                else
+                {
+                    domain = context.Request.Host.Host;
+                }
+            }
+
+            // --- ADATBÁZIS KERESÉS (Mindig IgnoreQueryFilters-szel, hogy a cég elérhető legyen) ---
             if (tenantId.HasValue)
             {
-                // ID alapján keresünk
                 var company = await db.Companies
-                    .Include(c => c.Languages) // Nyelveket betöltjük előre
+                    .IgnoreQueryFilters()
+                    .Include(c => c.Languages)
                     .FirstOrDefaultAsync(c => c.Id == tenantId.Value && !c.IsDeleted);
 
                 if (company != null)
                 {
                     tenantContext.CurrentCompany = company;
                 }
+                else
+                {
+                    _logger.LogWarning("Nem található aktív cég a megadott TenantId alapján: {TenantId}", tenantId.Value);
+                }
             }
-            else if (!string.IsNullOrEmpty(domain))
+            else if (!string.IsNullOrEmpty(domain) && domain != "localhost" && domain != "127.0.0.1")
             {
-                // Domain alapján keresünk
-                // FIGYELEM: Localhost esetén óvatosnak kell lenni, fejlesztésnél a 'forceTenant' a javasolt.
+                domain = domain.ToLowerInvariant();
+                if (domain.StartsWith("www."))
+                {
+                    domain = domain.Substring(4);
+                }
+
+                // Keresés pontos domain alapján
                 var company = await db.Companies
+                    .IgnoreQueryFilters()
                     .Include(c => c.Languages)
-                    .FirstOrDefaultAsync(c => c.Domain == domain && !c.IsDeleted);
+                    .FirstOrDefaultAsync(c => c.Domain != null && (c.Domain == domain || c.Domain == "www." + domain) && !c.IsDeleted);
+
+                // Aldomain feloldás (pl. skani.soluvion.app -> "skani")
+                if (company == null && domain.Contains('.'))
+                {
+                    var parts = domain.Split('.');
+                    if (parts.Length >= 2)
+                    {
+                        var subdomain = parts[0];
+                        company = await db.Companies
+                            .IgnoreQueryFilters()
+                            .Include(c => c.Languages)
+                            .FirstOrDefaultAsync(c => c.Domain == subdomain && !c.IsDeleted);
+                    }
+                }
 
                 if (company != null)
                 {
                     tenantContext.CurrentCompany = company;
                 }
+                else
+                {
+                    _logger.LogWarning("Nem található aktív cég a megadott domain alapján: {Domain}", domain);
+                }
             }
 
-            // Továbbengedjük a kérést a következő lépcsőre (Controller)
+            // 5. Fallback DefaultTenantId konfigurációból (fejlesztéshez / teszteléshez)
+            if (tenantContext.CurrentCompany == null)
+            {
+                var defaultTenantId = configuration.GetValue<int?>("AppSettings:DefaultTenantId");
+                if (defaultTenantId.HasValue && defaultTenantId.Value > 0)
+                {
+                    var fallbackCompany = await db.Companies
+                        .IgnoreQueryFilters()
+                        .Include(c => c.Languages)
+                        .FirstOrDefaultAsync(c => c.Id == defaultTenantId.Value && !c.IsDeleted);
+
+                    if (fallbackCompany != null)
+                    {
+                        tenantContext.CurrentCompany = fallbackCompany;
+                    }
+                }
+            }
+
             await _next(context);
         }
     }

@@ -1,7 +1,8 @@
 // src/services/api.js
 import axios from 'axios';
-import { DEFAULT_COMPANY_ID } from '@/config'; // Vagy import.meta.env közvetlenül
 import { localizedPath } from '@/router/routeSlugs';
+import { getStoredToken, removeStoredToken } from '@/stores/authStore';
+import { getCompanyIdFromToken } from '@/utils/jwt';
 
 // Létrehozunk egy alap kapcsolatot a környezeti változók alapján
 const api = axios.create({
@@ -13,28 +14,34 @@ const api = axios.create({
 
 // Kérés elfogó (Interceptor)
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token') || localStorage.getItem('salon_token');
+  const token = getStoredToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
-  // --- TENANT CONTEXT KEZELÉSE (JAVÍTOTT) ---
+  // --- TENANT CONTEXT KEZELÉSE ---
+  // 1. Mindig elküldjük a frontend böngésző domainjét (pl. skanisalon.sk vagy salon.soluvion.app)
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    config.headers['X-Tenant-Domain'] = window.location.hostname;
+  }
 
-  // 1. Megnézzük, van-e az URL-ben kényszerítés (fejlesztéshez: ?forceTenant=7)
-  const urlParams = new URLSearchParams(window.location.search);
-  const forceTenantId = urlParams.get('forceTenant');
+  // 2. Kényszerítés az URL-ből (fejlesztéshez/teszteléshez: ?forceTenant=7)
+  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const forceTenantId = urlParams?.get('forceTenant');
 
-  // 2. Megnézzük a .env fájlt (alapértelmezett fejlesztői ID)
+  // 3. Bejelentkezett felhasználó cége a tokenből
+  const tokenCompanyId = getCompanyIdFromToken();
+
+  // 4. .env alapértelmezett fejlesztői cég ID (pl. localhost-hoz)
   const defaultEnvId = import.meta.env.VITE_DEFAULT_COMPANY_ID;
 
-  if (forceTenantId) {
-    // Ha az URL-ben van, az a legerősebb
-    config.headers['X-Tenant-ID'] = forceTenantId;
-  } else if (defaultEnvId) {
-    // Ha nincs az URL-ben, de van a .env-ben, használjuk azt (Így működik a sima localhost:5173 is)
-    config.headers['X-Tenant-ID'] = defaultEnvId;
+  const resolvedTenantId = forceTenantId || tokenCompanyId || defaultEnvId;
+
+  if (resolvedTenantId) {
+    config.headers['X-Tenant-ID'] = resolvedTenantId;
+    config.headers['X-Company-Id'] = resolvedTenantId;
   }
-  // ------------------------------------------
+  // -------------------------------
 
   return config;
 },
@@ -48,8 +55,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       console.warn("A munkamenet lejárt, vagy nincs jogosultság. Újra be kell jelentkezni.");
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('salon_token'); // Töröljük a régi tokent is ha létezik
+      removeStoredToken();
 
       const currentPath = window.location.pathname + window.location.search;
       const loginPath = localizedPath('login');
