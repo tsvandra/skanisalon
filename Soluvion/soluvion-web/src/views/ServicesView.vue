@@ -8,6 +8,7 @@
   import { useCompanyStore } from '@/stores/companyStore';
   import { useDragAndDrop } from '@/composables/useDragAndDrop';
   import { useTranslation } from '@/composables/useTranslation';
+  import { useAutoSaveQueue } from '@/composables/useAutoSaveQueue';
   import ServiceRecipeModal from '@/components/admin/ServiceRecipeModal.vue';
   import { pickLocalized } from '@/utils/localizedText';
   import { DEFAULT_LANG } from '@/router/routeSlugs';
@@ -39,7 +40,7 @@
 
   const currentLang = computed(() => locale.value);
   const company = inject('company', ref(null));
-  const saveQueues = new Map();
+  const { addToQueue } = useAutoSaveQueue();
 
   const { reorderNestedItems } = useDragAndDrop();
   const { translatingField, translateField } = useTranslation();
@@ -191,12 +192,7 @@
   watch(() => company?.value?.id, (newId) => { if (newId) fetchServicesAndAttributes(); }, { immediate: true });
 
   const saveService = async (serviceItem, refreshLocal = false) => {
-    const serviceId = serviceItem.id;
-    if (!saveQueues.has(serviceId)) {
-      saveQueues.set(serviceId, Promise.resolve());
-    }
-    const currentQueue = saveQueues.get(serviceId);
-    const newPromise = currentQueue.then(async () => {
+    return addToQueue(serviceItem.id, async () => {
       try {
         const payload = JSON.parse(JSON.stringify(serviceItem));
         if (!payload.variants) payload.variants = [];
@@ -225,8 +221,6 @@
         }
       } catch (err) { console.error("Hiba a mentesnel:", err); }
     });
-    saveQueues.set(serviceId, newPromise);
-    return newPromise;
   };
 
   const reorderAll = async () => {
