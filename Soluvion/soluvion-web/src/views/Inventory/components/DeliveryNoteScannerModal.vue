@@ -292,12 +292,12 @@
         v-if="step === 1" 
         type="button" 
         @click="startScan" 
-        :disabled="images.length === 0 || scanning" 
+        :disabled="images.length === 0 || scanning || compressing" 
         class="h-10 px-5 rounded-xl text-xs md:text-sm font-bold bg-primary text-white shadow-md hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
       >
-        <i v-if="scanning" class="pi pi-spinner pi-spin text-sm"></i>
+        <i v-if="scanning || compressing" class="pi pi-spinner pi-spin text-sm"></i>
         <i v-else class="pi pi-sparkles text-sm"></i>
-        <span>{{ scanning ? $t('inventory.deliveryNote.analyzingBtn') : $t('inventory.deliveryNote.startScanBtn') }}</span>
+        <span>{{ compressing ? 'Optimalizálás...' : (scanning ? $t('inventory.deliveryNote.analyzingBtn') : $t('inventory.deliveryNote.startScanBtn')) }}</span>
       </button>
 
       <!-- 2. Lépésben: Vissza gomb & Végleges Bevételezés gomb -->
@@ -331,6 +331,7 @@ import { ref, computed } from 'vue';
 import Dialog from 'primevue/dialog';
 import { useI18n } from 'vue-i18n';
 import inventoryApi from '@/services/inventoryApi';
+import { compressImages } from '@/utils/imageCompressor';
 
 const { t } = useI18n();
 
@@ -350,6 +351,7 @@ const galleryInput = ref(null);
 
 const images = ref([]); // { file: File, previewUrl: string }
 const scanning = ref(false);
+const compressing = ref(false);
 const importing = ref(false);
 const errorMessage = ref('');
 const importError = ref('');
@@ -371,7 +373,7 @@ const triggerGallery = () => {
   if (galleryInput.value) galleryInput.value.click();
 };
 
-const handleFilesSelected = (event) => {
+const handleFilesSelected = async (event) => {
   errorMessage.value = '';
   const files = Array.from(event.target.files || []);
   if (!files.length) return;
@@ -379,14 +381,34 @@ const handleFilesSelected = (event) => {
   const remaining = 4 - images.value.length;
   const toAdd = files.slice(0, remaining);
 
-  toAdd.forEach(file => {
-    images.value.push({
-      file,
-      previewUrl: URL.createObjectURL(file)
+  compressing.value = true;
+  try {
+    // Mobilfotók kliensoldali átméretezése max 1800x1800px-re (95%+ méretmegtakarítás a Railway-nek és AI-nak)
+    const compressedFiles = await compressImages(toAdd, {
+      maxWidth: 1800,
+      maxHeight: 1800,
+      quality: 0.82
     });
-  });
 
-  event.target.value = '';
+    compressedFiles.forEach(file => {
+      images.value.push({
+        file,
+        previewUrl: URL.createObjectURL(file)
+      });
+    });
+  } catch (err) {
+    console.error('Képtömörítési hiba:', err);
+    // Hiba esetén se essünk kétségbe, töltsük be az eredetiket
+    toAdd.forEach(file => {
+      images.value.push({
+        file,
+        previewUrl: URL.createObjectURL(file)
+      });
+    });
+  } finally {
+    compressing.value = false;
+    event.target.value = '';
+  }
 };
 
 const removeImage = (index) => {

@@ -4,6 +4,7 @@
   import Button from 'primevue/button';
   import api from '@/services/api';
   import { useCompanyStore } from '@/stores/companyStore';
+  import { compressImage } from '@/utils/imageCompressor';
 
   const props = defineProps({
     companyData: {
@@ -26,8 +27,6 @@
     if (!file) return;
 
     isUploading.value = true;
-    const formData = new FormData();
-    formData.append('file', file);
 
     let endpoint = '';
     if (type === 'logo') endpoint = '/api/Company/upload/logo';
@@ -36,6 +35,17 @@
     else endpoint = '/api/Company/upload/footer';
 
     try {
+      let fileToUpload = file;
+      if (type === 'favicon') {
+        fileToUpload = await compressImage(file, { maxWidth: 256, maxHeight: 256, quality: 0.9 });
+      } else if (type === 'logo') {
+        fileToUpload = await compressImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.88, mimeType: file.type === 'image/png' ? 'image/png' : 'image/jpeg' });
+      } else {
+        fileToUpload = await compressImage(file, { maxWidth: 1920, maxHeight: 1200, quality: 0.85 });
+      }
+
+      const formData = new FormData();
+      formData.append('file', fileToUpload);
       const res = await api.post(endpoint, formData, {
         headers: { 'Content-Type': undefined }
       });
