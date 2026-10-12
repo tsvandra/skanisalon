@@ -1,79 +1,65 @@
-﻿# 02. Termék Specifikáció és Üzleti Logika (Product Specification)
+# 02. Termék Specifikáció és Üzleti Logika (Product Specification)
 
-**Dátum:** 2026.02.25.
-**Projekt:** Soluvion (Skani Salon)
-**Típus:** Élõ Alkalmazás Dokumentáció (Living App Doc)
+**Dátum:** 2026.10.12.  
+**Projekt:** Soluvion (átnevezés alatt: BeeMagic Salon)  
+**Típus:** Élő Alkalmazás Dokumentáció (Living App Doc)
 
-Ez a dokumentum az alkalmazás üzleti logikáját, a SaaS mûködést, a lokalizációs stratégiát és a fõbb modulok funkcionális leírását tartalmazza.
+Ez a dokumentum az alkalmazás üzleti logikáját, a SaaS működést, a lokalizációs stratégiát és a főbb modulok funkcionális leírását tartalmazza.
 
 ---
 
 ## 1. Cél és Vízió
 
-[cite_start]A rendszer egy .NET backend alapú, Vue.js frontenddel rendelkezõ webalkalmazás[cite: 50]. [cite_start]A végsõ cél egy Multi-tenant (SaaS) rendszer kialakítása, ahol több különbözõ szalon (vagy más vállalkozás) is használhatja az alkalmazást saját adatbázis adatokkal, de egyetlen közös kódbázison[cite: 52].
-[cite_start]Minden üzleti entitás (Service, Gallery, User, Company) kötelezõen rendelkezik egy `CompanyId` azonosítóval az adatok szeparálása érdekében[cite: 64].
+A rendszer egy .NET backend alapú, Vue.js frontenddel rendelkező webalkalmazás. A végső cél egy Multi-tenant (SaaS) rendszer kialakítása, ahol több különböző szalon (vagy más vállalkozás) is használhatja az alkalmazást saját adatbázis adatokkal, de egyetlen közös kódbázison.
+Minden üzleti entitás (`Service`, `Gallery`, `User`, `Company`, `Product`, `InventoryDocument`, `Appointment`) kötelezően rendelkezik egy `CompanyId` azonosítóval az adatok szeparálása érdekében.
 
 ---
 
-## 2. SaaS és "White-Label" Mûködés
+## 2. SaaS és "White-Label" Működés
 
-[cite_start]Az alkalmazás szigorúan a "Zéró Hardcode" elvet követi: soha nem drótozunk be fix cégnevet, logót vagy színeket a forráskódba[cite: 66].
+Az alkalmazás szigorúan a "Zéró Hardcode" elvet követi: soha nem drótozunk be fix cégnevet, logót vagy színeket a forráskódba.
 
-* [cite_start]**Dinamikus Arculat (Style Injection):** A rendszer a látogató beérkezésekor vagy bejelentkezéskor lekéri a cég adatait az adatbázisból, és valós idõben felülírja a globális CSS változókat (pl. `--primary-color`, `--secondary-color`)[cite: 68, 70].
-* **Média és Felhõ:** A vizuális elemek (Logó, Lábléc háttérkép) testreszabhatóak. [cite_start]A felhasználó által feltöltött médiafájlokat szigorúan tilos lokálisan a `wwwroot`-ban tárolni[cite: 201]. [cite_start]Minden ilyen fájlt (arculat és galéria) a Cloudinary skálázható felhõtárhelye kezeli[cite: 99, 202].
-
----
-
-## 3. Hibrid Lokalizáció és AI Fordítás
-
-[cite_start]SaaS környezetben nem hozhatunk létre fizikai `.json` fájlokat minden új nyelvhez, amit egy ügyfél bekapcsol[cite: 128]. Erre egy egyedi "Master Template" architektúrát használunk.
-
-### 3.1. Nyelvkezelés (Runtime Generation)
-* [cite_start]**Master Source:** Kizárólag a `locales/hu.json` létezik fizikai fájlként, ez a rendszer "DNS-e", ami az összes statikus kulcsot tartalmazza[cite: 129, 211].
-* [cite_start]**Memory Cloning & Merge:** Nyelvváltáskor a Vue Store a memóriában leklónozza a Master fájlt, majd letölti a cég-specifikus felülírásokat az `UiTranslationOverrides` adatbázis táblából, és ráolvasztja a klónra [cite: 130-131].
-* **Fallback Logika:** A dinamikus fallback nyelv sosem lehet beégetett `'hu'`, hanem mindig az aktuális cég beállítása: `company.value?.defaultLanguage || [cite_start]'hu'`[cite: 143, 227].
-
-### 3.2. Intelligens AI Fordítás
-[cite_start]A beépített OpenAI modul kontextus-érzékeny, és a System Promptokat dinamikusan rakja össze[cite: 122].
-* [cite_start]Figyelembe veszi a cég típusát (`CompanyType` - pl. tudja, hogy a "vágás" hajat jelent egy fodrászatnál)[cite: 123].
-* [cite_start]Figyelembe veszi az oldal kontextusát (Frontend küldi: 'service' tömörséget kér, 'gallery' kreatív leírást) [cite: 124-125, 209].
-* [cite_start]A fordítás aszinkron háttérszálon fut, a Frontend pedig Progress Barral (Polling) követi a folyamatot[cite: 134, 218].
+* **Dinamikus Arculat (Style Injection):** A rendszer a látogató beérkezésekor vagy bejelentkezéskor lekéri a cég adatait az adatbázisból, és valós időben felülírja a globális CSS változókat (pl. `--primary-color`, `--secondary-color`).
+* **Dinamikus Kontraszt & Sötét Mód:** A `companyStore.applyTheme()` intelligensen W3C luminancia alapján detektálja a sötét vagy világos hátteret, és beállítja a `dark` / `light` osztályt a gyökérelemre. A PrimeVue `darkModeSelector: '.dark'` biztosítja a tökéletes olvashatóságot operációs rendszertől függetlenül.
+* **Média és Felhő:** A vizuális elemek (Logó, Favicon, Hero borítókép, Lábléc) testreszabhatóak. Minden felhasználói médiafájlt a Cloudinary skálázható felhőtárhelye kezel. A feltöltés előtt minden képet a kliensoldali `imageCompressor.js` optimalizál (150–350 KB méretre).
 
 ---
 
-## 4. Fõ Modulok és Mûködés
+## 3. Lokalizáció és Többnyelvűség (i18n Stratégia)
+
+A nemzetközi SaaS működéshez a rendszer két külön szinten kezeli a fordításokat:
+
+### 3.1. Gyári Rendszerszövegek (System UI - 3 Alapnyelv: HU, SK, EN)
+* Minden statikus UI elem, menü, táblázatfejléc, gomb, toast üzenet és űrlap három teljes, lektorált nyelvi csomagban érhető el:
+  - `src/locales/hu/` (Magyar)
+  - `src/locales/sk/` (Szlovák)
+  - `src/locales/en/` (Angol)
+* **Előny:** Új szalon bekapcsolásakor vagy nyelvváltáskor a felület **azonnal, 0 AI tokennel és 0 várakozási idővel** megjelenik a kívánt nyelven.
+
+### 3.2. Dinamikus Szalontartalom és AI Fordítás
+* A szalon egyedi szolgáltatásai, árlistája és leírásai JSONB szótárakként tárolódnak (`{ "hu": "...", "sk": "..." }`).
+* Ha a szalon új szolgáltatást vesz fel (pl. magyarul), a beépített OpenAI modul dinamikus kontextussal gombnyomásra automatikusan lefordítja a hiányzó nyelvekre.
+
+---
+
+## 4. Fő Modulok és Működés
 
 ### 4.1. Publikus Oldalak (Front Office)
-A látogatói nézet egy modern SPA (Single Page Application).
-* [cite_start]**Home & Contact:** Dinamikus bemutatkozás, SQL-bõl betöltött címek, telefonszámok, nyitvatartási idõ és beágyazott Google Maps modul [cite: 74-75]. [cite_start]A nyitvatartási táblázatok is HTML alapú, szerkeszthetõ adatbázis mezõkbõl jönnek[cite: 77].
+* **Home:** Dinamikus borítókép, bemutatkozó kártya és közvetlen navigáció a galériához és szolgáltatásokhoz.
+* **Services (Árlista):** Drag-and-drop rendezhető kategóriák, szolgáltatások és variánsok. A mentést az aszinkron `useAutoSaveQueue` védi.
+* **Gallery (Okos Galéria):** Kategóriákba rendezett referenciaképek, teljes képernyős lightbox előnézettel, drag-and-drop sorrendezéssel.
+* **Contact:** Címek, kattintható telefonszám, e-mail, interaktív nyitvatartási idősávok és kapcsolatfelvételi űrlap.
 
-### 4.2. Arculat és Cégbeállítások (Admin)
-[cite_start]A "Site Builder" jellegû funkciók egy dedikált beállítások oldalon érhetõk el a véletlen módosítások elkerülése végett[cite: 119].
-* [cite_start]PrimeVue `Tabs` felület a jobb átláthatóságért[cite: 114].
-* [cite_start]Valós idejû csúszkák (slider) a Logó és a Lábléc magasságának állításához, azonnali vizuális visszajelzéssel[cite: 115, 120].
-* **Többnyelvű Cégadatok:** A nyitvatartási információk JSONB formátumban, nyelvenként szeparálva (Dictionary) tárolódnak, biztosítva a tökéletes lokalizációt.
-* **AI Varázspálca:** Egykattintásos OpenAI fordítási asszisztens a beállítási mezőkhöz, dedikált "Összes fordítása" csoportos funkcióval és dinamikus kontextus-felismeréssel.
+### 4.2. Intelligens Raktárkezelés és AI Képfelismerés (Inventory)
+* **Raktárkészlet:** Termékek, árnyalatok/színkódok (`Shade`), EAN vonalkódok, beszerzési és eladási árak, valamint mértékegységek (`ml`, `g`, `db`) kezelése.
+* **Szállítólevél (Dodací list) AI beolvasás:** Mobilfotókból a Google Gemini / OpenAI Vision automatikusan felismeri a fejlécadatokat (szállító, sorszám, dátum) és a tételsorokat, majd fuzzy algoritmussal intelligensen párosítja a meglévő raktártermékekkel, egykattintásos bevételezést biztosítva.
+* **Fényképes Termékfelismerő AI:** Flakonról vagy dobozról készült fotók alapján felismeri a márkát, terméknevet, árnyalatot, kiszerelést és vonalkódot, valamint automatikusan feltölti a termékképet a Cloudinary-be.
+* **Anyagfelhasználás követés:** A szolgáltatás receptek alapján a naptári időpontok lezárásakor a rendszer automatikusan levonja a felhasznált anyagmennyiséget a raktárból.
 
-### 4.3. Árlista és Szolgáltatások (Services)
-* [cite_start]**Hierarchikus Adatkezelés:** Az adatok Kategória -> Szolgáltatás -> Variáns (Variant) struktúrában épülnek fel[cite: 94].
-* [cite_start]**Rendezés:** A kategóriák és szolgáltatások vizuális sorrendje Drag-and-Drop módszerrel (`vuedraggable`) állítható be[cite: 92].
-* [cite_start]**UI/UX:** A modul sötét témát (Dark Mode) használ, és támogat többnyelvû megjegyzés (Description) mezõket a szolgáltatások finomhangolásához [cite: 93-94].
+### 4.3. Naptár és Időpontkezelés (Smart Booking)
+* Dolgozói munkarendek, foglalások kezelése (napi, heti, havi nézet).
+* Folyamatban lévő fejlesztés (Master Roadmap Fázis 3): Munkarend-alapú szabad idősáv kalkuláció (`GetAvailableSlots`) és publikus vendégfoglaló felület rate limiting védelemmel.
 
-### 4.4. Okos Galéria (Smart Gallery)
-A képek fizikai tárolását a Cloudinary végzi.
-* **Teljesítmény (Cloudinary):** A rendszer automatikusan beinjektálja a sávszélesség-kímélő paramétereket (`f_auto`, `q_auto`, `w_500`), így drasztikusan csökkentve a betöltési időt és a mobil adatforgalmat.
-* **Nested Drag-and-Drop:** Az Admin felhasználók szabadon sorrendezhetik a kategóriákat (függõleges lista) és a képeket a kategóriákon belül is. Képek mozgathatóak kategóriák között is.
-* **Vendég UI (Accordion & Swipe):** A látogatók számára a galéria letisztult Harmonika (Accordion) elrendezést használ, nyitáskor automatikus fókuszba görgetéssel. A Lightbox (képnézegető) asztali gépen nyilakkal, mobilon natív "Swipe" (húzás) gesztussal lapozható.
-* **Micro-Interactions:** Lightbox bezárásakor a rendszer automatikusan visszagörget ahhoz az indexképhez, aminél a látogató tartott, és egy vizuális kerettel ki is emeli azt az orientáció segítésére.
-
-### 4.5. Admin Vezérlőpult és Naptár (Dashboard)
-* **Zéró-Mock Ügyfélkezelés:** Az új foglalások rögzítésekor a rendszer valós időben kérdezi le és hozza létre az ügyfeleket (`CustomerPicker`). A rugalmas SaaS modell miatt a név, email vagy telefon megadása is elegendő a JSONB struktúrának köszönhetően.
-* **Okos Szolgáltatás-építő és Kosár (Split-View):** A foglalási felület egy letisztult, SaaS kategóriás "Split-View" designt használ. Bal oldalon a kategóriák, jobb oldalon a "Row-level selection" (kattintható sorok) logika működik egyedi lenyíló listákkal (`InlineDropdown`).
-* **Magic Sync (Variáns szinkronizáció):** Ha a felhasználó egy szolgáltatáshoz beállít egy variánst (pl. "Rövid haj" a vágásnál), a rendszer automatikusan megkeresi és alkalmazza ezt a variánst a többi kiválasztott elemnél is (pl. hajfestés).
-* **Dinamikus Időtartam és Kosár Összesítő:** A hozzáadott tételek egy dedikált kosárba (`AppointmentCart`) kerülnek. Itt a munkatársak egyedi "Scrubbable" (húzható) inputtal bírálhatják felül az alapértelmezett időt, a rendszer pedig valós időben kalkulálja az összidőt és az árat.
-* **Párhuzamos foglalások:** A rendszer vizuálisan egymás mellé (Lanes) rendezi az ütköző eseményeket, és HTTP 409 (OVERLAP) hibaüzenettel védi a backendet a véletlen ráfoglalásoktól, amit az admin tudatosan felülbírálhat.
-
-* ### 4.6. Dinamikus CRM és Attribútum Rendszer (SaaS Engine)
-A rendszer ügyfélkezelése elszakad a hagyományos kötött tábláktól, maximális szabadságot adva a különböző iparágaknak.
-* **Szalon-specifikus Adatlapok (Company Attributes):** A szalonok saját maguk definiálhatják a vendégekről gyűjtött adatokat (pl. Hajhossz, Allergia, Kutyakozmetika esetén Kutya fajtája). Ezek a dinamikus mezők beállíthatóak kötelezőnek, és lehetnek szabadon beírhatóak vagy legördülő listából választhatóak.
-* **Zero-Admin Profil Építés (Profile Modifiers):** A rendszer képes "tanulni" a napi szintű naptár-használatból. Ha a vendégnek lefoglalnak egy szolgáltatást, amihez be van állítva egy Módosító (pl. Női Hajvágás -> Hajhossz: Rövid), a backend transzparensen és automatikusan beírja (vagy frissíti) ezt az adatot a vendég JSONB profiljában a foglalás pillanatában. Így elkerülhető a dupla adminisztráció.
+### 4.4. Vezérlőpult (Dashboard)
+* Raktári alacsony készlet figyelmeztetések, anyagfelhasználási összesítők.
+* Folyamatban (Master Roadmap Fázis 4): Pénzügyi és forgalmi KPI statisztikák szerepkör-alapú jogosultságokkal.
