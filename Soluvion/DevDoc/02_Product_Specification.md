@@ -63,3 +63,4 @@ A nemzetközi SaaS működéshez a rendszer két külön szinten kezeli a fordí
 ### 4.4. Vezérlőpult (Dashboard)
 * Raktári alacsony készlet figyelmeztetések, anyagfelhasználási összesítők.
 * Folyamatban (Master Roadmap Fázis 4): Pénzügyi és forgalmi KPI statisztikák szerepkör-alapú jogosultságokkal.
+* **Zero-Admin Profil Építés (Profile Modifiers):** A rendszer képes "tanulni" a napi szintű naptár-használatból. Ha a vendégnek lefoglalnak egy szolgáltatást, amihez be van állítva egy Módosító (pl. Női Hajvágás -> Hajhossz: Rövid), a backend transzparensen és automatikusan beírja (vagy frissíti) ezt az adatot a vendég JSONB profiljában a foglalás pillanatában. Így elkerülhető a dupla adminisztráció.

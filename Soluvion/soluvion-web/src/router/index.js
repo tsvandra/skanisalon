@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+ï»¿import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import ServicesView from '../views/ServicesView.vue'
 import GalleryView from '../views/GalleryView.vue'
@@ -19,7 +19,7 @@ import {
 } from './routeSlugs'
 
 // Az URL szerkezete: /:lang/:slug  (pl. /hu/ugyfelek, /sk/zakaznici, /en/customers)
-// A slug a nyelvi fájlok "routes.<név>" kulcsából jön (lásd routeSlugs.js).
+// A slug a nyelvi fÃ¡jlok "routes.<nÃ©v>" kulcsÃ¡bÃ³l jÃ¶n (lÃ¡sd routeSlugs.js).
 const pages = [
   { name: 'services', component: ServicesView },
   { name: 'gallery', component: GalleryView },
@@ -34,14 +34,14 @@ const pages = [
     name: 'inventory',
     component: () => import('../views/Inventory/InventoryView.vue'),
     beforeEnter: (to) => {
-      const token = localStorage.getItem('salon_token');
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('salon_token');
       if (token) return true;
       return localizedLocation('login', to.params.lang);
     },
   },
 ]
 
-// Az alapértelmezett nyelv: mentett választás -> cég alapnyelve -> hu
+// Az alapÃ©rtelmezett nyelv: mentett vÃ¡lasztÃ¡s -> cÃ©g alapnyelve -> hu
 const getPreferredLang = () => {
   const companyDefault = useCompanyStore().company?.defaultLanguage;
   return localStorage.getItem('user-locale') || companyDefault || DEFAULT_LANG;
@@ -53,7 +53,7 @@ const router = createRouter({
     { path: '/', redirect: () => localizedLocation('home', getPreferredLang()) },
     { path: `/:lang(${LANG_PATTERN})`, name: 'home', component: HomeView },
 
-    // Régi, nyelvi elotag nélküli (magyar) linkek továbbra is muködnek: /ugyfelek -> /<nyelv>/<slug>
+    // RÃ©gi, nyelvi elotag nÃ©lkÃ¼li (magyar) linkek tovÃ¡bbra is mukÃ¶dnek: /ugyfelek -> /<nyelv>/<slug>
     ...pages.map((page) => ({
       path: legacyPath(page.name),
       name: `legacy-${page.name}`,
@@ -62,8 +62,8 @@ const router = createRouter({
   ],
 })
 
-// A route-ok (újra)regisztrálása az aktuálisan betöltött nyelvek slug-jaival.
-// Azonos névvel újra hozzáadott route felülírja a régit, így ez bármikor hívható.
+// A route-ok (Ãºjra)regisztrÃ¡lÃ¡sa az aktuÃ¡lisan betÃ¶ltÃ¶tt nyelvek slug-jaival.
+// Azonos nÃ©vvel Ãºjra hozzÃ¡adott route felÃ¼lÃ­rja a rÃ©git, Ã­gy ez bÃ¡rmikor hÃ­vhatÃ³.
 const registerPages = () => {
   pages.forEach(({ name, ...record }) => {
     router.addRoute({
@@ -77,7 +77,7 @@ const registerPages = () => {
 registerPages();
 onSlugsChanged(registerPages);
 
-// Catch-all: ismeretlen URL -> nyitóoldal a preferált nyelven
+// Catch-all: ismeretlen URL -> nyitÃ³oldal a preferÃ¡lt nyelven
 router.addRoute({
   path: '/:pathMatch(.*)*',
   name: 'not-found',
@@ -96,19 +96,19 @@ router.beforeEach(async (to) => {
     translationStore.initCompany(company.id, company.defaultLanguage);
   }
 
-  // Ha már ismerjük a cég nyelveit, az ismeretlen nyelvkódot a preferált nyelvre irányítjuk
+  // Ha mÃ¡r ismerjÃ¼k a cÃ©g nyelveit, az ismeretlen nyelvkÃ³dot a preferÃ¡lt nyelvre irÃ¡nyÃ­tjuk
   const knownLanguages = translationStore.languages;
   if (knownLanguages.length > 0 && !knownLanguages.some((l) => l.languageCode === lang)) {
     const fallback = company?.defaultLanguage || DEFAULT_LANG;
     return localizedLocation(to.name, fallback, { query: to.query, hash: to.hash, replace: true });
   }
 
-  // Az URL a nyelv forrása: ha eltér az aktuálistól, betöltjük a nyelvet
+  // Az URL a nyelv forrÃ¡sa: ha eltÃ©r az aktuÃ¡listÃ³l, betÃ¶ltjÃ¼k a nyelvet
   if (lang !== i18n.global.locale.value) {
     await translationStore.setLanguage(lang);
   }
 
-  // A slug legyen az adott nyelvhez tartozó (pl. /sk/customers -> /sk/zakaznici)
+  // A slug legyen az adott nyelvhez tartozÃ³ (pl. /sk/customers -> /sk/zakaznici)
   if (to.params.slug !== undefined) {
     const expected = slugFor(to.name, lang);
     if (to.params.slug !== expected) {
@@ -120,4 +120,5 @@ router.beforeEach(async (to) => {
 })
 
 export default router
+
 

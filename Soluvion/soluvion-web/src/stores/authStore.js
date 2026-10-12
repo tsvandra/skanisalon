@@ -1,9 +1,41 @@
 import { defineStore } from 'pinia';
 import { jwtDecode } from 'jwt-decode';
 
+export const TOKEN_STORAGE_KEY = 'auth_token';
+const LEGACY_STORAGE_KEYS = ['salon_token', 'token'];
+
+/**
+ * Lekéri a mentett JWT tokent a localStorage-ból.
+ * Automatikusan átvándoroltatja a régi 'salon_token' és 'token' kulcsokat
+ * az új, iparági szabványos 'auth_token' kulcsra, megőrizve a meglévő bejelentkezéseket.
+ */
+export const getStoredToken = () => {
+  const currentToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+  if (currentToken) return currentToken;
+
+  for (const legacyKey of LEGACY_STORAGE_KEYS) {
+    const legacy = localStorage.getItem(legacyKey);
+    if (legacy) {
+      localStorage.setItem(TOKEN_STORAGE_KEY, legacy);
+      localStorage.removeItem(legacyKey);
+      return legacy;
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Törli az összes auth tokent a tárolóból.
+ */
+export const removeStoredToken = () => {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  LEGACY_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
+};
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    token: localStorage.getItem('salon_token') || null,
+    token: getStoredToken(),
     user: null,
   }),
 
@@ -18,7 +50,7 @@ export const useAuthStore = defineStore('auth', {
 
   actions: {
     initAuth() {
-      const token = localStorage.getItem('salon_token');
+      const token = getStoredToken();
       if (!token) {
         this.token = null;
         this.user = null;
@@ -64,7 +96,8 @@ export const useAuthStore = defineStore('auth', {
         return;
       }
 
-      localStorage.setItem('salon_token', token);
+      localStorage.setItem(TOKEN_STORAGE_KEY, token);
+      LEGACY_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
       this.token = token;
       this.initAuth();
     },
@@ -72,7 +105,7 @@ export const useAuthStore = defineStore('auth', {
     logout() {
       this.token = null;
       this.user = null;
-      localStorage.removeItem('salon_token');
+      removeStoredToken();
     },
   },
 });

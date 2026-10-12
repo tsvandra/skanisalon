@@ -44,7 +44,7 @@
   });
 
   const getCompanyId = () => {
-    const token = localStorage.getItem('salon_token');
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('salon_token');
     if (!token) return 0;
     try {
       const decoded = jwtDecode(token);

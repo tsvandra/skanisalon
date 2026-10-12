@@ -13,7 +13,7 @@ const api = axios.create({
 
 // Kérés elfogó (Interceptor)
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('salon_token');
+  const token = localStorage.getItem('auth_token') || localStorage.getItem('salon_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -48,7 +48,8 @@ api.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       console.warn("A munkamenet lejárt, vagy nincs jogosultság. Újra be kell jelentkezni.");
-      localStorage.removeItem('salon_token'); // Töröljük a rossz tokent
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('salon_token'); // Töröljük a régi tokent is ha létezik
 
       const currentPath = window.location.pathname + window.location.search;
       const loginPath = localizedPath('login');

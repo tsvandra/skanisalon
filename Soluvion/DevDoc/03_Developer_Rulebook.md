@@ -57,3 +57,4 @@ A kód stabilitásának megőrzése érdekében szigorú "Feature Branch" modell
 ### 3.6. Többnyelvűsítés (i18n)
 * Tilos keményen beégetett szöveget hagyni a template-ekben és szkriptekben!
 * Minden UI felirat a `src/locales/` megfelelő JSON fájljaiba kerüljön, a template-ben `$t('kulcs')` hívással.
+- [ ] **DTO egyezés:** A Vue által küldött payload pontosan megegyezik a C# DTO mezőivel és típusaival?

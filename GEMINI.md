@@ -104,3 +104,4 @@ A projekt a **05. Master Fejlesztési Ütemterv** szerint halad:
 4. **Fázis 4: Szalonvezetés és Napi Munkaeszközök (KPI Dashboard, Raktár Seed, PWA)**
 5. **Fázis 5: SaaS Skálázás, Jogosultságok és Monetizáció (Feature Gating, RBAC, Superadmin)**
 6. **Fázis 6: Go-to-Market, Minőség és Értékesítés (BeeMagic Marketing, Tesztek, Brand)**
+
