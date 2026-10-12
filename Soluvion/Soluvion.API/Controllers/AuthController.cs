@@ -44,14 +44,21 @@ namespace Soluvion.API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto request)
         {
-            var token = await _authService.LoginAsync(request.Username, request.Password);
-
-            if (token == null)
+            try
             {
-                return BadRequest("Hibás felhasználónév vagy jelszó.");
-            }
+                var token = await _authService.LoginAsync(request.Username, request.Password);
 
-            return Ok(new { Token = token });
+                if (token == null)
+                {
+                    return BadRequest("Hibás felhasználónév vagy jelszó.");
+                }
+
+                return Ok(new { Token = token });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }

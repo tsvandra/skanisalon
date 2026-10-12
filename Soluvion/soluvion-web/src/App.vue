@@ -34,6 +34,15 @@
   const checkAuthStatus = async () => {
     authStore.initAuth();
 
+    // Cross-tenant védelem: Ha van bejelentkezett munkamenet, de az egy másik szalonhoz tartozik,
+    // mint amit az oldal épp megjelenít (pl. teszteléskor vagy domain váltáskor),
+    // azonnal kijelentkeztetjük a felhasználót a tiszta adat-izoláció érdekében!
+    if (authStore.isAuthenticated && companyStore.company && authStore.companyId && authStore.companyId !== companyStore.company.id) {
+      console.warn(`⚠️ Eltérő szalon munkamenet észlelve (Token szalon ID: ${authStore.companyId}, Aktuális szalon ID: ${companyStore.company.id}). Kijelentkezés a tiszta izolációért.`);
+      authStore.logout();
+      return;
+    }
+
     if (authStore.isAuthenticated && authStore.companyId) {
       try {
         const companyId = authStore.companyId;
@@ -54,6 +63,10 @@
   };
 
   watch(() => route.path, () => {
+    checkAuthStatus();
+  });
+
+  watch(() => companyStore.company?.id, () => {
     checkAuthStatus();
   });
 

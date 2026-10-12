@@ -1,14 +1,20 @@
 <script setup>
-  import { ref } from 'vue';
+  import { ref, computed } from 'vue';
   import { useRouter, useRoute } from 'vue-router';
   import { useI18n } from 'vue-i18n';
   import api from '@/services/api';
   import { useAuthStore } from '@/stores/authStore';
+  import { useCompanyStore } from '@/stores/companyStore';
+  import { useLocalizedRoute } from '@/composables/useLocalizedRoute';
 
   const { t } = useI18n();
   const router = useRouter();
   const route = useRoute();
   const authStore = useAuthStore();
+  const companyStore = useCompanyStore();
+  const { go } = useLocalizedRoute();
+
+  const companyName = computed(() => companyStore.company?.name || 'BeeMagic Salon');
   const username = ref('');
   const password = ref('');
   const errorMsg = ref('');
@@ -27,8 +33,13 @@
       const token = res.data.token;
       authStore.setToken(token);
 
-      const redirectPath = route.query.redirect || '/';
-      router.push(redirectPath);
+      const redirectPath = route.query.redirect;
+      if (redirectPath) {
+        router.push(redirectPath);
+      } else {
+        const queryParams = route.query.forceTenant ? { forceTenant: route.query.forceTenant } : undefined;
+        go('dashboard', { query: queryParams });
+      }
     } catch (err) {
       console.error("Hiba történt:", err);
       errorMsg.value = err.response?.data || t('login.invalidCredentials');
@@ -43,7 +54,7 @@
 
     <div class="bg-surface p-8 rounded-xl shadow-xl w-full max-w-md text-center border-t-4 border-primary">
       <h2 class="text-text text-2xl font-bold mb-2">{{ $t('login.title') }}</h2>
-      <p class="text-text-muted text-sm mb-8">Skani Salon Management</p>
+      <p class="text-text-muted text-sm mb-8">{{ companyName }} Management</p>
 
       <form @submit.prevent="handleLogin">
 

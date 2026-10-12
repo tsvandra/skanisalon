@@ -20,7 +20,31 @@ namespace Soluvion.API.Middleware
             int? tenantId = null;
             string? domain = null;
 
-            // 1. Hitelesített felhasználó tokenjéből (ClaimTypes / "CompanyId")
+            // 1. Domain kinyerése a kérésből (fejléc, Origin, Referer vagy Host alapján)
+            if (context.Request.Headers.TryGetValue("X-Tenant-Domain", out var tenantDomainHeader) && !string.IsNullOrWhiteSpace(tenantDomainHeader))
+            {
+                domain = tenantDomainHeader.ToString().Trim();
+            }
+            else if (context.Request.Headers.TryGetValue("Origin", out var originHeader) && Uri.TryCreate(originHeader, UriKind.Absolute, out var originUri))
+            {
+                domain = originUri.Host;
+            }
+            else if (context.Request.Headers.TryGetValue("Referer", out var refererHeader) && Uri.TryCreate(refererHeader, UriKind.Absolute, out var refererUri))
+            {
+                domain = refererUri.Host;
+            }
+            else
+            {
+                domain = context.Request.Host.Host;
+            }
+
+            bool isDevOrTestHost = string.IsNullOrEmpty(domain)
+                || domain == "localhost"
+                || domain == "127.0.0.1"
+                || domain.EndsWith(".netlify.app", StringComparison.OrdinalIgnoreCase)
+                || domain.EndsWith(".up.railway.app", StringComparison.OrdinalIgnoreCase);
+
+            // 2. Hitelesített felhasználó tokenjéből (ClaimTypes / "CompanyId")
             // Ha a felhasználó be van jelentkezve, a JWT CompanyId a legbiztonságosabb forrás
             if (context.User.Identity?.IsAuthenticated == true)
             {
@@ -31,46 +55,24 @@ namespace Soluvion.API.Middleware
                 }
             }
 
-            // 2. Fejlesztői felülbírálás Query paraméterrel (?forceTenant=2)
-            if (tenantId == null && context.Request.Query.TryGetValue("forceTenant", out var forceTenantValue))
+            // 3. Fejlesztői felülbírálás KIZÁRÓLAG teszt/fejlesztői környezetben engedélyezett!
+            // Éles domaineken (pl. skanisalon.sk) a forceTenant és a manuális header SZIGORÚAN TILTVA van.
+            if (tenantId == null && isDevOrTestHost)
             {
-                if (int.TryParse(forceTenantValue, out int parsedId) && parsedId > 0)
+                if (context.Request.Query.TryGetValue("forceTenant", out var forceTenantValue)
+                    && int.TryParse(forceTenantValue, out int parsedId) && parsedId > 0)
                 {
                     tenantId = parsedId;
                 }
-            }
-
-            // 3. API Fejlécek (X-Tenant-ID vagy X-Company-Id)
-            if (tenantId == null)
-            {
-                if (context.Request.Headers.TryGetValue("X-Tenant-ID", out var headerTenant) && int.TryParse(headerTenant, out int id1) && id1 > 0)
+                else if (context.Request.Headers.TryGetValue("X-Tenant-ID", out var headerTenant)
+                    && int.TryParse(headerTenant, out int id1) && id1 > 0)
                 {
                     tenantId = id1;
                 }
-                else if (context.Request.Headers.TryGetValue("X-Company-Id", out var headerCompany) && int.TryParse(headerCompany, out int id2) && id2 > 0)
+                else if (context.Request.Headers.TryGetValue("X-Company-Id", out var headerCompany)
+                    && int.TryParse(headerCompany, out int id2) && id2 > 0)
                 {
                     tenantId = id2;
-                }
-            }
-
-            // 4. Domain alapú feloldás (X-Tenant-Domain fejléc a frontend SPA-tól, vagy Origin / Referer / Host)
-            if (tenantId == null)
-            {
-                if (context.Request.Headers.TryGetValue("X-Tenant-Domain", out var tenantDomainHeader) && !string.IsNullOrWhiteSpace(tenantDomainHeader))
-                {
-                    domain = tenantDomainHeader.ToString().Trim();
-                }
-                else if (context.Request.Headers.TryGetValue("Origin", out var originHeader) && Uri.TryCreate(originHeader, UriKind.Absolute, out var originUri))
-                {
-                    domain = originUri.Host;
-                }
-                else if (context.Request.Headers.TryGetValue("Referer", out var refererHeader) && Uri.TryCreate(refererHeader, UriKind.Absolute, out var refererUri))
-                {
-                    domain = refererUri.Host;
-                }
-                else
-                {
-                    domain = context.Request.Host.Host;
                 }
             }
 

@@ -21,19 +21,22 @@ api.interceptors.request.use((config) => {
 
   // --- TENANT CONTEXT KEZELÉSE ---
   // 1. Mindig elküldjük a frontend böngésző domainjét (pl. skanisalon.sk vagy salon.soluvion.app)
-  if (typeof window !== 'undefined' && window.location?.hostname) {
-    config.headers['X-Tenant-Domain'] = window.location.hostname;
+  const hostname = typeof window !== 'undefined' ? window.location?.hostname : '';
+  if (hostname) {
+    config.headers['X-Tenant-Domain'] = hostname;
   }
 
-  // 2. Kényszerítés az URL-ből (fejlesztéshez/teszteléshez: ?forceTenant=7)
+  // 2. Kényszerítés az URL-ből KIZÁRÓLAG fejlesztői/teszt környezetben! (localhost, 127.0.0.1, *.netlify.app)
+  // Éles domaineken (pl. skanisalon.sk) a forceTenant SZIGORÚAN TILTVA van a szivárgások ellen.
+  const isDevOrTestHost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.netlify.app');
   const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-  const forceTenantId = urlParams?.get('forceTenant');
+  const forceTenantId = isDevOrTestHost ? urlParams?.get('forceTenant') : null;
 
   // 3. Bejelentkezett felhasználó cége a tokenből
   const tokenCompanyId = getCompanyIdFromToken();
 
-  // 4. .env alapértelmezett fejlesztői cég ID (pl. localhost-hoz)
-  const defaultEnvId = import.meta.env.VITE_DEFAULT_COMPANY_ID;
+  // 4. .env alapértelmezett fejlesztői cég ID (kizárólag localhost / teszt környezethez)
+  const defaultEnvId = isDevOrTestHost ? import.meta.env.VITE_DEFAULT_COMPANY_ID : null;
 
   const resolvedTenantId = forceTenantId || tokenCompanyId || defaultEnvId;
 

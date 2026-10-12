@@ -1,4 +1,4 @@
-﻿import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import ServicesView from '../views/ServicesView.vue'
 import GalleryView from '../views/GalleryView.vue'
@@ -18,6 +18,8 @@ import {
   onSlugsChanged,
 } from './routeSlugs'
 
+import { useAuthStore } from '@/stores/authStore'
+
 // Az URL szerkezete: /:lang/:slug  (pl. /hu/ugyfelek, /sk/zakaznici, /en/customers)
 // A slug a nyelvi fájlok "routes.<név>" kulcsából jön (lásd routeSlugs.js).
 const pages = [
@@ -26,19 +28,11 @@ const pages = [
   { name: 'contact', component: ContactView },
   { name: 'booking', component: () => import('../views/BookingView.vue') },
   { name: 'login', component: LoginView },
-  { name: 'settings', component: SettingsView },
-  { name: 'dashboard', component: () => import('../views/DashboardView.vue') },
-  { name: 'orders', component: () => import('../components/admin/calendar/CalendarGrid.vue') },
-  { name: 'customers', component: () => import('../views/CustomersView.vue') },
-  {
-    name: 'inventory',
-    component: () => import('../views/Inventory/InventoryView.vue'),
-    beforeEnter: (to) => {
-      const token = localStorage.getItem('auth_token') || localStorage.getItem('salon_token');
-      if (token) return true;
-      return localizedLocation('login', to.params.lang);
-    },
-  },
+  { name: 'settings', component: SettingsView, meta: { requiresAuth: true } },
+  { name: 'dashboard', component: () => import('../views/DashboardView.vue'), meta: { requiresAuth: true } },
+  { name: 'orders', component: () => import('../components/admin/calendar/CalendarGrid.vue'), meta: { requiresAuth: true } },
+  { name: 'customers', component: () => import('../views/CustomersView.vue'), meta: { requiresAuth: true } },
+  { name: 'inventory', component: () => import('../views/Inventory/InventoryView.vue'), meta: { requiresAuth: true } },
 ]
 
 // Az alapértelmezett nyelv: mentett választás -> cég alapnyelve -> hu
@@ -50,7 +44,7 @@ const getPreferredLang = () => {
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    { path: '/', redirect: () => localizedLocation('home', getPreferredLang()) },
+    { path: '/', redirect: (to) => localizedLocation('home', getPreferredLang(), { query: to.query, hash: to.hash }) },
     { path: `/:lang(${LANG_PATTERN})`, name: 'home', component: HomeView },
 
     // Régi, nyelvi elotag nélküli (magyar) linkek továbbra is muködnek: /ugyfelek -> /<nyelv>/<slug>
@@ -113,6 +107,27 @@ router.beforeEach(async (to) => {
     const expected = slugFor(to.name, lang);
     if (to.params.slug !== expected) {
       return localizedLocation(to.name, lang, { query: to.query, hash: to.hash, replace: true });
+    }
+  }
+
+  // Admin útvonalak védelme (Autentikáció & Tenant egyezőség ellenőrzése)
+  if (to.meta?.requiresAuth) {
+    const authStore = useAuthStore();
+    authStore.initAuth();
+
+    const currentCompanyId = companyStore.company?.id;
+    const isTenantMismatch = currentCompanyId && authStore.companyId && authStore.companyId !== currentCompanyId;
+
+    if (!authStore.isAuthenticated || isTenantMismatch) {
+      if (isTenantMismatch) {
+        console.warn(`⚠️ Eltérő szalon admin jog észlelve. Átirányítás a bejelentkezéshez.`);
+        authStore.logout();
+      }
+      return localizedLocation('login', lang, {
+        query: { ...to.query, redirect: to.fullPath },
+        hash: to.hash,
+        replace: true,
+      });
     }
   }
 
