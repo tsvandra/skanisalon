@@ -3,6 +3,7 @@ using Soluvion.API.Data;
 using Soluvion.API.DTOs;
 using Soluvion.API.Interfaces;
 using Soluvion.Domain.Models;
+using Soluvion.Domain.Models.Enums;
 
 namespace Soluvion.API.Services
 {
@@ -57,13 +58,35 @@ namespace Soluvion.API.Services
                 CostPrice = dto.CostPrice,
                 RetailPrice = dto.RetailPrice,
                 LowStockThreshold = dto.LowStockThreshold,
-                CurrentStock = 0, // Új termék készlete mindig 0 induláskor
+                CurrentStock = dto.InitialStock > 0 ? dto.InitialStock : 0,
                 CreationDate = DateTime.UtcNow,
                 IsDeleted = false
             };
 
             _context.Products.Add(product);
             await _context.SaveChangesAsync();
+
+            if (dto.InitialStock > 0)
+            {
+                var doc = new InventoryDocument
+                {
+                    CompanyId = GetCurrentCompanyId(),
+                    Type = InventoryDocumentType.Receipt,
+                    CreatedAt = DateTime.UtcNow,
+                    Note = "Kezdőkészlet rögzítése",
+                    Items = new List<InventoryDocumentItem>
+                    {
+                        new InventoryDocumentItem
+                        {
+                            ProductId = product.Id,
+                            Quantity = dto.InitialStock,
+                            CostPrice = dto.CostPrice
+                        }
+                    }
+                };
+                _context.InventoryDocuments.Add(doc);
+                await _context.SaveChangesAsync();
+            }
 
             return MapToDto(product);
         }

@@ -2,7 +2,7 @@
   <Dialog 
     :visible="visible" 
     @update:visible="hideDialog" 
-    :style="{ width: '95vw', maxWidth: step === 2 ? '850px' : '540px' }" 
+    :style="{ width: '95vw', maxWidth: step === 2 ? '900px' : '560px' }" 
     :modal="true" 
     class="p-fluid"
     :pt="{
@@ -30,8 +30,9 @@
       </div>
     </template>
 
-    <!-- 1. LÉPÉS: KÉPEK FELTÖLTÉSE / FOTÓZÁSA -->
+    <!-- 1. LÉPÉS: FOTÓK ÉS DOKUMENTUMOK (PDF, EXCEL, WORD) FELTÖLTÉSE -->
     <div v-if="step === 1" class="space-y-4">
+      <!-- Rejtett fájl beviteli mezők -->
       <input 
         ref="cameraInput" 
         type="file" 
@@ -41,28 +42,28 @@
         @change="handleFilesSelected" 
       />
       <input 
-        ref="galleryInput" 
+        ref="fileInput" 
         type="file" 
-        accept="image/*" 
+        accept="image/*,.pdf,.xlsx,.xls,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword" 
         multiple 
         class="hidden" 
         @change="handleFilesSelected" 
       />
 
-      <!-- Ha MÉG NINCS kép feltöltve -->
-      <div v-if="images.length === 0" class="border-2 border-dashed border-text/20 rounded-2xl p-6 text-center space-y-4 bg-background/30">
+      <!-- Ha MÉG NINCS fájl feltöltve -->
+      <div v-if="files.length === 0" class="border-2 border-dashed border-text/20 rounded-2xl p-6 text-center space-y-4 bg-background/30">
         <div class="w-14 h-14 rounded-2xl bg-primary/10 text-primary mx-auto flex items-center justify-center text-2xl shadow-xs">
           <i class="pi pi-file-edit"></i>
         </div>
         
         <div class="space-y-1">
           <div class="text-sm font-bold text-text">{{ $t('inventory.deliveryNote.uploadTitle') }}</div>
-          <div class="text-xs text-text-muted leading-relaxed">
+          <div class="text-xs text-text-muted leading-relaxed max-w-md mx-auto">
             {{ $t('inventory.deliveryNote.uploadHint') }}
           </div>
         </div>
 
-        <div class="flex flex-col sm:flex-row gap-2 justify-center pt-2">
+        <div class="flex flex-col sm:flex-row gap-2.5 justify-center pt-2">
           <button 
             type="button" 
             @click="triggerCamera"
@@ -74,51 +75,90 @@
 
           <button 
             type="button" 
-            @click="triggerGallery"
+            @click="triggerFileBrowser"
             class="h-11 px-4 rounded-xl bg-background border border-text/20 text-text font-bold text-sm hover:border-primary active:scale-95 transition-all flex items-center justify-center gap-2"
           >
-            <i class="pi pi-images text-sm"></i>
-            <span>{{ $t('inventory.deliveryNote.chooseGallery') }}</span>
+            <i class="pi pi-folder-open text-sm text-primary"></i>
+            <span>{{ $t('inventory.deliveryNote.chooseFile') }}</span>
           </button>
         </div>
       </div>
 
-      <!-- Ha MÁR VAN feltöltött oldal -->
+      <!-- Ha MÁR VAN feltöltött fájl vagy oldal -->
       <div v-else class="space-y-3">
         <div class="flex items-center justify-between text-xs font-bold text-text-muted">
-          <span>{{ $t('inventory.deliveryNote.pagesRecorded', { count: images.length }) }}</span>
-          <button type="button" @click="clearAllImages" class="text-red-400 hover:underline">
+          <span>{{ $t('inventory.deliveryNote.filesRecorded', { count: files.length }) }}</span>
+          <button type="button" @click="clearAllFiles" class="text-red-400 hover:underline">
             {{ $t('inventory.deliveryNote.clearAll') }}
           </button>
         </div>
 
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
           <div 
-            v-for="(item, idx) in images" 
+            v-for="(item, idx) in files" 
             :key="idx" 
-            class="relative aspect-[3/4] rounded-xl overflow-hidden border border-text/20 bg-background shadow-xs group"
+            class="relative aspect-[3/4] rounded-xl overflow-hidden border border-text/20 bg-background shadow-xs group flex flex-col items-center justify-center p-2"
           >
-            <img :src="item.previewUrl" class="w-full h-full object-cover" alt="Szállítólevél oldal" />
+            <!-- Kép esetén: előnézeti kép -->
+            <img 
+              v-if="item.isImage && item.previewUrl" 
+              :src="item.previewUrl" 
+              class="w-full h-full object-cover" 
+              :alt="item.name" 
+            />
+
+            <!-- PDF esetén: ikon és név -->
+            <div v-else-if="item.typeCategory === 'pdf'" class="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-red-500/5">
+              <i class="pi pi-file-pdf text-4xl mb-2 text-red-500"></i>
+              <span class="text-xs font-bold text-text truncate max-w-full px-1">{{ item.name }}</span>
+              <span class="text-[10px] text-text-muted mt-1">{{ item.sizeText }}</span>
+            </div>
+
+            <!-- Excel esetén: ikon és név -->
+            <div v-else-if="item.typeCategory === 'excel'" class="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-emerald-500/5">
+              <i class="pi pi-file-excel text-4xl mb-2 text-emerald-500"></i>
+              <span class="text-xs font-bold text-text truncate max-w-full px-1">{{ item.name }}</span>
+              <span class="text-[10px] text-text-muted mt-1">{{ item.sizeText }}</span>
+            </div>
+
+            <!-- Word esetén: ikon és név -->
+            <div v-else-if="item.typeCategory === 'word'" class="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-blue-500/5">
+              <i class="pi pi-file-word text-4xl mb-2 text-blue-500"></i>
+              <span class="text-xs font-bold text-text truncate max-w-full px-1">{{ item.name }}</span>
+              <span class="text-[10px] text-text-muted mt-1">{{ item.sizeText }}</span>
+            </div>
+
+            <!-- Egyéb fájl -->
+            <div v-else class="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-background/50">
+              <i class="pi pi-file text-4xl mb-2 text-text-muted"></i>
+              <span class="text-xs font-bold text-text truncate max-w-full px-1">{{ item.name }}</span>
+              <span class="text-[10px] text-text-muted mt-1">{{ item.sizeText }}</span>
+            </div>
+
+            <!-- Törlés gomb -->
             <button 
               type="button" 
-              @click="removeImage(idx)"
-              class="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/75 text-white flex items-center justify-center text-xs hover:bg-red-500 transition-colors shadow-sm"
+              @click="removeFile(idx)"
+              class="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/75 text-white flex items-center justify-center text-xs hover:bg-red-500 transition-colors shadow-sm z-10"
             >
               <i class="pi pi-times text-[10px]"></i>
             </button>
-            <span class="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded bg-black/70 text-white text-[11px] font-bold">
-              {{ $t('inventory.deliveryNote.pageNumber', { n: idx + 1 }) }}
+
+            <!-- Sorszám címke -->
+            <span class="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded bg-black/70 text-white text-[11px] font-bold z-10">
+              {{ idx + 1 }}.
             </span>
           </div>
 
+          <!-- Új fájl hozzáadása gomb -->
           <button 
-            v-if="images.length < 4" 
+            v-if="files.length < 6" 
             type="button" 
-            @click="triggerCamera"
+            @click="triggerFileBrowser"
             class="aspect-[3/4] rounded-xl border-2 border-dashed border-text/20 hover:border-primary text-text-muted hover:text-primary flex flex-col items-center justify-center gap-1.5 transition-all active:scale-95 bg-background/40"
           >
             <i class="pi pi-plus text-lg"></i>
-            <span class="text-xs font-bold">{{ $t('inventory.deliveryNote.addPage') }}</span>
+            <span class="text-xs font-bold">{{ $t('inventory.deliveryNote.addFile') }}</span>
           </button>
         </div>
       </div>
@@ -140,10 +180,10 @@
       </div>
     </div>
 
-    <!-- 2. LÉPÉS: TÉTELEK ÁTTEKINTÉSE, PÁROSÍTÁSA ÉS BEVÉTELEZÉSE -->
+    <!-- 2. LÉPÉS: TÉTELEK ÁTTEKINTÉSE, PÁROSÍTÁSA, ÁROSZLOP VÁLASZTÁS ÉS BEVÉTELEZÉSE -->
     <div v-else-if="step === 2" class="space-y-4">
-      <!-- Fejléc adatok: Sorszám & Beszállító -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-background/50 border border-text/10 rounded-xl text-xs">
+      <!-- Fejléc adatok: Sorszám, Beszállító és Használt Ároszlop -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-background/50 border border-text/10 rounded-xl text-xs">
         <div>
           <label class="block font-bold text-text-muted mb-1">{{ $t('inventory.deliveryNote.docNumber') }}</label>
           <input 
@@ -153,6 +193,7 @@
             class="w-full bg-background border border-text/20 rounded-lg p-2 font-bold text-text focus:outline-none focus:border-primary text-xs"
           />
         </div>
+
         <div>
           <label class="block font-bold text-text-muted mb-1">{{ $t('inventory.deliveryNote.supplier') }}</label>
           <input 
@@ -162,39 +203,106 @@
             class="w-full bg-background border border-text/20 rounded-lg p-2 font-bold text-text focus:outline-none focus:border-primary text-xs"
           />
         </div>
+
+        <!-- Ároszlop kiválasztó legördülő menü -->
+        <div v-if="availablePriceColumns.length > 0">
+          <label class="block font-bold text-text-muted mb-1 flex items-center gap-1">
+            <i class="pi pi-tag text-primary"></i>
+            <span>{{ $t('inventory.deliveryNote.priceColumn') }}</span>
+          </label>
+          <select 
+            v-model="selectedPriceColumn" 
+            @change="onPriceColumnChanged"
+            class="w-full bg-background border border-text/20 rounded-lg p-2 font-bold text-primary focus:outline-none focus:border-primary text-xs"
+          >
+            <option v-for="col in availablePriceColumns" :key="col.id" :value="col.id">
+              {{ col.label }} {{ col.isDefault ? '⭐' : '' }}
+            </option>
+          </select>
+        </div>
       </div>
 
-      <!-- Figyelmeztetés és magyarázat -->
+      <!-- Tájékoztató sáv -->
       <div class="p-2.5 bg-sky-500/10 border border-sky-500/20 text-sky-400 rounded-xl text-xs flex items-start gap-2">
         <i class="pi pi-info-circle text-sm shrink-0 mt-0.5"></i>
         <span>{{ $t('inventory.deliveryNote.matchingHint') }}</span>
       </div>
 
       <!-- Tételek listája -->
-      <div class="space-y-2.5">
+      <div class="space-y-3">
         <div 
           v-for="(row, idx) in processedItems" 
           :key="idx" 
-          class="p-3 rounded-xl border transition-all"
+          class="p-3.5 rounded-xl border transition-all space-y-2.5"
           :class="[
             row.action === 'skip' ? 'bg-background/30 border-text/10 opacity-50' :
             row.action === 'create' ? 'bg-emerald-500/5 border-emerald-500/30' :
-            'bg-background border-text/15'
+            'bg-amber-500/5 border-amber-500/30'
           ]"
         >
-          <!-- Felső sor: Kiolvasott név, Kód, és Kihagyás kapcsoló -->
-          <div class="flex items-start justify-between gap-2 mb-2">
+          <!-- Felső sor: Kiolvasott név, Kód, Árnyalat és Kihagyás kapcsoló -->
+          <div class="flex items-start justify-between gap-2">
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-1.5 flex-wrap">
-                <span class="text-xs font-bold text-text">{{ row.name }}</span>
-                <span v-if="cleanShade(row.shade)" class="text-[11px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-bold">
-                  [{{ cleanShade(row.shade) }}]
-                </span>
-                <span v-if="row.packageSize && row.packageSize > 1" class="text-[10px] text-text-muted">
-                  ({{ row.packageSize }} {{ getUnitShort(row.unit) }})
+                <!-- Név (szerkeszthető egy ceruza ikonra kattintva vagy duplaklikk) -->
+                <div v-if="row.isEditingName" class="flex items-center gap-1">
+                  <input 
+                    v-model="row.name" 
+                    @input="onNameChanged(row)"
+                    @blur="row.isEditingName = false"
+                    @keydown.enter="row.isEditingName = false"
+                    class="text-xs font-bold text-text bg-surface border border-primary rounded-lg px-2 py-0.5 focus:outline-none"
+                    autofocus
+                  />
+                  <button type="button" @click="row.isEditingName = false" class="text-xs text-primary font-bold px-1 hover:underline">OK</button>
+                </div>
+                <div v-else class="flex items-center gap-1 group/name">
+                  <span class="text-xs font-bold text-text">{{ row.name }}</span>
+                  <button 
+                    type="button" 
+                    @click="row.isEditingName = true" 
+                    class="text-[10px] text-text-muted hover:text-primary opacity-40 group-hover/name:opacity-100 transition-opacity p-0.5"
+                    :title="$t('inventory.deliveryNote.editName')"
+                  >
+                    <i class="pi pi-pencil"></i>
+                  </button>
+                </div>
+
+                <!-- Árnyalat / Kód Badge (szerkeszthető + törölhető) vagy Hozzáadás gomb -->
+                <div v-if="row.showShadeInput || cleanShade(row.shade)" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-primary/10 border border-primary/30 text-primary text-xs font-mono font-bold group/shade">
+                  <span class="text-[10px] text-primary/70 select-none">[</span>
+                  <input 
+                    v-model="row.shade" 
+                    @input="onShadeChanged(row)" 
+                    :ref="el => setShadeInputRef(el, idx)"
+                    class="bg-transparent border-none text-primary font-mono font-bold text-xs p-0 focus:outline-none min-w-[50px] max-w-[140px] placeholder:text-primary/40 placeholder:font-normal"
+                    :placeholder="$t('inventory.deliveryNote.shadeInputPlaceholder')"
+                  />
+                  <span class="text-[10px] text-primary/70 select-none">]</span>
+                  <button 
+                    type="button" 
+                    @click="removeRowShade(row)" 
+                    class="text-primary/50 hover:text-red-400 p-0.5 transition-colors"
+                    :title="$t('inventory.deliveryNote.removeShade')"
+                  >
+                    <i class="pi pi-times text-[10px]"></i>
+                  </button>
+                </div>
+                <button 
+                  v-else 
+                  type="button" 
+                  @click="addRowShade(row, idx)" 
+                  class="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded-md border border-dashed border-primary/40 text-primary/80 hover:text-primary hover:border-primary hover:bg-primary/5 transition-all"
+                >
+                  <i class="pi pi-plus text-[9px]"></i>
+                  <span>{{ $t('inventory.deliveryNote.addShadeTag') }}</span>
+                </button>
+
+                <span v-if="row.code" class="text-[10px] text-text-muted font-mono">
+                  #{{ row.code }}
                 </span>
               </div>
-              <div v-if="row.rawName && row.rawName !== row.name" class="text-[10px] text-text-muted truncate">
+              <div v-if="row.rawName && row.rawName !== row.name" class="text-[10px] text-text-muted truncate mt-0.5">
                 {{ row.rawName }}
               </div>
             </div>
@@ -203,19 +311,33 @@
             <button 
               type="button" 
               @click="toggleRowSkip(row)" 
-              class="text-xs px-2 py-1 rounded-lg border transition-all shrink-0 font-medium"
+              class="text-xs px-2.5 py-1 rounded-lg border transition-all shrink-0 font-medium"
               :class="row.action === 'skip' ? 'bg-background text-text-muted border-text/20 hover:text-text' : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'"
             >
               {{ row.action === 'skip' ? $t('inventory.deliveryNote.toggleRestore') : $t('inventory.deliveryNote.toggleSkip') }}
             </button>
           </div>
 
-          <div v-if="row.action !== 'skip'" class="space-y-2 pt-1 border-t border-text/10">
+          <div v-if="row.action !== 'skip'" class="space-y-2.5 pt-1 border-t border-text/10">
             <!-- Párosítás Dropdown (Meglévő termék keresés hasonlóság szerint vagy Új) -->
             <div>
-              <label class="block text-[11px] font-bold text-text-muted mb-1">
-                {{ $t('inventory.deliveryNote.matchWithStock') }}
-              </label>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block text-[11px] font-bold text-text-muted">
+                  {{ $t('inventory.deliveryNote.matchWithStock') }}
+                </label>
+                <span 
+                  v-if="row.action === 'create'" 
+                  class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1"
+                >
+                  <i class="pi pi-plus text-[9px]"></i> {{ $t('inventory.deliveryNote.actionCreate') }}
+                </span>
+                <span 
+                  v-else-if="row.action === 'match'" 
+                  class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1"
+                >
+                  <i class="pi pi-link text-[9px]"></i> {{ $t('inventory.deliveryNote.actionMatch') }}
+                </span>
+              </div>
               <select 
                 v-model="row.selectedTarget" 
                 @change="onTargetChanged(row)"
@@ -236,33 +358,85 @@
               </select>
             </div>
 
-            <!-- Mennyiség és Ár mezők -->
-            <div class="grid grid-cols-2 gap-2 text-xs">
+            <!-- Mennyiség, Kiszerelés, Egységár és Összesen Ár mezők (4-es grid) -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              <!-- 1. Mennyiség / Darabszám -->
               <div>
-                <label class="block text-[10px] font-bold text-text-muted mb-0.5">{{ $t('inventory.deliveryNote.quantityToImport') }}</label>
+                <label class="block text-[10px] font-bold text-text-muted mb-0.5">
+                  {{ $t('inventory.deliveryNote.quantityLabel') }}
+                </label>
                 <div class="flex items-center gap-1">
                   <input 
                     type="number" 
                     v-model.number="row.quantity" 
+                    @input="onQuantityChanged(row)"
                     step="1" 
                     min="1" 
                     class="w-full bg-surface border border-text/20 rounded-lg p-1.5 text-xs text-center font-bold text-text focus:outline-none focus:border-primary"
                   />
-                  <span class="text-[11px] text-text-muted">{{ $t('inventory.units.short.pcs') }}</span>
+                  <span class="text-[10px] text-text-muted shrink-0 font-medium">{{ $t('inventory.units.short.pcs') }}</span>
                 </div>
               </div>
 
+              <!-- 2. Kiszerelés & Mértékegység -->
               <div>
-                <label class="block text-[10px] font-bold text-text-muted mb-0.5">{{ $t('inventory.deliveryNote.costPriceUnit') }}</label>
+                <label class="block text-[10px] font-bold text-text-muted mb-0.5">
+                  {{ $t('inventory.deliveryNote.packageSizeLabel') }}
+                </label>
                 <div class="flex items-center gap-1">
                   <input 
                     type="number" 
-                    v-model.number="row.costPrice" 
+                    v-model.number="row.packageSize" 
+                    step="any" 
+                    min="0.1" 
+                    class="w-full bg-surface border border-text/20 rounded-lg p-1.5 text-xs text-center font-bold text-text focus:outline-none focus:border-primary"
+                  />
+                  <select 
+                    v-model.number="row.unit"
+                    class="bg-surface border border-text/20 rounded-lg p-1 text-[11px] text-text font-bold focus:outline-none focus:border-primary shrink-0"
+                  >
+                    <option :value="0">{{ $t('inventory.units.short.ml') }}</option>
+                    <option :value="1">{{ $t('inventory.units.short.g') }}</option>
+                    <option :value="2">{{ $t('inventory.units.short.pcs') }}</option>
+                    <option :value="3">{{ $t('inventory.units.short.m') }}</option>
+                    <option :value="4">{{ $t('inventory.units.short.cm') }}</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- 3. Beszerzési Egységár -->
+              <div>
+                <label class="block text-[10px] font-bold text-text-muted mb-0.5">
+                  {{ $t('inventory.deliveryNote.unitPriceLabel') }}
+                </label>
+                <div class="flex items-center gap-1">
+                  <input 
+                    type="number" 
+                    v-model.number="row.unitPrice" 
+                    @input="onUnitPriceChanged(row)"
                     step="0.01" 
                     min="0" 
                     class="w-full bg-surface border border-text/20 rounded-lg p-1.5 text-xs text-right font-bold text-text focus:outline-none focus:border-primary"
                   />
-                  <span class="text-[11px] text-text-muted">€</span>
+                  <span class="text-[10px] text-text-muted shrink-0 font-medium">€</span>
+                </div>
+              </div>
+
+              <!-- 4. Összesen Ár (Tétel) -->
+              <div>
+                <label class="block text-[10px] font-bold text-text-muted mb-0.5">
+                  {{ $t('inventory.deliveryNote.totalPriceLabel') }}
+                </label>
+                <div class="flex items-center gap-1">
+                  <input 
+                    type="number" 
+                    v-model.number="row.totalPrice" 
+                    @input="onTotalPriceChanged(row)"
+                    step="0.01" 
+                    min="0" 
+                    class="w-full bg-surface border border-text/20 rounded-lg p-1.5 text-xs text-right font-bold text-primary focus:outline-none focus:border-primary"
+                  />
+                  <span class="text-[10px] text-text-muted shrink-0 font-medium">€</span>
                 </div>
               </div>
             </div>
@@ -292,7 +466,7 @@
         v-if="step === 1" 
         type="button" 
         @click="startScan" 
-        :disabled="images.length === 0 || scanning || compressing" 
+        :disabled="files.length === 0 || scanning || compressing" 
         class="h-10 px-5 rounded-xl text-xs md:text-sm font-bold bg-primary text-white shadow-md hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
       >
         <i v-if="scanning || compressing" class="pi pi-spinner pi-spin text-sm"></i>
@@ -308,7 +482,7 @@
           :disabled="importing" 
           class="h-10 px-3 rounded-xl text-xs md:text-sm font-bold bg-background text-text border border-text/20 hover:bg-text/5 active:scale-95 transition-all"
         >
-          {{ $t('inventory.deliveryNote.retakePhotos') }}
+          {{ $t('inventory.deliveryNote.retakeFiles') }}
         </button>
 
         <button 
@@ -345,11 +519,11 @@ const props = defineProps({
 
 const emit = defineEmits(['update:visible', 'saved']);
 
-const step = ref(1); // 1 = Fotózás/feltöltés, 2 = Ellenőrzés & párosítás
+const step = ref(1); // 1 = Fájlok/Fotók feltöltése, 2 = Ellenőrzés & párosítás
 const cameraInput = ref(null);
-const galleryInput = ref(null);
+const fileInput = ref(null);
 
-const images = ref([]); // { file: File, previewUrl: string }
+const files = ref([]); // { file: File, previewUrl: string | null, name: string, sizeText: string, typeCategory: string, isImage: boolean }
 const scanning = ref(false);
 const compressing = ref(false);
 const importing = ref(false);
@@ -363,64 +537,119 @@ const deliveryData = ref({
   items: []
 });
 
+const availablePriceColumns = ref([]);
+const selectedPriceColumn = ref('');
 const processedItems = ref([]);
 
 const triggerCamera = () => {
   if (cameraInput.value) cameraInput.value.click();
 };
 
-const triggerGallery = () => {
-  if (galleryInput.value) galleryInput.value.click();
+const triggerFileBrowser = () => {
+  if (fileInput.value) fileInput.value.click();
+};
+
+const getFileTypeCategory = (file) => {
+  const name = file.name?.toLowerCase() || '';
+  const mime = file.type?.toLowerCase() || '';
+  if (mime.startsWith('image/') || /\.(jpg|jpeg|png|webp|heic|gif)$/i.test(name)) return 'image';
+  if (mime === 'application/pdf' || name.endsWith('.pdf')) return 'pdf';
+  if (mime.includes('spreadsheet') || mime.includes('excel') || /\.(xlsx|xls|csv)$/i.test(name)) return 'excel';
+  if (mime.includes('word') || /\.(docx|doc)$/i.test(name)) return 'word';
+  return 'file';
+};
+
+const formatFileSize = (bytes) => {
+  if (!bytes) return '0 B';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 };
 
 const handleFilesSelected = async (event) => {
   errorMessage.value = '';
-  const files = Array.from(event.target.files || []);
-  if (!files.length) return;
+  const selectedFiles = Array.from(event.target.files || []);
+  if (!selectedFiles.length) return;
 
-  const remaining = 4 - images.value.length;
-  const toAdd = files.slice(0, remaining);
+  const remaining = 6 - files.value.length;
+  const toAdd = selectedFiles.slice(0, remaining);
 
-  compressing.value = true;
-  try {
-    // Mobilfotók kliensoldali átméretezése max 1800x1800px-re (95%+ méretmegtakarítás a Railway-nek és AI-nak)
-    const compressedFiles = await compressImages(toAdd, {
-      maxWidth: 1800,
-      maxHeight: 1800,
-      quality: 0.82
-    });
+  const imagesToCompress = [];
+  const otherFiles = [];
 
-    compressedFiles.forEach(file => {
-      images.value.push({
-        file,
-        previewUrl: URL.createObjectURL(file)
-      });
-    });
-  } catch (err) {
-    console.error('Képtömörítési hiba:', err);
-    // Hiba esetén se essünk kétségbe, töltsük be az eredetiket
-    toAdd.forEach(file => {
-      images.value.push({
-        file,
-        previewUrl: URL.createObjectURL(file)
-      });
-    });
-  } finally {
-    compressing.value = false;
-    event.target.value = '';
+  for (const f of toAdd) {
+    const cat = getFileTypeCategory(f);
+    if (cat === 'image') {
+      imagesToCompress.push(f);
+    } else {
+      otherFiles.push(f);
+    }
   }
+
+  // 1. Dokumentumok (PDF, Excel, Word) hozzáadása közvetlenül tömörítés nélkül
+  otherFiles.forEach(f => {
+    files.value.push({
+      file: f,
+      previewUrl: null,
+      name: f.name,
+      sizeText: formatFileSize(f.size),
+      typeCategory: getFileTypeCategory(f),
+      isImage: false
+    });
+  });
+
+  // 2. Képek kliensoldali tömörítése
+  if (imagesToCompress.length > 0) {
+    compressing.value = true;
+    try {
+      const compressed = await compressImages(imagesToCompress, {
+        maxWidth: 1800,
+        maxHeight: 1800,
+        quality: 0.82
+      });
+
+      compressed.forEach(f => {
+        files.value.push({
+          file: f,
+          previewUrl: URL.createObjectURL(f),
+          name: f.name,
+          sizeText: formatFileSize(f.size),
+          typeCategory: 'image',
+          isImage: true
+        });
+      });
+    } catch (err) {
+      console.error('Képtömörítési hiba, eredeti fájlok használata:', err);
+      imagesToCompress.forEach(f => {
+        files.value.push({
+          file: f,
+          previewUrl: URL.createObjectURL(f),
+          name: f.name,
+          sizeText: formatFileSize(f.size),
+          typeCategory: 'image',
+          isImage: true
+        });
+      });
+    } finally {
+      compressing.value = false;
+    }
+  }
+
+  event.target.value = '';
 };
 
-const removeImage = (index) => {
-  const removed = images.value.splice(index, 1)[0];
+const removeFile = (index) => {
+  const removed = files.value.splice(index, 1)[0];
   if (removed && removed.previewUrl) {
     URL.revokeObjectURL(removed.previewUrl);
   }
 };
 
-const clearAllImages = () => {
-  images.value.forEach(img => URL.revokeObjectURL(img.previewUrl));
-  images.value = [];
+const clearAllFiles = () => {
+  files.value.forEach(item => {
+    if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+  });
+  files.value = [];
   errorMessage.value = '';
 };
 
@@ -430,11 +659,6 @@ const hideDialog = () => {
   }
 };
 
-const getUnitShort = (unitEnum) => {
-  const map = { 0: 'ml', 1: 'g', 2: 'db', 3: 'm', 4: 'cm' };
-  return map[unitEnum] || 'db';
-};
-
 const cleanShade = (s) => {
   if (!s) return null;
   const str = String(s).trim();
@@ -442,7 +666,7 @@ const cleanShade = (s) => {
   return str;
 };
 
-// Ékezetmentesítés és tisztítás összehasonlításhoz
+// Szövegtisztítás fuzzy kereséshez
 const normalizeStr = (str) => {
   if (!str) return '';
   return str
@@ -454,7 +678,6 @@ const normalizeStr = (str) => {
     .trim();
 };
 
-// Bigram Dice együttható (0.0 - 1.0)
 const diceCoefficient = (s1, s2) => {
   if (!s1 || !s2) return 0;
   if (s1 === s2) return 1.0;
@@ -479,9 +702,89 @@ const diceCoefficient = (s1, s2) => {
   return (2.0 * intersection) / ((s1.length - 1) + (s2.length - 1));
 };
 
-// Intelligens hasonlóság számítás egy kiolvasott tétel és egy létező raktári termék között
+// Segédfüggvény: Kinyeri az árnyalat kódját és a leíró nevét
+const parseShadeTokens = (shadeStr) => {
+  if (!shadeStr) return { raw: '', code: '', name: '', tokens: [] };
+  const raw = String(shadeStr).trim();
+  const clean = raw.replace(/,/g, '.');
+  
+  // Minden különálló token leválasztása (szóköz, kötőjel, alávonás, zárójelek mentén)
+  const tokens = clean
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .split(/[\s\-_()[\]{}]+/)
+    .filter(Boolean);
+
+  // Keresünk számot vagy standard nuance jelölést tartalmazó tokent (pl. "5.0", "2.n", "7.1", "6rr", "0/00")
+  const codeToken = tokens.find(t => /\d/.test(t) || ['clear', 'transp', 'neutral'].includes(t)) || '';
+  const nameTokens = tokens.filter(t => t !== codeToken);
+
+  return {
+    raw,
+    code: codeToken,
+    name: nameTokens.join(' '),
+    tokens
+  };
+};
+
+const getShadeSimilarity = (itemShadeStr, prodShadeStr, sItemRaw = '', sItemName = '') => {
+  const iClean = cleanShade(itemShadeStr);
+  const pClean = cleanShade(prodShadeStr);
+
+  if (!iClean && !pClean) return 1.0; // Egyiknek sincs árnyalata (pl. sampon)
+
+  // Ha a raktári terméknek van árnyalata, de a tételnek nincs közvetlen shade-je:
+  if (!iClean && pClean) {
+    const sP = normalizeStr(pClean);
+    if (sItemRaw.includes(sP) || sItemName.includes(sP)) {
+      return 0.95; // A nyers tétel szövegében benne van a termék árnyalata!
+    }
+    const pTokens = parseShadeTokens(pClean);
+    if (pTokens.code && (sItemRaw.includes(pTokens.code) || sItemName.includes(pTokens.code))) {
+      return 0.90;
+    }
+    return 0.50;
+  }
+
+  // Ha a tételnek van árnyalata, de a raktári terméknek nincs:
+  if (iClean && !pClean) {
+    return 0.35;
+  }
+
+  // Mindkettőnek van árnyalata:
+  const s1 = normalizeStr(iClean);
+  const s2 = normalizeStr(pClean);
+  if (s1 === s2) return 1.0; // Pontos szöveges egyezés
+
+  const p1 = parseShadeTokens(iClean);
+  const p2 = parseShadeTokens(pClean);
+
+  // 1. Ha mindkettőben van kód (pl. "5.0", "2.n", "7.1", "7/1"):
+  if (p1.code && p2.code) {
+    const c1 = p1.code.replace('/', '.');
+    const c2 = p2.code.replace('/', '.');
+    if (c1 === c2) {
+      return 0.98; // A kód MEGEGYEZIK! (pl. "5.0 világosbarna" vs "5.0")
+    }
+    return 0.15; // Különböző kódok! (pl. "5.0" vs "6.0") -> Biztosan nem ugyanaz a termék
+  }
+
+  // 2. Ha az egyik tartalmazza a másikat (pl. "5.0 Világosbarna" vs "Világosbarna"):
+  if (s1.includes(s2) || s2.includes(s1)) {
+    return 0.92;
+  }
+
+  // 3. Ha van közös név-token:
+  const common = p1.tokens.filter(t => p2.tokens.includes(t));
+  if (common.length > 0) {
+    return 0.80;
+  }
+
+  return 0.20;
+};
+
 const calculateSimilarity = (item, prod) => {
-  // 1. EAN egyezés: ha mindkettőnél szerepel és megegyezik -> 100%
   const itemEan = cleanShade(item.ean);
   const prodEan = cleanShade(prod.ean);
   if (itemEan && prodEan && itemEan === prodEan) {
@@ -492,14 +795,11 @@ const calculateSimilarity = (item, prod) => {
   const sItemRaw = normalizeStr(item.rawName || '');
   const sProdName = normalizeStr(prod.name || '');
 
-  // 2. Név alapú hasonlóság:
-  // a) Teljes név Dice hasonlóság
   const diceName = Math.max(
     diceCoefficient(sItemName, sProdName),
     diceCoefficient(sItemRaw, sProdName)
   );
 
-  // b) Szó (token) szintű fuzzy hasonlóság (kezeli ha a szavak sorrendje eltér, pl. 'Vitamino Color Shampoo' vs 'Color Shampoo Vitamino')
   const itemTokens = Array.from(new Set(`${sItemName} ${sItemRaw}`.split(' ').filter(w => w.length > 1)));
   const prodTokens = Array.from(new Set(sProdName.split(' ').filter(w => w.length > 1)));
 
@@ -523,40 +823,29 @@ const calculateSimilarity = (item, prod) => {
     }
   }
   const tokenSim = prodTokens.length > 0 ? (tokenMatchSum / prodTokens.length) : 0;
-
-  // Alap pontszám a név egyezése alapján (0 - 100)
   let nameScore = Math.round(Math.max(diceName, tokenSim) * 100);
 
-  // 3. Kód / Árnyalat ellenőrzése és finomhangolása:
-  const iShade = normalizeStr(cleanShade(item.shade || item.code) || '');
-  const pShade = normalizeStr(cleanShade(prod.shade) || '');
+  const shadeSim = getShadeSimilarity(item.shade || item.code, prod.shade, sItemRaw, sItemName);
 
-  if (iShade && pShade) {
-    if (iShade === pShade) {
-      // Mindkettőnek van árnyalata és PONTOSAN egyezik -> bónusz 98-100%
-      nameScore = Math.max(nameScore, 98);
-    } else {
-      // Mindkettőnek van árnyalata, de ELTÉRŐ (pl. 10.12 vs 7.1) -> szigorú büntetés, mert eltérő szín!
-      nameScore = Math.round(nameScore * 0.25);
+  if (shadeSim >= 0.90) {
+    if (nameScore >= 40) {
+      nameScore = Math.max(nameScore, Math.round(85 + (nameScore * 0.14)));
     }
-  } else if (!iShade && pShade) {
-    // A raktári terméknek van kódja/árnyalata (pl. C51309 vagy 15.2), nézzük meg, hogy a számla szövegében szerepel-e
-    if (sItemRaw.includes(pShade) || sItemName.includes(pShade)) {
-      nameScore = Math.min(100, nameScore + 10);
-    }
+  } else if (shadeSim <= 0.25) {
+    nameScore = Math.round(nameScore * 0.25);
   }
 
   return Math.max(0, Math.min(nameScore, 100));
 };
 
 const startScan = async () => {
-  if (images.value.length === 0 || scanning.value) return;
+  if (files.value.length === 0 || scanning.value) return;
 
   scanning.value = true;
   errorMessage.value = '';
 
   try {
-    const rawFiles = images.value.map(i => i.file);
+    const rawFiles = files.value.map(i => i.file);
     const response = await inventoryApi.scanDeliveryNote(rawFiles);
     const data = response.data;
 
@@ -567,21 +856,33 @@ const startScan = async () => {
       items: data.items || []
     };
 
-    // Tételek feldolgozása és hasonlósági rendezése
+    availablePriceColumns.value = data.availablePriceColumns || [];
+    selectedPriceColumn.value = data.defaultPriceColumnId || (availablePriceColumns.value[0]?.id || '');
+
     const allProds = props.products || [];
     
     processedItems.value = (data.items || []).map(item => {
+      const initialQty = Number(item.quantity) > 0 ? Number(item.quantity) : 1;
+      const initialUnitCost = Number(item.unitPrice) >= 0 ? Number(item.unitPrice) : 0;
+      const initialTotal = Number(item.totalPrice) > 0 ? Number(item.totalPrice) : Math.round(initialQty * initialUnitCost * 100) / 100;
+      const pkgSize = Number(item.packageSize) > 0 ? Number(item.packageSize) : 1;
+      const unitVal = Number(item.unit) >= 0 ? Number(item.unit) : 0;
+
       const sanitizedItem = {
         ...item,
         name: cleanShade(item.name) || item.rawName || 'Termék',
         shade: cleanShade(item.shade),
         code: cleanShade(item.code),
         ean: cleanShade(item.ean),
-        costPrice: item.unitPrice || 0,
-        quantity: item.quantity || 1
+        quantity: initialQty,
+        packageSize: pkgSize,
+        unit: unitVal,
+        unitPrice: initialUnitCost,
+        totalPrice: initialTotal,
+        costPrice: initialUnitCost,
+        availablePrices: item.availablePrices || {}
       };
 
-      // Minden meglévő termékhez kiszámoljuk a pontszámot
       const candidates = allProds.map(p => ({
         product: p,
         score: calculateSimilarity(sanitizedItem, p)
@@ -592,6 +893,8 @@ const startScan = async () => {
 
       return {
         ...sanitizedItem,
+        showShadeInput: false,
+        isEditingName: false,
         candidates,
         action: hasStrongMatch ? 'match' : 'create',
         selectedTarget: hasStrongMatch ? topCandidate.product.id : '__CREATE_NEW__'
@@ -603,9 +906,49 @@ const startScan = async () => {
     console.error('Hiba a szállítólevél beolvasásakor:', error);
     errorMessage.value = error.response?.data?.message || 
                          error.message || 
-                         'Nem sikerült kiolvasni a szállítólevelet. Kérlek ellenőrizd a képek minőségét vagy az AI beállításokat.';
+                         'Nem sikerült kiolvasni a szállítólevelet. Kérlek ellenőrizd a fájlok formátumát vagy az AI beállításokat.';
   } finally {
     scanning.value = false;
+  }
+};
+
+// Ároszlop változás kezelése (minden tétel egységárát és összegét újraszámolja)
+const onPriceColumnChanged = () => {
+  const colId = selectedPriceColumn.value;
+  if (!colId) return;
+
+  processedItems.value.forEach(row => {
+    if (row.availablePrices && row.availablePrices[colId] != null) {
+      const newPrice = Number(row.availablePrices[colId]) || 0;
+      row.unitPrice = newPrice;
+      row.costPrice = newPrice;
+      row.totalPrice = Math.round((row.quantity * newPrice) * 100) / 100;
+    }
+  });
+};
+
+// Kétirányú reaktív mezőszámítások a tételeknél:
+const onQuantityChanged = (row) => {
+  const qty = Number(row.quantity) || 1;
+  const unitP = Number(row.unitPrice) || 0;
+  row.totalPrice = Math.round(qty * unitP * 100) / 100;
+  row.costPrice = unitP;
+};
+
+const onUnitPriceChanged = (row) => {
+  const qty = Number(row.quantity) || 1;
+  const unitP = Number(row.unitPrice) || 0;
+  row.costPrice = unitP;
+  row.totalPrice = Math.round(qty * unitP * 100) / 100;
+};
+
+const onTotalPriceChanged = (row) => {
+  const qty = Number(row.quantity) || 1;
+  const tot = Number(row.totalPrice) || 0;
+  if (qty > 0) {
+    const calcUnit = Math.round((tot / qty) * 100) / 100;
+    row.unitPrice = calcUnit;
+    row.costPrice = calcUnit;
   }
 };
 
@@ -625,6 +968,66 @@ const toggleRowSkip = (row) => {
   }
 };
 
+const shadeInputRefs = ref({});
+const setShadeInputRef = (el, idx) => {
+  if (el) shadeInputRefs.value[idx] = el;
+};
+
+const addRowShade = (row, idx) => {
+  row.showShadeInput = true;
+  if (!row.shade) row.shade = '';
+  setTimeout(() => {
+    if (shadeInputRefs.value[idx]) {
+      shadeInputRefs.value[idx].focus();
+    }
+  }, 50);
+};
+
+const removeRowShade = (row) => {
+  row.shade = null;
+  row.showShadeInput = false;
+  recalculateItemCandidates(row);
+};
+
+const onShadeChanged = (row) => {
+  recalculateItemCandidates(row);
+};
+
+const onNameChanged = (row) => {
+  recalculateItemCandidates(row);
+};
+
+const recalculateItemCandidates = (row) => {
+  const allProds = props.products || [];
+  const sanitizedItem = {
+    ...row,
+    name: cleanShade(row.name) || row.rawName || 'Termék',
+    shade: cleanShade(row.shade),
+    code: cleanShade(row.code),
+    ean: cleanShade(row.ean)
+  };
+
+  const candidates = allProds.map(p => ({
+    product: p,
+    score: calculateSimilarity(sanitizedItem, p)
+  })).sort((a, b) => b.score - a.score);
+
+  row.candidates = candidates;
+  const topCandidate = candidates[0];
+  const hasStrongMatch = topCandidate && topCandidate.score >= 50;
+
+  if (hasStrongMatch) {
+    row.selectedTarget = topCandidate.product.id;
+    row.action = 'match';
+  } else {
+    const currentStillValid = candidates.some(c => c.product.id === row.selectedTarget && c.score >= 40);
+    if (!currentStillValid) {
+      row.selectedTarget = '__CREATE_NEW__';
+      row.action = 'create';
+    }
+  }
+};
+
 const activeItemsCount = computed(() => {
   return processedItems.value.filter(i => i.action !== 'skip').length;
 });
@@ -637,30 +1040,35 @@ const confirmImport = async () => {
     const payloadItems = processedItems.value
       .filter(item => item.action !== 'skip')
       .map(item => {
+        const qty = Number(item.quantity) || 1;
+        const unitCost = Number(item.unitPrice) || 0;
+        const pkgSize = Number(item.packageSize) || 1;
+        const unitVal = Number(item.unit) >= 0 ? Number(item.unit) : 0;
+
         if (item.action === 'match') {
           return {
             action: 'match',
             matchedProductId: Number(item.selectedTarget),
-            quantity: Number(item.quantity) || 1,
-            costPrice: Number(item.costPrice) || 0
+            quantity: qty,
+            costPrice: unitCost
           };
         } else {
           return {
             action: 'create',
             newProduct: {
               name: item.name || item.rawName || 'Új termék',
-              shade: item.shade || item.code || null,
+              shade: cleanShade(item.shade) || null,
               ean: item.ean || null,
-              unit: item.unit ?? 2,
-              packageSize: Number(item.packageSize) || 1,
-              costPrice: Number(item.costPrice) || 0,
-              retailPrice: Number(item.costPrice) > 0 ? Math.round(Number(item.costPrice) * 1.5 * 100) / 100 : 0,
+              unit: unitVal,
+              packageSize: pkgSize,
+              costPrice: unitCost,
+              retailPrice: unitCost > 0 ? Math.round(unitCost * 1.5 * 100) / 100 : 0,
               lowStockThreshold: 2,
               isProfessional: true,
               isRetail: false
             },
-            quantity: Number(item.quantity) || 1,
-            costPrice: Number(item.costPrice) || 0
+            quantity: qty,
+            costPrice: unitCost
           };
         }
       });
@@ -672,10 +1080,21 @@ const confirmImport = async () => {
       items: payloadItems
     };
 
-    await inventoryApi.importDeliveryNote(payload);
+    const res = await inventoryApi.importDeliveryNote(payload);
 
-    emit('saved');
-    clearAllImages();
+    // Biztosítjuk, hogy a bevételezett tételek listája hiánytalanul átadásra kerüljön
+    const receivedItems = (res.data && Array.isArray(res.data.receivedItems) && res.data.receivedItems.length > 0)
+      ? res.data.receivedItems
+      : payloadItems.map(p => ({
+          productId: p.matchedProductId,
+          name: p.newProduct?.name,
+          shade: p.newProduct?.shade,
+          quantityAdded: p.quantity,
+          isNewProduct: p.action === 'create'
+        }));
+
+    emit('saved', { ...(res.data || {}), receivedItems });
+    clearAllFiles();
     step.value = 1;
     emit('update:visible', false);
   } catch (error) {

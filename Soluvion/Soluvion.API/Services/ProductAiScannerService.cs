@@ -13,33 +13,89 @@ namespace Soluvion.API.Services
     {
         private readonly IConfiguration _configuration;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IDocumentTextExtractorService _textExtractor;
         private readonly ILogger<ProductAiScannerService> _logger;
 
         public ProductAiScannerService(
             IConfiguration configuration,
             IHttpClientFactory httpClientFactory,
+            IDocumentTextExtractorService textExtractor,
             ILogger<ProductAiScannerService> logger)
         {
             _configuration = configuration;
             _httpClientFactory = httpClientFactory;
+            _textExtractor = textExtractor;
             _logger = logger;
         }
 
         public async Task<ProductAiScanResultDto> ScanProductImagesAsync(IEnumerable<IFormFile> images)
         {
             var imageItems = await ConvertImagesAsync(images);
-            var jsonResponse = await ExecuteVisionPromptAsync(imageItems, GetProductSystemPrompt());
+            var jsonResponse = await ExecutePromptAsync(imageItems, null, GetProductSystemPrompt());
             return ParseProductAiResponse(jsonResponse);
         }
 
-        public async Task<DeliveryNoteScanResultDto> ScanDeliveryNoteImagesAsync(IEnumerable<IFormFile> images)
+        public Task<DeliveryNoteScanResultDto> ScanDeliveryNoteImagesAsync(IEnumerable<IFormFile> images)
         {
-            var imageItems = await ConvertImagesAsync(images);
-            var jsonResponse = await ExecuteVisionPromptAsync(imageItems, GetDeliveryNoteSystemPrompt());
+            return ScanDeliveryNoteFilesAsync(images);
+        }
+
+        public async Task<DeliveryNoteScanResultDto> ScanDeliveryNoteFilesAsync(IEnumerable<IFormFile> files)
+        {
+            var fileList = files?.ToList() ?? new List<IFormFile>();
+            if (fileList.Count == 0)
+            {
+                throw new ArgumentException("Legalább egy fájlt vagy képet fel kell tölteni a szállítólevél beolvasásához.");
+            }
+
+            var visualItems = new List<(byte[] Bytes, string ContentType)>();
+            var textBuilder = new StringBuilder();
+
+            foreach (var file in fileList)
+            {
+                var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+                var contentType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
+
+                if (ext == ".pdf" || contentType == "application/pdf")
+                {
+                    // 1. PDF szöveg kinyerése (ha digitális PDF)
+                    var pdfText = await _textExtractor.ExtractTextAsync(file);
+                    if (!string.IsNullOrWhiteSpace(pdfText))
+                    {
+                        textBuilder.AppendLine(pdfText);
+                        textBuilder.AppendLine();
+                    }
+
+                    // 2. A nyers PDF-et Gemini inline_data-ként is átadjuk (Gemini 2.0 natívan érti a PDF-et OCR-rel!)
+                    using var ms = new MemoryStream();
+                    await file.CopyToAsync(ms);
+                    visualItems.Add((ms.ToArray(), "application/pdf"));
+                }
+                else if (_textExtractor.IsExtractableDocument(file.FileName, contentType))
+                {
+                    // Excel (.xlsx, .xls), Word (.docx, .doc), CSV, TXT
+                    var docText = await _textExtractor.ExtractTextAsync(file);
+                    if (!string.IsNullOrWhiteSpace(docText))
+                    {
+                        textBuilder.AppendLine(docText);
+                        textBuilder.AppendLine();
+                    }
+                }
+                else
+                {
+                    // Kép (JPEG, PNG, WEBP stb.)
+                    using var ms = new MemoryStream();
+                    await file.CopyToAsync(ms);
+                    var imgContentType = contentType.StartsWith("image/") ? contentType : "image/jpeg";
+                    visualItems.Add((ms.ToArray(), imgContentType));
+                }
+            }
+
+            var jsonResponse = await ExecutePromptAsync(visualItems, textBuilder.ToString(), GetDeliveryNoteSystemPrompt());
             return ParseDeliveryNoteAiResponse(jsonResponse);
         }
 
-        private async Task<List<(byte[] Bytes, string ContentType)>> ConvertImagesAsync(IEnumerable<IFormFile> images)
+        private static async Task<List<(byte[] Bytes, string ContentType)>> ConvertImagesAsync(IEnumerable<IFormFile> images)
         {
             var fileList = images?.ToList() ?? new List<IFormFile>();
             if (fileList.Count == 0)
@@ -60,29 +116,31 @@ namespace Soluvion.API.Services
             return imageItems;
         }
 
-        private async Task<string> ExecuteVisionPromptAsync(List<(byte[] Bytes, string ContentType)> imageItems, string systemPrompt)
+        private async Task<string> ExecutePromptAsync(List<(byte[] Bytes, string ContentType)> visualItems, string? documentText, string systemPrompt)
         {
             var geminiKey = _configuration["Gemini:ApiKey"] ?? _configuration["AI:GeminiApiKey"];
             var openAiKey = _configuration["OpenAI:ApiKey"];
 
-            // 1. Prioritás: Google Gemini (2.0 Flash / 1.5 Flash - ingyenes/filléres, szupergyors)
+            // 1. Prioritás: Google Gemini (2.0 Flash / 1.5 Flash - ingyenes/filléres, szupergyors, natív PDF és táblázatkezelés)
             if (!string.IsNullOrWhiteSpace(geminiKey) && !geminiKey.Contains("IDE_JON"))
             {
-                _logger.LogInformation("Képfelismerés Google Gemini API segítségével ({ImageCount} kép)...", imageItems.Count);
-                return await ScanWithGeminiAsync(imageItems, geminiKey, systemPrompt);
+                _logger.LogInformation("Dokumentumelemzés Google Gemini API segítségével ({VisualCount} vizuális elem, {TextLength} szöveghossz)...",
+                    visualItems.Count, documentText?.Length ?? 0);
+                return await ScanWithGeminiAsync(visualItems, documentText, geminiKey, systemPrompt);
             }
-            // 2. Prioritás: OpenAI Vision (gpt-4o-mini / gpt-4o)
+            // 2. Prioritás: OpenAI Vision / Chat
             if (!string.IsNullOrWhiteSpace(openAiKey) && !openAiKey.Contains("IDE_JON"))
             {
-                _logger.LogInformation("Képfelismerés OpenAI Vision API segítségével ({ImageCount} kép)...", imageItems.Count);
-                return await ScanWithOpenAiAsync(imageItems, openAiKey, systemPrompt);
+                _logger.LogInformation("Dokumentumelemzés OpenAI API segítségével ({VisualCount} vizuális elem, {TextLength} szöveghossz)...",
+                    visualItems.Count, documentText?.Length ?? 0);
+                return await ScanWithOpenAiAsync(visualItems, documentText, openAiKey, systemPrompt);
             }
 
             throw new InvalidOperationException(
-                "Az AI képfelismeréshez API kulcs szükséges! Kérlek állíts be egy Google Gemini API kulcsot (Gemini:ApiKey) vagy OpenAI API kulcsot (OpenAI:ApiKey) a konfigurációban (appsettings.json vagy környezeti változók).");
+                "Az AI dokumentum-felismeréshez API kulcs szükséges! Kérlek állíts be egy Google Gemini API kulcsot (Gemini:ApiKey) vagy OpenAI API kulcsot (OpenAI:ApiKey) a konfigurációban.");
         }
 
-        private async Task<string> ScanWithGeminiAsync(List<(byte[] Bytes, string ContentType)> images, string apiKey, string systemPrompt)
+        private async Task<string> ScanWithGeminiAsync(List<(byte[] Bytes, string ContentType)> visualItems, string? documentText, string apiKey, string systemPrompt)
         {
             var client = _httpClientFactory.CreateClient();
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={apiKey}";
@@ -92,14 +150,19 @@ namespace Soluvion.API.Services
                 new { text = systemPrompt }
             };
 
-            foreach (var img in images)
+            if (!string.IsNullOrWhiteSpace(documentText))
+            {
+                parts.Add(new { text = "A feltöltött dokumentumok kinyert szöveges és táblázatos tartalma:\n\n" + documentText });
+            }
+
+            foreach (var item in visualItems)
             {
                 parts.Add(new
                 {
                     inline_data = new
                     {
-                        mime_type = img.ContentType,
-                        data = Convert.ToBase64String(img.Bytes)
+                        mime_type = item.ContentType,
+                        data = Convert.ToBase64String(item.Bytes)
                     }
                 });
             }
@@ -124,7 +187,7 @@ namespace Soluvion.API.Services
             {
                 var errorText = await response.Content.ReadAsStringAsync();
                 _logger.LogError("Gemini API hiba ({StatusCode}): {Error}", response.StatusCode, errorText);
-                throw new Exception($"Gemini Vision API hiba ({response.StatusCode}): {errorText}");
+                throw new Exception($"Gemini API hiba ({response.StatusCode}): {errorText}");
             }
 
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -145,7 +208,7 @@ namespace Soluvion.API.Services
             throw new Exception("Nem érkezett érvényes válasz a Gemini API-tól.");
         }
 
-        private async Task<string> ScanWithOpenAiAsync(List<(byte[] Bytes, string ContentType)> images, string apiKey, string systemPrompt)
+        private async Task<string> ScanWithOpenAiAsync(List<(byte[] Bytes, string ContentType)> visualItems, string? documentText, string apiKey, string systemPrompt)
         {
             var model = _configuration["OpenAI:VisionModel"] 
                      ?? _configuration["OpenAI:Model"] 
@@ -157,9 +220,18 @@ namespace Soluvion.API.Services
                 ChatMessageContentPart.CreateTextPart(systemPrompt)
             };
 
-            foreach (var img in images)
+            if (!string.IsNullOrWhiteSpace(documentText))
             {
-                contentParts.Add(ChatMessageContentPart.CreateImagePart(BinaryData.FromBytes(img.Bytes), img.ContentType));
+                contentParts.Add(ChatMessageContentPart.CreateTextPart("A feltöltött dokumentumok kinyert szöveges és táblázatos tartalma:\n\n" + documentText));
+            }
+
+            foreach (var img in visualItems)
+            {
+                // OpenAI csak képeket fogad inline_data-ként (PDF-et nem)
+                if (img.ContentType.StartsWith("image/"))
+                {
+                    contentParts.Add(ChatMessageContentPart.CreateImagePart(BinaryData.FromBytes(img.Bytes), img.ContentType));
+                }
             }
 
             var messages = new List<ChatMessage>
@@ -193,38 +265,66 @@ Identify and extract the product information into a clean JSON object with the f
   ""description"": ""string or null - Brief 1-2 sentence Hungarian description or purpose of the product.""
 }
 
-IMPORTANT: Only return the raw JSON object. Do not wrap in markdown quotes if possible.";
+IMPORTANT: Only return the raw JSON object.";
         }
 
         private static string GetDeliveryNoteSystemPrompt()
         {
             return @"You are an expert delivery note ('dodací list', 'szállítólevél', 'faktúra', invoice) scanner for hair salons and beauty businesses.
-Analyze the provided images of the delivery note or invoice. These documents are usually in Slovak, Hungarian, German, or English.
-Extract the header details and every product line item into a clean JSON object with the following exact keys:
+Analyze the provided delivery note / invoice documents (which can be photos, scans, PDF, Word tables, or Excel sheets). These documents are usually in Slovak, Hungarian, German, or English.
+Extract the header details, all available price columns, and every product line item into a clean JSON object with the following exact keys:
 
 {
   ""documentNumber"": ""string or null - The delivery note / invoice number (e.g. 'DL2026/0451', '24010052', '12345')"",
   ""supplier"": ""string or null - The supplier / distributor company name (e.g. 'L'Oréal Slovensko s.r.o.', 'New Flag', 'Hair Professional')"",
   ""issueDate"": ""string or null - The document date in YYYY-MM-DD format if readable"",
+  ""availablePriceColumns"": [
+    {
+      ""id"": ""string - Identifier for this price column (e.g. 'unit_net', 'unit_gross', 'catalog_price', 'discounted_price', 'total_net', 'total_gross')"",
+      ""label"": ""string - Readable name in Slovak/Hungarian/English (e.g. 'Nettó egységár (Cena bez DPH)', 'Bruttó egységár (Cena s DPH)', 'Listaár (Cenníková cena)', 'Kedvezményes ár')"",
+      ""isDefault"": boolean - true for the primary recommended purchase unit price column
+    }
+  ],
+  ""defaultPriceColumnId"": ""string - Id of the recommended default purchase unit price column (preference: discounted net unit price -> standard net unit price -> gross unit price)"",
   ""items"": [
     {
       ""rawName"": ""string - Full exact description as printed on the delivery note row"",
-      ""name"": ""string - Cleaned brand and product name (e.g. 'L'Oréal Dia Light', 'Schwarzkopf Igora Royal'). Exclude the shade code or quantity if distinct."",
+      ""name"": ""string - Cleaned brand and product name (e.g. 'L'Oréal Dia Light', 'Schwarzkopf Igora Royal'). Exclude shade, code, or volume if separate."",
       ""code"": ""string or null - Catalog number / item code / article number if present (e.g. 'E12345', '10.12')"",
       ""shade"": ""string or null - Color shade / tint / nuance number if this is a hair dye / toner / color (e.g. '10.12', '7.1', '6/00', 'Clear')"",
-      ""quantity"": number - Delivered quantity / amount (e.g. 1, 3, 6, 12). Must be positive number,
-      ""unitPrice"": number - Unit cost/purchase price without tax or with tax as listed (e.g. 7.50). 0 if not listed,
-      ""unit"": number - Enum integer: 0 for ml, 1 for g, 2 for pcs (pieces/darab/ks), 3 for m, 4 for cm. Default to 2 (pieces/ks) for salon products/tubes, or 0 if indicated in ml,
-      ""packageSize"": number - Package volume or weight if indicated in the item text (e.g. 50, 100, 250, 500, 1000). Default to 1.,
+      ""quantity"": number - Delivered quantity / amount of units or pieces (e.g. 1, 2, 6, 12). Must be positive integer or decimal.,
+      ""unit"": number - Enum integer: 0 for ml, 1 for g, 2 for pcs (pieces/darab/ks), 3 for m, 4 for cm. Default to 0 for liquids/creams/shampoos, 1 for powder/bleach, 2 for tools/accessories/tubes.,
+      ""packageSize"": number - Package volume or weight of ONE single piece/tube (e.g. 50, 60, 70, 100, 250, 500, 1000). Default to 1 if unknown or not applicable.,
+      ""unitPrice"": number - Purchase price for 1 piece based on the default price column (e.g. 7.50). 0 if not listed.,
+      ""totalPrice"": number - Total price for this line item (e.g. 15.00 for 2 * 7.50). 0 if not listed.,
+      ""availablePrices"": {
+        ""unit_net"": 7.50,
+        ""unit_gross"": 9.00
+      },
       ""ean"": ""string or null - EAN barcode if printed on the delivery note""
     }
   ]
 }
 
-IMPORTANT:
-- Carefully inspect all line items on the sheet. Do not skip items.
-- If a line is a hair color (e.g. 'DIA LIGHT 10.12 50ML' or 'IGORA 7-1 60ML'), cleanly separate the shade ('10.12' or '7-1') and the package size (50 or 60).
-- Only return the raw JSON object.";
+CRITICAL RULES:
+1. QUANTITY vs PACKAGE SIZE:
+   - Carefully distinguish between the number of pieces (quantity) and package volume/size (packageSize).
+   - Example 1: '2x70ml' or '2 ks 70ml' -> quantity = 2, packageSize = 70, unit = 0 (ml).
+   - Example 2: '140ml' -> if it represents 2 tubes of 70ml (standard for Dia Light / hair color), set quantity = 2, packageSize = 70, unit = 0. If it's a single 140ml bottle, set quantity = 1, packageSize = 140, unit = 0.
+   - Example 3: 'Sampon 1500ml' 1 ks -> quantity = 1, packageSize = 1500, unit = 0 (ml).
+2. MULTIPLE PRICE COLUMNS:
+   - Identify all distinct price columns in the document (e.g. Unit Price excl. VAT / Cena bez DPH, Unit Price incl. VAT / Cena s DPH, Catalog price, Discounted price, Total price).
+   - Populate `availablePriceColumns` with all discovered columns.
+   - Set `defaultPriceColumnId` to the best purchase unit price without tax (or with tax if no net price exists).
+   - In each item, map every discovered column's price in `availablePrices`.
+3. TOTAL & UNIT PRICES:
+   - Ensure `unitPrice` and `totalPrice` are consistent (`totalPrice` ≈ `quantity` * `unitPrice`).
+4. SHADES & NUANCE CODES:
+   - For hair colors, tints, nuances, developers, powders, foundations, and cosmetics (e.g. '10.12', '7/1', '9-1', '6RR', '2.N Vanilla', '5.0 Világosbarna', 'Clear'):
+   - ALWAYS extract the nuance/shade code or variant into `shade`.
+   - If both a numeric/alphanumeric code and a descriptive name are present (e.g. '5.0' and 'Világosbarna' or '2.N' and 'Vanilla'), extract the standard format '[Code] [Name]' (e.g. '5.0 Világosbarna', '2.N Vanilla'), ensuring the code is first.
+   - Do NOT omit the shade code when present.
+5. Only return the raw JSON object.";
         }
 
         private static string CleanJson(string rawJson)
@@ -293,7 +393,7 @@ IMPORTANT:
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Hiba az AI válasz deszerializálásakor: {Raw}", rawJson);
+                _logger.LogError(ex, "Hiba az AI termékfelismerés deszerializálásakor: {Raw}", rawJson);
                 throw new Exception($"Nem sikerült feldolgozni az AI választ: {ex.Message}");
             }
         }
@@ -317,6 +417,23 @@ IMPORTANT:
                 dto.Supplier = SanitizeValue(dto.Supplier);
                 dto.IssueDate = SanitizeValue(dto.IssueDate);
                 dto.Items ??= new List<DeliveryNoteItemDto>();
+                dto.AvailablePriceColumns ??= new List<PriceColumnInfoDto>();
+
+                if (dto.AvailablePriceColumns.Count == 0)
+                {
+                    dto.AvailablePriceColumns.Add(new PriceColumnInfoDto
+                    {
+                        Id = "unit_price",
+                        Label = "Egységár (Jednotková cena)",
+                        IsDefault = true
+                    });
+                    dto.DefaultPriceColumnId = "unit_price";
+                }
+                else if (string.IsNullOrEmpty(dto.DefaultPriceColumnId))
+                {
+                    var def = dto.AvailablePriceColumns.FirstOrDefault(c => c.IsDefault) ?? dto.AvailablePriceColumns.First();
+                    dto.DefaultPriceColumnId = def.Id;
+                }
 
                 foreach (var item in dto.Items)
                 {
@@ -335,6 +452,22 @@ IMPORTANT:
                     if (item.PackageSize <= 0)
                     {
                         item.PackageSize = 1;
+                    }
+
+                    // Kétirányú ár konszolidáció: ha az egyik hiányzik, kiszámítjuk
+                    if (item.TotalPrice <= 0 && item.UnitPrice > 0)
+                    {
+                        item.TotalPrice = Math.Round(item.Quantity * item.UnitPrice, 2);
+                    }
+                    else if (item.UnitPrice <= 0 && item.TotalPrice > 0 && item.Quantity > 0)
+                    {
+                        item.UnitPrice = Math.Round(item.TotalPrice / item.Quantity, 2);
+                    }
+
+                    item.AvailablePrices ??= new Dictionary<string, decimal>();
+                    if (!string.IsNullOrEmpty(dto.DefaultPriceColumnId) && !item.AvailablePrices.ContainsKey(dto.DefaultPriceColumnId))
+                    {
+                        item.AvailablePrices[dto.DefaultPriceColumnId] = item.UnitPrice;
                     }
                 }
 

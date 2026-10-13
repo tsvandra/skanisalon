@@ -204,27 +204,40 @@ const saveAdjustment = async () => {
   const diff = stockDifference.value;
   if (diff === 0) return;
 
+  const prodId = props.product.id;
+  const previousStock = Number(props.product.currentStock) || 0;
+  const targetStock = Number(newStock.value) || 0;
+  const noteVal = note.value;
+  const isReceipt = diff > 0;
+  const qtyAdded = isReceipt ? diff : 0;
+
   saving.value = true;
   try {
-    const type = diff > 0 ? 0 : 1; 
-    
     const payload = {
-      type: type,
-      note: note.value,
+      type: isReceipt ? 0 : 1,
+      note: noteVal,
       items: [
         {
-          productId: props.product.id,
+          productId: prodId,
           quantity: Math.abs(diff),
           costPrice: 0 
         }
       ]
     };
 
+    // Megvárjuk, amíg az adatbázis tranzakció sikeresen lefut (nincs versenyhelyzet!)
     await inventoryApi.createDocument(payload);
-    emit('saved');
+
     hideDialog();
+    emit('saved', {
+      productId: prodId,
+      newStock: targetStock,
+      previousStock: previousStock,
+      quantityAdded: qtyAdded,
+      diff: diff
+    });
   } catch (error) {
-    console.error('Hiba mozgás mentésekor', error);
+    console.error('Hiba mozgás mentésekor:', error);
   } finally {
     saving.value = false;
   }

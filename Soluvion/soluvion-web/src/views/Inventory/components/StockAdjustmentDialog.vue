@@ -198,23 +198,47 @@ const hideDialog = () => {
 };
 
 const saveMovement = async () => {
+  if (movement.value.items.length === 0) return;
+
+  const movType = movement.value.type;
+  const items = [...movement.value.items];
+  const payload = {
+    type: movType,
+    note: movement.value.note,
+    items: items.map(i => ({
+      productId: i.productId,
+      quantity: i.quantity,
+      costPrice: movType === 0 ? i.costPrice : 0
+    }))
+  };
+
   saving.value = true;
   try {
-    const payload = {
-      type: movement.value.type,
-      note: movement.value.note,
-      items: movement.value.items.map(i => ({
-        productId: i.productId,
-        quantity: i.quantity,
-        costPrice: movement.value.type === 0 ? i.costPrice : 0
-      }))
-    };
-
+    // Megvárjuk az adatbázis mentést a versenyhelyzet elkerülésére
     await inventoryApi.createDocument(payload);
-    emit('saved');
+
     hideDialog();
+
+    if (movType === 0) {
+      emit('saved', {
+        type: 0,
+        receivedItems: items.map(i => ({
+          productId: i.productId,
+          quantityAdded: Number(i.quantity) || 0,
+          isNewProduct: false
+        }))
+      });
+    } else {
+      emit('saved', {
+        type: movType,
+        items: items.map(i => ({
+          productId: i.productId,
+          quantityRemoved: Number(i.quantity) || 0
+        }))
+      });
+    }
   } catch (error) {
-    console.error('Hiba mozgás mentésekor', error);
+    console.error('Hiba mozgás mentésekor:', error);
   } finally {
     saving.value = false;
   }

@@ -42,6 +42,7 @@ builder.Services.AddScoped<ICompanyAttributeService, CompanyAttributeService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddHttpClient();
+builder.Services.AddScoped<IDocumentTextExtractorService, DocumentTextExtractorService>();
 builder.Services.AddScoped<IProductAiScannerService, ProductAiScannerService>();
 builder.Services.AddHostedService<AppointmentAutoCompleteService>();
 

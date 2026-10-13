@@ -104,9 +104,22 @@
       </div>
     </div>
 
-    <div class="flex flex-col mb-5">
-      <label for="lowStockThreshold" class="text-sm font-bold text-text-muted mb-1">{{ $t('inventory.productDialog.lowStockThreshold') }}</label>
-      <InputNumber id="lowStockThreshold" v-model="product.lowStockThreshold" mode="decimal" inputClass="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text" />
+    <div class="flex flex-col sm:flex-row gap-4 mb-5">
+      <div class="flex-1 flex flex-col">
+        <label for="lowStockThreshold" class="text-sm font-bold text-text-muted mb-1">{{ $t('inventory.productDialog.lowStockThreshold') }}</label>
+        <InputNumber id="lowStockThreshold" v-model="product.lowStockThreshold" mode="decimal" inputClass="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text" />
+      </div>
+      <div v-if="!isEdit" class="flex-1 flex flex-col">
+        <label for="initialStock" class="text-sm font-bold text-text-muted mb-1">{{ $t('inventory.productDialog.initialStock') }}</label>
+        <InputNumber id="initialStock" v-model="product.initialStock" mode="decimal" :min="0" inputClass="w-full bg-background border border-text/20 p-2.5 rounded-lg focus:outline-none focus:border-primary text-text font-bold" />
+      </div>
+      <div v-else class="flex-1 flex flex-col">
+        <label class="text-sm font-bold text-text-muted mb-1">{{ $t('inventory.productDialog.currentStock') }}</label>
+        <div class="h-11 px-3 bg-background/50 border border-text/10 rounded-lg flex items-center justify-between text-text text-sm">
+          <span class="font-bold text-primary">{{ product.currentStock }} {{ $t('inventory.units.short.pcs') }}</span>
+          <span class="text-xs text-text-muted italic">{{ $t('inventory.productDialog.stockManagedViaDialog') }}</span>
+        </div>
+      </div>
     </div>
 
     <div class="flex gap-4 mb-4">
@@ -143,6 +156,7 @@ import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
 import { useI18n } from 'vue-i18n';
 import productApi from '@/services/productApi';
+import inventoryApi from '@/services/inventoryApi';
 import AiProductScannerModal from './AiProductScannerModal.vue';
 import { compressImage } from '@/utils/imageCompressor';
 
@@ -170,7 +184,8 @@ const product = ref({
   retailPrice: 0,
   lowStockThreshold: 0,
   isProfessional: true,
-  isRetail: false
+  isRetail: false,
+  initialStock: 0
 });
 
 const saving = ref(false);
@@ -188,10 +203,13 @@ watch(() => props.visible, (newVal) => {
   if (newVal) {
     aiSuccessMessage.value = false;
     if (props.productData) {
-      product.value = { ...props.productData };
+      product.value = {
+        initialStock: 0,
+        ...props.productData
+      };
     } else {
       product.value = {
-        name: '', shade: '', ean: '', imageUrl: null, unit: 0, packageSize: 0, costPrice: 0, retailPrice: 0, lowStockThreshold: 0, isProfessional: true, isRetail: false
+        name: '', shade: '', ean: '', imageUrl: null, unit: 0, packageSize: 0, costPrice: 0, retailPrice: 0, lowStockThreshold: 0, isProfessional: true, isRetail: false, initialStock: 0
       };
     }
   }
@@ -224,6 +242,7 @@ const onAiScanned = (scannedData) => {
   if (scannedData.unit !== undefined && scannedData.unit !== null) product.value.unit = scannedData.unit;
   if (scannedData.isProfessional !== undefined) product.value.isProfessional = scannedData.isProfessional;
   if (scannedData.isRetail !== undefined) product.value.isRetail = scannedData.isRetail;
+  if (!product.value.initialStock || product.value.initialStock === 0) product.value.initialStock = 1;
   aiSuccessMessage.value = true;
 };
 
@@ -238,10 +257,36 @@ const saveProduct = async () => {
   try {
     if (isEdit.value) {
       await productApi.updateProduct(product.value.id, product.value);
+      emit('saved', { isNew: false, product: product.value });
     } else {
-      await productApi.createProduct(product.value);
+      const initStock = Number(product.value.initialStock) || 0;
+      const res = await productApi.createProduct(product.value);
+      const createdProd = res.data;
+
+      // Resilient fallback: ha a szerveren még a korábbi backend fut és nem rögzített nyitókészletet
+      if (initStock > 0 && createdProd?.id && (createdProd.currentStock === 0 || createdProd.currentStock === undefined)) {
+        try {
+          await inventoryApi.createDocument({
+            type: 0,
+            note: 'Kezdőkészlet rögzítése',
+            items: [{
+              productId: createdProd.id,
+              quantity: initStock,
+              costPrice: Number(product.value.costPrice) || 0
+            }]
+          });
+          createdProd.currentStock = initStock;
+        } catch (docErr) {
+          console.warn('Fallback nyitókészlet bizonylat rögzítése sikertelen:', docErr);
+        }
+      }
+
+      emit('saved', {
+        isNew: true,
+        product: createdProd,
+        initialStock: initStock
+      });
     }
-    emit('saved');
     hideDialog();
   } catch (error) {
     console.error('Hiba mentéskor', error);

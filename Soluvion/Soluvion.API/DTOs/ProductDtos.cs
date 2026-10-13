@@ -54,6 +54,9 @@ namespace Soluvion.API.DTOs
 
         [Range(0, 1000000, ErrorMessage = "VALIDATION_RANGE")]
         public decimal LowStockThreshold { get; set; }
+
+        [Range(0, 1000000, ErrorMessage = "VALIDATION_RANGE")]
+        public decimal InitialStock { get; set; } = 0;
     }
 
     public class UpdateProductDto

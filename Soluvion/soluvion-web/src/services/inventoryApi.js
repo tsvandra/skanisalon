@@ -13,10 +13,10 @@ export default {
     reverseAppointmentClosing(appointmentId) {
         return api.post(`/api/inventory/appointment/${appointmentId}/reverse`);
     },
-    scanDeliveryNote(images) {
+    scanDeliveryNote(files) {
         const formData = new FormData();
-        images.forEach(img => {
-            formData.append('images', img);
+        files.forEach(f => {
+            formData.append('images', f);
         });
         return api.post('/api/inventory/scan-delivery-note', formData, {
             headers: {

@@ -6,6 +6,7 @@ namespace Soluvion.API.Interfaces
     {
         Task<ProductAiScanResultDto> ScanProductImagesAsync(IEnumerable<IFormFile> images);
         Task<DeliveryNoteScanResultDto> ScanDeliveryNoteImagesAsync(IEnumerable<IFormFile> images);
+        Task<DeliveryNoteScanResultDto> ScanDeliveryNoteFilesAsync(IEnumerable<IFormFile> files);
     }
 }
 

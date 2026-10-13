@@ -97,14 +97,17 @@ namespace Soluvion.API.Services
                     }
                 }
 
+                var productIds = dto.Items.Select(i => i.ProductId).Distinct().ToList();
+                var products = await _context.Products
+                    .Where(p => productIds.Contains(p.Id) && !p.IsDeleted)
+                    .ToDictionaryAsync(p => p.Id);
+
                 foreach (var itemDto in dto.Items)
                 {
                     if (itemDto.Quantity <= 0)
                         return (false, null, $"A mennyiségnek nagyobbnak kell lennie 0-nál (Termék ID: {itemDto.ProductId}).");
 
-                    var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == itemDto.ProductId);
-                    
-                    if (product == null || product.IsDeleted)
+                    if (!products.TryGetValue(itemDto.ProductId, out var product))
                         return (false, null, $"Termék nem található vagy törölve lett (ID: {itemDto.ProductId}).");
 
                     var documentItem = new InventoryDocumentItem
@@ -129,11 +132,7 @@ namespace Soluvion.API.Services
                     }
                     else if (dto.Type == InventoryDocumentType.Issue || dto.Type == InventoryDocumentType.Adjustment)
                     {
-                        product.CurrentStock -= itemDto.Quantity;
-                        
-                        // Opcionálisan: lehetne ellenőrzés, hogy ne menjen negatívba a készlet.
-                        // Viszont sok szalon szoftver engedi a negatív készletet, 
-                        // hogy ne akassza meg a munkát (ha elfelejtettek bevételezni, de már elfogyott az anyag).
+                        product.CurrentStock = Math.Max(0, product.CurrentStock - itemDto.Quantity);
                     }
                 }
 
@@ -141,7 +140,26 @@ namespace Soluvion.API.Services
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                return (true, await GetDocumentByIdAsync(document.Id), null);
+                var resultDto = new InventoryDocumentDto
+                {
+                    Id = document.Id,
+                    Type = document.Type,
+                    CreatedAt = document.CreatedAt,
+                    Note = document.Note,
+                    AppointmentId = document.AppointmentId,
+                    IsReversed = document.IsReversed,
+                    ReversalOfDocumentId = document.ReversalOfDocumentId,
+                    Items = document.Items.Select(i => new InventoryDocumentItemDto
+                    {
+                        Id = i.Id,
+                        ProductId = i.ProductId,
+                        ProductName = products.TryGetValue(i.ProductId, out var p) ? p.Name : "Ismeretlen termék",
+                        Quantity = i.Quantity,
+                        CostPrice = i.CostPrice
+                    }).ToList()
+                };
+
+                return (true, resultDto, null);
             }
             catch (Exception ex)
             {
@@ -241,6 +259,7 @@ namespace Soluvion.API.Services
             {
                 int createdCount = 0;
                 int matchedCount = 0;
+                var receivedItemsList = new List<ReceivedProductSummaryDto>();
 
                 var document = new InventoryDocument
                 {
@@ -316,10 +335,21 @@ namespace Soluvion.API.Services
                     };
                     document.Items.Add(docItem);
 
+                    var isNew = (item.Action == "create" && item.NewProduct != null);
+
                     var productToUpdate = await _context.Products.FirstOrDefaultAsync(p => p.Id == targetProductId);
                     if (productToUpdate != null)
                     {
                         productToUpdate.CurrentStock += item.Quantity;
+                        receivedItemsList.Add(new ReceivedProductSummaryDto
+                        {
+                            ProductId = targetProductId,
+                            Name = productToUpdate.Name,
+                            Shade = productToUpdate.Shade,
+                            QuantityAdded = item.Quantity,
+                            NewStock = productToUpdate.CurrentStock,
+                            IsNewProduct = isNew
+                        });
                     }
                 }
 
@@ -337,7 +367,8 @@ namespace Soluvion.API.Services
                     DocumentId = document.Id,
                     CreatedProductsCount = createdCount,
                     MatchedItemsCount = matchedCount,
-                    TotalItemsCount = document.Items.Count
+                    TotalItemsCount = document.Items.Count,
+                    ReceivedItems = receivedItemsList
                 };
 
                 return (true, result, null);

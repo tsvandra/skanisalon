@@ -2,11 +2,20 @@ using Soluvion.Domain.Models.Enums;
 
 namespace Soluvion.API.DTOs
 {
+    public class PriceColumnInfoDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Label { get; set; } = string.Empty;
+        public bool IsDefault { get; set; }
+    }
+
     public class DeliveryNoteScanResultDto
     {
         public string? DocumentNumber { get; set; }
         public string? Supplier { get; set; }
         public string? IssueDate { get; set; }
+        public List<PriceColumnInfoDto> AvailablePriceColumns { get; set; } = new();
+        public string? DefaultPriceColumnId { get; set; }
         public List<DeliveryNoteItemDto> Items { get; set; } = new();
     }
 
@@ -18,9 +27,11 @@ namespace Soluvion.API.DTOs
         public string? Shade { get; set; }
         public decimal Quantity { get; set; } = 1;
         public decimal UnitPrice { get; set; } = 0;
+        public decimal TotalPrice { get; set; } = 0;
         public UnitOfMeasure Unit { get; set; } = UnitOfMeasure.Piece;
         public decimal PackageSize { get; set; } = 1;
         public string? EAN { get; set; }
+        public Dictionary<string, decimal> AvailablePrices { get; set; } = new();
     }
 
     public class ImportDeliveryNoteDto
@@ -53,5 +64,16 @@ namespace Soluvion.API.DTOs
         public int CreatedProductsCount { get; set; }
         public int MatchedItemsCount { get; set; }
         public int TotalItemsCount { get; set; }
+        public List<ReceivedProductSummaryDto> ReceivedItems { get; set; } = new();
+    }
+
+    public class ReceivedProductSummaryDto
+    {
+        public int ProductId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Shade { get; set; }
+        public decimal QuantityAdded { get; set; }
+        public decimal NewStock { get; set; }
+        public bool IsNewProduct { get; set; }
     }
 }
