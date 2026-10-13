@@ -1,4 +1,4 @@
-﻿namespace Soluvion.Domain.Models.Enums
+namespace Soluvion.Domain.Models.Enums
 {
     public enum TranslationStatus
     {
@@ -6,6 +6,7 @@
         Translating = 1,    // AI fordítás folyamatban (háttérben)
         ReviewPending = 2,  // AI végzett, Admin jóváhagyásra vár (Banner aktív)
         Published = 3,      // Publikus, látható a vendégeknek
+        Inactive = 4,       // Kikapcsolva / Deaktiválva (nem jelenik meg a vendégeknek)
         Error = 99          // Hiba történt a fordítás során
     }
 }

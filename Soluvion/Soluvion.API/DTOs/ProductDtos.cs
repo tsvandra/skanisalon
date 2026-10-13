@@ -91,3 +91,4 @@ namespace Soluvion.API.DTOs
         public decimal LowStockThreshold { get; set; }
     }
 }
+

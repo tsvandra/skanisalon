@@ -86,9 +86,9 @@
       <!-- Ha MÁR VAN feltöltött oldal -->
       <div v-else class="space-y-3">
         <div class="flex items-center justify-between text-xs font-bold text-text-muted">
-          <span>{{ images.length }} oldal rögzítve (maximum 4 oldal)</span>
+          <span>{{ $t('inventory.deliveryNote.pagesRecorded', { count: images.length }) }}</span>
           <button type="button" @click="clearAllImages" class="text-red-400 hover:underline">
-            Összes törlése
+            {{ $t('inventory.deliveryNote.clearAll') }}
           </button>
         </div>
 
@@ -107,7 +107,7 @@
               <i class="pi pi-times text-[10px]"></i>
             </button>
             <span class="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded bg-black/70 text-white text-[11px] font-bold">
-              {{ idx + 1 }}. oldal
+              {{ $t('inventory.deliveryNote.pageNumber', { n: idx + 1 }) }}
             </span>
           </div>
 
@@ -118,7 +118,7 @@
             class="aspect-[3/4] rounded-xl border-2 border-dashed border-text/20 hover:border-primary text-text-muted hover:text-primary flex flex-col items-center justify-center gap-1.5 transition-all active:scale-95 bg-background/40"
           >
             <i class="pi pi-plus text-lg"></i>
-            <span class="text-xs font-bold">+ Új oldal</span>
+            <span class="text-xs font-bold">{{ $t('inventory.deliveryNote.addPage') }}</span>
           </button>
         </div>
       </div>
@@ -206,7 +206,7 @@
               class="text-xs px-2 py-1 rounded-lg border transition-all shrink-0 font-medium"
               :class="row.action === 'skip' ? 'bg-background text-text-muted border-text/20 hover:text-text' : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'"
             >
-              {{ row.action === 'skip' ? 'Visszaállítás' : 'Kihagyás' }}
+              {{ row.action === 'skip' ? $t('inventory.deliveryNote.toggleRestore') : $t('inventory.deliveryNote.toggleSkip') }}
             </button>
           </div>
 
@@ -214,7 +214,7 @@
             <!-- Párosítás Dropdown (Meglévő termék keresés hasonlóság szerint vagy Új) -->
             <div>
               <label class="block text-[11px] font-bold text-text-muted mb-1">
-                Párosítás raktári termékkel:
+                {{ $t('inventory.deliveryNote.matchWithStock') }}
               </label>
               <select 
                 v-model="row.selectedTarget" 
@@ -222,15 +222,15 @@
                 class="w-full bg-surface border border-text/20 rounded-lg p-2 text-xs text-text focus:outline-none focus:border-primary font-medium"
               >
                 <option value="__CREATE_NEW__">
-                  ✨ [+ Új termékként létrehozás a raktárban]
+                  {{ $t('inventory.deliveryNote.createNewProduct') }}
                 </option>
-                <optgroup label="Meglévő termékek (egyezés szerint rendezve)">
+                <optgroup :label="$t('inventory.deliveryNote.existingProducts')">
                   <option 
                     v-for="cand in row.candidates" 
                     :key="cand.product.id" 
                     :value="cand.product.id"
                   >
-                    {{ cand.score >= 50 ? '⭐ ' : '' }}{{ cand.product.name }} {{ cleanShade(cand.product.shade) ? `[${cleanShade(cand.product.shade)}]` : '' }} (Egyezés: {{ cand.score }}% - Készlet: {{ cand.product.currentStock }})
+                    {{ cand.score >= 50 ? '⭐ ' : '' }}{{ cand.product.name }} {{ cleanShade(cand.product.shade) ? `[${cleanShade(cand.product.shade)}]` : '' }} {{ $t('inventory.deliveryNote.matchDetails', { score: cand.score, stock: cand.product.currentStock }) }}
                   </option>
                 </optgroup>
               </select>
@@ -239,7 +239,7 @@
             <!-- Mennyiség és Ár mezők -->
             <div class="grid grid-cols-2 gap-2 text-xs">
               <div>
-                <label class="block text-[10px] font-bold text-text-muted mb-0.5">Bevételezendő db:</label>
+                <label class="block text-[10px] font-bold text-text-muted mb-0.5">{{ $t('inventory.deliveryNote.quantityToImport') }}</label>
                 <div class="flex items-center gap-1">
                   <input 
                     type="number" 
@@ -248,12 +248,12 @@
                     min="1" 
                     class="w-full bg-surface border border-text/20 rounded-lg p-1.5 text-xs text-center font-bold text-text focus:outline-none focus:border-primary"
                   />
-                  <span class="text-[11px] text-text-muted">db</span>
+                  <span class="text-[11px] text-text-muted">{{ $t('inventory.units.short.pcs') }}</span>
                 </div>
               </div>
 
               <div>
-                <label class="block text-[10px] font-bold text-text-muted mb-0.5">Beszerzési egységár:</label>
+                <label class="block text-[10px] font-bold text-text-muted mb-0.5">{{ $t('inventory.deliveryNote.costPriceUnit') }}</label>
                 <div class="flex items-center gap-1">
                   <input 
                     type="number" 
@@ -297,7 +297,7 @@
       >
         <i v-if="scanning || compressing" class="pi pi-spinner pi-spin text-sm"></i>
         <i v-else class="pi pi-sparkles text-sm"></i>
-        <span>{{ compressing ? 'Optimalizálás...' : (scanning ? $t('inventory.deliveryNote.analyzingBtn') : $t('inventory.deliveryNote.startScanBtn')) }}</span>
+        <span>{{ compressing ? $t('inventory.deliveryNote.optimizing') : (scanning ? $t('inventory.deliveryNote.analyzingBtn') : $t('inventory.deliveryNote.startScanBtn')) }}</span>
       </button>
 
       <!-- 2. Lépésben: Vissza gomb & Végleges Bevételezés gomb -->
@@ -308,7 +308,7 @@
           :disabled="importing" 
           class="h-10 px-3 rounded-xl text-xs md:text-sm font-bold bg-background text-text border border-text/20 hover:bg-text/5 active:scale-95 transition-all"
         >
-          Fotók újra
+          {{ $t('inventory.deliveryNote.retakePhotos') }}
         </button>
 
         <button 
@@ -319,7 +319,7 @@
         >
           <i v-if="importing" class="pi pi-spinner pi-spin text-sm"></i>
           <i v-else class="pi pi-check text-sm"></i>
-          <span>{{ importing ? 'Mentés...' : `Jóváhagyás (${activeItemsCount} tétel)` }}</span>
+          <span>{{ importing ? $t('inventory.deliveryNote.saving') : $t('inventory.deliveryNote.confirmImportCount', { count: activeItemsCount }) }}</span>
         </button>
       </div>
     </template>

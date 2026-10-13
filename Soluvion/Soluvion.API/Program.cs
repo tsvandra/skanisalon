@@ -57,6 +57,8 @@ builder.Services.AddCors(options =>
 });
 
 
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 builder.Services.AddControllers();
 
 var cloudinarySettings = builder.Configuration.GetSection("Cloudinary");
@@ -121,7 +123,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
+app.UseExceptionHandler();
 
 app.UseCors("AllowAll");
 

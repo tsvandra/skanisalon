@@ -14,7 +14,7 @@
   const companyStore = useCompanyStore();
   const { go } = useLocalizedRoute();
 
-  const companyName = computed(() => companyStore.company?.name || 'BeeMagic Salon');
+  const companyName = computed(() => companyStore.company?.name || 'BeeMagic');
   const username = ref('');
   const password = ref('');
   const errorMsg = ref('');
@@ -22,7 +22,7 @@
 
   onMounted(() => {
     if (route.query.error === 'tenant_mismatch') {
-      errorMsg.value = te('errors.tenant_mismatch') ? t('errors.tenant_mismatch') : 'A korábbi munkamenet egy másik szalonhoz tartozott, ezért a rendszer kijelentkeztetett.';
+      errorMsg.value = t('errors.tenant_mismatch');
     }
   });
 
@@ -52,7 +52,7 @@
         go('dashboard', { query: queryParams });
       }
     } catch (err) {
-      console.error("Hiba történt:", err);
+      console.error("[Login] Authentication failed:", err);
       const code = err.response?.data?.errorCode;
       if (code && te('errors.' + code)) {
         errorMsg.value = t('errors.' + code);

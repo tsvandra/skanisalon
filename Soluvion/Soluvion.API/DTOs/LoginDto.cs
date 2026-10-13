@@ -13,3 +13,4 @@ namespace Soluvion.API.DTOs
         public string Password { get; set; } = string.Empty;
     }
 }
+

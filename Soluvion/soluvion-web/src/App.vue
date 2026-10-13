@@ -46,7 +46,7 @@
     if (authStore.isAuthenticated && authStore.companyId) {
       try {
         const companyId = authStore.companyId;
-        const defaultLang = companyStore.company?.defaultLanguage || 'hu';
+        const defaultLang = companyStore.company?.defaultLanguage || 'sk';
         translationStore.initCompany(companyId, defaultLang);
         await translationStore.fetchLanguages(companyId);
 
@@ -114,9 +114,9 @@
           await translationStore.fetchLanguages(companyStore.company.id);
 
           const savedLang = localStorage.getItem('user-locale');
-          const targetLang = route.params.lang || savedLang || companyStore.company.defaultLanguage || 'hu';
+          const targetLang = route.params.lang || savedLang || companyStore.company.defaultLanguage || 'sk';
 
-          console.log(`🌍 Induló nyelv beállítása: ${targetLang}`);
+          console.log(`🌍 Setting initial language: ${targetLang}`);
 
           if (targetLang !== translationStore.currentLanguage) {
             await translationStore.setLanguage(targetLang);

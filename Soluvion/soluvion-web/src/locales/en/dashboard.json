@@ -1,0 +1,62 @@
+{
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Select which system you would like to manage.",
+    "stockDisabledInfo": "Inventory tracking (daily closing, material deduction) is currently disabled. Enable: {link}.",
+    "stockDisabledLink": "Settings → Inventory Management",
+    "dailyClose": {
+      "title": "Daily Closing - Pending Administration",
+      "description": "The following appointments are marked completed (paid) in the calendar, but materials used have not yet been deducted from inventory. Click them to perform closing!",
+      "unknownGuest": "Unknown Client"
+    },
+    "serviceName": {
+      "unknown": "Unknown service",
+      "default": "Service",
+      "moreItems": "{name} (+{extra} items)"
+    },
+    "cards": {
+      "orders": {
+        "title": "Appointments / Calendar",
+        "description": "Manage bookings, schedule, and view daily appointments."
+      },
+      "inventory": {
+        "title": "Inventory & Products",
+        "description": "Stock management, receipts, issues, and stocktaking."
+      },
+      "customers": {
+        "title": "Clients (CRM)",
+        "description": "Client database, guest profiles, and service history."
+      }
+    },
+    "lowStock": {
+      "title": "Low Stock Items",
+      "description": "The stock level of these products has dropped below the threshold. Restocking recommended.",
+      "stockLine": "Stock: {stock} (Minimum: {min} pcs)",
+      "pieces": "{n} pcs",
+      "forecast": "30-day forecast usage: {n} pcs"
+    }
+  },
+  "login": {
+    "title": "Admin Login",
+    "username": "Username",
+    "usernamePlaceholder": "Enter username...",
+    "password": "Password",
+    "submit": "Log In",
+    "submitting": "Logging in...",
+    "invalidCredentials": "Incorrect username or password!"
+  },
+  "appShell": {
+    "pendingReviews": "Notice: Translations for {count} new languages are ready for review!",
+    "goToSettings": "Go to Settings",
+    "serverConnectionError": "Could not connect to the server.",
+    "openMenu": "Open Menu",
+    "languageSwitcher": {
+      "status": "Status: {status}",
+      "noData": "(No data)"
+    },
+    "scrubbableInput": {
+      "hint": "Drag left/right or CLICK to edit"
+    }
+  }
+}
+

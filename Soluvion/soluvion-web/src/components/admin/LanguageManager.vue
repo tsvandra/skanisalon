@@ -10,12 +10,13 @@
   import Select from 'primevue/select'; 
   import Tag from 'primevue/tag';
   import Checkbox from 'primevue/checkbox';
+  import ToggleSwitch from 'primevue/toggleswitch';
   import { jwtDecode } from "jwt-decode";
   import ProgressBar from 'primevue/progressbar';
 
   const store = useTranslationStore();
   const toast = useToast();
-  const { t } = useI18n();
+  const { t, te } = useI18n();
 
   const isDialogVisible = ref(false);
   const selectedLangCode = ref(null); 
@@ -90,11 +91,17 @@
     stopPolling(); 
   });
 
+  const getLanguageName = (code) => {
+    const found = allLanguages.value.find(l => l.value === code);
+    return found ? found.label : (code ? code.toUpperCase() : '');
+  };
+
   const getSeverity = (status) => {
     switch (status) {
       case 'Published': return 'success';
       case 'ReviewPending': return 'warn';
       case 'Translating': return 'info';
+      case 'Inactive': return 'secondary';
       case 'Error': return 'danger';
       default: return 'secondary';
     }
@@ -102,12 +109,51 @@
 
   const getStatusLabel = (status) => {
     switch (status) {
-      case 'Published': return t('adminSettings.languages.status.published');
+      case 'Published': return t('adminSettings.languages.status.active');
+      case 'Inactive': return t('adminSettings.languages.status.inactive');
       case 'ReviewPending': return t('adminSettings.languages.status.reviewPending');
       case 'Translating': return t('adminSettings.languages.status.translating');
       case 'Error': return t('adminSettings.languages.status.error');
       case 'Created': return t('adminSettings.languages.status.created');
       default: return status;
+    }
+  };
+
+  const onToggle = async (row, val) => {
+    if (row.isDefault && !val) {
+      toast.add({ severity: 'warn', summary: t('adminSettings.languages.cannotDisableDefault'), detail: t('adminSettings.languages.cannotDisableDefaultDetail'), life: 3000 });
+      return;
+    }
+
+    try {
+      await store.toggleLanguageStatus(companyId, row.languageCode, val);
+      toast.add({
+        severity: 'success',
+        summary: t('adminSettings.languages.statusUpdated'),
+        detail: t('adminSettings.languages.statusUpdatedDetail', { code: row.languageCode.toUpperCase(), status: val ? t('adminSettings.languages.status.active') : t('adminSettings.languages.status.inactive') }),
+        life: 2500
+      });
+    } catch (error) {
+      const code = error.response?.data?.errorCode;
+      const detail = code && te('errors.' + code) ? t('errors.' + code) : t('adminSettings.languages.statusUpdateFailed');
+      toast.add({ severity: 'error', summary: t('adminSettings.languages.toast.errorSummary'), detail, life: 4000 });
+      await store.fetchLanguages(companyId);
+    }
+  };
+
+  const onSetDefault = async (langCode) => {
+    try {
+      await store.setDefaultLanguage(companyId, langCode);
+      toast.add({
+        severity: 'success',
+        summary: t('adminSettings.languages.defaultChanged'),
+        detail: t('adminSettings.languages.defaultChangedDetail', { code: langCode.toUpperCase() }),
+        life: 3000
+      });
+    } catch (error) {
+      const code = error.response?.data?.errorCode;
+      const detail = code && te('errors.' + code) ? t('errors.' + code) : t('adminSettings.languages.defaultChangeFailed');
+      toast.add({ severity: 'error', summary: t('adminSettings.languages.toast.errorSummary'), detail, life: 4000 });
     }
   };
 
@@ -130,7 +176,9 @@
       }
 
     } catch (error) {
-      toast.add({ severity: 'error', summary: t('adminSettings.languages.toast.errorSummary'), detail: t('adminSettings.languages.toast.addFailed'), life: 3000 });
+      const code = error.response?.data?.errorCode;
+      const detail = code && te('errors.' + code) ? t('errors.' + code) : t('adminSettings.languages.toast.addFailed');
+      toast.add({ severity: 'error', summary: t('adminSettings.languages.toast.errorSummary'), detail, life: 4000 });
     } finally {
       loading.value = false;
     }
@@ -141,7 +189,9 @@
       await store.publishLanguage(companyId, langCode);
       toast.add({ severity: 'success', summary: t('adminSettings.languages.toast.publishedSummary'), detail: t('adminSettings.languages.toast.publishedDetail'), life: 3000 });
     } catch (error) {
-      toast.add({ severity: 'error', summary: t('adminSettings.languages.toast.errorSummary'), detail: t('adminSettings.languages.toast.publishFailed'), life: 3000 });
+      const code = error.response?.data?.errorCode;
+      const detail = code && te('errors.' + code) ? t('errors.' + code) : t('adminSettings.languages.toast.publishFailed');
+      toast.add({ severity: 'error', summary: t('adminSettings.languages.toast.errorSummary'), detail, life: 4000 });
     }
   };
 
@@ -152,7 +202,9 @@
       await store.deleteLanguage(companyId, langCode);
       toast.add({ severity: 'success', summary: t('adminSettings.languages.toast.deletedSummary'), detail: t('adminSettings.languages.toast.deletedDetail'), life: 3000 });
     } catch (error) {
-      toast.add({ severity: 'error', summary: t('adminSettings.languages.toast.errorSummary'), detail: t('adminSettings.languages.toast.deleteFailed'), life: 3000 });
+      const code = error.response?.data?.errorCode;
+      const detail = code && te('errors.' + code) ? t('errors.' + code) : t('adminSettings.languages.toast.deleteFailed');
+      toast.add({ severity: 'error', summary: t('adminSettings.languages.toast.errorSummary'), detail, life: 4000 });
     }
   };
 </script>
@@ -171,26 +223,37 @@
 
     <div class="overflow-hidden rounded-xl border border-text/5">
       <DataTable :value="store.languages" 
+                 :pt="{
+                   tableContainer: { class: '!overflow-visible' },
+                   table: { class: 'w-full' }
+                 }"
                  class="w-full
                  [&_.p-datatable-header]:bg-transparent
-                 [&_.p-datatable-thead>tr>th]:bg-text/5 [&_.p-datatable-thead>tr>th]:text-text-muted [&_.p-datatable-thead>tr>th]:font-semibold [&_.p-datatable-thead>tr>th]:border-b [&_.p-datatable-thead>tr>th]:border-text/10 [&_.p-datatable-thead>tr>th]:py-3
+                 [&_.p-datatable-table-container]:!overflow-visible
+                 [&_.p-datatable-thead>tr>th]:bg-text/5 [&_.p-datatable-thead>tr>th]:text-text-muted [&_.p-datatable-thead>tr>th]:font-semibold [&_.p-datatable-thead>tr>th]:border-b [&_.p-datatable-thead>tr>th]:border-text/10 [&_.p-datatable-thead>tr>th]:py-3.5 [&_.p-datatable-thead>tr>th]:px-4
                  [&_.p-datatable-tbody>tr]:bg-transparent [&_.p-datatable-tbody>tr]:text-text [&_.p-datatable-tbody>tr]:border-b [&_.p-datatable-tbody>tr]:border-text/5 hover:[&_.p-datatable-tbody>tr]:bg-text/5 [&_.p-datatable-tbody>tr]:transition-colors
+                 [&_.p-datatable-tbody>tr>td]:py-4 [&_.p-datatable-tbody>tr>td]:px-4
                  [&_.p-datatable-empty-message>td]:bg-transparent [&_.p-datatable-empty-message>td]:text-text-muted [&_.p-datatable-empty-message>td]:text-center [&_.p-datatable-empty-message>td]:py-8">
         
+        <!-- NYELV OSZLOP -->
         <Column field="languageCode" :header="$t('adminSettings.languages.columnLanguage')">
           <template #body="slotProps">
-            <div class="flex items-center">
-              <span class="font-bold text-lg uppercase text-primary tracking-wider">{{ slotProps.data.languageCode }}</span>
-              <span v-if="slotProps.data.isDefault" class="ml-3 text-xs font-semibold px-2 py-1 bg-text/10 text-text-muted rounded-full tracking-wide">{{ $t('adminSettings.languages.default') }}</span>
+            <div class="flex items-center gap-2.5 flex-wrap">
+              <span class="font-bold text-lg uppercase text-primary tracking-wider min-w-[34px]">{{ slotProps.data.languageCode }}</span>
+              <span class="text-sm text-text font-medium">{{ getLanguageName(slotProps.data.languageCode) }}</span>
+              <span v-if="slotProps.data.isDefault" class="text-xs font-semibold px-2 py-0.5 bg-primary/20 text-primary border border-primary/30 rounded-full tracking-wide">
+                {{ $t('adminSettings.languages.default') }}
+              </span>
             </div>
           </template>
         </Column>
 
-        <Column field="status" :header="$t('adminSettings.languages.columnStatus')" style="min-width: 200px;">
+        <!-- STÁTUSZ & BEKAPCSOLÁS OSZLOP -->
+        <Column :header="$t('adminSettings.languages.columnStatus')" style="min-width: 220px;">
           <template #body="slotProps">
-            <div class="flex flex-col gap-1.5 w-full max-w-[250px]">
-              
-              <div v-if="slotProps.data.status === 'Translating'" class="w-full">
+            <div class="flex items-center gap-3">
+              <!-- AI Fordítás folyamatban -->
+              <div v-if="slotProps.data.status === 'Translating'" class="w-full max-w-[200px]">
                 <div class="flex justify-between items-center mb-1.5">
                   <span class="text-xs text-primary font-bold tracking-wide uppercase"><i class="pi pi-spin pi-cog mr-1"></i> {{ $t('adminSettings.languages.translating') }}</span>
                   <span class="text-xs text-text-muted font-bold">{{ slotProps.data.progress || 0 }}%</span>
@@ -200,26 +263,50 @@
                              pt:value:class="!bg-primary !rounded-full" />
               </div>
 
-              <Tag v-else :value="getStatusLabel(slotProps.data.status)" :severity="getSeverity(slotProps.data.status)" class="w-max" />
+              <!-- Kapcsoló és státusz címke -->
+              <template v-else>
+                <ToggleSwitch :modelValue="slotProps.data.status === 'Published'"
+                              :disabled="slotProps.data.isDefault || slotProps.data.status === 'Translating'"
+                              @update:modelValue="onToggle(slotProps.data, $event)"
+                              :title="slotProps.data.isDefault ? $t('adminSettings.languages.defaultCannotDisable') : ''" />
 
+                <Tag :value="getStatusLabel(slotProps.data.status)" :severity="getSeverity(slotProps.data.status)" class="w-max font-semibold text-xs" />
+              </template>
             </div>
           </template>
         </Column>
 
-        <Column :header="$t('adminSettings.languages.columnActions')" alignFrozen="right" style="width: 150px;">
+        <!-- MŰVELETEK OSZLOP -->
+        <Column :header="$t('adminSettings.languages.columnActions')">
           <template #body="slotProps">
-            <div class="flex gap-2 justify-end">
+            <div class="flex items-center gap-2 justify-end">
+              
+              <!-- ReviewPending gomb -->
               <Button v-if="slotProps.data.status === 'ReviewPending'"
                       :label="$t('adminSettings.languages.publish')"
                       icon="pi pi-check"
                       class="!bg-green-500/20 !text-green-500 !border-none !font-bold hover:!bg-green-500/30 !text-xs !px-3 !py-1.5 !whitespace-nowrap"
                       @click="onPublish(slotProps.data.languageCode)" />
 
-              <Button v-if="!slotProps.data.isDefault"
+              <!-- Legyen Alapértelmezett gomb (ha még nem default és aktív) -->
+              <Button v-if="!slotProps.data.isDefault && slotProps.data.status === 'Published'"
+                      :label="$t('adminSettings.languages.makeDefault')"
+                      icon="pi pi-star"
+                      class="!bg-text/5 !text-text hover:!bg-primary/20 hover:!text-primary !border !border-text/10 !text-xs !px-2.5 !py-1 !font-medium transition-colors !whitespace-nowrap"
+                      @click="onSetDefault(slotProps.data.languageCode)" />
+
+              <!-- Törlés gomb: KIZÁRÓLAG egyedi (nem gyári 3) nyelveknél! -->
+              <Button v-if="!slotProps.data.isSystem && !slotProps.data.isDefault"
                       icon="pi pi-trash"
                       class="!bg-transparent !text-text-muted !border-none hover:!bg-red-500/10 hover:!text-red-500 !p-2 !w-8 !h-8 transition-colors rounded-full"
-                      :aria-label="$t('adminSettings.languages.delete')"
+                      :title="$t('adminSettings.languages.delete')"
                       @click="onDelete(slotProps.data.languageCode)" />
+
+              <!-- Gyári nyelv jelzés (ha gyári és nem default) -->
+              <span v-else-if="slotProps.data.isSystem && !slotProps.data.isDefault" class="text-xs text-text-muted/60 italic px-2">
+                {{ $t('adminSettings.languages.systemLanguage') }}
+              </span>
+
             </div>
           </template>
         </Column>

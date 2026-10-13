@@ -41,7 +41,7 @@ namespace Soluvion.API.DTOs
         public string PostalCode { get; set; } = string.Empty;
 
         // Nyelvek
-        public string DefaultLanguage { get; set; } = "hu";
+        public string DefaultLanguage { get; set; } = "sk";
         public List<string> SupportedLanguages { get; set; } = new List<string>();
     }
 }

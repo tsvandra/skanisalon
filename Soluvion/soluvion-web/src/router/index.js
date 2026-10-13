@@ -90,9 +90,14 @@ router.beforeEach(async (to) => {
     translationStore.initCompany(company.id, company.defaultLanguage);
   }
 
-  // Ha már ismerjük a cég nyelveit, az ismeretlen nyelvkódot a preferált nyelvre irányítjuk
-  const knownLanguages = translationStore.languages;
-  if (knownLanguages.length > 0 && !knownLanguages.some((l) => l.languageCode === lang)) {
+  // Tenant nyelvi szuverenitás ellenőrzése:
+  // Publikus nézetben csak a tenant által publikált nyelvek érhetők el.
+  // Admin nézetben az összes konfigurált tenant nyelv elérhető.
+  const allowedLanguages = to.meta?.requiresAuth 
+    ? translationStore.languages 
+    : translationStore.publishedLanguages;
+
+  if (allowedLanguages.length > 0 && !allowedLanguages.some((l) => l.languageCode === lang)) {
     const fallback = company?.defaultLanguage || DEFAULT_LANG;
     return localizedLocation(to.name, fallback, { query: to.query, hash: to.hash, replace: true });
   }

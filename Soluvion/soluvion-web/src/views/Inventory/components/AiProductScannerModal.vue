@@ -76,8 +76,8 @@
         </div>
         
         <div class="space-y-1">
-          <div class="text-sm font-bold text-text">Készíts fotókat a termékről</div>
-          <div class="text-xs text-text-muted">A telefon kamerájával vagy a galériádból</div>
+          <div class="text-sm font-bold text-text">{{ $t('inventory.aiScanner.takePhotosTitle') }}</div>
+          <div class="text-xs text-text-muted">{{ $t('inventory.aiScanner.takePhotosSub') }}</div>
         </div>
 
         <div class="flex flex-col sm:flex-row gap-2 justify-center pt-2">
@@ -105,7 +105,7 @@
       <div v-else class="space-y-3">
         <div class="flex items-center justify-between text-xs font-bold text-text-muted">
           <span>{{ $t('inventory.aiScanner.imagesCount', { count: images.length }) }}</span>
-          <span v-if="images.length >= 5" class="text-amber-400">Elérted a maximumot (5 fotó)</span>
+          <span v-if="images.length >= 5" class="text-amber-400">{{ $t('inventory.aiScanner.maxReached') }}</span>
         </div>
 
         <!-- Bélyegkép sáv -->
@@ -123,7 +123,7 @@
               type="button" 
               @click.stop="removeImage(idx)"
               class="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/75 text-white flex items-center justify-center text-xs hover:bg-red-500 transition-colors shadow-sm z-10"
-              title="Törlés"
+              :title="$t('inventory.aiScanner.deletePhoto')"
             >
               <i class="pi pi-times text-[10px]"></i>
             </button>
@@ -135,7 +135,7 @@
                 class="px-1.5 py-0.5 rounded bg-amber-500 text-black text-[10px] font-black shadow flex items-center gap-1"
               >
                 <i class="pi pi-star-fill text-[9px]"></i>
-                <span>Termékkép</span>
+                <span>{{ $t('inventory.aiScanner.primaryBadge') }}</span>
               </span>
               <button 
                 v-else 
@@ -143,7 +143,7 @@
                 @click.stop="selectedPrimaryIndex = idx"
                 class="px-1.5 py-0.5 rounded bg-black/60 hover:bg-black/90 text-white text-[9px] font-medium backdrop-blur-xs transition-colors"
               >
-                Legyen kép
+                {{ $t('inventory.aiScanner.setPrimary') }}
               </button>
 
               <span class="px-1 py-0.2 rounded bg-black/60 text-white text-[9px] font-mono ml-auto">
@@ -160,13 +160,13 @@
             class="aspect-square rounded-xl border-2 border-dashed border-text/20 hover:border-primary text-text-muted hover:text-primary flex flex-col items-center justify-center gap-1 transition-all active:scale-95 bg-background/40"
           >
             <i class="pi pi-plus text-base"></i>
-            <span class="text-[10px] font-bold">+ Fotó</span>
+            <span class="text-[10px] font-bold">{{ $t('inventory.aiScanner.addPhoto') }}</span>
           </button>
         </div>
 
         <div class="text-[11px] text-text-muted flex items-center gap-1.5 bg-background/40 p-2 rounded-lg border border-text/10">
           <i class="pi pi-info-circle text-amber-400 shrink-0"></i>
-          <span>A sárgával csillagozott fotó lesz a termék profilképe a Cloudinary tárhelyen. Kattints bármelyik képre a kiválasztáshoz!</span>
+          <span>{{ $t('inventory.aiScanner.primaryTip') }}</span>
         </div>
 
         <!-- További feltöltési opciók -->
@@ -186,7 +186,7 @@
             @click="clearAllImages" 
             class="text-xs text-red-400 font-bold hover:underline ml-auto"
           >
-            Összes törlése
+            {{ $t('inventory.aiScanner.clearAll') }}
           </button>
         </div>
       </div>

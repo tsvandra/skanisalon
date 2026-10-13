@@ -101,7 +101,7 @@ namespace Soluvion.Domain.Models
         [MaxLength(20)]
         public string SecondaryColor { get; set; } = "#1a1a1a";
         [MaxLength(5)]
-        public string DefaultLanguage { get; set; } = "hu";
+        public string DefaultLanguage { get; set; } = "sk";
 
         public bool AllowOverlappingAppointments { get; set; } = false;
 

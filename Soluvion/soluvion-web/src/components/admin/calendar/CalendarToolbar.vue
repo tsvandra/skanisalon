@@ -12,8 +12,14 @@
       <div class="flex flex-col md:flex-row items-center gap-2 w-full xl:w-auto mt-1 md:mt-0">
 
         <div class="flex flex-row w-full md:w-auto gap-2">
-          <button @click="$emit('today')" class="flex-1 md:flex-none px-3 md:px-5 min-h-[44px] font-bold text-sm bg-background border border-text/10 hover:border-primary/50 transition-colors rounded-xl text-text shadow-sm flex items-center justify-center gap-1.5">
-            <i class="pi pi-calendar-times text-primary"></i> <span>{{ $t('calendar.today') }}</span>
+          <button @click="!isToday && $emit('today')"
+                  :disabled="isToday"
+                  class="flex-1 md:flex-none px-3 md:px-5 min-h-[44px] font-bold text-sm border rounded-xl shadow-sm flex items-center justify-center gap-1.5 transition-all select-none"
+                  :class="isToday
+                    ? 'bg-background/40 border-text/5 text-text-muted/40 cursor-not-allowed opacity-40'
+                    : 'bg-background border-primary/40 text-primary hover:bg-primary/10 hover:border-primary cursor-pointer hover:scale-105 active:scale-95'">
+            <i class="pi pi-calendar-times" :class="isToday ? 'text-text-muted/40' : 'text-primary'"></i>
+            <span>{{ $t('calendar.today') }}</span>
           </button>
 
           <div class="flex flex-1 md:flex-none bg-background rounded-xl p-1 shadow-inner border border-text/5">
@@ -59,6 +65,10 @@
     userRole: {
       type: String,
       default: 'Admin'
+    },
+    isToday: {
+      type: Boolean,
+      default: false
     }
   });
 

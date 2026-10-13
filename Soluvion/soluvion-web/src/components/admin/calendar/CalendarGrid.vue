@@ -4,6 +4,7 @@
     <CalendarToolbar v-model:current-view="currentView"
                      :pager-text="pagerText"
                      :user-role="store.userRole"
+                     :is-today="isCurrentToday"
                      @prev="goPrev"
                      @next="goNext"
                      @today="goToday" />
@@ -180,6 +181,21 @@
   const currentWeekDays = computed(() => {
     const targetStr = currentDate.value.toDateString(); const idx = calendarDays.value.findIndex(d => d.date.toDateString() === targetStr);
     if (idx === -1) return []; const start = idx - (idx % 7); return calendarDays.value.slice(start, start + 7);
+  });
+
+  const isCurrentToday = computed(() => {
+    const today = new Date();
+    if (currentView.value === 'day') {
+      return currentDate.value.toDateString() === today.toDateString();
+    }
+    if (currentView.value === 'week') {
+      return currentWeekDays.value.some(d => d.date.toDateString() === today.toDateString());
+    }
+    if (currentView.value === 'month') {
+      return currentDate.value.getFullYear() === today.getFullYear() &&
+             currentDate.value.getMonth() === today.getMonth();
+    }
+    return false;
   });
 
   const onDayClick = (dayObj) => { currentDate.value = dayObj.date; currentView.value = 'day'; };

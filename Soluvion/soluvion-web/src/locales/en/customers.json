@@ -1,0 +1,88 @@
+{
+  "customers": {
+    "title": "Client Management",
+    "subtitle": "Maintain guest records, characteristics, and visit notes.",
+    "searchPlaceholder": "Search by name...",
+    "loadingData": "Loading data...",
+    "emptyState": "No results found or no clients recorded yet.",
+    "noPhone": "No phone number provided",
+    "noEmail": "No email provided",
+    "actions": {
+      "merge": "Merge",
+      "newCustomer": "New Client",
+      "history": "Card & History",
+      "mergeWithOther": "Merge with Another Client"
+    },
+    "form": {
+      "titleEdit": "Edit Client",
+      "titleNew": "Register New Client",
+      "fullName": "Full Name",
+      "namePlaceholder": "e.g. Jane Doe",
+      "phone": "Phone Number",
+      "phonePlaceholder": "+1 555 123 4567",
+      "email": "Email Address",
+      "emailPlaceholder": "jane{'@'}example.com",
+      "salonAttributes": "Client Attributes",
+      "select": "Select...",
+      "generalNote": "General Note",
+      "notePlaceholder": "Notes that do not fit into attributes (e.g. Usually arrives 10 minutes late...)"
+    },
+    "messages": {
+      "loadFailed": "Failed to load clients or settings.",
+      "saveFailed": "An error occurred while saving.",
+      "deleteFailed": "An error occurred while deleting. The client may have active appointments preventing deletion.",
+      "confirmDelete": "Are you sure you want to delete client: {name}?",
+      "mergeSuccess": "Clients merged successfully.",
+      "mergeTotalAppointments": "Total appointments: {count}",
+      "mergeDuplicates": "Merged duplicate appointments: {count}"
+    },
+    "merge": {
+      "title": "Merge Clients",
+      "selectHint": "Select the client profiles that represent the same person. All their appointments will be combined under one profile.",
+      "searchPlaceholder": "Search by name, phone, or email...",
+      "noPhone": "no phone number",
+      "noResults": "No results",
+      "finalHint": "Specify the final details for the merged profile. Use the buttons below the fields to adopt values from individual profiles.",
+      "fields": {
+        "name": "Full Name",
+        "phone": "Phone Number",
+        "email": "Email Address",
+        "notes": "General Note"
+      },
+      "attributes": "Attributes",
+      "checking": "Checking appointments...",
+      "previewTitle": "Appointment Merge Preview",
+      "previewTotalPrefix": "The merged client will have a total of ",
+      "previewTotalSuffix": " appointments.",
+      "previewMovedPrefix": "Moving: ",
+      "previewMovedSuffix": " appointments.",
+      "previewDuplicatePrefix": "Duplicate (identical date and service): ",
+      "previewDuplicateSuffix": " appointments will be kept only once.",
+      "back": "Back",
+      "nextSelected": "Next ({count} selected)",
+      "submit": "Merge Profiles",
+      "previewFailed": "Failed to verify appointments.",
+      "httpStatus": " (HTTP {status})",
+      "httpStatusNotFound": " (HTTP {status} – merge endpoint not found, please restart the API)",
+      "noConnection": " (no server connection)",
+      "confirm": "Are you sure you want to merge these client profiles?\n{names}\n\nThis action cannot be undone.",
+      "failed": "Merge failed.\n{message}"
+    },
+    "history": {
+      "title": "{name} - Card & History",
+      "generalNotes": "General Notes",
+      "notesPlaceholder": "Enter personal preferences, allergies, special formulas, etc...",
+      "formula": "Materials Used / Formula",
+      "newProduct": "New Product",
+      "noProducts": "No products added yet.",
+      "selectProduct": "Select product...",
+      "quantityPlaceholder": "Qty",
+      "add": "Add",
+      "appointmentsHistory": "Appointment History",
+      "noAppointments": "No appointment records found yet.",
+      "saveFailed": "An error occurred while saving.",
+      "unitPieces": "pcs"
+    }
+  }
+}
+

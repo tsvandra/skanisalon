@@ -38,6 +38,14 @@
     "VALIDATION_MIN_ITEMS": "Legalább egy elemet ki kell választani.",
     "VALIDATION_EMAIL": "Érvénytelen e-mail cím formátum.",
     "VALIDATION_PHONE": "Érvénytelen telefonszám formátum.",
+    "COMPANY_NOT_FOUND": "A cég nem található.",
+    "CANNOT_DEACTIVATE_DEFAULT_LANGUAGE": "Az alapértelmezett nyelv nem kapcsolható ki.",
+    "CANNOT_DELETE_DEFAULT_LANGUAGE": "Az alapértelmezett nyelv nem törölhető.",
+    "CANNOT_DELETE_SYSTEM_LANGUAGE": "A gyári alapnyelvek (HU, SK, EN) nem törölhetők, csak kikapcsolhatók.",
+    "LANGUAGE_NOT_FOUND": "A megadott nyelv nem található a cég profiljában.",
+    "TEXT_REQUIRED": "A fordítandó szöveg megadása kötelező.",
+    "INVALID_SESSION": "Érvénytelen munkamenet.",
+    "TRANSLATION_FAILED": "A fordítás sikertelen.",
     "tenant_mismatch": "A korábbi munkamenet egy másik szalonhoz tartozott, ezért a rendszer kijelentkeztetett."
   },
   "nav": {

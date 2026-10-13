@@ -29,3 +29,4 @@ namespace Soluvion.API.DTOs.AppointmentDtos
         public string? ExtraMaterials { get; set; }
     }
 }
+
