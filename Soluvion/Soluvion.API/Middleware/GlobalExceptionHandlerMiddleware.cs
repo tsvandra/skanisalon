@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Text.Json;
 
 namespace Soluvion.API.Middleware
@@ -34,12 +34,19 @@ namespace Soluvion.API.Middleware
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 
-            // Létrehozunk egy egységes hiba objektumot, amit a frontend könnyen fel tud dolgozni
+            var errorList = new List<string> { exception.Message };
+            var inner = exception.InnerException;
+            while (inner != null)
+            {
+                errorList.Add(inner.Message);
+                inner = inner.InnerException;
+            }
+
             var response = new
             {
                 StatusCode = context.Response.StatusCode,
                 Message = "Belső szerver hiba történt. Kérjük, próbálja újra később.",
-                Detailed = exception.Message // Éles környezetben (production) ezt biztonsági okokból érdemes lehet elrejteni!
+                Detailed = string.Join(" --> ", errorList)
             };
 
             var jsonResponse = JsonSerializer.Serialize(response);

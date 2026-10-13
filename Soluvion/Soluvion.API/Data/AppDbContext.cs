@@ -47,27 +47,27 @@ namespace Soluvion.API.Data
             base.OnModelCreating(modelBuilder);
 
             // --- 1. GLOBÁLIS TENANT SZŰRŐK (Query Filters) ---
+            // Cég és strukturális entitások: Ha CurrentTenantId == 0 (pl. új tenant regisztrációjakor), nincs tiltva a mentés/lekérés
             modelBuilder.Entity<Company>().HasQueryFilter(c => CurrentTenantId == 0 || c.Id == CurrentTenantId);
             modelBuilder.Entity<CompanyLanguage>().HasQueryFilter(cl => CurrentTenantId == 0 || cl.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<CompanyEmployee>().HasQueryFilter(ce => CurrentTenantId == 0 || ce.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<CompanyAttribute>().HasQueryFilter(ca => CurrentTenantId == 0 || ca.CompanyId == CurrentTenantId);
             modelBuilder.Entity<Service>().HasQueryFilter(s => CurrentTenantId == 0 || s.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<ServiceVariant>().HasQueryFilter(sv => CurrentTenantId == 0 || sv.Service!.CompanyId == CurrentTenantId);
             modelBuilder.Entity<GalleryCategory>().HasQueryFilter(gc => CurrentTenantId == 0 || gc.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<GalleryImage>().HasQueryFilter(gi => CurrentTenantId == 0 || gi.Category!.CompanyId == CurrentTenantId);
             modelBuilder.Entity<UiTranslationOverride>().HasQueryFilter(u => CurrentTenantId == 0 || u.CompanyId == CurrentTenantId);
 
-            modelBuilder.Entity<GalleryImage>().HasQueryFilter(gi => CurrentTenantId == 0 || gi.Category!.CompanyId == CurrentTenantId);
-            modelBuilder.Entity<ServiceVariant>().HasQueryFilter(sv => CurrentTenantId == 0 || sv.Service!.CompanyId == CurrentTenantId);
-
-            modelBuilder.Entity<CompanyEmployee>().HasQueryFilter(ce => CurrentTenantId == 0 || ce.CompanyId == CurrentTenantId);
-            modelBuilder.Entity<CompanyCustomer>().HasQueryFilter(cc => CurrentTenantId == 0 || cc.CompanyId == CurrentTenantId);
-            modelBuilder.Entity<Appointment>().HasQueryFilter(a => CurrentTenantId == 0 || a.CompanyId == CurrentTenantId);
-            modelBuilder.Entity<AppointmentItem>().HasQueryFilter(ai => CurrentTenantId == 0 || ai.Appointment!.CompanyId == CurrentTenantId);
-            modelBuilder.Entity<CompanyAttribute>().HasQueryFilter(ca => CurrentTenantId == 0 || ca.CompanyId == CurrentTenantId);
-
-            // Raktár Query Filterek
-            modelBuilder.Entity<Product>().HasQueryFilter(p => CurrentTenantId == 0 || p.CompanyId == CurrentTenantId);
-            modelBuilder.Entity<InventoryDocument>().HasQueryFilter(id => CurrentTenantId == 0 || id.CompanyId == CurrentTenantId);
-            modelBuilder.Entity<InventoryDocumentItem>().HasQueryFilter(idi => CurrentTenantId == 0 || idi.InventoryDocument!.CompanyId == CurrentTenantId);
-            modelBuilder.Entity<ServiceVariantProduct>().HasQueryFilter(svp => CurrentTenantId == 0 || svp.Product!.CompanyId == CurrentTenantId);
-            modelBuilder.Entity<AppointmentUsedProduct>().HasQueryFilter(aup => CurrentTenantId == 0 || aup.Product!.CompanyId == CurrentTenantId);
+            // Szenzitív üzleti adatok (Vendégek, Időpontok, Raktárkészlet, Dokumentumok):
+            // Szigorú védelem: Ha CurrentTenantId == 0, SOHA nem enged ki adatot (0 rekordot ad vissza)!
+            modelBuilder.Entity<CompanyCustomer>().HasQueryFilter(cc => CurrentTenantId != 0 && cc.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<Appointment>().HasQueryFilter(a => CurrentTenantId != 0 && a.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<AppointmentItem>().HasQueryFilter(ai => CurrentTenantId != 0 && ai.Appointment!.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<Product>().HasQueryFilter(p => CurrentTenantId != 0 && p.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<InventoryDocument>().HasQueryFilter(id => CurrentTenantId != 0 && id.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<InventoryDocumentItem>().HasQueryFilter(idi => CurrentTenantId != 0 && idi.InventoryDocument!.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<ServiceVariantProduct>().HasQueryFilter(svp => CurrentTenantId != 0 && svp.Product!.CompanyId == CurrentTenantId);
+            modelBuilder.Entity<AppointmentUsedProduct>().HasQueryFilter(aup => CurrentTenantId != 0 && aup.Product!.CompanyId == CurrentTenantId);
 
             // --- 2. KONFIGURÁCIÓK ALKALMAZÁSA AUTÓMATIKUSAN ---
             // Ez a sor megkeresi az Assembly-ben (a projektben) az összes IEntityTypeConfiguration 

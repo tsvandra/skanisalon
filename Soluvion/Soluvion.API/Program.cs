@@ -48,14 +48,9 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAll",
         policy =>
         {
-            policy.WithOrigins("http://localhost:5173", 
-                               "https://skanisalon.sk", 
-                               "https://www.skanisalon.sk", 
-                               "https://skanisalon-production.netlify.app",
-                               "https://soluvion.netlify.app",
-                               "https://develop--soluvion.netlify.app")  // Bárhonnan jöhet kérés (Netlify, localhost)
-                  .AllowAnyMethod()  // GET, POST, PUT, DELETE, OPTIONS
-                  .WithHeaders("X-Tenant-ID", "Authorization", "Content-Type"); // Bármilyen fejléc mehet
+            policy.SetIsOriginAllowed(_ => true)  // Támogatja a tenantok egyedi domainjeit, aldomainjeit és a Netlify előnézeteket
+                  .AllowAnyMethod()              // GET, POST, PUT, DELETE, OPTIONS
+                  .AllowAnyHeader();             // X-Tenant-ID, X-Company-Id, X-Tenant-Domain, Authorization, Content-Type
         });
 });
 
@@ -128,8 +123,6 @@ app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 
 app.UseCors("AllowAll");
 
-app.UseMiddleware<TenantResolutionMiddleware>();
-
 AppContext.SetSwitch("Npqsql.EnableLegacyTimestampBehavior", true);
 
 //app.MapGet("/api/ping", () => "PONG! A szerver el es mukodik.");
@@ -146,8 +139,13 @@ if (app.Environment.IsDevelopment() || true)
 
 app.UseStaticFiles();
 
-// Hitelesítés
+// Hitelesítés (Authentication) a TenantResolution előtt fut le, hogy a middleware már lássa a JWT token Claimjeit!
 app.UseAuthentication();
+
+// Tenant feloldás (TenantResolutionMiddleware)
+app.UseMiddleware<TenantResolutionMiddleware>();
+
+// Jogosultságkezelés (Authorization)
 app.UseAuthorization();
 
 app.MapControllers();

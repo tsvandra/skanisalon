@@ -24,6 +24,7 @@ app.use(PrimeVue, {
   theme: {
     preset: Aura,
     options: {
+      darkModeSelector: '.dark',
       // Ez fontos, hogy a CSS változókat (pl --p-primary-color) 
       // tudjuk felülírni a companyStore-ból
       cssLayer: {

@@ -3,10 +3,12 @@
   import { useRouter } from 'vue-router';
   import LanguageSwitcher from './LanguageSwitcher.vue';
   import { useLocalizedRoute } from '@/composables/useLocalizedRoute';
+  import { useAuthStore } from '@/stores/authStore';
 
   const company = inject('company');
   const isLoggedIn = inject('isLoggedIn');
   const userRole = inject('userRole'); // <--- JWT-ből dekódolt szerepkör
+  const authStore = useAuthStore();
   const router = useRouter();
   const { to: localized } = useLocalizedRoute();
   const isMenuOpen = ref(false);
@@ -18,8 +20,8 @@
   const toggleMenu = () => isMenuOpen.value = !isMenuOpen.value;
 
   const handleLogout = () => {
-    localStorage.removeItem('salon_token');
-    window.location.href = '/';
+    authStore.logout();
+    router.push(localized('home'));
   };
 
   const getLogoUrl = (path) => {

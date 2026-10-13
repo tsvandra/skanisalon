@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Soluvion.API.Data;
 using Soluvion.Domain.Models;
@@ -14,11 +14,13 @@ namespace Soluvion.API.Services
     {
         private readonly AppDbContext _context;
         private readonly IConfiguration _configuration;
+        private readonly ITenantContext _tenantContext;
 
-        public AuthService(AppDbContext context, IConfiguration configuration)
+        public AuthService(AppDbContext context, IConfiguration configuration, ITenantContext tenantContext)
         {
             _context = context;
             _configuration = configuration;
+            _tenantContext = tenantContext;
         }
 
         public async Task<User?> RegisterAsync(string username, string password, string companyName, int companyTypeId)
@@ -106,6 +108,13 @@ namespace Soluvion.API.Services
                 return null;
             }
 
+            // Tenant Védelem: Ha adott szalon felületén próbál belépni valaki,
+            // kizárólag az ahhoz a szalonhoz tartozó felhasználót engedjük be!
+            if (_tenantContext.CurrentCompany != null && user.CompanyId != _tenantContext.CurrentCompany.Id)
+            {
+                throw new UnauthorizedAccessException("Ez a felhasználó nem ehhez a szalonhoz tartozik.");
+            }
+
             if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
             {
                 return null;
@@ -128,9 +137,11 @@ namespace Soluvion.API.Services
 
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
 
+            var expirationDays = _configuration.GetValue<int>("AppSettings:TokenExpirationDays", 14);
+
             var token = new JwtSecurityToken(
                     claims: claims,
-                    expires: DateTime.Now.AddDays(14),
+                    expires: DateTime.UtcNow.AddDays(expirationDays),
                     signingCredentials: creds
                 );
 

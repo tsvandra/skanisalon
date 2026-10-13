@@ -6,18 +6,19 @@
   import TheFooter from '@/components/TheFooter.vue';
   import { useCompanyStore } from '@/stores/companyStore';
   import { useTranslationStore } from '@/stores/translationStore';
+  import { useAuthStore } from '@/stores/authStore';
   import { useLocalizedRoute } from '@/composables/useLocalizedRoute';
   import Toast from 'primevue/toast';
-  import { jwtDecode } from "jwt-decode";
 
   const companyStore = useCompanyStore();
   const translationStore = useTranslationStore();
+  const authStore = useAuthStore();
   const route = useRoute();
   const router = useRouter();
   const { to: localized } = useLocalizedRoute();
 
-  const isLoggedIn = ref(false);
-  const userRole = ref(null);
+  const isLoggedIn = computed(() => authStore.isAuthenticated);
+  const userRole = computed(() => authStore.userRole);
   const isAppReady = ref(false);
 
   // --- SaaS DINAMIKUS TÉMA INJEKTÁLÁSA A :ROOT-BA ---
@@ -31,37 +32,55 @@
 
   // --- AUTH STATUS ELLENŐRZÉSE ---
   const checkAuthStatus = async () => {
-    const token = localStorage.getItem('salon_token');
-    isLoggedIn.value = !!token;
-    if (!token) userRole.value = null;
+    authStore.initAuth();
 
-    if (token) {
+    // Cross-tenant védelem: Ha van bejelentkezett munkamenet, de az egy másik szalonhoz tartozik,
+    // mint amit az oldal épp megjelenít (pl. teszteléskor vagy domain váltáskor),
+    // azonnal kijelentkeztetjük a felhasználót a tiszta adat-izoláció érdekében!
+    if (authStore.isAuthenticated && companyStore.company && authStore.companyId && authStore.companyId !== companyStore.company.id) {
+      console.warn(`⚠️ Eltérő szalon munkamenet észlelve (Token szalon ID: ${authStore.companyId}, Aktuális szalon ID: ${companyStore.company.id}). Kijelentkezés a tiszta izolációért.`);
+      authStore.logout();
+      return;
+    }
+
+    if (authStore.isAuthenticated && authStore.companyId) {
       try {
-        const decoded = jwtDecode(token);
-        const companyId = parseInt(decoded.CompanyId || decoded.companyId || 0);
-        const roleClaim = decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || decoded.role || decoded.Role;
-        userRole.value = roleClaim || 'Customer';
+        const companyId = authStore.companyId;
+        const defaultLang = companyStore.company?.defaultLanguage || 'hu';
+        translationStore.initCompany(companyId, defaultLang);
+        await translationStore.fetchLanguages(companyId);
 
-        if (companyId) {
-          const defaultLang = companyStore.company?.defaultLanguage || 'hu';
-          translationStore.initCompany(companyId, defaultLang);
-          await translationStore.fetchLanguages(companyId);
-
-          const savedLang = localStorage.getItem('user-locale');
-          const targetLang = route.params.lang || savedLang || defaultLang;
-          if (targetLang && targetLang !== translationStore.currentLanguage) {
-            console.log(`🌍 Induló nyelv beállítása (Admin): ${targetLang}`);
-            await translationStore.setLanguage(targetLang);
-          }
+        const savedLang = localStorage.getItem('user-locale');
+        const targetLang = route.params.lang || savedLang || defaultLang;
+        if (targetLang && targetLang !== translationStore.currentLanguage) {
+          console.log(`🌍 Induló nyelv beállítása (Admin): ${targetLang}`);
+          await translationStore.setLanguage(targetLang);
         }
       } catch (e) {
-        console.error("Token decode hiba:", e);
+        console.error("Auth status inicializálási hiba:", e);
       }
     }
   };
 
   watch(() => route.path, () => {
     checkAuthStatus();
+  });
+
+  watch(() => companyStore.company?.id, () => {
+    checkAuthStatus();
+  });
+
+  watch(() => route.query.forceTenant, async (newVal, oldVal) => {
+    if (newVal !== oldVal) {
+      if (newVal) {
+        sessionStorage.setItem('soluvion_force_tenant', newVal);
+      } else if (newVal === '0' || newVal === 'clear' || newVal === 'reset') {
+        sessionStorage.removeItem('soluvion_force_tenant');
+      }
+      console.log(`🏢 Tenant váltás észlelve az URL-ből: ${oldVal} -> ${newVal}`);
+      await companyStore.fetchPublicConfig();
+      await checkAuthStatus();
+    }
   });
 
   const hasPendingReviews = computed(() => translationStore.pendingReviews.length > 0);

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Soluvion.API.DTOs;
 using Soluvion.API.Interfaces;
 
@@ -33,17 +33,32 @@ namespace Soluvion.API.Controllers
             return Ok(new { Message = "Sikeres regisztráció!" });
         }
 
+        [HttpGet("company-types")]
+        public async Task<IActionResult> GetCompanyTypes([FromServices] Data.AppDbContext db)
+        {
+            var types = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
+                db.CompanyTypes.Select(ct => new { ct.Id, ct.Name }));
+            return Ok(types);
+        }
+
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto request)
         {
-            var token = await _authService.LoginAsync(request.Username, request.Password);
-
-            if (token == null)
+            try
             {
-                return BadRequest("Hibás felhasználónév vagy jelszó.");
-            }
+                var token = await _authService.LoginAsync(request.Username, request.Password);
 
-            return Ok(new { Token = token });
+                if (token == null)
+                {
+                    return BadRequest("Hibás felhasználónév vagy jelszó.");
+                }
+
+                return Ok(new { Token = token });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }

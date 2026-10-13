@@ -1,5 +1,5 @@
 export const getPayloadFromToken = () => {
-  const token = localStorage.getItem('salon_token');
+  const token = localStorage.getItem('auth_token') || localStorage.getItem('salon_token');
   if (!token) return null;
 
   try {
@@ -19,10 +19,8 @@ export const getPayloadFromToken = () => {
 // Külön segédfüggvény, ha csak a CompanyId kell (kényelmi funkció)
 export const getCompanyIdFromToken = () => {
   const payload = getPayloadFromToken();
-  // Kezeljük a kisbetűs/nagybetűs eltérést is
   return payload?.CompanyId || payload?.companyId || null;
 };
-
 
 export const parseJwt = (token) => {
   try {

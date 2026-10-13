@@ -38,7 +38,7 @@
     </div>
 
     <div class="max-w-5xl mx-auto px-4 w-full mb-8">
-      <Card class="w-full !bg-text/5 !border !border-text/10 shadow-md !rounded-2xl overflow-hidden text-text">
+      <Card class="w-full !bg-surface !border !border-text/10 shadow-md !rounded-2xl overflow-hidden text-text">
         <template #title>
           <span class="text-primary text-2xl md:text-3xl font-light tracking-wide block pt-2 px-2">
             {{ $t('home.welcome', { company: company?.name || 'Szalon' }) }}
@@ -52,7 +52,7 @@
             </div>
 
             <button @click="goToGallery"
-                    class="w-full mt-6 p-4 bg-text/5 rounded-xl border-l-4 border-primary text-text-muted cursor-pointer transition-all duration-200 hover:bg-text/10 hover:text-text hover:shadow-sm flex items-center min-h-[60px] text-left">
+                    class="w-full mt-6 p-4 bg-background/60 hover:bg-background rounded-xl border-l-4 border-primary text-text-muted cursor-pointer transition-all duration-200 hover:text-text hover:shadow-sm flex items-center min-h-[60px] text-left">
               <i class="pi pi-camera mr-4 text-2xl text-primary"></i>
               <div>
                 <span class="block font-bold text-text">{{ $t('nav.gallery') }}</span>
