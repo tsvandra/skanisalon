@@ -22,6 +22,24 @@
     "settings": "Beállítások",
     "defaultCompany": "Vállalkozás"
   },
+  "errors": {
+    "USER_NOT_IN_TENANT": "Ez a felhasználó nem ehhez a szalonhoz tartozik.",
+    "INVALID_CREDENTIALS": "Hibás felhasználónév vagy jelszó.",
+    "USERNAME_ALREADY_EXISTS": "Ez a felhasználónév már foglalt.",
+    "OVERLAP": "A kiválasztott időpont ütközik egy másikkal.",
+    "FORBIDDEN": "Nincs jogosultságod a művelethez.",
+    "NOT_FOUND": "A keresett elem nem található.",
+    "SERVER_ERROR": "Váratlan szerverhiba történt.",
+    "BAD_REQUEST": "Érvénytelen kérés.",
+    "VALIDATION_REQUIRED": "A mező kitöltése kötelező.",
+    "VALIDATION_MIN_LENGTH": "A megadott érték túl rövid.",
+    "VALIDATION_MAX_LENGTH": "A megadott érték túl hosszú.",
+    "VALIDATION_RANGE": "Érvénytelen érték.",
+    "VALIDATION_MIN_ITEMS": "Legalább egy elemet ki kell választani.",
+    "VALIDATION_EMAIL": "Érvénytelen e-mail cím formátum.",
+    "VALIDATION_PHONE": "Érvénytelen telefonszám formátum.",
+    "tenant_mismatch": "A korábbi munkamenet egy másik szalonhoz tartozott, ezért a rendszer kijelentkeztetett."
+  },
   "nav": {
     "home": "Kezdőlap",
     "services": "Árlista",

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
@@ -17,12 +17,18 @@ namespace Soluvion.API.Controllers
         private readonly AppDbContext _context;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ITranslationService _translationService;
+        private readonly IUserContext _userContext;
 
-        public TranslationController(AppDbContext context, IServiceScopeFactory scopeFactory, ITranslationService translationService)
+        public TranslationController(
+            AppDbContext context, 
+            IServiceScopeFactory scopeFactory, 
+            ITranslationService translationService,
+            IUserContext userContext)
         {
             _context = context;
             _scopeFactory = scopeFactory;
             _translationService = translationService;
+            _userContext = userContext;
         }
 
         // --- VARÁZSPÁLCA VÉGPONT ---
@@ -34,15 +40,15 @@ namespace Soluvion.API.Controllers
 
             try
             {
-                var companyIdClaim = User.FindFirst("CompanyId");
-                if (companyIdClaim == null || !int.TryParse(companyIdClaim.Value, out int companyId))
+                int? companyId = _userContext.CompanyId;
+                if (!companyId.HasValue || companyId.Value <= 0)
                 {
-                    return Unauthorized("Érvénytelen token: hiányzó CompanyId.");
+                    return Unauthorized("Érvénytelen munkamenet: hiányzó CompanyId.");
                 }
 
                 var company = await _context.Companies
                     .Include(c => c.CompanyType)
-                    .FirstOrDefaultAsync(c => c.Id == companyId);
+                    .FirstOrDefaultAsync(c => c.Id == companyId.Value);
 
                 // BIZTONSÁGI JAVÍTÁS: Nem hivatkozunk a company.Type-ra, hogy elkerüljük a Null Reference hibát.
                 string companyType = company?.CompanyType?.Name ?? "General Business";
