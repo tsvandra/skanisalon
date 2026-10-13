@@ -30,6 +30,8 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICompanyService, CompanyService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<ITranslationService, OpenAiTranslationService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IUserContext, UserContext>();
 builder.Services.AddScoped<ITenantContext, TenantContext>();
 builder.Services.AddScoped<IGalleryService, GalleryService>();
 builder.Services.AddScoped<ICatalogService, CatalogService>();
@@ -55,6 +57,8 @@ builder.Services.AddCors(options =>
 });
 
 
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 builder.Services.AddControllers();
 
 var cloudinarySettings = builder.Configuration.GetSection("Cloudinary");
@@ -119,7 +123,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
+app.UseExceptionHandler();
 
 app.UseCors("AllowAll");
 

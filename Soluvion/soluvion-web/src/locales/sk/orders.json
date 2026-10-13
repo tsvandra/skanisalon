@@ -1,0 +1,35 @@
+{
+  "orders": {
+    "calendar": {
+      "card": {
+        "goToCustomer": "Prejsť na kartu zákazníka",
+        "statusCompleted": "Dokončené",
+        "minutesShort": "min"
+      },
+      "cart": {
+        "priceOverrideHint": "Potiahnite posuvník alebo kliknite pre prepísanie ceny"
+      },
+      "customerPicker": {
+        "goToCustomerCard": "Prejsť na kartu zákazníka",
+        "customerCard": "Karta"
+      },
+      "servicePicker": {
+        "otherCategory": "Ostatné"
+      },
+      "editor": {
+        "extraMaterials": "Ďalší spotrebovaný materiál",
+        "savedAsCustomerDefault": "Uložené ako predvolené k zákazníkovi",
+        "unitPiece": "ks",
+        "selectProduct": "Vyberte produkt...",
+        "productInStock": "{name} ({stock} {unit} na sklade)",
+        "quantity": "množstvo",
+        "addProductToCustomerDefaults": "Pridať produkt aj medzi predvolené materiály zákazníka",
+        "add": "Pridať",
+        "addNewMaterial": "Pridať nový materiál",
+        "statusCompleted": "Dokončené",
+        "unknownProduct": "Neznámy produkt"
+      }
+    }
+  }
+}
+

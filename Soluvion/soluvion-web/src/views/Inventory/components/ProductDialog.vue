@@ -43,11 +43,11 @@
         <i v-else class="pi pi-image text-2xl text-text-muted"></i>
       </div>
       <div class="flex-1 min-w-0">
-        <div class="text-xs font-bold text-text-muted mb-1">Termékkép</div>
+        <div class="text-xs font-bold text-text-muted mb-1">{{ $t('inventory.productDialog.image') }}</div>
         <div class="flex flex-wrap items-center gap-2">
           <label class="cursor-pointer px-2.5 py-1 rounded-lg border border-primary/40 bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-all flex items-center gap-1.5">
             <i class="pi pi-upload text-xs"></i>
-            <span>{{ product.imageUrl ? 'Kép cseréje' : 'Kép feltöltése' }}</span>
+            <span>{{ product.imageUrl ? $t('inventory.productDialog.changeImage') : $t('inventory.productDialog.uploadImage') }}</span>
             <input type="file" accept="image/*" class="hidden" @change="onManualImageUpload" :disabled="uploadingImage" />
           </label>
           <button 
@@ -56,12 +56,12 @@
             @click="product.imageUrl = null" 
             class="px-2 py-1 rounded-lg border border-red-500/30 text-red-400 text-xs font-bold hover:bg-red-500/10 transition-all"
           >
-            Törlés
+            {{ $t('inventory.productDialog.removeImage') }}
           </button>
         </div>
         <div v-if="uploadingImage" class="text-[11px] text-primary mt-1 flex items-center gap-1">
           <i class="pi pi-spinner pi-spin text-xs"></i>
-          <span>Feltöltés folyamatban...</span>
+          <span>{{ $t('inventory.productDialog.uploadingImage') }}</span>
         </div>
       </div>
     </div>

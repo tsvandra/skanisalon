@@ -19,7 +19,7 @@
 
   const availableLanguages = computed(() => {
     const list = props.adminMode ? store.languages : store.publishedLanguages;
-    return list || [];
+    return list && list.length > 0 ? list : [];
   });
 
   const currentLang = computed(() => locale.value);
@@ -29,7 +29,7 @@
     try {
       await store.setLanguage(code);
     } catch (err) {
-      console.error("[LanguageSwitcher] Hiba a váltáskor:", err);
+      console.error("[LanguageSwitcher] Error switching language:", err);
       locale.value = code;
     }
 
@@ -41,7 +41,7 @@
 </script>
 
 <template>
-  <div class="flex items-center gap-1.5">
+  <div v-if="availableLanguages.length > 1 || (adminMode && availableLanguages.length > 0)" class="flex items-center gap-1.5">
 
     <template v-if="availableLanguages.length > 0">
       <button v-for="lang in availableLanguages"

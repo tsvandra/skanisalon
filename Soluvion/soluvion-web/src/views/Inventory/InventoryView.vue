@@ -165,7 +165,7 @@
           @click="resetFilters" 
           class="px-4 py-2 bg-background border border-text/20 rounded-xl text-xs font-bold text-text hover:border-primary hover:text-primary active:scale-95 transition-all"
         >
-          Szűrők törlése
+          {{ $t('inventory.view.resetFilters') }}
         </button>
         <button 
           v-else 
@@ -188,7 +188,7 @@
             v-if="product.imageUrl" 
             class="relative w-12 h-12 rounded-xl overflow-hidden border border-text/15 bg-background shrink-0 cursor-pointer hover:opacity-90 group/img transition-all shadow-2xs"
             @click.stop="openImagePreview(product)"
-            title="Kép megtekintése nagyban"
+            :title="$t('inventory.view.previewImageTitle')"
           >
             <img :src="product.imageUrl" class="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-300" alt="Termékkép" />
             <div class="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white text-xs">
@@ -313,7 +313,7 @@
                   v-if="slotProps.data.imageUrl" 
                   class="w-9 h-9 rounded-lg overflow-hidden border border-text/15 bg-background shrink-0 cursor-pointer hover:opacity-80"
                   @click.stop="openImagePreview(slotProps.data)"
-                  title="Kép megtekintése nagyban"
+                  :title="$t('inventory.view.previewImageTitle')"
                 >
                   <img :src="slotProps.data.imageUrl" class="w-full h-full object-cover" alt="Kép" />
                 </div>

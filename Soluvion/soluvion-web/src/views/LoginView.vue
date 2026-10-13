@@ -7,14 +7,14 @@
   import { useCompanyStore } from '@/stores/companyStore';
   import { useLocalizedRoute } from '@/composables/useLocalizedRoute';
 
-  const { t } = useI18n();
+  const { t, te } = useI18n();
   const router = useRouter();
   const route = useRoute();
   const authStore = useAuthStore();
   const companyStore = useCompanyStore();
   const { go } = useLocalizedRoute();
 
-  const companyName = computed(() => companyStore.company?.name || 'BeeMagic Salon');
+  const companyName = computed(() => companyStore.company?.name || 'BeeMagic');
   const username = ref('');
   const password = ref('');
   const errorMsg = ref('');
@@ -22,7 +22,7 @@
 
   onMounted(() => {
     if (route.query.error === 'tenant_mismatch') {
-      errorMsg.value = 'A korábbi munkamenet egy másik szalonhoz tartozott, ezért a rendszer kijelentkeztetett.';
+      errorMsg.value = t('errors.tenant_mismatch');
     }
   });
 
@@ -52,8 +52,15 @@
         go('dashboard', { query: queryParams });
       }
     } catch (err) {
-      console.error("Hiba történt:", err);
-      errorMsg.value = err.response?.data || t('login.invalidCredentials');
+      console.error("[Login] Authentication failed:", err);
+      const code = err.response?.data?.errorCode;
+      if (code && te('errors.' + code)) {
+        errorMsg.value = t('errors.' + code);
+      } else if (typeof err.response?.data === 'string') {
+        errorMsg.value = err.response.data;
+      } else {
+        errorMsg.value = t('login.invalidCredentials');
+      }
     } finally {
       isLoading.value = false;
     }

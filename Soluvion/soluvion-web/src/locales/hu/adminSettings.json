@@ -142,11 +142,24 @@
       },
       "status": {
         "published": "Publikus",
+        "active": "Aktív",
+        "inactive": "Kikapcsolva",
         "reviewPending": "Ellenőrzésre vár",
         "translating": "Fordítás alatt...",
         "error": "Hiba",
         "created": "Létrehozva"
       },
+      "makeDefault": "Legyen alapértelmezett",
+      "defaultCannotDisable": "Az alapértelmezett nyelv mindig aktív.",
+      "systemLanguage": "Gyári nyelv",
+      "statusUpdated": "Státusz frissítve",
+      "statusUpdatedDetail": "A(z) {code} nyelv állapota: {status}.",
+      "statusUpdateFailed": "Nem sikerült módosítani a nyelv státuszát.",
+      "defaultChanged": "Alapértelmezett nyelv módosítva",
+      "defaultChangedDetail": "A(z) {code} nyelv lett az alapértelmezett.",
+      "defaultChangeFailed": "Nem sikerült beállítani az alapértelmezett nyelvet.",
+      "cannotDisableDefault": "Nem kapcsolható ki",
+      "cannotDisableDefaultDetail": "Az alapértelmezett nyelv nem kapcsolható ki.",
       "toast": {
         "doneSummary": "Kész!",
         "doneDetail": "A fordítás befejeződött.",
@@ -169,6 +182,14 @@
       "title": "Szövegek testreszabása",
       "subtitle": "Itt írhatod át a weboldal fix szövegeit. Töröld ki a mezőt az alapértelmezett érték visszaállításához.",
       "selectLanguage": "Nyelv választása",
+      "resetToDefaults": "Gyári alapértelmezések visszaállítása",
+      "confirmReset": "Biztosan törölni szeretnéd a(z) {lang} nyelv összes egyedi szövegmódosítását? Ezzel visszaállnak az eredeti gyári feliratok.",
+      "searchPlaceholder": "Keresés kulcs vagy szöveg alapján...",
+      "searchResults": "{count} találat",
+      "totalPhrases": "szövegelem összesen",
+      "noResults": "Nincs a keresési feltételnek megfelelő szöveg.",
+      "clearSearch": "Keresés törlése",
+      "customBadge": "Egyedi felülírás",
       "groupAiTranslate": "Csoport AI fordítása",
       "aiTranslate": "AI Fordítás",
       "save": "Mentés",
@@ -183,7 +204,10 @@
         "groupStartedSummary": "Fordítás indítva",
         "groupStartedDetail": "{group} csoport fordítása folyamatban...",
         "groupDoneSummary": "Kész",
-        "groupDoneDetail": "{group} csoport lefordítva!"
+        "groupDoneDetail": "{group} csoport lefordítva!",
+        "resetSuccessSummary": "Visszaállítva",
+        "resetSuccessDetail": "A gyári szövegek sikeresen visszaálltak.",
+        "resetFailed": "Nem sikerült visszaállítani az alapértelmezett szövegeket."
       }
     }
   }

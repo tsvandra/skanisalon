@@ -1,0 +1,41 @@
+{
+  "services": {
+    "newServiceName": "New Service",
+    "newCategoryName": "NEW CATEGORY",
+    "confirmDelete": "Are you sure you want to delete this?",
+    "translate": "Translate",
+    "moveCategory": "Move Category",
+    "modifierActive": "Active",
+    "modifierSetup": "Setup",
+    "recipeConfigured": "Recipe configured",
+    "recipeSetDefault": "Set default materials",
+    "productCount": "{count} products",
+    "modifierModal": {
+      "title": "Automatic Profile Update",
+      "description": "When a client books this variant, their profile attributes will automatically be updated with the values below.",
+      "noAttributes": "Create attributes first in Settings > Client Attributes!",
+      "noModify": "- Do not change -",
+      "emptyPlaceholder": "Leaving blank will make no changes",
+      "done": "Done & Save"
+    }
+  },
+  "gallery": {
+    "newGalleryName": "New Gallery",
+    "uncategorized": "Other / Uncategorized",
+    "confirmDeleteCategory": "Delete the folder \"{name}\"?",
+    "deleteFailed": "Failed to delete.",
+    "confirmDeleteImage": "Delete this image?",
+    "moveGallery": "Move Gallery",
+    "translate": "Translate",
+    "imageTitlePlaceholder": "Title...",
+    "swipe": "SWIPE"
+  },
+  "home": {
+    "viewLatestWorks": "View our latest creations",
+    "contactOrAppointment": "Contact / Appointment"
+  },
+  "contact": {
+    "map": "Map"
+  }
+}
+

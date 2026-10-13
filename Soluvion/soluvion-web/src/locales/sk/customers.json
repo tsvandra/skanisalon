@@ -1,0 +1,88 @@
+{
+  "customers": {
+    "title": "Správa zákazníkov",
+    "subtitle": "Evidencia údajov o hosťoch, preferenciách a histórii návštev.",
+    "searchPlaceholder": "Hľadať podľa mena...",
+    "loadingData": "Načítavajú sa údaje...",
+    "emptyState": "Žiadne výsledky alebo v systéme zatiaľ nie sú žiadni zákazníci.",
+    "noPhone": "Telefónne číslo nie je zadané",
+    "noEmail": "E-mail nie je zadaný",
+    "actions": {
+      "merge": "Zlúčenie",
+      "newCustomer": "Nový zákazník",
+      "history": "Karta a história",
+      "mergeWithOther": "Zlúčiť s iným zákazníkom"
+    },
+    "form": {
+      "titleEdit": "Úprava zákazníka",
+      "titleNew": "Zaevidovanie nového zákazníka",
+      "fullName": "Celé meno",
+      "namePlaceholder": "Napr. Katarína Kováčová",
+      "phone": "Telefónne číslo",
+      "phonePlaceholder": "+421 905 123 456",
+      "email": "E-mailová adresa",
+      "emailPlaceholder": "katarina{'@'}example.com",
+      "salonAttributes": "Vlastnosti zákazníka",
+      "select": "Vyberte...",
+      "generalNote": "Všeobecná poznámka",
+      "notePlaceholder": "Informácie, ktoré sa nezmestia do vlastností (napr. Zvyčajne mešká 10 minút...)"
+    },
+    "messages": {
+      "loadFailed": "Nepodarilo sa načítať zákazníkov alebo nastavenia.",
+      "saveFailed": "Pri ukladaní nastala chyba.",
+      "deleteFailed": "Pri vymazávaní nastala chyba. Zákazník môže mať aktívne rezervácie, kvôli ktorým ho nemožno odstrániť.",
+      "confirmDelete": "Naozaj chcete vymazať zákazníka: {name}?",
+      "mergeSuccess": "Zlúčenie prebehlo úspešne.",
+      "mergeTotalAppointments": "Celkový počet rezervácií: {count}",
+      "mergeDuplicates": "Zlúčené duplicitné rezervácie: {count}"
+    },
+    "merge": {
+      "title": "Zlúčenie zákazníkov",
+      "selectHint": "Vyberte zákazníkov, ktorí predstavujú tú istú osobu. Všetky ich rezervácie sa presunú pod jeden profil.",
+      "searchPlaceholder": "Hľadať podľa mena, telefónu alebo e-mailu...",
+      "noPhone": "bez telefónneho čísla",
+      "noResults": "Žiadne výsledky",
+      "finalHint": "Zadajte konečné údaje zlúčeného zákazníka. Pomocou tlačidiel pod poľami môžete prevziať hodnoty od jednotlivých profilov.",
+      "fields": {
+        "name": "Celé meno",
+        "phone": "Telefónne číslo",
+        "email": "E-mailová adresa",
+        "notes": "Všeobecná poznámka"
+      },
+      "attributes": "Vlastnosti",
+      "checking": "Kontrolujú sa rezervácie...",
+      "previewTitle": "Náhľad zlúčenia rezervácií",
+      "previewTotalPrefix": "Zlúčený zákazník bude mať celkovo ",
+      "previewTotalSuffix": " rezervácií.",
+      "previewMovedPrefix": "Presunie sa: ",
+      "previewMovedSuffix": " rezervácií.",
+      "previewDuplicatePrefix": "Duplicitné (zhodný dátum a služba): ",
+      "previewDuplicateSuffix": " rezervácií sa zachová len raz.",
+      "back": "Späť",
+      "nextSelected": "Ďalej (vybraté: {count})",
+      "submit": "Zlúčiť profily",
+      "previewFailed": "Nepodarilo sa overiť rezervácie.",
+      "httpStatus": " (HTTP {status})",
+      "httpStatusNotFound": " (HTTP {status} – koncový bod zlúčenia sa nenašiel, reštartujte API)",
+      "noConnection": " (nie je spojenie so serverom)",
+      "confirm": "Naozaj chcete zlúčiť týchto zákazníkov?\n{names}\n\nTúto operáciu nie je možné vrátiť späť.",
+      "failed": "Zlúčenie zlyhalo.\n{message}"
+    },
+    "history": {
+      "title": "{name} - Karta a história",
+      "generalNotes": "Všeobecné poznámky",
+      "notesPlaceholder": "Sem môžete zapísať osobné preferencie, alergie, špecifiká...",
+      "formula": "Použitý materiál / Receptúra",
+      "newProduct": "Nový produkt",
+      "noProducts": "Zatiaľ neboli pridané žiadne produkty.",
+      "selectProduct": "Vyberte produkt...",
+      "quantityPlaceholder": "Množ.",
+      "add": "Pridať",
+      "appointmentsHistory": "História rezervácií",
+      "noAppointments": "Zákazník zatiaľ nemá žiadne rezervácie.",
+      "saveFailed": "Pri ukladaní nastala chyba.",
+      "unitPieces": "ks"
+    }
+  }
+}
+

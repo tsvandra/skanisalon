@@ -12,22 +12,25 @@ namespace Soluvion.API.Services
         private readonly AppDbContext _context;
         private readonly ISmartBookingEngine _bookingEngine;
         private readonly ITenantContext _tenantContext;
+        private readonly IUserContext _userContext;
 
-        public AppointmentService(AppDbContext context, ISmartBookingEngine bookingEngine, ITenantContext tenantContext)
+        public AppointmentService(
+            AppDbContext context,
+            ISmartBookingEngine bookingEngine,
+            ITenantContext tenantContext,
+            IUserContext userContext)
         {
             _context = context;
             _bookingEngine = bookingEngine;
             _tenantContext = tenantContext;
+            _userContext = userContext;
         }
 
-        public async Task<List<AppointmentResponseDto>> GetAppointmentsAsync(DateTime start, DateTime end, string username, int? employeeId = null)
+        public async Task<List<AppointmentResponseDto>> GetAppointmentsAsync(DateTime start, DateTime end, int? employeeId = null)
         {
             int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
 
-            var currentUser = await _context.Users.SingleAsync(u => u.Username == username);
-            var currentEmployee = await _context.CompanyEmployees
-                .SingleOrDefaultAsync(e => e.UserId == currentUser.Id && e.CompanyId == companyId);
-
+            var currentEmployee = await _userContext.GetCurrentEmployeeAsync();
             if (currentEmployee == null) throw new UnauthorizedAccessException("Nem vagy hozzárendelve ehhez a céghez.");
 
             var query = _context.Appointments
@@ -69,15 +72,12 @@ namespace Soluvion.API.Services
             return appointments;
         }
 
-        public async Task<Appointment> CreateAppointmentAsync(CreateAppointmentDto dto, string username)
+        public async Task<Appointment> CreateAppointmentAsync(CreateAppointmentDto dto)
         {
             int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
             var company = await _context.Companies.FindAsync(companyId);
 
-            var currentUser = await _context.Users.SingleAsync(u => u.Username == username);
-            var currentEmployee = await _context.CompanyEmployees
-                .SingleOrDefaultAsync(e => e.UserId == currentUser.Id && e.CompanyId == companyId);
-
+            var currentEmployee = await _userContext.GetCurrentEmployeeAsync();
             if (currentEmployee == null)
                 throw new UnauthorizedAccessException("Nem vagy hozzárendelve ehhez a céghez.");
 
@@ -145,7 +145,7 @@ namespace Soluvion.API.Services
             return appointment;
         }
 
-        public async Task<Appointment> UpdateAppointmentAsync(int appointmentId, UpdateAppointmentDto dto, string username)
+        public async Task<Appointment> UpdateAppointmentAsync(int appointmentId, UpdateAppointmentDto dto)
         {
             int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
 
@@ -155,10 +155,7 @@ namespace Soluvion.API.Services
 
             if (appointment == null) throw new KeyNotFoundException("Idopont nem található vagy nincs jogosultságod.");
 
-            var currentUser = await _context.Users.SingleAsync(u => u.Username == username);
-            var currentEmployee = await _context.CompanyEmployees
-                .SingleOrDefaultAsync(e => e.UserId == currentUser.Id && e.CompanyId == companyId);
-
+            var currentEmployee = await _userContext.GetCurrentEmployeeAsync();
             if (currentEmployee == null)
                 throw new UnauthorizedAccessException("Nincs jogosultságod.");
 
@@ -230,7 +227,7 @@ namespace Soluvion.API.Services
             }
         }
 
-        public async Task<bool> DeleteAppointmentAsync(int appointmentId, string username)
+        public async Task<bool> DeleteAppointmentAsync(int appointmentId)
         {
             int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
 
@@ -239,10 +236,7 @@ namespace Soluvion.API.Services
 
             if (appointment == null) return false;
 
-            var currentUser = await _context.Users.SingleAsync(u => u.Username == username);
-            var currentEmployee = await _context.CompanyEmployees
-                .SingleOrDefaultAsync(e => e.UserId == currentUser.Id && e.CompanyId == companyId);
-
+            var currentEmployee = await _userContext.GetCurrentEmployeeAsync();
             if (currentEmployee == null) throw new UnauthorizedAccessException("Nincs jogosultságod.");
 
             if (currentEmployee.Role == EmployeeRole.Worker && appointment.EmployeeId != currentEmployee.Id)

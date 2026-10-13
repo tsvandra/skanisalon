@@ -23,26 +23,24 @@ namespace Soluvion.API.Controllers
         {
             try
             {
-                string username = User.FindFirstValue(ClaimTypes.Name)!;
-                var result = await _appointmentService.CreateAppointmentAsync(dto, username);
-                return Ok(new { Message = "Sikeres foglalás", AppointmentId = result.Id });
+                var result = await _appointmentService.CreateAppointmentAsync(dto);
+                return Ok(new { success = true, appointmentId = result.Id });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return StatusCode(403, new { message = ex.Message });
+                return StatusCode(403, new { errorCode = "FORBIDDEN", message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                // ÚJ: Kifejezetten 409 Conflict-ot küldünk egy fix belső hibakóddal!
                 return StatusCode(409, new { errorCode = "OVERLAP", message = ex.Message });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { errorCode = "BAD_REQUEST", message = ex.Message });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = $"Szerver hiba: {ex.Message}", details = ex.InnerException?.Message });
+                return StatusCode(500, new { errorCode = "SERVER_ERROR", message = ex.Message, details = ex.InnerException?.Message });
             }
         }
 
@@ -51,13 +49,12 @@ namespace Soluvion.API.Controllers
         {
             try
             {
-                string username = User.FindFirstValue(ClaimTypes.Name)!;
-                var appointments = await _appointmentService.GetAppointmentsAsync(start, end, username, employeeId);
+                var appointments = await _appointmentService.GetAppointmentsAsync(start, end, employeeId);
                 return Ok(appointments);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = $"Szerver hiba a letöltéskor: {ex.Message}" });
+                return StatusCode(500, new { errorCode = "SERVER_ERROR", message = ex.Message });
             }
         }
 
@@ -66,30 +63,28 @@ namespace Soluvion.API.Controllers
         {
             try
             {
-                string username = User.FindFirstValue(ClaimTypes.Name)!;
-                var result = await _appointmentService.UpdateAppointmentAsync(id, dto, username);
-                return Ok(new { Message = "Sikeres frissítés", AppointmentId = result.Id });
+                var result = await _appointmentService.UpdateAppointmentAsync(id, dto);
+                return Ok(new { success = true, appointmentId = result.Id });
             }
-            catch (KeyNotFoundException ex)
+            catch (KeyNotFoundException)
             {
-                return NotFound(new { message = ex.Message });
+                return NotFound(new { errorCode = "NOT_FOUND" });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return StatusCode(403, new { message = ex.Message });
+                return StatusCode(403, new { errorCode = "FORBIDDEN", message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                // ÚJ: Szintén 409 Conflict!
                 return StatusCode(409, new { errorCode = "OVERLAP", message = ex.Message });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { errorCode = "BAD_REQUEST", message = ex.Message });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = $"Szerver hiba: {ex.Message}" });
+                return StatusCode(500, new { errorCode = "SERVER_ERROR", message = ex.Message });
             }
         }
 
@@ -98,19 +93,18 @@ namespace Soluvion.API.Controllers
         {
             try
             {
-                string username = User.FindFirstValue(ClaimTypes.Name)!;
-                var success = await _appointmentService.DeleteAppointmentAsync(id, username);
-                if (!success) return NotFound(new { message = "Időpont nem található." });
+                var success = await _appointmentService.DeleteAppointmentAsync(id);
+                if (!success) return NotFound(new { errorCode = "NOT_FOUND" });
 
-                return Ok(new { Message = "Időpont sikeresen törölve." });
+                return Ok(new { success = true });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return StatusCode(403, new { message = ex.Message });
+                return StatusCode(403, new { errorCode = "FORBIDDEN", message = ex.Message });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = $"Szerver hiba: {ex.Message}" });
+                return StatusCode(500, new { errorCode = "SERVER_ERROR", message = ex.Message });
             }
         }
 

@@ -112,7 +112,7 @@ namespace Soluvion.API.Services
             // kizárólag az ahhoz a szalonhoz tartozó felhasználót engedjük be!
             if (_tenantContext.CurrentCompany != null && user.CompanyId != _tenantContext.CurrentCompany.Id)
             {
-                throw new UnauthorizedAccessException("Ez a felhasználó nem ehhez a szalonhoz tartozik.");
+                throw new UnauthorizedAccessException("USER_NOT_IN_TENANT");
             }
 
             if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
@@ -127,6 +127,7 @@ namespace Soluvion.API.Services
         {
             List<Claim> claims = new List<Claim>()
             {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Username),
                 new Claim(ClaimTypes.Role, user.Role),
                 new Claim("CompanyId", user.CompanyId.ToString())

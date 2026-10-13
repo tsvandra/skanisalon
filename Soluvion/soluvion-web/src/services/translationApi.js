@@ -14,12 +14,24 @@ export const translationApi = {
     return api.post('/api/Translation/publish', { companyId, languageCode });
   },
 
+  toggleLanguageStatus(companyId, languageCode, isActive) {
+    return api.post('/api/Translation/toggle-status', { companyId, languageCode, isActive });
+  },
+
+  setDefaultLanguage(companyId, languageCode) {
+    return api.post('/api/Translation/set-default', { companyId, languageCode });
+  },
+
   deleteLanguage(companyId, langCode) {
     return api.delete(`/api/Translation/language/${companyId}/${langCode}`);
   },
 
   getOverrides(companyId, langCode) {
     return api.get(`/api/Translation/overrides/${companyId}/${langCode}`);
+  },
+
+  resetOverrides(companyId, langCode) {
+    return api.delete(`/api/Translation/overrides/${companyId}/${langCode}`);
   },
 
   translateSingleText(text, targetLanguage, context = 'ui') {

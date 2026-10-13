@@ -1,0 +1,41 @@
+{
+  "services": {
+    "newServiceName": "Nová služba",
+    "newCategoryName": "NOVÁ KATEGÓRIA",
+    "confirmDelete": "Naozaj chcete vymazať túto položku?",
+    "translate": "Preložiť",
+    "moveCategory": "Presunúť kategóriu",
+    "modifierActive": "Aktívne",
+    "modifierSetup": "Nastavenie",
+    "recipeConfigured": "Spotreba materiálu nastavená",
+    "recipeSetDefault": "Nastaviť predvolené materiály",
+    "productCount": "{count} produktov",
+    "modifierModal": {
+      "title": "Automatická aktualizácia profilu",
+      "description": "Keď si zákazník rezervuje tento variant, systém automaticky aktualizuje jeho profil na nižšie uvedené hodnoty.",
+      "noAttributes": "Najprv vytvorte vlastnosti v menu Nastavenia > Vlastnosti zákazníka!",
+      "noModify": "- Nemeňte -",
+      "emptyPlaceholder": "Ak zostane prázdne, nezmení sa",
+      "done": "Hotovo a uložiť"
+    }
+  },
+  "gallery": {
+    "newGalleryName": "Nová galéria",
+    "uncategorized": "Ostatné / Nezaradené",
+    "confirmDeleteCategory": "Naozaj chcete vymazať priečinok \"{name}\"?",
+    "deleteFailed": "Priečinok sa nepodarilo vymazať.",
+    "confirmDeleteImage": "Naozaj chcete vymazať tento obrázok?",
+    "moveGallery": "Presunúť galériu",
+    "translate": "Preložiť",
+    "imageTitlePlaceholder": "Názov...",
+    "swipe": "SWIPE"
+  },
+  "home": {
+    "viewLatestWorks": "Pozrite si naše najnovšie práce",
+    "contactOrAppointment": "Kontakt / Rezervácia"
+  },
+  "contact": {
+    "map": "Mapa"
+  }
+}
+

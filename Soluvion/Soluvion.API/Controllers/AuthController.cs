@@ -27,10 +27,10 @@ namespace Soluvion.API.Controllers
 
             if (user == null)
             {
-                return BadRequest("Ez a felhasználónév már foglalt, vagy a regisztráció sikertelen!");
+                return BadRequest(new { errorCode = "USERNAME_ALREADY_EXISTS" });
             }
 
-            return Ok(new { Message = "Sikeres regisztráció!" });
+            return Ok(new { success = true });
         }
 
         [HttpGet("company-types")]
@@ -50,14 +50,14 @@ namespace Soluvion.API.Controllers
 
                 if (token == null)
                 {
-                    return BadRequest("Hibás felhasználónév vagy jelszó.");
+                    return BadRequest(new { errorCode = "INVALID_CREDENTIALS" });
                 }
 
                 return Ok(new { Token = token });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { errorCode = ex.Message });
             }
         }
     }

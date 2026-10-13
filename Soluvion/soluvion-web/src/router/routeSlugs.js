@@ -3,9 +3,9 @@
 // így az automatikus UI-fordítás ezeket is lefordítja, és a UiTranslationManager-ben szerkeszthetők.
 // FONTOS: ez a fájl nem importálhat routert vagy store-t (körkörös import elkerülése).
 import i18n from '@/i18n';
-import masterMessages from '@/locales/hu';
+import masterMessages from '@/locales/sk';
 
-export const DEFAULT_LANG = 'hu';
+export const DEFAULT_LANG = 'sk';
 
 // Nyelvkód az URL első szegmensében (pl. hu, sk, en)
 export const LANG_PATTERN = '[a-z]{2,3}';

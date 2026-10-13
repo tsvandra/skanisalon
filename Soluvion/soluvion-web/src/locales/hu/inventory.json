@@ -52,7 +52,9 @@
       "quickStockTitle": "Készlet gyors módosítása",
       "professional": "Professzionális",
       "retail": "Lakossági",
-      "empty": "Még nincsenek termékek felvéve."
+      "empty": "Még nincsenek termékek felvéve.",
+      "resetFilters": "Szűrők törlése",
+      "previewImageTitle": "Kép megtekintése nagyban"
     },
     "productDialog": {
       "titleEdit": "Termék szerkesztése",
@@ -69,6 +71,11 @@
       "lowStockThreshold": "Minimum készlet (Figyelmeztetéshez)",
       "professional": "Professzionális (Szalonhasználat)",
       "retail": "Lakossági (Eladható)",
+      "image": "Termékkép",
+      "changeImage": "Kép cseréje",
+      "uploadImage": "Kép feltöltése",
+      "removeImage": "Törlés",
+      "uploadingImage": "Feltöltés folyamatban...",
       "cancel": "Mégse",
       "save": "Mentés"
     },
@@ -154,6 +161,15 @@
       "takePhoto": "Fotózás kamerával",
       "chooseFromGallery": "Képek a galériából",
       "addMore": "Újabb fotó hozzáadása",
+      "takePhotosTitle": "Készíts fotókat a termékről",
+      "takePhotosSub": "A telefon kamerájával vagy a galériádból",
+      "maxReached": "Elérted a maximumot (5 fotó)",
+      "primaryBadge": "Termékkép",
+      "setPrimary": "Legyen kép",
+      "primaryTip": "A sárgával csillagozott fotó lesz a termék profilképe a Cloudinary tárhelyen. Kattints bármelyik képre a kiválasztáshoz!",
+      "clearAll": "Összes törlése",
+      "addPhoto": "+ Fotó",
+      "deletePhoto": "Törlés",
       "tipFront": "Előlap: Márka & Név",
       "tipBack": "Hátlap: Kiszerelés & Vonalkód",
       "tipShade": "Kód: Árnyalat / Színkód",
@@ -182,7 +198,23 @@
       "matchingHint": "Az AI automatikusan megkereste a leginkább hasonló termékeket a raktáradban. Ha a tétel egy létező termék, a darabszáma bevételezésre kerül. Ha új termék, a rendszer automatikusan létrehozza!",
       "cancel": "Mégsem",
       "startScanBtn": "Szállítólevél elemzése",
-      "analyzingBtn": "Feldolgozás..."
+      "analyzingBtn": "Feldolgozás...",
+      "pagesRecorded": "{count} oldal rögzítve (maximum 4 oldal)",
+      "clearAll": "Összes törlése",
+      "pageNumber": "{n}. oldal",
+      "addPage": "+ Új oldal",
+      "toggleSkip": "Kihagyás",
+      "toggleRestore": "Visszaállítás",
+      "matchWithStock": "Párosítás raktári termékkel:",
+      "createNewProduct": "✨ [+ Új termékként létrehozás a raktárban]",
+      "existingProducts": "Meglévő termékek (egyezés szerint rendezve)",
+      "matchDetails": "(Egyezés: {score}% - Készlet: {stock})",
+      "quantityToImport": "Bevételezendő db:",
+      "costPriceUnit": "Beszerzési egységár:",
+      "retakePhotos": "Fotók újra",
+      "confirmImportCount": "Jóváhagyás ({count} tétel)",
+      "optimizing": "Optimalizálás...",
+      "saving": "Mentés..."
     }
   }
 }

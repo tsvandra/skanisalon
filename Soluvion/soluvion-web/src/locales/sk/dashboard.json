@@ -1,0 +1,62 @@
+{
+  "dashboard": {
+    "title": "Prehľad",
+    "subtitle": "Vyberte systém, ktorý chcete spravovať.",
+    "stockDisabledInfo": "Sledovanie skladu (denná uzávierka, odpis materiálu) je momentálne vypnuté. Zapnutie: {link}.",
+    "stockDisabledLink": "Nastavenia → Správa skladu",
+    "dailyClose": {
+      "title": "Denná uzávierka - Nevybavená administratíva",
+      "description": "Nasledujúci hostia už boli v kalendári označení ako dokončení (zaplatené), ale spotrebovaný materiál ešte nebol odpísaný zo skladu. Kliknutím na nich vykonáte odpis!",
+      "unknownGuest": "Neznámy zákazník"
+    },
+    "serviceName": {
+      "unknown": "Neznáma služba",
+      "default": "Služba",
+      "moreItems": "{name} (+{extra} položiek)"
+    },
+    "cards": {
+      "orders": {
+        "title": "Objednávky / Kalendár",
+        "description": "Správa termínov, rezervácií a zobrazenie denného harmonogramu."
+      },
+      "inventory": {
+        "title": "Sklad a produkty",
+        "description": "Skladové hospodárstvo, príjemky, výdajky a inventúra."
+      },
+      "customers": {
+        "title": "Zákazníci (CRM)",
+        "description": "Databáza hostí, profily zákazníkov a história návštev."
+      }
+    },
+    "lowStock": {
+      "title": "Dochádzajúce produkty",
+      "description": "Stav nasledujúcich produktov klesol pod nastavenú minimálnu úroveň. Odporúčame ich doobjednať.",
+      "stockLine": "Sklad: {stock} (Minimum: {min} ks)",
+      "pieces": "{n} ks",
+      "forecast": "Očakávaná spotreba za 30 dní: {n} ks"
+    }
+  },
+  "login": {
+    "title": "Prihlásenie do administrácie",
+    "username": "Používateľské meno",
+    "usernamePlaceholder": "Zadajte svoje meno...",
+    "password": "Heslo",
+    "submit": "Prihlásiť sa",
+    "submitting": "Prebieha prihlasovanie...",
+    "invalidCredentials": "Nesprávne používateľské meno alebo heslo!"
+  },
+  "appShell": {
+    "pendingReviews": "Upozornenie: Preklad {count} nových jazykov je pripravený a čaká na kontrolu!",
+    "goToSettings": "Prejsť do nastavení",
+    "serverConnectionError": "Nepodarilo sa pripojiť k serveru.",
+    "openMenu": "Otvoriť menu",
+    "languageSwitcher": {
+      "status": "Stav: {status}",
+      "noData": "(Žiadne údaje)"
+    },
+    "scrubbableInput": {
+      "hint": "Potiahnite vľavo/vpravo alebo KLIKNITE pre písanie"
+    }
+  }
+}
+

@@ -1,0 +1,35 @@
+{
+  "orders": {
+    "calendar": {
+      "card": {
+        "goToCustomer": "Go to client profile",
+        "statusCompleted": "Completed",
+        "minutesShort": "m"
+      },
+      "cart": {
+        "priceOverrideHint": "Drag slider or click to override price"
+      },
+      "customerPicker": {
+        "goToCustomerCard": "Go to client profile card",
+        "customerCard": "Profile"
+      },
+      "servicePicker": {
+        "otherCategory": "Other"
+      },
+      "editor": {
+        "extraMaterials": "Additional Materials Used",
+        "savedAsCustomerDefault": "Saved as client default",
+        "unitPiece": "pcs",
+        "selectProduct": "Select product...",
+        "productInStock": "{name} ({stock} {unit} in stock)",
+        "quantity": "quantity",
+        "addProductToCustomerDefaults": "Also add product to client default materials",
+        "add": "Add",
+        "addNewMaterial": "Add New Material",
+        "statusCompleted": "Completed",
+        "unknownProduct": "Unknown product"
+      }
+    }
+  }
+}
+
