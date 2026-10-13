@@ -9,8 +9,8 @@
 
 ```mermaid
 flowchart TD
-    P1["FÁZIS 1: Quick Wins & Stabilitás<br/>(Home téma, authStore, useAutoSaveQueue, Prompt/Doksi)"] --> P2["FÁZIS 2: Multi-Tenancy, Biztonság & 3 Alapnyelv<br/>(Domain feloldás, Tenant Isolation, i18n Refactor: HU/SK/EN)"]
-    P2 --> P3["FÁZIS 3: A Termék Szíve: Foglalási Rendszer<br/>(Munkarend, GetAvailableSlots, 3-nyelvű Publikus Foglalás, Rate Limit)"]
+    P1["FÁZIS 1: Quick Wins & Stabilitás<br/>(KÉSZ ✅)"] --> P2["FÁZIS 2: Multi-Tenancy, Biztonság & 3 Alapnyelv<br/>(KÉSZ ✅)"]
+    P2 --> P3["FÁZIS 3: A Termék Szíve: Foglalási Rendszer<br/>(KÖVETKEZŐ LÉPÉS 🚀)"]
     P3 --> P4["FÁZIS 4: Szalonvezetés & Napi Munkaeszközök<br/>(KPI Dashboard, Raktár Seed, PWA)"]
     P4 --> P5["FÁZIS 5: SaaS Skálázás & Monetizáció<br/>(Feature Gating, RBAC, Superadmin, B2C Piactér)"]
     P5 --> P6["FÁZIS 6: Go-to-Market & Minőség<br/>(BeeMagic Marketing oldal, Névadás, Automata tesztek)"]
@@ -20,37 +20,37 @@ flowchart TD
 
 ## 2. A 30 Feladat Logikai Fázisai és Prioritásai
 
-### FÁZIS 1: Azonnali Javítások és Gyors Sikerek (Quick Wins)
-> [!TIP]
-> **Időigény: 1-2 nap.** Ezek kis ráfordítással azonnali látványos minőségjavulást hoznak, megszüntetik az idegesítő UI hibákat, és naprakész kontextust teremtenek a további fejlesztésekhez.
+### FÁZIS 1: Azonnali Javítások és Gyors Sikerek (Quick Wins) — [KÉSZ ✅]
+> [!NOTE]
+> **Státusz: Kész, élesítve.** Megszűntek a vizuális kontraszthibák, bevezetésre került a reaktív `authStore` és a `useAutoSaveQueue`, elkészült a központi `GEMINI.md` szabályzat és a frissített dokumentáció.
 
-| # | Eredeti pont | Feladat | Miért most? | Érintett komponensek |
+| # | Eredeti pont | Feladat | Státusz | Érintett komponensek |
 |---|---|---|---|---|
-| **1.1** | **#18** | **HomeView sötét/világos kontraszthiba javítása** | A PrimeVue `.dark` szelektora hiányzik, emiatt mobil/asztali váltáskor olvashatatlan kártyák jelennek meg. Pár soros, azonnali vizuális fix. | `main.js`, `HomeView.vue`, Tailwind |
-| **1.2** | **#19** | **Bejelentkezés finomítása: authStore & Token config** | A `LoginView.vue` jelenlegi `window.location.reload()` trükkje villanást okoz. Pinia `authStore`-ral tiszta, reaktív belépés lesz. A 14 napos JWT lejárati idő pedig menjen a konfigurációba. | `authStore.js`, `LoginView.vue`, `appsettings.json` |
-| **1.3** | **#20** | **ServicesView mentési logika cseréje useAutoSaveQueue-ra** | A szolgáltatásoknál lévő régi kézi Map queue lecserélése a már tesztelt és megbízható `useAutoSaveQueue` composable-re (egységes mentési viselkedés a Galériával). | `ServicesView.vue`, `useAutoSaveQueue.js` |
-| **1.4** | **#7** | **Új `GEMINI.md` (AI prompt kontextus) létrehozása** | Létrehozunk egy dedikált, strukturált dokumentumot, amely pontosan tartalmazza az architektúrát, szabályokat, entitásokat és döntési pontokat, hogy az AI asszisztens a további fázisokban hibátlanul dolgozzon. | Projekt gyökér: `GEMINI.md` |
-| **1.5** | **#6** | **Szabálykönyvek frissítése (#01, #02, #03)** | Az elmúlt hetekben megvalósult mérföldkövek (AI raktár, szállítólevél szkennelés, kliensoldali képtömörítés, DTO-k) hivatalos átvezetése a dokumentációba. | `DevDoc/01_*.md`, `02_*.md`, `03_*.md` |
+| **1.1** | **#18** | **HomeView sötét/világos kontraszthiba javítása** | Kész ✅ | `main.js`, `HomeView.vue`, Tailwind |
+| **1.2** | **#19** | **Bejelentkezés finomítása: authStore & Token config** | Kész ✅ | `authStore.js`, `LoginView.vue`, `appsettings.json` |
+| **1.3** | **#20** | **ServicesView mentési logika cseréje useAutoSaveQueue-ra** | Kész ✅ | `ServicesView.vue`, `useAutoSaveQueue.js` |
+| **1.4** | **#7** | **Új `GEMINI.md` (AI prompt kontextus) létrehozása** | Kész ✅ | Projekt gyökér: `GEMINI.md` |
+| **1.5** | **#6** | **Szabálykönyvek frissítése (#01, #02, #03)** | Kész ✅ | `DevDoc/01_*.md`, `02_*.md`, `03_*.md` |
 
 ---
 
-### FÁZIS 2: Multi-Tenancy, Biztonság, Validáció és a 3 Alapnyelv (HU, SK, EN)
+### FÁZIS 2: Multi-Tenancy, Biztonság, Validáció és a 3 Alapnyelv (HU, SK, EN) — [KÉSZ ✅]
 > [!IMPORTANT]
-> **A nemzetközi SaaS stabilitásának alapköve.** 
-> A 30. feladatot (teljes i18n refactor és a 3 gyári alapnyelv) ide helyeztük el, mert a 3. Fázisban érkező Publikus Vendégfoglalónak már **eleve tökéletesen kell megszólalnia magyarul, szlovákul és angolul**!
+> **Státusz: Kész, stabilizálva, `develop` ágra beolvasztva.**
+> Elkészült a 3 teljes gyári nyelvi csomag (`hu`, `sk`, `en`), megvalósult a tenant nyelvi szuverenitás (be-/kikapcsolás, alapértelmezett nyelv váltás), arculatvédelem (`home.*` brand szövegek védelme), DTO DataAnnotations validáció, `IUserContext`, .NET 10 `GlobalExceptionHandler` és gépi `errorCode` szabvány.
 
-| # | Eredeti pont | Feladat | Részletek & Döntések |
-|---|---|---|---|
-| **2.1** | **#25** | **Multi-Tenant Domain / Subdomain Feloldás** | Az `api.js`-ből töröljük a fix `X-Tenant-ID: 7`-et. A kliens az aktuális `window.location.hostname`-ot (vagy subdomaint) küldi el, a `TenantResolutionMiddleware` pedig az adatbázisból kikeresi a megfelelő `Company`-t. |
-| **2.2** | **#14** | **Tenant Isolation (Bomba biztos adatszeparáció)** | EF Core globális lekérdezési szűrők (`HasQueryFilter(e => e.CompanyId == _tenantContext.CompanyId)`), hogy véletlenül se szivároghasson át adat az egyik szalonból a másikba. |
-| **2.3** | **#27** | **Időpont-jogosultságok kiszervezése és `IUserContext`** | Az `AppointmentService`-ben és a kontrollerekben lévő redundáns Token/Claims dekódolások kiváltása egy injektálható `IUserContext` szolgáltatásra. |
-| **2.4** | **#26** | **Backend DTO és Üzleti Validáció bevezetése** | *.NET natív DataAnnotations használata:* .NET 10 natív attribútumokkal (`[Required]`, `[Range]`, `[MaxLength]`) látjuk el a DTO-kat. Nulla overhead, azonnali `400 ProblemDetails` védelem. |
-| **2.5** | **#12, #28** | **Globális hibakezelés & modern Result Pattern** | A kontrollerek manuális `try-catch` blokkjainak kivezetése. .NET 10 `IExceptionHandler` bevezetése egységes hibastruktúrával és többnyelvű hibakódokkal (`ErrorCode`). |
-| **2.6** | **#30** | **Teljes i18n Refactor & 3 Gyári Alapnyelv (HU, SK, EN)** | **Kódbázis teljes auditja:** Minden beégetett magyar szöveg (UI, gombok, toastok, validációs üzenetek) cseréje `$t('...')` kulcsokra. Elkészítjük a 3 teljes, ellenőrzött nyelvi csomagot (`/locales/hu/`, `/locales/sk/`, `/locales/en/`), így a rendszer azonnal, AI fordítási költség és késleltetés nélkül működik mindhárom nyelven. A tenantoknak csak az egyedi árlistát/szolgáltatásaikat kell megadniuk. |
+| # | Eredeti pont | Feladat | Státusz | Részletek & Eredmények |
+|---|---|---|---|---|
+| **2.1** | **#25** | **Multi-Tenant Domain / Subdomain Feloldás** | Kész ✅ | Hostname / Subdomain alapú tenant feloldás a `TenantResolutionMiddleware`-ben. Éles domain védve a manuális `forceTenant` manipuláció ellen. |
+| **2.2** | **#14** | **Tenant Isolation (Adatszeparáció)** | Kész ✅ | EF Core globális lekérdezési szűrők (`HasQueryFilter(e => e.CompanyId == currentCompanyId)`), garantált szeparáció szalonok között. |
+| **2.3** | **#27** | **Időpont-jogosultságok és `IUserContext`** | Kész ✅ | `IUserContext` bevezetése: ClaimsPrincipal alapú felhasználói és szalon azonosítás a Service és Controller rétegekben. |
+| **2.4** | **#26** | **Backend DTO és Üzleti Validáció** | Kész ✅ | .NET natív `System.ComponentModel.DataAnnotations` (`[Required]`, `[Range]`, `[MaxLength]`) a DTO-kban, azonnali `400 ProblemDetails` védelem. |
+| **2.5** | **#12, #28** | **Globális hibakezelés & ErrorCode szabvány** | Kész ✅ | .NET 10 `IExceptionHandler` bevezetve. Zéró beégetett magyar hibaüzenet: a backend gépi hibakódokat (`errorCode`) ad vissza, a kliens `$t('errors.' + code)`-dal fordítja. |
+| **2.6** | **#30** | **3 Gyári Alapnyelv (HU, SK, EN) & Nyelvi Szuverenitás** | Kész ✅ | 3 teljes natív nyelvi csomag (`hu/`, `sk/`, `en/`). Nyelvek ki-/bekapcsolhatósága (`ToggleSwitch`), alapértelmezett nyelv váltás, 1 nyelv esetén automatikusan rejtett fejléc váltó, arculatvédelem a felülírásoknál, fordításkereső az adminban. |
 
 ---
 
-### FÁZIS 3: A Termék Szíve: Komplett Foglalási Rendszer (Booking Engine)
+### FÁZIS 3: A Termék Szíve: Komplett Foglalási Rendszer (Booking Engine) — [KÖVETKEZŐ LÉPÉS 🚀]
 > [!NOTE]
 > Ez az a funkció, amiért a szalonok fizetni fognak. Mivel a Fázis 2-ben a 3 alapnyelv elkészült, a publikus felület azonnal szlovák, magyar és angol nyelven fogadja a vendégeket!
 

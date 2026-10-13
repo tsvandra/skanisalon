@@ -80,7 +80,6 @@ A rendszer relációs adatbázist használ. A Railway beépített mentéseinek f
 A rendszer nem tárol nyílt szöveges jelszavakat és szigorú hálózati házirendeket alkalmaz.
 
 * **Jelszó Hashing:** A rendszer a **BCrypt** algoritmust használja egyedi sózással (salt).
-* **Autentikáció:** Stateless JWT Bearer Token alapokon (HMAC-SHA512). A lejárati idő konfigurálható (`AppSettings:TokenExpirationDays`). A frontend a reaktív Pinia `authStore`-ral kezeli a munkamenetet villanásmentes navigációval.
+* **Autentikáció & User Context:** Stateless JWT Bearer Token alapokon (HMAC-SHA512). A lejárati idő konfigurálható (`AppSettings:TokenExpirationDays`). A backend az injektálható `IUserContext` szervizzel azonosítja a felhasználót (`UserId`, `CompanyId`, `Role`), a `TenantResolutionMiddleware` pedig a domain alapján oldja fel a szalont. A frontend a reaktív Pinia `authStore`-ral kezeli a munkamenetet villanásmentes navigációval.
 * **Hálózati Biztonság (CORS & HTTPS):** A CORS házirend szigorúan szabályozott, csak a Netlify domain és a Localhost engedélyezett a kérésekhez. A kommunikáció kizárólag kötelező HTTPS titkosított csatornán történik.
-* **Központi Hibakezelés (Global Exception Handling):** A backend egy dedikált Middleware segítségével kapja el a felmerülő kivételeket, szabványos JSON válaszokat generálva.
-* [cite_start]**Központi Hibakezelés (Global Exception Handling):** A backend egy dedikált Middleware segítségével kapja el a felmerülő kivételeket (Exceptions), elrejtve a stack trace-t a kliens elől, és szabványos HTTP 500 JSON válaszokat generálva (SaaS biztonsági alapelv).
+* **Központi Hibakezelés (Global Exception Handling):** A backend a .NET 10 natív `IExceptionHandler` (`GlobalExceptionHandler`) segítségével kapja el a felmerülő kivételeket. Elrejti a stack trace-t a külvilág elől, és szabványos RFC 7807 `ProblemDetails` válaszokat generál gépi hibakódokkal (`ErrorCode`), amit a kliens többnyelvűsít.

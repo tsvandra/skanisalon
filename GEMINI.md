@@ -1,6 +1,6 @@
 # GEMINI.md - Soluvion / BeeMagic SaaS Rendszerkontextus & AI Szabályzat
 
-> **Utolsó frissítés:** 2026. október 12.  
+> **Utolsó frissítés:** 2026. október 13.  
 > **Projekt:** Soluvion (átnevezés alatt: BeeMagic Salon)  
 > **Státusz:** MVP Stabilizálva, Staging és Production környezetek élnek.  
 > **Elsődleges dokumentáció:** `Soluvion/DevDoc/` mappa (`01_Architecture_and_DevOps.md`, `02_Product_Specification.md`, `03_Developer_Rulebook.md`, `04_Changelog.md`, `05_Master_Roadmap.md`).
@@ -15,7 +15,7 @@ A **Soluvion / BeeMagic Salon** egy modern, felhőalapú **Multi-Tenant SaaS pla
 * **Keretrendszer:** .NET 10 (C# 14).
 * **Adatbázis & ORM:** PostgreSQL 16+ Entity Framework Core-ral (Code-First megközelítés).
 * **Auto-Migráció:** Az alkalmazás induláskor automatikusan lefuttatja a hiányzó migrációkat (`db.Database.Migrate()`).
-* **Multi-Tenancy:** Minden entitás rendelkezik `CompanyId`-val. A kérésekből a `TenantResolutionMiddleware` állítja elő az `ITenantContext`-et.
+* **Multi-Tenancy:** Minden entitás rendelkezik `CompanyId`-val. A kérésekből a `TenantResolutionMiddleware` állítja elő az `ITenantContext`-et, a felhasználói adatokat az `IUserContext` kezeli.
 * **Autentikáció:** Stateless JWT Bearer token (HMAC-SHA512). A lejárati idő konfigurálható (`AppSettings:TokenExpirationDays`, alapértelmezett: 14 nap).
 * **Képtárolás:** CloudinaryDotNet (`IImageService`).
 * **Mesterséges Intelligencia:** 
@@ -58,10 +58,18 @@ A **Soluvion / BeeMagic Salon** egy modern, felhőalapú **Multi-Tenant SaaS pla
 * A `develop` ágra érkező push automatikusan frissíti a **Staging** környezetet (Railway Staging DB/API + Netlify develop preview).
 * Az élesítés kizárólag a `develop` ág `main`-re történő merge-elésével történik (Production release).
 
-### 2.5. Többnyelvűsítés (i18n)
+### 2.5. Többnyelvűsítés (i18n) & Gépi Hibakódok
 * Tilos keményen beégetett szöveget hagyni a template-ekben és szkriptekben!
 * Minden új felirat a `src/locales/` megfelelő JSON fájljaiba kerüljön, a template-ben `$t('kulcs')` hívással.
 * A 3 hivatalos alapnyelv: `hu`, `sk`, `en`.
+* **Zero Hardcoded Language in API Responses:** A backend végpontok nem adhatnak vissza lokalizált mondatokat (`NotFound("...")`), helyette gépileg olvasható hibakódot küldenek (`NotFound(new { errorCode = "..." })`), amit a kliensoldali Vue-i18n fordít.
+
+### 2.6. Szalonspecifikus Arculati Tartalom Védelme (Tenant Brand Preservation)
+* A szalon egyedi bemutatkozó szövegei (`home.*` kulcsok az adatbázis `UiTranslationOverrides` táblájában) védettek.
+* **Szigorúan tilos** a tenantok arculati rekordjait rendszerfrissítéssel, reseteléssel vagy seedeléssel felülírni vagy törölni.
+
+### 2.7. Felhasználói és Tenant Kontextus
+* Mindig a scoped `IUserContext` és `ITenantContext` szolgáltatásokat használjuk a bejelentkezett felhasználó és cég adatainak elérésére claims-bányászat helyett.
 
 ---
 
@@ -76,7 +84,7 @@ Soluvion/
 │   ├── Interfaces/           # Szolgáltatás interfészek
 │   ├── Middleware/           # TenantResolution, GlobalExceptionHandler
 │   ├── Migrations/           # EF Core migrációs fájlok
-│   └── Services/             # Üzleti logika (Auth, Inventory, ProductAi, Image, stb.)
+│   └── Services/             # Üzleti logika (Auth, Inventory, ProductAi, Image, IUserContext, stb.)
 ├── Soluvion.Domain/           # Adatbázis modellek (Company, Product, User, Appointment...)
 ├── soluvion-web/              # Vue 3 SPA frontend
 │   ├── src/
@@ -98,9 +106,9 @@ Soluvion/
 ## 4. Aktuális Ütemterv (Master Roadmap)
 
 A projekt a **05. Master Fejlesztési Ütemterv** szerint halad:
-1. **Fázis 1: Quick Wins & Stabilitás** *(Home téma kontraszt, authStore, useAutoSaveQueue, GEMINI.md, Szabálykönyvek)* - **FOLYAMATBAN**
-2. **Fázis 2: Multi-Tenancy, Biztonság, Validáció és a 3 Alapnyelv (HU, SK, EN)**
-3. **Fázis 3: A Termék Szíve: Komplett Foglalási Rendszer (Booking Engine)**
+1. **Fázis 1: Quick Wins & Stabilitás** *(Home téma kontraszt, authStore, useAutoSaveQueue, GEMINI.md, Szabálykönyvek)* - **KÉSZ ✅**
+2. **Fázis 2: Multi-Tenancy, Biztonság, Validáció és a 3 Alapnyelv (HU, SK, EN)** - **KÉSZ ✅**
+3. **Fázis 3: A Termék Szíve: Komplett Foglalási Rendszer (Booking Engine)** - **KÖVETKEZŐ LÉPÉS 🚀**
 4. **Fázis 4: Szalonvezetés és Napi Munkaeszközök (KPI Dashboard, Raktár Seed, PWA)**
 5. **Fázis 5: SaaS Skálázás, Jogosultságok és Monetizáció (Feature Gating, RBAC, Superadmin)**
 6. **Fázis 6: Go-to-Market, Minőség és Értékesítés (BeeMagic Marketing, Tesztek, Brand)**

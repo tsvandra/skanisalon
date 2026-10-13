@@ -1,6 +1,6 @@
 # 02. Termék Specifikáció és Üzleti Logika (Product Specification)
 
-**Dátum:** 2026.10.12.  
+**Dátum:** 2026.10.13.  
 **Projekt:** Soluvion (átnevezés alatt: BeeMagic Salon)  
 **Típus:** Élő Alkalmazás Dokumentáció (Living App Doc)
 
@@ -27,18 +27,32 @@ Az alkalmazás szigorúan a "Zéró Hardcode" elvet követi: soha nem drótozunk
 
 ## 3. Lokalizáció és Többnyelvűség (i18n Stratégia)
 
-A nemzetközi SaaS működéshez a rendszer két külön szinten kezeli a fordításokat:
+A nemzetközi SaaS működéshez a rendszer fejlett, több rétegű fordítási és nyelvi modellt alkalmaz:
 
 ### 3.1. Gyári Rendszerszövegek (System UI - 3 Alapnyelv: HU, SK, EN)
-* Minden statikus UI elem, menü, táblázatfejléc, gomb, toast üzenet és űrlap három teljes, lektorált nyelvi csomagban érhető el:
+* Minden statikus UI elem, menü, táblázatfejléc, gomb, toast üzenet, hibaüzenet és űrlap három teljes, natív, lektorált nyelvi csomagban érhető el a kódbázisban:
   - `src/locales/hu/` (Magyar)
   - `src/locales/sk/` (Szlovák)
   - `src/locales/en/` (Angol)
-* **Előny:** Új szalon bekapcsolásakor vagy nyelvváltáskor a felület **azonnal, 0 AI tokennel és 0 várakozási idővel** megjelenik a kívánt nyelven.
+* **Előny:** Új szalon regisztrációjakor vagy nyelvváltáskor a felület **azonnal, 0 AI tokennel és 0 várakozási idővel** jelenik meg a kívánt nyelven.
+* **Backend Hibakezelés (Gépi ErrorCode):** A backend végpontok nem küldenek hardkódolt magyar szövegeket. Hiba esetén gépi hibakódokat adnak vissza (`errorCode: "COMPANY_NOT_FOUND"`, `errorCode: "CANNOT_DELETE_DEFAULT_LANGUAGE"`), amit a kliensoldali Vue-i18n az `errors.json` szótárakból automatikusan fordít a felhasználó aktív nyelvére.
 
-### 3.2. Dinamikus Szalontartalom és AI Fordítás
-* A szalon egyedi szolgáltatásai, árlistája és leírásai JSONB szótárakként tárolódnak (`{ "hu": "...", "sk": "..." }`).
-* Ha a szalon új szolgáltatást vesz fel (pl. magyarul), a beépített OpenAI modul dinamikus kontextussal gombnyomásra automatikusan lefordítja a hiányzó nyelvekre.
+### 3.2. Tenant Nyelvi Szuverenitás és Beállítások
+* **Szabad Nyelvválasztás:** Bár a rendszer mindhárom gyári nyelvet támogatja, minden szalon (tenant) önállóan dönti el a Cégbeállítások felületen, hogy ezek közül melyeket teszi elérhetővé a saját vendégei és munkatársai számára (ki- és bekapcsoló Toggle kapcsolók).
+* **Alapértelmezett Nyelv (Default Language):** A szalon szabadon kiválaszthatja saját alapértelmezett nyelvét (pl. `sk` vagy `hu`). Az alapértelmezett nyelv soha nem törölhető és nem kapcsolható ki. Legalább egy nyelvnek mindig aktívnak kell lennie.
+* **Intelligens Fejléc Nyelvválasztó:** Ha egy szalon csupán 1 aktív nyelvet tart bekapcsolva, a fejlécből automatikusan eltűnik a nyelvválasztó gomb, elkerülve a felesleges és zavaró vezérlőelemeket. Amint legalább 2 nyelv aktív, a választó azonnal megjelenik.
+* **Gyári vs. Egyedi Nyelvek:** A 3 alapnyelv (HU, SK, EN) védett (nem törölhető, kizárólag inaktiválható). Ha a szalon egy 4. egyedi nyelvet vesz fel (pl. Német, Cseh), az bármikor törölhető is.
+
+### 3.3. Rendszerszöveg vs. Szalonspecifikus Arculati Tartalom (Branding Protection)
+* **Éles Határvonal:** 
+  - A rendszer UI szövegei a Git repository verziókövetett JSON fájljaiban laknak (`src/locales/`).
+  - A szalon egyedi bemutatkozó és arculati szövegei (`home.introTitle`, `home.introText`, `home.subtitle`, `home.welcome`, `home.checkGallery`) a szalon saját adatbázis rekordjaiban (`UiTranslationOverrides`) tárolódnak.
+* **Arculatvédelmi Elv (Strict Brand Protection):** Rendszerfrissítés, UI fordítás-reszelés vagy szótár-reset során **szigorúan tilos** felülírni vagy törölni a szalon saját `home.*` marketing szövegeit! A backend `ResetOverrides` végpontja programozott szűrővel védi ezeket a rekordokat.
+
+### 3.4. Dinamikus Szalontartalom és AI Fordítás
+* A szalon egyedi szolgáltatásai, kategóriái, árlistája és leírásai JSONB szótárakként tárolódnak az adatbázisban (`{ "hu": "...", "sk": "..." }`).
+* Új szolgáltatás rögzítésekor a beépített OpenAI modul dinamikus szakmai kontextussal, egyetlen gombnyomásra automatikusan lefordítja a hiányzó nyelvekre a szalon tartalmát.
+* **Kereshető Fordításkezelő:** A Cégbeállítások Fordítások fülén valós idejű, intelligens kereső működik (kulcs, alapértelmezett szöveg, fordítás és egyedi felülírás alapján), amely automatikusan kinyitja az egyező kategóriákat és jelvénnyel (Badge) emeli ki az egyedileg módosított szövegeket.
 
 ---
 
@@ -58,6 +72,7 @@ A nemzetközi SaaS működéshez a rendszer két külön szinten kezeli a fordí
 
 ### 4.3. Naptár és Időpontkezelés (Smart Booking)
 * Dolgozói munkarendek, foglalások kezelése (napi, heti, havi nézet).
+* **Naptár "MA" Navigációs UX:** A naptár gyorsgombja ("MA") reaktívan érzékeli az aktuális nézet dátumát: ha a felhasználó a mai napon/héten áll, a gomb inaktív és halványított (`opacity-40`), megakadályozva a felesleges újratöltéseket. Amint a felhasználó elnavigál az időben, a gomb felélénkül és azonnali visszatérést biztosít a mai napra.
 * Folyamatban lévő fejlesztés (Master Roadmap Fázis 3): Munkarend-alapú szabad idősáv kalkuláció (`GetAvailableSlots`) és publikus vendégfoglaló felület rate limiting védelemmel.
 
 ### 4.4. Vezérlőpult (Dashboard)

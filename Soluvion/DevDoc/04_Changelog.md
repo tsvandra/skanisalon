@@ -1,12 +1,45 @@
-﻿# 04. Fejlesztési Napló (Changelog & Release Notes)
+# 04. Fejlesztési Napló (Changelog & Release Notes)
 
-**Dátum:** 2026.02.25.
-**Projekt:** Soluvion (Skani Salon)
-**Típus:** Verziótörténet és Funkció Napló
+**Dátum:** 2026.10.13.  
+**Projekt:** Soluvion (átnevezés alatt: BeeMagic Salon)  
+**Típus:** Verziótörténet és Funkció Napló  
 
 Ez a dokumentum kronológiai sorrendben (a legújabbtól visszafelé) rögzíti a befejezett funkciókat, infrastrukturális változásokat és a kritikus hibajavításokat.
 
 ---
+
+## [2026-10-13] Fázis 2: Multi-Tenancy, Biztonság, Validáció & 3 Alapnyelv (HU, SK, EN)
+**Státusz:** Kész, Stabilizálva, `develop` ágra beolvasztva
+* **3 Gyári Alapnyelv (HU, SK, EN):**
+  * A rendszerből a beégetett szövegek kivezetésre kerültek. Elkészült a 3 teljes, hivatalos nyelvi csomag a `soluvion-web/src/locales/{hu, sk, en}/` könyvtárakban (`base.json`, `adminSettings.json`, `inventory.json`, `customers.json`, `orders.json`, `dashboard.json`, `servicesGallery.json`).
+  * A felület induláskor és nyelvváltáskor azonnal, AI késleltetés és token-fogyasztás nélkül natívan betöltődik.
+* **Tenant Nyelvi Szuverenitás:**
+  * A szalonok a Beállításokban szabadon be- és kikapcsolhatják a 3 gyári nyelv publikus megjelenítését (`ToggleSwitch`).
+  * Bármelyik aktív nyelv kijelölhető a szalon alapértelmezett nyelvének (`setDefaultLanguage`). Az éppen alapértelmezett nyelv nem kapcsolható ki.
+  * Ha a szalonnak csak 1 aktív nyelve van, a publikus fejlécben a nyelvválasztó gombcsoport automatikusan elrejtőzik.
+  * Egyedi (4.+) nyelvek (pl. DE, RO) továbbra is hozzáadhatók AI fordítással, és külön törölhetők.
+* **Arculatvédelem (Brand Content Protection):**
+  * Szigorú elválasztás a rendszerszintű UI feliratok és a szalon saját bemutatkozó/arculati szövegei (`home.*`) között.
+  * A `UiTranslationOverrides` tábla tisztítása és a háttérfolyamatok felülírás-védelme: a szalon egyedi bemutatkozása (`home.introTitle`, `home.introText`, `home.subtitle`) védve van az automatikus AI felülírástól és a gyári visszaállítástól.
+* **Backend Biztonság & Validáció (.NET 10):**
+  * **`IUserContext`:** Új, injektálható szerviz az aktuális felhasználó (`UserId`, `CompanyId`, `Role`) elérésére ClaimsPrincipal alapon.
+  * **`GlobalExceptionHandler`:** .NET 10 natív `IExceptionHandler` implementáció egységes ProblemDetails és gépileg értelmezhető hibakód (`errorCode`) kimenettel.
+  * **DTO Validáció:** `System.ComponentModel.DataAnnotations` attribútumok (`[Required]`, `[Range]`, `[MaxLength]`, `[MinLength]`) bevezetése a modellekben (`LoginDto`, `ProductDtos`, `AppointmentDtos`, `LanguageActionDtos`).
+  * **Zero Hardcoded Hungarian in API:** A `TranslationController` és a hitelesítési vezérlők kizárólag szabványos gépi hibakódokat adnak vissza (`COMPANY_NOT_FOUND`, `CANNOT_DELETE_DEFAULT_LANGUAGE`, stb.), amiket a kliens Vue-i18n-nel fordít.
+* **UI/UX Polírozás:**
+  * **Naptár „MA” gomb:** Reagál az aktuális dátumra: ha a mai napon/héten/hónapon állunk, a gomb halványított és inaktív, ellapozáskor azonnal kiemelést kap, rákattintva visszaugrik a mai napra.
+  * **Fordításkereső:** Valós idejű többdimenziós keresősáv az admin fordításkezelőben (kulcsra, magyar forrásra, fordításra), automatikus harmonika-kinyitással, találatszámlálóval és „Egyedi felülírás” jelvénnyel.
+  * **Táblázat Scrollbar Fix:** Megszűnt a PrimeVue DataTable 1px-es görgetősáv anomáliája a nyelvek listájánál.
+
+## [2026-10-12] Fázis 1: Quick Wins & Rendszerstabilitás
+**Státusz:** Kész, Stabilizálva
+* **HomeView Téma Kontraszt:** PrimeVue v4 `.dark` szelektora javítva a `main.js`-ben és a Tailwind konfigban; a kártyák és feliratok világos és sötét módban is olvashatók.
+* **Autentikáció & authStore:** Kivezetésre került a `window.location.reload()` trükk. A Pinia `authStore` reaktívan vezérli a be- és kijelentkezést. A JWT lejárati idő konfigurálhatóvá vált (`AppSettings:TokenExpirationDays`).
+* **useAutoSaveQueue:** A `ServicesView` mentési logikája átállt a megbízható `useAutoSaveQueue` composable-re (egységesítve a Galériával).
+* **GEMINI.md & Szabálykönyvek:** Létrejött a projekt gyökerében a központi rendszerszabályzat és a `DevDoc/` dokumentáció frissítése.
+
+---
+
 ## [2026-04-10] Feature 19: SaaS CRM & Smart Profile Modifiers
 **Státusz:** Kész, Stabilizálva
 * **Adatbázis (C#):** Új `CompanyAttribute` entitás a szalon-specifikus adatbekérési szabályok (Kérdések, Opciók) tárolására. `ServiceVariant` entitás bővítése a `ProfileModifiers` JSONB oszloppal.
