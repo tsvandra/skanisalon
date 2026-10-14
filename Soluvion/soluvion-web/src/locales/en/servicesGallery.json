@@ -10,6 +10,13 @@
     "recipeConfigured": "Recipe configured",
     "recipeSetDefault": "Set default materials",
     "productCount": "{count} products",
+    "generateMissingPictograms": "Generate missing pictograms (AI)",
+    "generatingPictograms": "Generating...",
+    "generateCategoryPictogram": "Generate category pictogram (AI)",
+    "generateServicePictogram": "Generate service pictogram (AI)",
+    "onlineBookable": "Bookable online",
+    "notBookableInfoOnly": "Price list only (info)",
+    "toggleServiceBookable": "Toggle online booking availability",
     "modifierModal": {
       "title": "Automatic Profile Update",
       "description": "When a client books this variant, their profile attributes will automatically be updated with the values below.",

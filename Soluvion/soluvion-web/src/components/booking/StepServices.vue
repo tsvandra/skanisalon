@@ -13,9 +13,14 @@
 
         <button @click="toggleCategory(group.id)"
                 class="w-full min-h-[56px] px-4 flex items-center justify-between bg-background hover:bg-surface transition-colors focus:outline-none">
-          <span class="font-bold text-lg text-text">
-            {{ getLocText(group.categoryName) }}
-          </span>
+          <div class="flex items-center gap-3 text-left">
+            <div class="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <ServicePictogram :svg="group.categoryPictogram" sizeClass="w-5 h-5" />
+            </div>
+            <span class="font-bold text-lg text-text">
+              {{ getLocText(group.categoryName) }}
+            </span>
+          </div>
           <div class="flex items-center gap-3">
             <span v-if="getSelectedCount(group) > 0"
                   class="bg-primary text-surface text-xs font-bold px-2 py-1 rounded-full">
@@ -28,7 +33,10 @@
 
         <div v-show="activeCategory === group.id" class="p-4 border-t border-text/5 bg-background/50">
           <div v-for="service in group.items" :key="service.id" class="mb-6 last:mb-0">
-            <div class="font-medium text-text/80 mb-3 ml-1">{{ getLocText(service.name) }}</div>
+            <div class="flex items-center gap-2 font-medium text-text/90 mb-3 ml-1">
+              <ServicePictogram :svg="service.pictogramLink || group.categoryPictogram" sizeClass="w-4 h-4" class="text-primary shrink-0" />
+              <span>{{ getLocText(service.name) }}</span>
+            </div>
 
             <div class="flex flex-col gap-2">
               <label v-for="variant in service.variants" :key="variant.id"
@@ -72,6 +80,7 @@
   import { ref, computed, onMounted } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useLocalizedText } from '@/composables/useLocalizedText';
+  import ServicePictogram from '@/components/common/ServicePictogram.vue';
   import bookingApi from '@/services/bookingApi';
 
   const props = defineProps({
@@ -124,13 +133,22 @@
   const fetchServices = async () => {
     try {
       const response = await bookingApi.getPublicServices();
-      const flatServices = response.data.$values || response.data;
+      const flatServices = (response.data.$values || response.data || []).filter(s => s.isBookable !== false);
       const groups = {};
 
       flatServices.forEach(s => {
         const catDict = s.category || {};
         const catName = getLocText(catDict, 'Egyéb');
-        if (!groups[catName]) groups[catName] = { id: catName, categoryName: catDict, items: [] };
+        if (!groups[catName]) {
+          groups[catName] = {
+            id: catName,
+            categoryName: catDict,
+            categoryPictogram: s.categoryPictogram || null,
+            items: []
+          };
+        } else if (!groups[catName].categoryPictogram && s.categoryPictogram) {
+          groups[catName].categoryPictogram = s.categoryPictogram;
+        }
         groups[catName].items.push(s);
       });
 

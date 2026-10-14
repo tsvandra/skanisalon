@@ -2,6 +2,7 @@
 // @ts-nocheck
   import { ref, inject, watch, computed, nextTick, onMounted } from 'vue';
   import InputNumber from 'primevue/inputnumber';
+  import ToggleSwitch from 'primevue/toggleswitch';
   import apiClient from '@/services/api';
   import draggable from 'vuedraggable';
   import { useI18n } from 'vue-i18n';
@@ -10,6 +11,7 @@
   import { useTranslation } from '@/composables/useTranslation';
   import { useAutoSaveQueue } from '@/composables/useAutoSaveQueue';
   import ServiceRecipeModal from '@/components/admin/ServiceRecipeModal.vue';
+  import ServicePictogram from '@/components/common/ServicePictogram.vue';
   import { pickLocalized } from '@/utils/localizedText';
   import { DEFAULT_LANG } from '@/router/routeSlugs';
 
@@ -129,16 +131,23 @@
         group = {
           id: 'cat-' + catNameStr.replace(/\s+/g, '-').toLowerCase(),
           categoryName: catDict,
+          categoryPictogram: service.categoryPictogram || null,
+          isBookable: service.isBookable !== false,
           headerVariants: [],
           items: []
         };
         groups.push(group);
       }
 
+      if (!group.categoryPictogram && service.categoryPictogram) {
+        group.categoryPictogram = service.categoryPictogram;
+      }
+
       if (group.headerVariants.length === 0 && service.variants && service.variants.length > 0) {
         group.headerVariants = JSON.parse(JSON.stringify(service.variants));
       }
       group.items.push(service);
+      group.isBookable = group.items.some(s => s.isBookable !== false);
     });
     return groups;
   };
@@ -150,12 +159,15 @@
         service.variants.forEach(v => {
           if (v.price === 0) v.price = null;
           v.variantName = ensureDict(v.variantName, "Extra");
-          if (!v.profileModifiers) v.profileModifiers = {}; // ÚJ: Biztosítjuk az objektumot
+          if (!v.profileModifiers) v.profileModifiers = {};
         });
       }
       service.name = ensureDict(service.name, "Névtelen");
       service.category = ensureDict(service.category, "Egyéb");
       service.description = ensureDict(service.description, "");
+      if (service.isBookable === undefined || service.isBookable === null) {
+        service.isBookable = true;
+      }
     });
     categories.value = buildNestedStructure(serviceList);
   };
@@ -234,6 +246,7 @@
         const groupCatName = pickLocalized(group.categoryName, catLang, catLang);
         if (itemCatName !== groupCatName) {
           item.category = JSON.parse(JSON.stringify(group.categoryName));
+          item.categoryPictogram = group.categoryPictogram || null;
           return true;
         }
         return false;
@@ -250,6 +263,85 @@
       return saveService(service, false);
     });
     await Promise.all(promises);
+  };
+
+  const toggleCategoryBookable = async (group) => {
+    const newVal = !!group.isBookable;
+    const promises = group.items.map(service => {
+      service.isBookable = newVal;
+      return saveService(service, false);
+    });
+    await Promise.all(promises);
+  };
+
+  const toggleServiceBookable = async (service, group) => {
+    service.isBookable = !service.isBookable;
+    if (group) {
+      group.isBookable = group.items.some(s => s.isBookable !== false);
+    }
+    await saveService(service, false);
+  };
+
+  const generatingPictogramKey = ref(null);
+  const generatingAllPictograms = ref(false);
+
+  const generateCategoryPictogram = async (group) => {
+    if (!isLoggedIn.value || generatingPictogramKey.value) return;
+    const defaultLang = company.value?.defaultLanguage || DEFAULT_LANG;
+    const catName = pickLocalized(group.categoryName, currentLang.value, defaultLang, 'Szolgáltatás');
+    const key = `cat-${group.id}`;
+    generatingPictogramKey.value = key;
+    try {
+      const res = await apiClient.post('/api/Service/generate-pictogram', {
+        categoryName: catName,
+        isCategoryLevel: true
+      });
+      if (res.data?.svg) {
+        group.categoryPictogram = res.data.svg;
+        group.items.forEach(s => { s.categoryPictogram = res.data.svg; });
+      }
+    } catch (err) {
+      console.error('Hiba a kategória piktogram generálásakor:', err);
+    } finally {
+      generatingPictogramKey.value = null;
+    }
+  };
+
+  const generateServicePictogram = async (service, group) => {
+    if (!isLoggedIn.value || generatingPictogramKey.value) return;
+    const defaultLang = company.value?.defaultLanguage || DEFAULT_LANG;
+    const catName = pickLocalized(group.categoryName, currentLang.value, defaultLang, '');
+    const srvName = pickLocalized(service.name, currentLang.value, defaultLang, '');
+    const key = `srv-${service.id}`;
+    generatingPictogramKey.value = key;
+    try {
+      const res = await apiClient.post('/api/Service/generate-pictogram', {
+        serviceId: service.id,
+        categoryName: catName,
+        serviceName: srvName,
+        isCategoryLevel: false
+      });
+      if (res.data?.svg) {
+        service.pictogramLink = res.data.svg;
+      }
+    } catch (err) {
+      console.error('Hiba a szolgáltatás piktogram generálásakor:', err);
+    } finally {
+      generatingPictogramKey.value = null;
+    }
+  };
+
+  const generateMissingPictograms = async () => {
+    if (!isLoggedIn.value || generatingAllPictograms.value) return;
+    generatingAllPictograms.value = true;
+    try {
+      await apiClient.post('/api/Service/generate-missing-pictograms');
+      await fetchServicesAndAttributes();
+    } catch (err) {
+      console.error('Hiba a hiányzó piktogramok generálásakor:', err);
+    } finally {
+      generatingAllPictograms.value = false;
+    }
   };
 
   const updateGroupVariantName = async (group, variantIndex) => {
@@ -330,6 +422,7 @@
       category: { [currentLang.value]: t('services.newCategoryName') },
       defaultPrice: 0,
       orderIndex: 99999,
+      isBookable: true,
       variants: [{ variantName: { [currentLang.value]: t('services.normal') }, price: 0, duration: 30, profileModifiers: {} }],
       description: { [currentLang.value]: "" }
     };
@@ -349,6 +442,8 @@
     const newService = {
       name: { [currentLang.value]: t('services.newServiceName') },
       category: JSON.parse(JSON.stringify(group.categoryName)),
+      categoryPictogram: group.categoryPictogram || null,
+      isBookable: group.isBookable !== false,
       defaultPrice: 0,
       orderIndex: 99999,
       variants: variants,
@@ -451,9 +546,16 @@
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
       <h2 class="font-light text-text m-0 tracking-wide text-3xl">{{ isLoggedIn ? $t('services.editorTitle') : $t('services.title') }}</h2>
 
-      <button v-if="isLoggedIn" @click="createNewCategory" class="bg-primary text-black border-none px-5 py-2 min-h-[44px] rounded-lg cursor-pointer font-bold flex items-center justify-center gap-2 transition-all hover:brightness-90 shadow-sm w-full sm:w-auto">
-        <i class="pi pi-folder-open"></i> {{ $t('services.newCategory') }}
-      </button>
+      <div v-if="isLoggedIn" class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+        <button @click="generateMissingPictograms" :disabled="generatingAllPictograms" class="bg-surface border border-primary/40 text-primary px-4 py-2 min-h-[44px] rounded-lg cursor-pointer font-semibold flex items-center justify-center gap-2 transition-all hover:bg-primary/10 shadow-sm flex-1 sm:flex-initial disabled:opacity-50">
+          <i :class="generatingAllPictograms ? 'pi pi-spin pi-spinner' : 'pi pi-sparkles'"></i>
+          <span>{{ generatingAllPictograms ? $t('services.generatingPictograms') : $t('services.generateMissingPictograms') }}</span>
+        </button>
+
+        <button @click="createNewCategory" class="bg-primary text-black border-none px-5 py-2 min-h-[44px] rounded-lg cursor-pointer font-bold flex items-center justify-center gap-2 transition-all hover:brightness-90 shadow-sm flex-1 sm:flex-initial">
+          <i class="pi pi-folder-open"></i> {{ $t('services.newCategory') }}
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="text-text-muted flex items-center min-h-[44px]">
@@ -467,9 +569,25 @@
 
           <div class="mb-10 bg-surface border border-text/10 rounded-2xl shadow-md overflow-hidden flex flex-col">
 
-            <div class="bg-text/5 p-3 md:p-4 border-b border-text/10 flex items-center justify-between gap-4">
-              <div class="flex items-center flex-grow">
+            <div class="bg-text/5 p-3 md:p-4 border-b border-text/10 flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center flex-grow min-w-[200px]">
                 <div v-if="isLoggedIn" class="cursor-grab text-2xl text-primary flex items-center justify-center min-w-[40px] min-h-[40px] drag-handle-cat transition-colors hover:text-primary/80" :title="$t('services.moveCategory')">⋮⋮</div>
+
+                <!-- Kategória Piktogram (Adminban kattintásra AI generál, publikusan megjelenít) -->
+                <button v-if="isLoggedIn"
+                        @click="generateCategoryPictogram(group)"
+                        type="button"
+                        class="relative w-10 h-10 rounded-xl border border-primary/30 bg-primary/10 text-primary flex items-center justify-center shrink-0 mr-2 cursor-pointer hover:bg-primary/20 transition-all group/catpic"
+                        :title="$t('services.generateCategoryPictogram')">
+                  <i v-if="generatingPictogramKey === `cat-${group.id}`" class="pi pi-spin pi-spinner text-sm"></i>
+                  <ServicePictogram v-else :svg="group.categoryPictogram" sizeClass="w-5 h-5" />
+                  <span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-surface border border-primary/40 text-primary flex items-center justify-center text-[9px] opacity-80 group-hover/catpic:scale-110 transition-transform">
+                    <i class="pi pi-sparkles"></i>
+                  </span>
+                </button>
+                <div v-else-if="group.categoryPictogram" class="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 mr-2.5">
+                  <ServicePictogram :svg="group.categoryPictogram" sizeClass="w-5 h-5" />
+                </div>
 
                 <div class="relative w-full flex items-center group/tools flex-grow">
                   <input v-if="isLoggedIn"
@@ -486,6 +604,15 @@
                     <i v-else class="pi pi-sparkles"></i>
                   </button>
                 </div>
+              </div>
+
+              <!-- Kategória Online Foglalható kapcsoló (pl. Fontos információk kizárására a foglalóból) -->
+              <div v-if="isLoggedIn" class="flex items-center gap-2 bg-background/70 px-3 py-1.5 rounded-xl border border-text/10 shrink-0">
+                <i class="pi text-xs" :class="group.isBookable ? 'pi-calendar-plus text-primary' : 'pi-info-circle text-text-muted'"></i>
+                <span class="text-xs font-semibold" :class="group.isBookable ? 'text-text' : 'text-text-muted'">
+                  {{ group.isBookable ? $t('services.onlineBookable') : $t('services.notBookableInfoOnly') }}
+                </span>
+                <ToggleSwitch v-model="group.isBookable" @change="toggleCategoryBookable(group)" class="scale-75 origin-right" />
               </div>
             </div>
 
@@ -528,12 +655,25 @@
                 <draggable v-model="group.items" item-key="id" group="services" handle=".drag-handle-item" @change="(e) => onServiceDragChange(e, group)" :disabled="!isLoggedIn" class="flex flex-col">
                   <template #item="{ element: service }">
 
-                    <div class="service-drop-zone flex flex-col border-b border-text/10 last:border-0 hover:bg-text/5 transition-colors relative group/row" @dragover="onNoteDragOver" @dragleave="onNoteDragLeave" @drop="(e) => onNoteDrop(e, service)">
+                    <div class="service-drop-zone flex flex-col border-b border-text/10 last:border-0 hover:bg-text/5 transition-colors relative group/row" :class="{ 'opacity-60': isLoggedIn && service.isBookable === false }" @dragover="onNoteDragOver" @dragleave="onNoteDragLeave" @drop="(e) => onNoteDrop(e, service)">
 
                       <div class="flex items-center px-2 py-2 md:py-3 w-full">
 
-                        <div class="flex-grow flex items-center gap-1 pr-4 min-w-[250px] shrink-0">
-                          <div v-if="isLoggedIn" class="cursor-grab text-text-muted text-lg flex items-center justify-center min-w-[40px] min-h-[44px] hover:text-primary drag-handle-item transition-colors">⋮⋮</div>
+                        <div class="flex-grow flex items-center gap-1.5 pr-4 min-w-[250px] shrink-0">
+                          <div v-if="isLoggedIn" class="cursor-grab text-text-muted text-lg flex items-center justify-center min-w-[36px] min-h-[44px] hover:text-primary drag-handle-item transition-colors">⋮⋮</div>
+
+                          <!-- Szolgáltatás Piktogram (Adminban kattintásra AI generál, publikusan megjelenít) -->
+                          <button v-if="isLoggedIn"
+                                  @click="generateServicePictogram(service, group)"
+                                  type="button"
+                                  class="relative w-8 h-8 rounded-lg border border-text/15 bg-surface text-primary flex items-center justify-center shrink-0 cursor-pointer hover:border-primary hover:bg-primary/10 transition-all"
+                                  :title="$t('services.generateServicePictogram')">
+                            <i v-if="generatingPictogramKey === `srv-${service.id}`" class="pi pi-spin pi-spinner text-xs"></i>
+                            <ServicePictogram v-else :svg="service.pictogramLink || group.categoryPictogram" sizeClass="w-4 h-4" />
+                          </button>
+                          <div v-else-if="service.pictogramLink || group.categoryPictogram" class="w-7 h-7 rounded-lg bg-primary/10 text-primary/90 flex items-center justify-center shrink-0 mr-1">
+                            <ServicePictogram :svg="service.pictogramLink || group.categoryPictogram" sizeClass="w-4 h-4" />
+                          </div>
 
                           <div class="relative w-full flex items-center group/tools flex-grow">
                             <textarea v-if="isLoggedIn"
@@ -553,6 +693,13 @@
                           </div>
 
                           <div v-if="isLoggedIn" class="flex items-center gap-1 opacity-100 md:opacity-0 transition-opacity duration-200 md:group-hover/row:opacity-100 shrink-0">
+                            <button @click="toggleServiceBookable(service, group)"
+                                    type="button"
+                                    class="border-none bg-transparent cursor-pointer flex items-center justify-center w-[34px] h-[44px] text-base transition-colors"
+                                    :class="service.isBookable !== false ? 'text-primary hover:text-primary/80' : 'text-text-muted/50 hover:text-text'"
+                                    :title="$t('services.toggleServiceBookable')">
+                              <i class="pi" :class="service.isBookable !== false ? 'pi-calendar-plus' : 'pi-calendar-times'"></i>
+                            </button>
                             <button @click="toggleNote(service)" class="border-none bg-transparent cursor-pointer flex items-center justify-center w-[36px] h-[44px] text-text-muted text-base hover:text-primary transition-colors"><i class="pi pi-comment"></i></button>
                             <button @click="addVariantToService(service, group)" class="border-none bg-transparent cursor-pointer flex items-center justify-center w-[36px] h-[44px] text-text-muted text-xl font-bold hover:text-text transition-colors">+</button>
                             <button @click="deleteService(service.id)" class="border-none bg-transparent cursor-pointer flex items-center justify-center w-[36px] h-[44px] text-text-muted text-lg hover:text-red-500 transition-colors">🗑️</button>

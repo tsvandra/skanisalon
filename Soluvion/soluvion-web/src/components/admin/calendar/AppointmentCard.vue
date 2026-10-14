@@ -50,12 +50,17 @@
         <i class="pi pi-comment mr-1 text-primary/70" :class="mode === 'day' ? 'text-[10px]' : 'text-[8px]'"></i> {{ app.notes }}
       </div>
 
-      <div class="flex gap-1 md:gap-1.5" :class="{'flex-wrap': mode === 'day'}">
+      <div class="flex gap-1.5 md:gap-2 flex-wrap">
         <div v-for="item in app.items" :key="item.id"
-             class="rounded-full bg-primary/10 text-primary flex items-center justify-center font-black border border-primary/20 cursor-help transition-colors"
-             :class="[mode === 'day' ? 'w-8 h-8 md:w-12 md:h-12 text-xs md:text-base hover:bg-primary hover:text-white' : 'w-6 h-6 md:w-8 md:h-8 text-[10px] md:text-xs']"
+             class="rounded-full bg-primary/10 text-primary flex items-center justify-center font-black border border-primary/25 cursor-help transition-all hover:bg-primary hover:text-white hover:scale-110 shadow-xs relative group/badge"
+             :class="[mode === 'day' ? 'w-9 h-9 md:w-11 md:h-11 text-xs md:text-sm' : 'w-7 h-7 md:w-8 md:h-8 text-[10px] md:text-xs']"
              :title="getVariantFullName(item.serviceVariantId)">
-          {{ getInitials(getVariantFullName(item.serviceVariantId)) }}
+          <ServicePictogram :svg="getVariantPictogram(item.serviceVariantId)"
+                            :fallback-text="getInitials(getVariantFullName(item.serviceVariantId))"
+                            :size-class="mode === 'day' ? 'w-5 h-5 md:w-6 md:h-6' : 'w-4 h-4 md:w-4.5 md:h-4.5'" />
+          <span class="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-lg bg-surface text-text border border-primary/30 shadow-lg text-[11px] font-bold whitespace-nowrap opacity-0 group-hover/badge:opacity-100 transition-opacity z-30">
+            {{ getVariantFullName(item.serviceVariantId) }}
+          </span>
         </div>
       </div>
     </div>
@@ -68,6 +73,7 @@ import { useLocalizedRoute } from '@/composables/useLocalizedRoute';
 import { useI18n } from 'vue-i18n';
 import { useLocalizedText } from '@/composables/useLocalizedText';
 import { getCustomerColor, getCustomerColorDarker } from '@/utils/colorUtils';
+import ServicePictogram from '@/components/common/ServicePictogram.vue';
 
 const { go } = useLocalizedRoute();
 const goToCustomer = (id) => {
@@ -120,5 +126,13 @@ const getVariantFullName = (variantId) => {
     if (v) return `${getLocText(s.name)} - ${getLocText(v.variantName)}`;
   }
   return t('calendar.unknown');
+};
+
+const getVariantPictogram = (variantId) => {
+  for (const s of props.availableServices) {
+    const v = s.variants?.find(vx => vx.id === variantId);
+    if (v) return s.pictogramLink || s.categoryPictogram || '';
+  }
+  return '';
 };
 </script>
