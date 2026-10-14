@@ -11,7 +11,8 @@
         "appearance": "Vzhľad a farby",
         "translations": "Jazyky a preklady",
         "customers": "Vlastnosti zákazníkov",
-        "inventory": "Správa skladu"
+        "inventory": "Správa skladu",
+        "booking": "Online rezervácia"
       },
       "saving": "Ukladá sa...",
       "saveButton": "Uložiť základné nastavenia",
@@ -19,6 +20,15 @@
       "loadFailed": "Nepodarilo sa načítať údaje salónu.",
       "saveSuccess": "Zmeny boli úspešne uložené!",
       "saveFailed": "Pri ukladaní nastala chyba."
+    },
+    "booking": {
+      "title": "Online rezervácia termínov",
+      "intro": "Tu môžete zapnúť alebo pozastaviť verejnú online rezerváciu termínov pre vašich zákazníkov.",
+      "enabled": "Aktívne — zákazníci si môžu rezervovať termín online",
+      "disabled": "Vypnuté — online rezervácia je pre návštevníkov skrytá",
+      "toggleLabel": "Povoliť online rezerváciu",
+      "toggleDescription": "Ak je vypnutá, na verejnej úvodnej stránke a v navigácii sa nezobrazí tlačidlo rezervácie a verejný rezervačný koncový bod zostane uzamknutý.",
+      "hint": "Tip: Pri prepnutí prepínača sa nastavenie okamžite uloží."
     },
     "contact": {
       "companyName": "Názov salónu (zobrazovaný na webe)",

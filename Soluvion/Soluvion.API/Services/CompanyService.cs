@@ -19,15 +19,22 @@ namespace Soluvion.API.Services
         }
 
         // --- SaaS FEATURE MATRIX ---
-        // Itt dol el, melyik csomag mit tud!
-        private List<string> GetEnabledFeatures(SubscriptionPlan plan)
+        // Itt dõl el, melyik csomag mit tud!
+        private List<string> GetEnabledFeatures(SubscriptionPlan plan, bool isOnlineBookingEnabled = false)
         {
-            return plan switch
+            var features = plan switch
             {
                 SubscriptionPlan.Pro => new List<string> { "OnlineBooking", "AdvancedCalendar", "SmsReminders", "Analytics" },
                 SubscriptionPlan.Basic => new List<string> { "BasicCalendar" },
                 _ => new List<string>() // Free
             };
+
+            if (isOnlineBookingEnabled && !features.Contains("OnlineBooking"))
+            {
+                features.Add("OnlineBooking");
+            }
+
+            return features;
         }
 
         public Task<CompanyPublicProfileDto?> GetPublicConfigAsync()
@@ -35,7 +42,7 @@ namespace Soluvion.API.Services
             var company = _tenantContext.CurrentCompany;
             if (company == null) return Task.FromResult<CompanyPublicProfileDto?>(null);
 
-            var features = GetEnabledFeatures(company.SubscriptionPlan); // <-- Itt határozzuk meg a jogosultságokat
+            var features = GetEnabledFeatures(company.SubscriptionPlan, company.IsOnlineBookingEnabled);
 
             var dto = new CompanyPublicProfileDto
             {
@@ -97,7 +104,7 @@ namespace Soluvion.API.Services
                 Phone = c.Phone,
 
                 // SaaS logika
-                EnabledFeatures = GetEnabledFeatures(c.SubscriptionPlan),
+                EnabledFeatures = GetEnabledFeatures(c.SubscriptionPlan, c.IsOnlineBookingEnabled),
                 IsOnlineBookingEnabled = c.IsOnlineBookingEnabled,
                 StockTrackingStartDate = c.StockTrackingStartDate,
 

@@ -46,6 +46,9 @@
     "TEXT_REQUIRED": "A fordítandó szöveg megadása kötelező.",
     "INVALID_SESSION": "Érvénytelen munkamenet.",
     "TRANSLATION_FAILED": "A fordítás sikertelen.",
+    "ONLINE_BOOKING_DISABLED": "Az online időpontfoglalás jelenleg ki van kapcsolva ebben a szalonban.",
+    "NO_ACTIVE_EMPLOYEE": "Nincs aktív munkatárs a szalonban, akihez foglalni lehetne.",
+    "BOOKING_SLOT_TAKEN": "Sajnos ez az időpont már foglalt. Kérlek, válassz másikat!",
     "tenant_mismatch": "A korábbi munkamenet egy másik szalonhoz tartozott, ezért a rendszer kijelentkeztetett."
   },
   "nav": {

@@ -46,6 +46,9 @@
     "TEXT_REQUIRED": "Text na preklad je povinný.",
     "INVALID_SESSION": "Neplatná relácia.",
     "TRANSLATION_FAILED": "Preklad zlyhal.",
+    "ONLINE_BOOKING_DISABLED": "Online rezervácia termínov je pre tento salón momentálne vypnutá.",
+    "NO_ACTIVE_EMPLOYEE": "V salóne nie je žiadny aktívny pracovník, ku ktorému by bolo možné vytvoriť rezerváciu.",
+    "BOOKING_SLOT_TAKEN": "Tento termín je už žiaľ obsadený. Prosím, vyberte si iný čas!",
     "tenant_mismatch": "Predchádzajúca relácia patrila k inému salónu, preto vás systém odhlásil."
   },
   "nav": {

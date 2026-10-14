@@ -23,7 +23,7 @@ namespace Soluvion.API.Controllers
         public async Task<ActionResult<CompanyPublicProfileDto>> GetPublicConfig()
         {
             var dto = await _companyService.GetPublicConfigAsync();
-            if (dto == null) return NotFound("A kért szalon nem található.");
+            if (dto == null) return NotFound(new { errorCode = "COMPANY_NOT_FOUND" });
             return Ok(dto);
         }
 
@@ -35,7 +35,7 @@ namespace Soluvion.API.Controllers
                 return Forbid();
 
             var dto = await _companyService.GetCompanySettingsAsync(id);
-            if (dto == null) return NotFound();
+            if (dto == null) return NotFound(new { errorCode = "COMPANY_NOT_FOUND" });
 
             return Ok(dto);
         }
@@ -48,7 +48,7 @@ namespace Soluvion.API.Controllers
             if (_userContext.CompanyId.Value != id) return Forbid();
 
             var updatedDto = await _companyService.UpdateCompanyAsync(id, dto);
-            if (updatedDto == null) return NotFound();
+            if (updatedDto == null) return NotFound(new { errorCode = "COMPANY_NOT_FOUND" });
 
             return Ok(updatedDto);
         }
@@ -72,13 +72,13 @@ namespace Soluvion.API.Controllers
 
         private async Task<IActionResult> UploadBrandingImage(IFormFile file, string type)
         {
-            if (file == null || file.Length == 0) return BadRequest("Nincs fájl.");
+            if (file == null || file.Length == 0) return BadRequest(new { errorCode = "BAD_REQUEST" });
 
             if (_userContext.CompanyId == null) return Unauthorized();
             int companyId = _userContext.CompanyId.Value;
 
             var resultUrl = await _companyService.UploadBrandingImageAsync(companyId, file, type);
-            if (resultUrl == null) return BadRequest("Hiba történt a kép feltöltése vagy mentése során.");
+            if (resultUrl == null) return BadRequest(new { errorCode = "SERVER_ERROR" });
 
             return Ok(new { url = resultUrl });
         }

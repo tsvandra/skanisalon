@@ -11,7 +11,8 @@
         "appearance": "Megjelenés",
         "translations": "Fordítások",
         "customers": "Vendég Jellemzők",
-        "inventory": "Raktárkezelés"
+        "inventory": "Raktárkezelés",
+        "booking": "Online Foglalás"
       },
       "saving": "Mentés folyamatban...",
       "saveButton": "Alap Beállítások Mentése",
@@ -19,6 +20,15 @@
       "loadFailed": "Nem sikerült betölteni a cég adatait.",
       "saveSuccess": "A változtatások sikeresen mentve!",
       "saveFailed": "Hiba történt a mentés során."
+    },
+    "booking": {
+      "title": "Online Időpontfoglalás",
+      "intro": "Itt kapcsolhatod be vagy szüneteltetheted a publikus online időpontfoglalást a vendégek számára.",
+      "enabled": "Bekapcsolva — a vendégek foglalhatnak online",
+      "disabled": "Kikapcsolva — az online foglalás rejtve van a vendégek elől",
+      "toggleLabel": "Online foglalás engedélyezése",
+      "toggleDescription": "Ha ki van kapcsolva, a publikus főoldalon és a menüben nem jelenik meg az időpontfoglalás gomb, és a publikus foglalási végpont is lezárva marad.",
+      "hint": "Tipp: A kapcsoló átállításakor a beállítás azonnal mentésre kerül."
     },
     "contact": {
       "companyName": "Cégnév (Weboldalon megjelenő)",

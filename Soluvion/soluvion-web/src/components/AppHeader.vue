@@ -74,8 +74,8 @@
           {{ $t('nav.contact') }}
         </router-link>
 
-        <!-- Foglalás ügyfeleknek (NEM munkásoknak) -->
-        <router-link v-if="!isEmployee" :to="localized('booking')"
+        <!-- Foglalás (csak ha az online foglalás be van kapcsolva) -->
+        <router-link v-if="company?.isOnlineBookingEnabled" :to="localized('booking')"
                      class="bg-primary text-white font-bold py-2 px-4 rounded-lg hover:brightness-90 transition-all min-h-[44px] flex items-center shadow-sm whitespace-nowrap">
           {{ $t('nav.booking') }}
         </router-link>
@@ -114,8 +114,8 @@
     <!-- ================= MOBIL NÉZET ================= -->
     <nav v-show="isMenuOpen" class="lg:hidden absolute top-full left-0 right-0 bg-surface border-b border-primary/20 shadow-xl flex flex-col p-4 gap-2 z-[999]">
 
-      <!-- Ügyfél: Foglalás -->
-      <router-link v-if="!isEmployee" :to="localized('booking')" @click="isMenuOpen = false"
+      <!-- Foglalás (csak ha az online foglalás be van kapcsolva) -->
+      <router-link v-if="company?.isOnlineBookingEnabled" :to="localized('booking')" @click="isMenuOpen = false"
                    class="bg-primary text-white text-center font-bold text-lg p-3 rounded-lg shadow-sm hover:brightness-95 transition-all mb-2 min-h-[48px] flex justify-center items-center">
         {{ $t('nav.booking') }}
       </router-link>

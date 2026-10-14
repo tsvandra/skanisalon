@@ -67,7 +67,7 @@
   import Step from 'primevue/step';
   import StepPanel from 'primevue/steppanel';
 
-  const { t } = useI18n();
+  const { t, te } = useI18n();
   const company = inject('company', ref(null));
   const isLoggedIn = inject('isLoggedIn', ref(false));
 
@@ -81,18 +81,17 @@
 
   // 2. Tartalmazza a cég csomagja az online foglalást?
   const isFeatureAllowed = computed(() => {
-    return company.value?.enabledFeatures?.includes('OnlineBooking') || false;
+    return company.value?.enabledFeatures?.includes('OnlineBooking') || company.value?.isOnlineBookingEnabled || false;
   });
 
   // 3. Bekapcsolta a szalonvezető a beállításokban?
   const isTurnedOnByAdmin = computed(() => {
-    return company.value?.isOnlineBookingEnabled || false;
+    return company.value?.isOnlineBookingEnabled === true;
   });
 
   // Láthatja-e a látogató a foglalási űrlapot?
   const canSeeBookingForm = computed(() => {
-    if (isLoggedIn.value) return true;
-    if (isDevLockActive) return false;
+    if (isDevLockActive && !isLoggedIn.value) return false;
     return isFeatureAllowed.value && isTurnedOnByAdmin.value;
   });
   // ---------------------------------------------
@@ -115,10 +114,13 @@
       await bookingApi.createGuestBooking(payload);
       isSuccess.value = true;
     } catch (error) {
-      if (error.response && error.response.status === 400) {
-        errorMessage.value = error.response.data;
+      const code = error.response?.data?.errorCode;
+      if (code && te('errors.' + code)) {
+        errorMessage.value = t('errors.' + code);
+      } else if (error.response && error.response.status === 400) {
+        errorMessage.value = t('errors.BAD_REQUEST');
       } else if (error.response && error.response.status === 500) {
-        errorMessage.value = `${t('booking.errorServer')}: ${typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data)}`;
+        errorMessage.value = t('errors.SERVER_ERROR');
       } else {
         errorMessage.value = t('booking.errorNetwork');
       }
