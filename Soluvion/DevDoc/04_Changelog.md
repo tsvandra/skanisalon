@@ -8,6 +8,31 @@ Ez a dokumentum kronológiai sorrendben (a legújabbtól visszafelé) rögzíti 
 
 ---
 
+## [2026-10-13] Raktárkezelés & AI Szállítólevél Bővítések (Minor Fixes & Refinements)
+**Státusz:** Kész, Élesítve (`develop` és `main` ágakon)
+* **Többformátumú Szállítólevél (Dodací list) Feldolgozás (`DocumentTextExtractorService`):**
+  * A fotók (JPG, PNG, WebP) mellett a rendszer natívan fogadja és feldolgozza a **PDF** (`UglyToad.PdfPig`), **Excel** (`.xlsx`, `.xls`, `.csv` – `MiniExcel`) és **Word** (`.docx`, `.doc` – `DocumentFormat.OpenXml`) formátumú szállítóleveleket és számlákat.
+* **Több Ároszlop Felismerés & Dinamikus Árválasztó (`DetectedPriceColumns`):**
+  * Ha egy dokumentumon több különböző ároszlop szerepel (pl. listaár, kedvezményes ár, nettó/bruttó egységár), az AI mindegyiket kinyeri, automatikusan kiválasztja a legvalószínűbb kedvezményes nettó beszerzési árat, a felhasználó pedig egy felső legördülő menüvel egyetlen kattintással válthat az ároszlopok között.
+* **Kiszerelés vs. Darabszám Szétválasztás & Kétirányú Árkalkuláció:**
+  * A félrevezető összmennyiségek (pl. „140 ml” = `1 × 140 ml` vagy `2 × 70 ml`) kezelésére tételsoronként külön szerkeszthető a **Darabszám (`db`)**, a **Kiszerelés (`ml`/`g`)** és a **Mértékegység**.
+  * Tételsoronként külön jelenik meg és oda-vissza szerkeszthető az **Egységár (`€/db`)** és az **Összesen ár (`€`)**.
+* **Szerkeszthető Színkód / Árnyalat (`Shade`) & Intelligens Kódleválasztás:**
+  * Megerősített AI prompt szabályok a hajszínkódok (pl. `2.N`, `5.0`, `7/1`) terméknévről való pontos leválasztására.
+  * A színkód badge közvetlenül szerkeszthető vagy utólag hozzáadható (`+ Kód`), és ha a terméknév elején maradt a kód, egy gombnyomással (`✂️`) átemelhető.
+* **Egyértelmű Státusz Ikonok:**
+  * Az „Új termék” (`✨`) és a „Javasolt párosítás” (`🔗` / `pi-link`) vizuálisan elkülönült a gyors ellenőrzéshez.
+* **Munkamenet Raktármozgás Kiemelő (`InventoryView` & `sessionStorage`):**
+  * A munkamenet során módosított termékek automatikusan a lista elejére kerülnek az **„✓ Áttekintve, kész”** gomb megnyomásáig (vagy a böngészőfül bezárásáig):
+    * **Készletnövekedés (Bevételezés / Új termék nyitókészlettel):** Lila kiemelés (`✨ Friss bevét`, pl. `15 (+5) db`).
+    * **Készletcsökkenés (Levétel / Leltárhiány / Selejt):** Sárgásbarna kiemelés (`📉 Friss levétel`, pl. `8 (-2) db`).
+  * **Nyitókészlet-alapú (`originalStock`) nettó számítás:** Egy adott terméken belül a rendszer a munkamenet eleji nyitókészlethez viszonyítja a változást (pl. $10 \rightarrow -6 \rightarrow +2 = 6\text{ db}$ esetén `6 (-4) db` sárgásbarna marad; ha pedig visszaáll az eredeti `10 db`-ra, a kiemelés automatikusan eltűnik).
+* **Sebesség- és Tranzakció-optimalizálás:**
+  * Az `InventoryService.CreateDocumentAsync` csoportos (batch) lekérdezéssel és memóriabeli DTO-mapeléssel azonnal ment, negatív készlet elleni védelemmel (`Math.Max(0, ...)`).
+  * A dialógusok (`QuickStockDialog`, `StockAdjustmentDialog`) megvárják a tranzakció lefutását, a lista pedig oldalfrissítés nélkül (0 ms alatt) frissül.
+
+---
+
 ## [2026-10-13] Fázis 2: Multi-Tenancy, Biztonság, Validáció & 3 Alapnyelv (HU, SK, EN)
 **Státusz:** Kész, Stabilizálva, `develop` ágra beolvasztva
 * **3 Gyári Alapnyelv (HU, SK, EN):**

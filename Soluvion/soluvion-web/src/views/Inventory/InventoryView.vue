@@ -24,7 +24,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 sm:grid-cols-4 md:flex items-center gap-2 w-full md:w-auto">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:flex items-center gap-2 w-full md:w-auto">
           <button 
             @click="openAiScanner" 
             class="h-[44px] px-2.5 sm:px-3.5 bg-primary/15 text-primary border border-primary/30 font-bold text-xs sm:text-sm rounded-xl shadow-2xs hover:bg-primary hover:text-white active:scale-95 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
@@ -44,6 +44,15 @@
           </button>
 
           <button 
+            @click="openDocumentsList" 
+            class="h-[44px] px-2.5 sm:px-3.5 bg-surface text-text border border-text/20 font-bold text-xs sm:text-sm rounded-xl shadow-sm hover:border-primary hover:text-primary active:scale-95 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
+            :title="$t('inventory.view.documentsTitle')"
+          >
+            <i class="pi pi-folder-open text-xs sm:text-sm"></i>
+            <span class="truncate">{{ $t('inventory.view.documentsBtn') }}</span>
+          </button>
+
+          <button 
             @click="openStockDialog" 
             class="h-[44px] px-2.5 sm:px-3.5 bg-surface text-text border border-text/20 font-bold text-xs sm:text-sm rounded-xl shadow-sm hover:border-primary hover:text-primary active:scale-95 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
           >
@@ -53,7 +62,7 @@
           
           <button 
             @click="openProductDialog" 
-            class="h-[44px] px-2.5 sm:px-4 bg-primary text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
+            class="col-span-2 sm:col-span-1 h-[44px] px-2.5 sm:px-4 bg-primary text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
           >
             <i class="pi pi-plus text-xs sm:text-sm"></i>
             <span class="truncate">{{ $t('inventory.view.newProduct') }}</span>
@@ -314,8 +323,17 @@
             </div>
           </div>
 
-          <!-- Jobb oldal: Érintésbarát Készlet szám (színkódolt: lila / sárgásbarna / zöld / sárga / piros) -->
-          <div class="flex items-center shrink-0">
+          <!-- Jobb oldal: Előzmények (História) gomb + Érintésbarát Készlet szám -->
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              @click.stop="openProductHistory(product)"
+              class="w-10 h-10 rounded-xl bg-background border border-text/15 text-text-muted hover:text-primary hover:border-primary/40 active:scale-95 transition-all flex items-center justify-center shadow-2xs"
+              :title="$t('inventory.view.historyTitle')"
+            >
+              <i class="pi pi-history text-sm"></i>
+            </button>
+
             <button 
               @click.stop="openQuickStock(product)"
               class="h-10 px-3 rounded-xl border transition-all flex items-center gap-1.5 active:scale-95 shadow-2xs"
@@ -468,13 +486,23 @@
 
           <Column :header="$t('inventory.view.columns.actions')" headerClass="text-right" bodyClass="text-right">
             <template #body="slotProps">
-              <button 
-                @click="editProduct(slotProps.data)"
-                class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white transition-colors inline-flex items-center justify-center"
-                :title="$t('inventory.view.editProductTitle')"
-              >
-                <i class="pi pi-pencil text-xs"></i>
-              </button>
+              <div class="inline-flex items-center justify-end gap-1.5">
+                <button 
+                  @click="openProductHistory(slotProps.data)"
+                  class="h-8 px-2.5 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors inline-flex items-center justify-center gap-1.5 text-xs font-bold"
+                  :title="$t('inventory.view.historyTitle')"
+                >
+                  <i class="pi pi-history text-xs"></i>
+                  <span class="hidden xl:inline">{{ $t('inventory.view.historyBtn') }}</span>
+                </button>
+                <button 
+                  @click="editProduct(slotProps.data)"
+                  class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white transition-colors inline-flex items-center justify-center"
+                  :title="$t('inventory.view.editProductTitle')"
+                >
+                  <i class="pi pi-pencil text-xs"></i>
+                </button>
+              </div>
             </template>
           </Column>
         </DataTable>
@@ -504,6 +532,24 @@
         v-model:visible="deliveryScannerVisible"
         :products="products"
         @saved="onDeliveryNoteSaved"
+      />
+      <ProductHistoryModal
+        ref="productHistoryModalRef"
+        v-model:visible="productHistoryVisible"
+        :product="selectedProductForHistory"
+        @open-document="onOpenDocumentFromHistory"
+      />
+      <InventoryDocumentModal
+        v-model:visible="documentModalVisible"
+        :documentId="selectedDocumentId"
+        :highlightProductId="highlightProductIdInDoc"
+        @note-updated="onDocumentNoteUpdated"
+        @open-product-history="openProductHistoryFromDoc"
+      />
+      <InventoryDocumentsListModal
+        ref="documentsListModalRef"
+        v-model:visible="documentsListVisible"
+        @open-document="onOpenDocumentFromHistory"
       />
 
       <!-- Nagyított termékkép megtekintése (Lightbox) -->
@@ -551,6 +597,9 @@ import StockAdjustmentDialog from './components/StockAdjustmentDialog.vue';
 import QuickStockDialog from './components/QuickStockDialog.vue';
 import AiProductScannerModal from './components/AiProductScannerModal.vue';
 import DeliveryNoteScannerModal from './components/DeliveryNoteScannerModal.vue';
+import ProductHistoryModal from './components/ProductHistoryModal.vue';
+import InventoryDocumentModal from './components/InventoryDocumentModal.vue';
+import InventoryDocumentsListModal from './components/InventoryDocumentsListModal.vue';
 import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 
@@ -570,6 +619,17 @@ const aiScannerVisible = ref(false);
 const deliveryScannerVisible = ref(false);
 const imagePreviewVisible = ref(false);
 const previewProduct = ref(null);
+
+const productHistoryVisible = ref(false);
+const selectedProductForHistory = ref(null);
+const productHistoryModalRef = ref(null);
+
+const documentModalVisible = ref(false);
+const selectedDocumentId = ref(null);
+const highlightProductIdInDoc = ref(null);
+
+const documentsListVisible = ref(false);
+const documentsListModalRef = ref(null);
 
 const selectedProduct = ref(null);
 const selectedProductForStock = ref(null);
@@ -932,6 +992,37 @@ const openStockDialog = () => {
 const openQuickStock = (product) => {
   selectedProductForStock.value = { ...product };
   quickStockVisible.value = true;
+};
+
+const openProductHistory = (product) => {
+  selectedProductForHistory.value = { ...product };
+  productHistoryVisible.value = true;
+};
+
+const openProductHistoryFromDoc = (productSummary) => {
+  const fullProd = products.value.find(p => String(p.id) === String(productSummary.id));
+  selectedProductForHistory.value = fullProd ? { ...fullProd } : { ...productSummary };
+  documentModalVisible.value = false;
+  productHistoryVisible.value = true;
+};
+
+const openDocumentsList = () => {
+  documentsListVisible.value = true;
+};
+
+const onOpenDocumentFromHistory = ({ documentId, highlightProductId }) => {
+  selectedDocumentId.value = documentId;
+  highlightProductIdInDoc.value = highlightProductId || null;
+  documentModalVisible.value = true;
+};
+
+const onDocumentNoteUpdated = () => {
+  if (productHistoryVisible.value && productHistoryModalRef.value?.refresh) {
+    productHistoryModalRef.value.refresh();
+  }
+  if (documentsListVisible.value && documentsListModalRef.value?.refresh) {
+    documentsListModalRef.value.refresh();
+  }
 };
 
 onMounted(() => {

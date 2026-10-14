@@ -7,6 +7,15 @@ export default {
     getDocument(id) {
         return api.get(`/api/inventory/${id}`);
     },
+    getProductHistory(productId) {
+        return api.get(`/api/inventory/product/${productId}/history`);
+    },
+    updateDocumentNote(documentId, note) {
+        return api.patch(`/api/inventory/${documentId}/note`, { note });
+    },
+    updateItemNote(itemId, note) {
+        return api.patch(`/api/inventory/items/${itemId}/note`, { note });
+    },
     createDocument(data) {
         return api.post('/api/inventory', data);
     },

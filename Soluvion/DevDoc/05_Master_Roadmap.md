@@ -145,3 +145,10 @@ sequenceDiagram
   1. *Pragmatikus egyszerűség (No-op):* Amennyiben a tapasztalat azt mutatja, hogy egy adott szalon belső működése mindig homogén nyelvű, felesleges adminisztrációs terhet róna a szalonvezetőre az attribútumok több nyelven történő kötelező megadása.
   2. *JSONB lokalizáció és AI fordítás:* Szükség esetén a szolgáltatásokhoz hasonlóan az attribútumok és opciók struktúrája is átalakítható többnyelvű JSONB mezővé (`{ "hu": "Hajhossz", "sk": "Dĺžka vlasov", "en": "Hair length" }`), amelyet mentéskor az OpenAI modul automatikusan lefordít a szalon egyéb aktív nyelveire.
 
+### 3.2. Raktári Mozgástörténet (Inventory History) és Indoklásos Munkamenet-lezárás
+* **Koncepció:** A raktárban egy munkameneten belül végzett készletmódosítások (lila `+` bevételezések és sárgásbarna `-` levételek) már most nyitókészlet-alapú (`originalStock`) nettó változásként gyűlnek a lista elején.
+* **Következő lépcső (Backlog):**
+  - **Mozgástörténet (History napló):** Felület, ahol visszakereshető az összes korábbi raktármozgás (dátum, felhasználó, indoklás/megjegyzés, érintett termékek, nyitó $\rightarrow$ záró készlet és változás).
+  - **Indoklásos munkamenet-megerősítés:** Az *„✓ Áttekintve, kész”* lezárásakor (vagy dedikált lezáró ablakban) a felhasználó megadhat egy összefoglaló indoklást / címkét az adott munkamenet mozgásaihoz (pl. *„Leltár”*, *„Részleges leltár”*, *„Szállítólevél 512/2026”*, *„Megjött a MonPlatin 2026.10.02”*, *„Exspirált selejtezés”*).
+  - **Üzleti szabály:** Különböző termékeken egy munkameneten belül egyszerre szerepelhet `+` és `-` mozgás (pl. leltározáskor), azonban egy adott terméken belül a rendszer mindig a munkamenet eleji nyitókészlethez (`originalStock`) viszonyított egyetlen nettó változást rögzíti.
+

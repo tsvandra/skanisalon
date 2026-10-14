@@ -65,8 +65,12 @@ A nemzetközi SaaS működéshez a rendszer fejlett, több rétegű fordítási 
 * **Contact:** Címek, kattintható telefonszám, e-mail, interaktív nyitvatartási idősávok és kapcsolatfelvételi űrlap.
 
 ### 4.2. Intelligens Raktárkezelés és AI Képfelismerés (Inventory)
-* **Raktárkészlet:** Termékek, árnyalatok/színkódok (`Shade`), EAN vonalkódok, beszerzési és eladási árak, valamint mértékegységek (`ml`, `g`, `db`) kezelése.
-* **Szállítólevél (Dodací list) AI beolvasás:** Mobilfotókból a Google Gemini / OpenAI Vision automatikusan felismeri a fejlécadatokat (szállító, sorszám, dátum) és a tételsorokat, majd fuzzy algoritmussal intelligensen párosítja a meglévő raktártermékekkel, egykattintásos bevételezést biztosítva.
+* **Raktárkészlet és Munkamenet-kiemelés:**
+  - Termékek, árnyalatok/színkódok (`Shade`), EAN vonalkódok, beszerzési és eladási árak, valamint mértékegységek (`ml`, `g`, `db`) kezelése.
+  - **Munkamenet Raktármozgás Kiemelő (`sessionStorage`):** A munkamenet során módosított termékek automatikusan a lista legelejére kerülnek az **„✓ Áttekintve, kész”** gomb megnyomásáig: a készletnövekedés **lila** (`✨ Friss bevét`, `(+X)`), a készletcsökkenés **sárgásbarna** (`📉 Friss levétel`, `(-X)`) jelölést kap, a munkamenet eleji nyitókészlethez (`originalStock`) viszonyított nettó számítással.
+* **Többformátumú Szállítólevél (Dodací list) AI Feldolgozás:**
+  - Mobilfotók (JPG, PNG, WebP) mellett natívan feldolgozza a **PDF**, **Excel** (`.xlsx`, `.xls`, `.csv`) és **Word** (`.docx`, `.doc`) dokumentumokat is.
+  - Automatikusan kinyeri a fejlécadatokat, felismeri a dokumentumon szereplő több ároszlopot (legördülő menüvel választható oszloppal), szétválasztja a darabszámot (`db`) és a kiszerelést (`ml`/`g`), oda-vissza számolja az egységárat és az összárat, valamint szerkeszthetővé teszi a színkódokat (`Shade`).
 * **Fényképes Termékfelismerő AI:** Flakonról vagy dobozról készült fotók alapján felismeri a márkát, terméknevet, árnyalatot, kiszerelést és vonalkódot, valamint automatikusan feltölti a termékképet a Cloudinary-be.
 * **Anyagfelhasználás követés:** A szolgáltatás receptek alapján a naptári időpontok lezárásakor a rendszer automatikusan levonja a felhasznált anyagmennyiséget a raktárból.
 

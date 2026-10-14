@@ -1,7 +1,7 @@
 # 01. Architektúra és DevOps (Architecture & DevOps)
 
-**Dátum:** 2026.10.12.  
-**Projekt:** Soluvion (átnevezés alatt: BeeMagic Salon)  
+**Dátum:** 2026.10.13.  
+**Projekt:** Soluvion (átnevezés alatt: BeeMagic)  
 **Státusz:** MVP Stabilizálva, Staging infrastruktúra kiépítve, AI modulok és kliensoldali optimalizáció integrálva.
 
 Ez a dokumentum a rendszer technikai alapjait, a felhős infrastruktúrát, a telepítési folyamatokat (CI/CD) és a biztonsági protokollokat írja le.
@@ -20,7 +20,8 @@ A rendszer egy modern, szétválasztott architektúrára (Backend API + SPA Fron
     * `Npgsql.EntityFrameworkCore.PostgreSQL`: Adatbázis meghajtó.
     * `BCrypt.Net-Next`: Kriptográfiai jelszókezelés.
     * `CloudinaryDotNet`: Felhő alapú képtároláshoz és manipulációhoz.
-    * Hivatalos `OpenAI` .NET kliens és `Google Gemini` REST integráció a dinamikus lokalizációhoz, termékfelismeréshez és szállítólevél (Dodací list) OCR beolvasáshoz.
+    * `UglyToad.PdfPig`, `MiniExcel`, `DocumentFormat.OpenXml`: Natív dokumentum-szövegkinyerés PDF, Excel (`.xlsx`, `.xls`, `.csv`) és Word (`.docx`, `.doc`) szállítólevelekből.
+    * Hivatalos `OpenAI` .NET kliens és `Google Gemini` REST integráció a dinamikus lokalizációhoz, termékfelismeréshez és szállítólevél (Dodací list) OCR/szöveges beolvasáshoz.
 
 ### 1.2. Frontend Ecosystem
 * **Keretrendszer:** Vue 3 (Composition API, `<script setup>` szintaxis).

@@ -11,11 +11,13 @@ namespace Soluvion.API.Services
     {
         private readonly AppDbContext _context;
         private readonly ITenantContext _tenantContext;
+        private readonly IUserContext _userContext;
 
-        public ProductService(AppDbContext context, ITenantContext tenantContext)
+        public ProductService(AppDbContext context, ITenantContext tenantContext, IUserContext userContext)
         {
             _context = context;
             _tenantContext = tenantContext;
+            _userContext = userContext;
         }
 
         private int GetCurrentCompanyId() => _tenantContext.CurrentCompany?.Id ?? 0;
@@ -74,13 +76,17 @@ namespace Soluvion.API.Services
                     Type = InventoryDocumentType.Receipt,
                     CreatedAt = DateTime.UtcNow,
                     Note = "Kezdőkészlet rögzítése",
+                    CreatedByUserId = _userContext.UserId,
+                    CreatedByName = _userContext.Username,
                     Items = new List<InventoryDocumentItem>
                     {
                         new InventoryDocumentItem
                         {
                             ProductId = product.Id,
                             Quantity = dto.InitialStock,
-                            CostPrice = dto.CostPrice
+                            CostPrice = dto.CostPrice,
+                            StockBefore = 0,
+                            StockAfter = dto.InitialStock
                         }
                     }
                 };

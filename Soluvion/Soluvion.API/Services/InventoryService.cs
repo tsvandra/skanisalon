@@ -11,20 +11,40 @@ namespace Soluvion.API.Services
     {
         private readonly AppDbContext _context;
         private readonly ITenantContext _tenantContext;
+        private readonly IUserContext _userContext;
 
-        public InventoryService(AppDbContext context, ITenantContext tenantContext)
+        public InventoryService(AppDbContext context, ITenantContext tenantContext, IUserContext userContext)
         {
             _context = context;
             _tenantContext = tenantContext;
+            _userContext = userContext;
         }
 
         private int GetCurrentCompanyId() => _tenantContext.CurrentCompany?.Id ?? 0;
 
+        private static string? ExtractCustomerName(CompanyCustomer? c)
+        {
+            if (c?.Attributes == null) return null;
+            if (c.Attributes.TryGetValue("FullName", out var fn) && !string.IsNullOrWhiteSpace(fn)) return fn;
+            if (c.Attributes.TryGetValue("Name", out var n) && !string.IsNullOrWhiteSpace(n)) return n;
+            if (c.Attributes.TryGetValue("Phone", out var ph) && !string.IsNullOrWhiteSpace(ph)) return ph;
+            if (c.Attributes.TryGetValue("Email", out var em) && !string.IsNullOrWhiteSpace(em)) return em;
+            return null;
+        }
+
         public async Task<IEnumerable<InventoryDocumentDto>> GetDocumentsAsync()
         {
             var docs = await _context.InventoryDocuments
-                .AsNoTracking()
+                .AsNoTrackingWithIdentityResolution()
+                .Include(d => d.Items)
+                    .ThenInclude(i => i.Product)
+                .Include(d => d.Appointment)
+                    .ThenInclude(a => a!.Customer)
+                .Include(d => d.Appointment)
+                    .ThenInclude(a => a!.Employee)
+                        .ThenInclude(e => e!.User)
                 .OrderByDescending(d => d.CreatedAt)
+                .ThenByDescending(d => d.Id)
                 .ToListAsync();
 
             return docs.Select(d => new InventoryDocumentDto
@@ -34,17 +54,46 @@ namespace Soluvion.API.Services
                 CreatedAt = d.CreatedAt,
                 Note = d.Note,
                 AppointmentId = d.AppointmentId,
+                CustomerName = ExtractCustomerName(d.Appointment?.Customer),
+                AppointmentDate = d.Appointment?.StartDateTime,
+                CreatedByUserId = d.CreatedByUserId,
+                CreatedByName = !string.IsNullOrWhiteSpace(d.CreatedByName)
+                    ? d.CreatedByName
+                    : d.Appointment?.Employee?.User?.Username,
                 IsReversed = d.IsReversed,
-                ReversalOfDocumentId = d.ReversalOfDocumentId
+                ReversalOfDocumentId = d.ReversalOfDocumentId,
+                ItemsCount = d.Items.Count,
+                TotalValue = d.Items.Sum(i => i.Quantity * i.CostPrice),
+                Items = d.Items.Select(i => new InventoryDocumentItemDto
+                {
+                    Id = i.Id,
+                    ProductId = i.ProductId,
+                    ProductName = i.Product?.Name ?? "Ismeretlen termék",
+                    ProductShade = i.Product?.Shade,
+                    ProductEan = i.Product?.EAN,
+                    ProductImageUrl = i.Product?.ImageUrl,
+                    ProductUnit = i.Product?.Unit ?? UnitOfMeasure.Piece,
+                    ProductPackageSize = i.Product?.PackageSize ?? 1,
+                    Quantity = i.Quantity,
+                    CostPrice = i.CostPrice,
+                    ItemNote = i.ItemNote,
+                    StockBefore = i.StockBefore,
+                    StockAfter = i.StockAfter
+                }).ToList()
             });
         }
 
         public async Task<InventoryDocumentDto?> GetDocumentByIdAsync(int id)
         {
             var doc = await _context.InventoryDocuments
-                .AsNoTracking()
+                .AsNoTrackingWithIdentityResolution()
                 .Include(d => d.Items)
                     .ThenInclude(i => i.Product)
+                .Include(d => d.Appointment)
+                    .ThenInclude(a => a!.Customer)
+                .Include(d => d.Appointment)
+                    .ThenInclude(a => a!.Employee)
+                        .ThenInclude(e => e!.User)
                 .FirstOrDefaultAsync(d => d.Id == id);
 
             if (doc == null) return null;
@@ -56,22 +105,192 @@ namespace Soluvion.API.Services
                 CreatedAt = doc.CreatedAt,
                 Note = doc.Note,
                 AppointmentId = doc.AppointmentId,
+                CustomerName = ExtractCustomerName(doc.Appointment?.Customer),
+                AppointmentDate = doc.Appointment?.StartDateTime,
+                CreatedByUserId = doc.CreatedByUserId,
+                CreatedByName = !string.IsNullOrWhiteSpace(doc.CreatedByName)
+                    ? doc.CreatedByName
+                    : doc.Appointment?.Employee?.User?.Username,
                 IsReversed = doc.IsReversed,
                 ReversalOfDocumentId = doc.ReversalOfDocumentId,
+                ItemsCount = doc.Items.Count,
+                TotalValue = doc.Items.Sum(i => i.Quantity * i.CostPrice),
                 Items = doc.Items.Select(i => new InventoryDocumentItemDto
                 {
                     Id = i.Id,
                     ProductId = i.ProductId,
                     ProductName = i.Product?.Name ?? "Ismeretlen termék",
+                    ProductShade = i.Product?.Shade,
+                    ProductEan = i.Product?.EAN,
+                    ProductImageUrl = i.Product?.ImageUrl,
+                    ProductUnit = i.Product?.Unit ?? UnitOfMeasure.Piece,
+                    ProductPackageSize = i.Product?.PackageSize ?? 1,
                     Quantity = i.Quantity,
-                    CostPrice = i.CostPrice
+                    CostPrice = i.CostPrice,
+                    ItemNote = i.ItemNote,
+                    StockBefore = i.StockBefore,
+                    StockAfter = i.StockAfter
                 }).ToList()
             };
         }
 
+        public async Task<ProductHistoryResponseDto?> GetProductHistoryAsync(int productId)
+        {
+            var product = await _context.Products
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == productId);
+
+            if (product == null) return null;
+
+            var items = await _context.InventoryDocumentItems
+                .AsNoTrackingWithIdentityResolution()
+                .Include(i => i.InventoryDocument)
+                    .ThenInclude(d => d!.Appointment)
+                        .ThenInclude(a => a!.Customer)
+                .Include(i => i.InventoryDocument)
+                    .ThenInclude(d => d!.Appointment)
+                        .ThenInclude(a => a!.Employee)
+                            .ThenInclude(e => e!.User)
+                .Where(i => i.ProductId == productId && i.InventoryDocument != null)
+                .OrderByDescending(i => i.InventoryDocument!.CreatedAt)
+                .ThenByDescending(i => i.InventoryDocumentId)
+                .ThenByDescending(i => i.Id)
+                .ToListAsync();
+
+            var docIds = items.Select(i => i.InventoryDocumentId).Distinct().ToList();
+            var docItemCounts = docIds.Count > 0
+                ? await _context.InventoryDocumentItems
+                    .AsNoTracking()
+                    .Where(i => docIds.Contains(i.InventoryDocumentId))
+                    .GroupBy(i => i.InventoryDocumentId)
+                    .Select(g => new { DocumentId = g.Key, Count = g.Count() })
+                    .ToDictionaryAsync(x => x.DocumentId, x => x.Count)
+                : new Dictionary<int, int>();
+
+            decimal runningStock = product.CurrentStock;
+            decimal totalReceived = 0;
+            decimal totalIssued = 0;
+            var receiptCostPrices = new List<decimal>();
+
+            var movementDtos = new List<ProductMovementHistoryItemDto>();
+
+            foreach (var item in items)
+            {
+                var doc = item.InventoryDocument!;
+                bool isReceipt = doc.Type == InventoryDocumentType.Receipt;
+
+                if (!doc.IsReversed && !doc.ReversalOfDocumentId.HasValue)
+                {
+                    if (isReceipt)
+                    {
+                        totalReceived += item.Quantity;
+                        if (item.CostPrice > 0)
+                        {
+                            receiptCostPrices.Add(item.CostPrice);
+                        }
+                    }
+                    else
+                    {
+                        totalIssued += item.Quantity;
+                    }
+                }
+                else
+                {
+                    // Ha sztornózott vagy sztornó tétel, a tényleges forgalomban kompenzálják egymást
+                    if (isReceipt) totalReceived += item.Quantity;
+                    else totalIssued += item.Quantity;
+                }
+
+                decimal stockAfter;
+                decimal stockBefore;
+
+                if (item.StockBefore.HasValue && item.StockAfter.HasValue)
+                {
+                    stockBefore = item.StockBefore.Value;
+                    stockAfter = item.StockAfter.Value;
+                    runningStock = stockBefore;
+                }
+                else
+                {
+                    stockAfter = runningStock;
+                    if (isReceipt)
+                    {
+                        stockBefore = Math.Max(0, stockAfter - item.Quantity);
+                    }
+                    else
+                    {
+                        stockBefore = stockAfter + item.Quantity;
+                    }
+                    runningStock = stockBefore;
+                }
+
+                movementDtos.Add(new ProductMovementHistoryItemDto
+                {
+                    ItemId = item.Id,
+                    DocumentId = doc.Id,
+                    Type = doc.Type,
+                    CreatedAt = doc.CreatedAt,
+                    Quantity = item.Quantity,
+                    SignedQuantity = isReceipt ? item.Quantity : -item.Quantity,
+                    StockBefore = stockBefore,
+                    StockAfter = stockAfter,
+                    CostPrice = item.CostPrice,
+                    DocumentNote = doc.Note,
+                    ItemNote = item.ItemNote,
+                    CreatedByName = !string.IsNullOrWhiteSpace(doc.CreatedByName)
+                        ? doc.CreatedByName
+                        : doc.Appointment?.Employee?.User?.Username,
+                    AppointmentId = doc.AppointmentId,
+                    CustomerName = ExtractCustomerName(doc.Appointment?.Customer),
+                    AppointmentDate = doc.Appointment?.StartDateTime,
+                    IsReversed = doc.IsReversed,
+                    ReversalOfDocumentId = doc.ReversalOfDocumentId,
+                    DocumentItemsCount = docItemCounts.TryGetValue(doc.Id, out var cnt) ? cnt : 1
+                });
+            }
+
+            return new ProductHistoryResponseDto
+            {
+                ProductId = product.Id,
+                ProductName = product.Name,
+                Shade = product.Shade,
+                ImageUrl = product.ImageUrl,
+                Unit = product.Unit,
+                PackageSize = product.PackageSize,
+                CurrentStock = product.CurrentStock,
+                CostPrice = product.CostPrice,
+                RetailPrice = product.RetailPrice,
+                TotalReceivedQty = totalReceived,
+                TotalIssuedQty = totalIssued,
+                MovementsCount = movementDtos.Count,
+                LastCostPrice = receiptCostPrices.Count > 0 ? receiptCostPrices[0] : (product.CostPrice > 0 ? product.CostPrice : null),
+                PreviousCostPrice = receiptCostPrices.Count > 1 ? receiptCostPrices[1] : null,
+                Movements = movementDtos
+            };
+        }
+
+        public async Task<bool> UpdateDocumentNoteAsync(int documentId, string? note)
+        {
+            var doc = await _context.InventoryDocuments.FirstOrDefaultAsync(d => d.Id == documentId);
+            if (doc == null) return false;
+
+            doc.Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> UpdateDocumentItemNoteAsync(int itemId, string? itemNote)
+        {
+            var item = await _context.InventoryDocumentItems.FirstOrDefaultAsync(i => i.Id == itemId);
+            if (item == null) return false;
+
+            item.ItemNote = string.IsNullOrWhiteSpace(itemNote) ? null : itemNote.Trim();
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
         public async Task<(bool Success, InventoryDocumentDto? Document, string? Error)> CreateDocumentAsync(CreateInventoryDocumentDto dto)
         {
-            // Tranzakció indítása: ha bármelyik tétel elbukik (pl. nincs ilyen termék), semmi sem mentődik el
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -82,6 +301,8 @@ namespace Soluvion.API.Services
                     CreatedAt = DateTime.UtcNow,
                     Note = dto.Note,
                     AppointmentId = dto.AppointmentId,
+                    CreatedByUserId = _userContext.UserId,
+                    CreatedByName = _userContext.Username,
                     Items = new List<InventoryDocumentItem>()
                 };
 
@@ -110,14 +331,7 @@ namespace Soluvion.API.Services
                     if (!products.TryGetValue(itemDto.ProductId, out var product))
                         return (false, null, $"Termék nem található vagy törölve lett (ID: {itemDto.ProductId}).");
 
-                    var documentItem = new InventoryDocumentItem
-                    {
-                        ProductId = itemDto.ProductId,
-                        Quantity = itemDto.Quantity,
-                        CostPrice = itemDto.CostPrice
-                    };
-
-                    document.Items.Add(documentItem);
+                    decimal stockBefore = product.CurrentStock;
 
                     // --- KÉSZLET FRISSÍTÉSE ---
                     if (dto.Type == InventoryDocumentType.Receipt)
@@ -134,6 +348,20 @@ namespace Soluvion.API.Services
                     {
                         product.CurrentStock = Math.Max(0, product.CurrentStock - itemDto.Quantity);
                     }
+
+                    decimal stockAfter = product.CurrentStock;
+
+                    var documentItem = new InventoryDocumentItem
+                    {
+                        ProductId = itemDto.ProductId,
+                        Quantity = itemDto.Quantity,
+                        CostPrice = itemDto.CostPrice,
+                        ItemNote = string.IsNullOrWhiteSpace(itemDto.ItemNote) ? null : itemDto.ItemNote.Trim(),
+                        StockBefore = stockBefore,
+                        StockAfter = stockAfter
+                    };
+
+                    document.Items.Add(documentItem);
                 }
 
                 _context.InventoryDocuments.Add(document);
@@ -147,15 +375,23 @@ namespace Soluvion.API.Services
                     CreatedAt = document.CreatedAt,
                     Note = document.Note,
                     AppointmentId = document.AppointmentId,
+                    CreatedByUserId = document.CreatedByUserId,
+                    CreatedByName = document.CreatedByName,
                     IsReversed = document.IsReversed,
                     ReversalOfDocumentId = document.ReversalOfDocumentId,
+                    ItemsCount = document.Items.Count,
+                    TotalValue = document.Items.Sum(i => i.Quantity * i.CostPrice),
                     Items = document.Items.Select(i => new InventoryDocumentItemDto
                     {
                         Id = i.Id,
                         ProductId = i.ProductId,
                         ProductName = products.TryGetValue(i.ProductId, out var p) ? p.Name : "Ismeretlen termék",
+                        ProductShade = products.TryGetValue(i.ProductId, out var p2) ? p2.Shade : null,
                         Quantity = i.Quantity,
-                        CostPrice = i.CostPrice
+                        CostPrice = i.CostPrice,
+                        ItemNote = i.ItemNote,
+                        StockBefore = i.StockBefore,
+                        StockAfter = i.StockAfter
                     }).ToList()
                 };
 
@@ -202,24 +438,31 @@ namespace Soluvion.API.Services
                         Note = $"Sztornó: napi zárás visszavonása (Foglalás ID: {appointmentId}, bizonylat #{original.Id})",
                         AppointmentId = appointmentId,
                         ReversalOfDocumentId = original.Id,
+                        CreatedByUserId = _userContext.UserId,
+                        CreatedByName = _userContext.Username,
                         Items = new List<InventoryDocumentItem>()
                     };
 
                     foreach (var item in original.Items)
                     {
-                        reversal.Items.Add(new InventoryDocumentItem
-                        {
-                            ProductId = item.ProductId,
-                            Quantity = item.Quantity,
-                            CostPrice = item.CostPrice
-                        });
-
-                        // Készlet visszaírása (a beszerzési árat nem módosítjuk)
                         var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId);
+                        decimal stockBefore = product?.CurrentStock ?? 0;
+
                         if (product != null)
                         {
                             product.CurrentStock += item.Quantity;
                         }
+
+                        decimal stockAfter = product?.CurrentStock ?? (stockBefore + item.Quantity);
+
+                        reversal.Items.Add(new InventoryDocumentItem
+                        {
+                            ProductId = item.ProductId,
+                            Quantity = item.Quantity,
+                            CostPrice = item.CostPrice,
+                            StockBefore = stockBefore,
+                            StockAfter = stockAfter
+                        });
                     }
 
                     original.IsReversed = true;
@@ -267,6 +510,8 @@ namespace Soluvion.API.Services
                     Type = InventoryDocumentType.Receipt,
                     CreatedAt = DateTime.UtcNow,
                     Note = $"Szállítólevél bevételezés: {dto.DocumentNumber} - {dto.Supplier}. {dto.Note}".Trim(),
+                    CreatedByUserId = _userContext.UserId,
+                    CreatedByName = _userContext.Username,
                     Items = new List<InventoryDocumentItem>()
                 };
 
@@ -326,18 +571,11 @@ namespace Soluvion.API.Services
                         continue;
                     }
 
-                    // Hozzáadjuk a bevételezési bizonylathoz és frissítjük a készletet
-                    var docItem = new InventoryDocumentItem
-                    {
-                        ProductId = targetProductId,
-                        Quantity = item.Quantity,
-                        CostPrice = item.CostPrice
-                    };
-                    document.Items.Add(docItem);
-
                     var isNew = (item.Action == "create" && item.NewProduct != null);
 
                     var productToUpdate = await _context.Products.FirstOrDefaultAsync(p => p.Id == targetProductId);
+                    decimal stockBefore = productToUpdate?.CurrentStock ?? 0;
+
                     if (productToUpdate != null)
                     {
                         productToUpdate.CurrentStock += item.Quantity;
@@ -351,6 +589,19 @@ namespace Soluvion.API.Services
                             IsNewProduct = isNew
                         });
                     }
+
+                    decimal stockAfter = productToUpdate?.CurrentStock ?? (stockBefore + item.Quantity);
+
+                    // Hozzáadjuk a bevételezési bizonylathoz
+                    var docItem = new InventoryDocumentItem
+                    {
+                        ProductId = targetProductId,
+                        Quantity = item.Quantity,
+                        CostPrice = item.CostPrice,
+                        StockBefore = stockBefore,
+                        StockAfter = stockAfter
+                    };
+                    document.Items.Add(docItem);
                 }
 
                 if (document.Items.Count == 0)
@@ -381,4 +632,5 @@ namespace Soluvion.API.Services
         }
     }
 }
+
 

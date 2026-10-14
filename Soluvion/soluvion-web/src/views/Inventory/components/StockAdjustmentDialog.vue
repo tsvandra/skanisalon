@@ -60,47 +60,59 @@
         {{ movement.items.length }} {{ $t('inventory.stockDialog.columns.product') }}
       </div>
 
-      <!-- Mobilon kártyás lista -->
+      <!-- Mobilon és asztalin kártyás lista -->
       <div class="space-y-2">
         <div 
           v-for="(item, index) in movement.items" 
           :key="item.productId" 
-          class="p-3 bg-background/60 border border-text/10 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+          class="p-3 bg-background/60 border border-text/10 rounded-xl space-y-2"
         >
-          <div class="font-bold text-sm text-text truncate sm:w-1/2" :title="item.productName">
-            {{ item.productName }}
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="font-bold text-sm text-text truncate sm:w-1/2" :title="item.productName">
+              {{ item.productName }}
+              <span v-if="item.shade" class="ml-1 text-xs font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded">[{{ item.shade }}]</span>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1.5 flex-1 sm:flex-none">
+                <span class="text-xs text-text-muted sm:hidden">{{ $t('inventory.stockDialog.columns.quantity') }}:</span>
+                <InputNumber 
+                  v-model="item.quantity" 
+                  mode="decimal" 
+                  :min="0.1" 
+                  inputClass="w-20 text-center bg-background border border-text/20 p-1.5 rounded-lg text-sm text-text font-bold" 
+                />
+              </div>
+
+              <div v-if="movement.type === 0" class="flex items-center gap-1.5 flex-1 sm:flex-none">
+                <span class="text-xs text-text-muted sm:hidden">{{ $t('inventory.stockDialog.columns.costPrice') }}:</span>
+                <InputNumber 
+                  v-model="item.costPrice" 
+                  mode="currency" 
+                  currency="EUR" 
+                  locale="sk-SK" 
+                  inputClass="w-24 text-center bg-background border border-text/20 p-1.5 rounded-lg text-sm text-text font-bold" 
+                />
+              </div>
+
+              <button 
+                type="button" 
+                @click="removeItem(index)" 
+                class="w-8 h-8 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors shrink-0"
+                title="Törlés"
+              >
+                <i class="pi pi-trash text-xs"></i>
+              </button>
+            </div>
           </div>
 
-          <div class="flex items-center gap-2">
-            <div class="flex items-center gap-1.5 flex-1 sm:flex-none">
-              <span class="text-xs text-text-muted sm:hidden">{{ $t('inventory.stockDialog.columns.quantity') }}:</span>
-              <InputNumber 
-                v-model="item.quantity" 
-                mode="decimal" 
-                :min="0.1" 
-                inputClass="w-20 text-center bg-background border border-text/20 p-1.5 rounded-lg text-sm text-text font-bold" 
-              />
-            </div>
-
-            <div v-if="movement.type === 0" class="flex items-center gap-1.5 flex-1 sm:flex-none">
-              <span class="text-xs text-text-muted sm:hidden">{{ $t('inventory.stockDialog.columns.costPrice') }}:</span>
-              <InputNumber 
-                v-model="item.costPrice" 
-                mode="currency" 
-                currency="EUR" 
-                locale="sk-SK" 
-                inputClass="w-24 text-center bg-background border border-text/20 p-1.5 rounded-lg text-sm text-text font-bold" 
-              />
-            </div>
-
-            <button 
-              type="button" 
-              @click="removeItem(index)" 
-              class="w-8 h-8 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors shrink-0"
-              title="Törlés"
-            >
-              <i class="pi pi-trash text-xs"></i>
-            </button>
+          <!-- Tételszintű megjegyzés (opcionális) -->
+          <div>
+            <InputText 
+              v-model="item.itemNote" 
+              :placeholder="$t('inventory.stockDialog.itemNotePlaceholder')" 
+              class="w-full bg-background border border-text/15 px-2.5 py-1.5 rounded-lg text-xs text-text focus:outline-none focus:border-primary" 
+            />
           </div>
         </div>
       </div>
@@ -182,8 +194,10 @@ const addProductToMovement = () => {
   movement.value.items.push({
     productId: selectedProduct.value.id,
     productName: selectedProduct.value.name,
+    shade: selectedProduct.value.shade || '',
     quantity: 1,
-    costPrice: selectedProduct.value.costPrice || 0
+    costPrice: selectedProduct.value.costPrice || 0,
+    itemNote: ''
   });
 
   selectedProduct.value = null;
@@ -208,7 +222,8 @@ const saveMovement = async () => {
     items: items.map(i => ({
       productId: i.productId,
       quantity: i.quantity,
-      costPrice: movType === 0 ? i.costPrice : 0
+      costPrice: movType === 0 ? i.costPrice : 0,
+      itemNote: i.itemNote || null
     }))
   };
 

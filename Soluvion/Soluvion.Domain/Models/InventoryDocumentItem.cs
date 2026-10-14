@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Soluvion.Domain.Models
@@ -17,6 +18,18 @@ namespace Soluvion.Domain.Models
         // Milyen áron lett bevételezve/kiadva
         [Column(TypeName = "decimal(18,2)")]
         public decimal CostPrice { get; set; }
+
+        /// <summary>Tételszintű (soronkénti) egyedi megjegyzés.</summary>
+        [MaxLength(500)]
+        public string? ItemNote { get; set; }
+
+        /// <summary>A termék készlete közvetlenül a mozgás előtt.</summary>
+        [Column(TypeName = "decimal(18,4)")]
+        public decimal? StockBefore { get; set; }
+
+        /// <summary>A termék készlete közvetlenül a mozgás után.</summary>
+        [Column(TypeName = "decimal(18,4)")]
+        public decimal? StockAfter { get; set; }
 
         // Navigation
         public InventoryDocument? InventoryDocument { get; set; }

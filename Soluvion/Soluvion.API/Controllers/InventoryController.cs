@@ -28,8 +28,32 @@ namespace Soluvion.API.Controllers
         public async Task<ActionResult<InventoryDocumentDto>> GetById(int id)
         {
             var doc = await _inventoryService.GetDocumentByIdAsync(id);
-            if (doc == null) return NotFound();
+            if (doc == null) return NotFound(new { errorCode = "DOCUMENT_NOT_FOUND" });
             return Ok(doc);
+        }
+
+        [HttpGet("product/{productId:int}/history")]
+        public async Task<ActionResult<ProductHistoryResponseDto>> GetProductHistory(int productId)
+        {
+            var history = await _inventoryService.GetProductHistoryAsync(productId);
+            if (history == null) return NotFound(new { errorCode = "PRODUCT_NOT_FOUND" });
+            return Ok(history);
+        }
+
+        [HttpPatch("{documentId:int}/note")]
+        public async Task<IActionResult> UpdateDocumentNote(int documentId, [FromBody] UpdateInventoryNoteDto dto)
+        {
+            var updated = await _inventoryService.UpdateDocumentNoteAsync(documentId, dto?.Note);
+            if (!updated) return NotFound(new { errorCode = "DOCUMENT_NOT_FOUND" });
+            return Ok(new { documentId, note = dto?.Note });
+        }
+
+        [HttpPatch("items/{itemId:int}/note")]
+        public async Task<IActionResult> UpdateItemNote(int itemId, [FromBody] UpdateInventoryNoteDto dto)
+        {
+            var updated = await _inventoryService.UpdateDocumentItemNoteAsync(itemId, dto?.Note);
+            if (!updated) return NotFound(new { errorCode = "DOCUMENT_ITEM_NOT_FOUND" });
+            return Ok(new { itemId, itemNote = dto?.Note });
         }
 
         [HttpPost]

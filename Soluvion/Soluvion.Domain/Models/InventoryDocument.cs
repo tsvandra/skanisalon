@@ -25,6 +25,13 @@ namespace Soluvion.Domain.Models
 
         /// <summary>Sztornó bizonylatnál: az eredeti (sztornózott) bizonylat azonosítója.</summary>
         public int? ReversalOfDocumentId { get; set; }
+
+        /// <summary>A bizonylatot rögzítő felhasználó azonosítója.</summary>
+        public int? CreatedByUserId { get; set; }
+
+        /// <summary>A bizonylatot rögzítő felhasználó / alkalmazott neve.</summary>
+        [MaxLength(100)]
+        public string? CreatedByName { get; set; }
     }
 }
 
