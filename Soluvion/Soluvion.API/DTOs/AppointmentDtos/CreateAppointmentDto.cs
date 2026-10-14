@@ -9,8 +9,7 @@ namespace Soluvion.API.DTOs.AppointmentDtos
         [Range(1, int.MaxValue, ErrorMessage = "VALIDATION_RANGE")]
         public int CustomerId { get; set; }
 
-        [Required(ErrorMessage = "VALIDATION_REQUIRED")]
-        [Range(1, int.MaxValue, ErrorMessage = "VALIDATION_RANGE")]
+        [Range(0, int.MaxValue, ErrorMessage = "VALIDATION_RANGE")]
         public int EmployeeId { get; set; }
 
         [Required(ErrorMessage = "VALIDATION_REQUIRED")]

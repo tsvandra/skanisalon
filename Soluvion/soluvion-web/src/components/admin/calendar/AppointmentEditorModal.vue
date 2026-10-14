@@ -319,7 +319,11 @@ const removeExtraProduct = (idx) => { form.value.extraMaterials.splice(idx, 1); 
         extraMaterials: JSON.stringify(form.value.extraMaterials.map(em => ({ productId: em.productId, quantity: em.quantity, name: em.name }))),
         customerId: finalCustId,
         startDateTime: new Date(`${form.value.date}T${form.value.time}:00`).toISOString(),
-        items: form.value.items.map(i => ({ serviceVariantId: parseInt(i.variantId), durationMinutes: parseInt(i.duration) })),
+        items: form.value.items.map(i => ({
+          serviceVariantId: parseInt(i.variantId),
+          durationMinutes: parseInt(i.duration),
+          price: parseFloat(i.price) || 0
+        })),
         status: parseInt(form.value.status),
         notes: form.value.notes,
         force: isForced
