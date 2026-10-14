@@ -10,6 +10,13 @@
     "recipeConfigured": "Anyagfelhasználás beállítva",
     "recipeSetDefault": "Alapértelmezett anyagok beállítása",
     "productCount": "{count} termék",
+    "generateMissingPictograms": "Hiányzó piktogramok pótlása (AI)",
+    "generatingPictograms": "Generálás...",
+    "generateCategoryPictogram": "Kategória piktogram generálása (AI)",
+    "generateServicePictogram": "Szolgáltatás piktogram generálása (AI)",
+    "onlineBookable": "Online foglalható",
+    "notBookableInfoOnly": "Csak árlistán (infó)",
+    "toggleServiceBookable": "Online foglalhatóság ki/bekapcsolása",
     "modifierModal": {
       "title": "Automatikus Profil Frissítés",
       "description": "Amikor a vendég ezt a variánst lefoglalja, a rendszer automatikusan a lenti értékekre frissíti a profilját.",

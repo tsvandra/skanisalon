@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Soluvion.Domain.Models
@@ -27,8 +27,13 @@ namespace Soluvion.Domain.Models
         [Column(TypeName = "decimal(10, 2)")]
         public decimal DefaultPrice { get; set; }
 
-        [MaxLength(255)]
+        [MaxLength(4000)]
         public string PictogramLink { get; set; } = string.Empty;
+
+        [MaxLength(4000)]
+        public string CategoryPictogram { get; set; } = string.Empty;
+
+        public bool IsBookable { get; set; } = true;
 
         public List<ServiceVariant> Variants { get; set; } = new List<ServiceVariant>();
     }

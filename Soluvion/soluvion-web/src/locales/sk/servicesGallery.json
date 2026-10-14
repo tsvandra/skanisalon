@@ -10,6 +10,13 @@
     "recipeConfigured": "Spotreba materiálu nastavená",
     "recipeSetDefault": "Nastaviť predvolené materiály",
     "productCount": "{count} produktov",
+    "generateMissingPictograms": "Doplniť chýbajúce piktogramy (AI)",
+    "generatingPictograms": "Generovanie...",
+    "generateCategoryPictogram": "Vygenerovať piktogram kategórie (AI)",
+    "generateServicePictogram": "Vygenerovať piktogram služby (AI)",
+    "onlineBookable": "Online rezervovateľné",
+    "notBookableInfoOnly": "Len v cenníku (info)",
+    "toggleServiceBookable": "Zapnúť/vypnúť online rezerváciu",
     "modifierModal": {
       "title": "Automatická aktualizácia profilu",
       "description": "Keď si zákazník rezervuje tento variant, systém automaticky aktualizuje jeho profil na nižšie uvedené hodnoty.",
