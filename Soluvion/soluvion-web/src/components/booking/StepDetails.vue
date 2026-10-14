@@ -1,32 +1,61 @@
 <template>
-  <div>
-    <h3 class="text-xl font-bold mb-4">{{ $t('booking.yourDetails') }}</h3>
+  <div class="py-2">
+    <h3 class="text-xl font-bold mb-6 text-text">{{ $t('booking.yourDetails') }}</h3>
+
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div class="flex flex-col gap-1">
-        <label class="text-sm text-text-muted">{{ $t('booking.fullName') }}</label>
-        <input v-model="localData.fullName" type="text" autocomplete="name" class="p-2 rounded border border-text/20 bg-background focus:border-primary focus:outline-none" />
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs font-bold uppercase tracking-wider text-text-muted">{{ $t('booking.fullName') }}</label>
+        <div class="relative flex items-center">
+          <i class="pi pi-user absolute left-3.5 text-text-muted text-sm pointer-events-none"></i>
+          <input v-model="localData.fullName"
+                 type="text"
+                 autocomplete="name"
+                 class="w-full pl-10 pr-4 py-3 rounded-xl border border-text/15 bg-background text-text focus:border-primary focus:ring-1 focus:ring-primary/40 focus:outline-none transition-all" />
+        </div>
       </div>
-      <div class="flex flex-col gap-1">
-        <label class="text-sm text-text-muted">{{ $t('booking.email') }}</label>
-        <input v-model="localData.email" type="email" autocomplete="email" class="p-2 rounded border border-text/20 bg-background focus:border-primary focus:outline-none" />
+
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs font-bold uppercase tracking-wider text-text-muted">{{ $t('booking.email') }}</label>
+        <div class="relative flex items-center">
+          <i class="pi pi-envelope absolute left-3.5 text-text-muted text-sm pointer-events-none"></i>
+          <input v-model="localData.email"
+                 type="email"
+                 autocomplete="email"
+                 class="w-full pl-10 pr-4 py-3 rounded-xl border border-text/15 bg-background text-text focus:border-primary focus:ring-1 focus:ring-primary/40 focus:outline-none transition-all" />
+        </div>
       </div>
-      <div class="flex flex-col gap-1 md:col-span-2">
-        <label class="text-sm text-text-muted">{{ $t('booking.phone') }}</label>
-        <input v-model="localData.phone" type="tel" autocomplete="tel" class="p-2 rounded border border-text/20 bg-background focus:border-primary focus:outline-none" />
+
+      <div class="flex flex-col gap-1.5 md:col-span-2">
+        <label class="text-xs font-bold uppercase tracking-wider text-text-muted">{{ $t('booking.phone') }}</label>
+        <div class="relative flex items-center">
+          <i class="pi pi-phone absolute left-3.5 text-text-muted text-sm pointer-events-none"></i>
+          <input v-model="localData.phone"
+                 type="tel"
+                 autocomplete="tel"
+                 class="w-full pl-10 pr-4 py-3 rounded-xl border border-text/15 bg-background text-text focus:border-primary focus:ring-1 focus:ring-primary/40 focus:outline-none transition-all" />
+        </div>
       </div>
-      <div class="flex flex-col gap-1 md:col-span-2">
-        <label class="text-sm text-text-muted">{{ $t('booking.notes') }}</label>
-        <textarea v-model="localData.notes" rows="2" class="p-2 rounded border border-text/20 bg-background focus:border-primary focus:outline-none"></textarea>
+
+      <div class="flex flex-col gap-1.5 md:col-span-2">
+        <label class="text-xs font-bold uppercase tracking-wider text-text-muted">{{ $t('booking.notes') }}</label>
+        <textarea v-model="localData.notes"
+                  rows="3"
+                  class="w-full p-3.5 rounded-xl border border-text/15 bg-background text-text focus:border-primary focus:ring-1 focus:ring-primary/40 focus:outline-none transition-all resize-none"></textarea>
       </div>
     </div>
 
-    <div class="mt-6 flex justify-between">
-      <button @click="onPrev" class="px-6 py-2 border border-text/20 text-text rounded-lg transition-colors hover:bg-text/5">
-        <i class="pi pi-arrow-left mr-2"></i> {{ $t('booking.back') }}
+    <div class="mt-8 pt-4 border-t border-text/10 flex justify-between items-center">
+      <button type="button"
+              @click="onPrev"
+              class="min-h-[48px] px-6 py-2.5 border border-text/20 text-text font-semibold rounded-xl transition-colors hover:bg-text/5 cursor-pointer flex items-center gap-2">
+        <i class="pi pi-arrow-left text-sm"></i> {{ $t('booking.back') }}
       </button>
-      <button @click="onNext" :disabled="!isFormValid"
-              class="px-6 py-2 bg-primary text-white font-bold rounded-lg disabled:opacity-50 transition-colors">
-        {{ $t('booking.next') }} <i class="pi pi-arrow-right ml-2"></i>
+      <button type="button"
+              @click="onNext"
+              :disabled="!isFormValid"
+              class="min-h-[48px] px-7 py-2.5 bg-primary text-surface font-bold rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:brightness-110 active:scale-95 shadow-md cursor-pointer flex items-center gap-2">
+        <span>{{ $t('booking.next') }}</span>
+        <i class="pi pi-arrow-right text-sm"></i>
       </button>
     </div>
   </div>

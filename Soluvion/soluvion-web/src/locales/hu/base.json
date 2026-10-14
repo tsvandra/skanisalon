@@ -154,7 +154,17 @@
     "comingSoonTitle": "Hamarosan!",
     "comingSoonText": "Az online időpontfoglalási rendszerünk jelenleg tesztelés alatt áll, vagy ehhez a szalonhoz még nem elérhető. Kérjük, keress minket elérhetőségeinken!",
     "devOverrideWarning": "DEV OVERRIDE: Ez az űrlap csak azért látszik most Inkognitóban, mert a .env fájlban fejlesztői üzemmódban vagy!",
-    "adminViewWarning": "ADMIN NÉZET: A publikus vendégek most a \"Hamarosan\" feliratot látják. Ezt csak te látod, mert be vagy jelentkezve!"
+    "adminViewWarning": "ADMIN NÉZET: A publikus vendégek most a \"Hamarosan\" feliratot látják. Ezt csak te látod, mert be vagy jelentkezve!",
+    "subtitle": "Válaszd ki a kívánt kezeléseket, és foglald le kényelmesen az időpontodat.",
+    "categoriesTitle": "Kategóriák",
+    "serviceCount": "{count} kezelés",
+    "selectedCount": "{count} kiválasztva",
+    "durationMinutes": "{min} perc",
+    "estimatedTotal": "Becsült végösszeg",
+    "estimatedDuration": "Becsült időtartam",
+    "selectedServicesTitle": "Kiválasztott szolgáltatások",
+    "noServiceSelectedYet": "Válassz legalább egy szolgáltatást a folytatáshoz",
+    "noBookableServices": "Jelenleg nincs online foglalható szolgáltatás."
   },
   "calendar": {
     "title": "Megrendelések",

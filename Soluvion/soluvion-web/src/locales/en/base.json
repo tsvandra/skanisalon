@@ -154,7 +154,17 @@
     "comingSoonTitle": "Coming Soon!",
     "comingSoonText": "Our online booking system is currently being set up or is not yet enabled for this salon. Please reach out to us by phone!",
     "devOverrideWarning": "DEV OVERRIDE: This form is visible in Incognito only because development mode is enabled in .env!",
-    "adminViewWarning": "ADMIN PREVIEW: Public visitors currently see 'Coming Soon'. You see this form because you are logged in as admin!"
+    "adminViewWarning": "ADMIN PREVIEW: Public visitors currently see 'Coming Soon'. You see this form because you are logged in as admin!",
+    "subtitle": "Select your desired treatments and book your appointment with ease.",
+    "categoriesTitle": "Categories",
+    "serviceCount": "{count} treatments",
+    "selectedCount": "{count} selected",
+    "durationMinutes": "{min} min",
+    "estimatedTotal": "Estimated total",
+    "estimatedDuration": "Estimated duration",
+    "selectedServicesTitle": "Selected services",
+    "noServiceSelectedYet": "Select at least one service to continue",
+    "noBookableServices": "No services are currently available for online booking."
   },
   "calendar": {
     "title": "Appointments",

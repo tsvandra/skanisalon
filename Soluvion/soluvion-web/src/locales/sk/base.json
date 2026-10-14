@@ -154,7 +154,17 @@
     "comingSoonTitle": "Už čoskoro!",
     "comingSoonText": "Náš online rezervačný systém sa momentálne pripravuje alebo ešte nie je pre tento salón aktivovaný. Neváhajte nás kontaktovať telefonicky!",
     "devOverrideWarning": "DEV OVERRIDE: Tento formulár sa zobrazuje v anonymnom okne len preto, lebo v súbore .env je aktívny vývojársky režim!",
-    "adminViewWarning": "ADMIN NÁHĽAD: Verejní návštevníci teraz vidia text 'Už čoskoro'. Tento formulár vidíte len vy, pretože ste prihlásený!"
+    "adminViewWarning": "ADMIN NÁHĽAD: Verejní návštevníci teraz vidia text 'Už čoskoro'. Tento formulár vidíte len vy, pretože ste prihlásený!",
+    "subtitle": "Vyberte si požadované ošetrenia a pohodlne si rezervujte termín.",
+    "categoriesTitle": "Kategórie",
+    "serviceCount": "{count} služieb",
+    "selectedCount": "{count} vybraných",
+    "durationMinutes": "{min} min",
+    "estimatedTotal": "Odhadovaná suma",
+    "estimatedDuration": "Odhadované trvanie",
+    "selectedServicesTitle": "Vybrané služby",
+    "noServiceSelectedYet": "Pre pokračovanie vyberte aspoň jednu službu",
+    "noBookableServices": "Momentálne nie sú k dispozícii žiadne online rezervovateľné služby."
   },
   "calendar": {
     "title": "Objednávky",
