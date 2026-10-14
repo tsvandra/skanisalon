@@ -59,3 +59,4 @@ namespace Soluvion.API.Migrations
         }
     }
 }
+

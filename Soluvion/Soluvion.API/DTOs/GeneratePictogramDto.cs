@@ -21,3 +21,4 @@ namespace Soluvion.API.DTOs
         public string? LanguageCode { get; set; }
     }
 }
+

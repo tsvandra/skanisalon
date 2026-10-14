@@ -12,9 +12,10 @@ Ez a dokumentum azokat a szigorú kódolási elveket és konvenciókat tartalmaz
 
 A kód stabilitásának megőrzése érdekében szigorú "Feature Branch" modellt követünk.
 
+* **SZIGORÚ TILALOM AZ AI SZÁMÁRA:** Soha ne futtass önállóan `git commit`, `git merge` vagy `git push` parancsot! Minden esetben várd meg a fejlesztő kifejezett utasítását a commitolásra, és a helyi tesztelés után a külön kifejezett engedélyét a merge-elésre!
 * **`main` ág (PRODUCTION):** Kizárólag a stabil, éles verziót tartalmazza. Közvetlenül ide pusholni **szigorúan tilos!**
 * **`develop` ág (STAGING):** A központi fejlesztői ág. A Netlify és a Railway ezt figyeli a tesztkörnyezet frissítéséhez.
-* **`feature/...` ágak (LOCAL):** Minden új funkciót vagy hibajavítást egy dedikált ágon kell elvégezni.
+* **`feature/...` ágak (LOCAL):** Minden új funkciót vagy hibajavítást egy dedikált ágon kell elvégezni, és ott kell hagyni tesztelésre, amíg a fejlesztő nem kéri a commitot / merge-et.
 * **Névkonvenció:** A feature ágak neve tartalmazza a fázist vagy a funkciót (pl. `feature/phase-1-quick-wins`, `feature/phase-2-user-context-and-validation`, `feature/ai-termekfelismeres`).
 
 ---

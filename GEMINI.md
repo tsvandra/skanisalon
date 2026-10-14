@@ -53,8 +53,9 @@ A **Soluvion / BeeMagic Salon** egy modern, felhőalapú **Multi-Tenant SaaS pla
 * Új komponens készítésekor mindig a Tailwind szemantikus színváltozóit használd: `bg-background`, `bg-surface`, `text-text`, `text-text-muted`, `border-text/10`, `text-primary`. Kerüld a hardkódolt fix fekete/fehér háttereket!
 
 ### 2.4. Git és Telepítési Munkafolyamat (CI/CD)
+* **SZIGORÚ TILALOM AZ AI SZÁMÁRA:** Az AI **soha nem futtathat önállóan `git commit`, `git merge` vagy `git push` parancsot**! Minden részfeladat végén meg kell állni, és meg kell várni a felhasználó kifejezett utasítását a commitolásra, illetve a helyi tesztelés után külön kifejezett utasítását a `develop` ágra történő merge-elésre!
 * **Közvetlenül a `main` ágra fejleszteni szigorúan tilos!**
-* Mindig témás feature branch-en dolgozunk (`feature/...`, `fix/...`), amit tesztelés után a `develop` ágra merge-elünk.
+* Mindig témás feature branch-en dolgozunk (`feature/...`, `fix/...`), amit csak a felhasználó kifejezett kérésére és tesztelése után merge-elünk a `develop` ágra.
 * A `develop` ágra érkező push automatikusan frissíti a **Staging** környezetet (Railway Staging DB/API + Netlify develop preview).
 * Az élesítés kizárólag a `develop` ág `main`-re történő merge-elésével történik (Production release).
 
