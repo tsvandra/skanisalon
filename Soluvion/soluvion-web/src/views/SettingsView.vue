@@ -10,6 +10,7 @@
 
   import api from '@/services/api';
   import { getCompanyIdFromToken } from '@/utils/jwt';
+  import { useCompanyStore } from '@/stores/companyStore';
 
   import SettingsOpeningHours from '@/components/admin/settings/SettingsOpeningHours.vue';
   import SettingsContact from '@/components/admin/settings/SettingsContact.vue';
@@ -18,9 +19,11 @@
   import SettingsTranslations from '@/components/admin/settings/SettingsTranslations.vue';
   import SettingsCustomers from '@/components/admin/settings/SettingsCustomers.vue';
   import SettingsInventory from '@/components/admin/settings/SettingsInventory.vue';
+  import SettingsBooking from '@/components/admin/settings/SettingsBooking.vue';
 
   const companyData = ref({});
-  const { t } = useI18n();
+  const { t, te } = useI18n();
+  const companyStore = useCompanyStore();
   const isLoading = ref(false);
   const isSaving = ref(false);
   const successMsg = ref('');
@@ -42,7 +45,7 @@
 
       companyData.value = { ...data };
     } catch (err) {
-      console.error("Hiba a betöltéskor:", err);
+      console.error("Failed to load company settings:", err);
       errorMsg.value = t('adminSettings.view.loadFailed');
     } finally {
       isLoading.value = false;
@@ -59,19 +62,16 @@
 
     try {
       await api.put(`/api/Company/${companyId}`, companyData.value);
+      await companyStore.fetchPublicConfig();
 
       successMsg.value = t('adminSettings.view.saveSuccess');
-
-      if (companyData.value.primaryColor) {
-        document.documentElement.style.setProperty('--primary-color', companyData.value.primaryColor);
-        document.documentElement.style.setProperty('--secondary-color', companyData.value.secondaryColor);
-      }
 
       setTimeout(() => successMsg.value = '', 3000);
 
     } catch (err) {
-      console.error("Mentési hiba:", err);
-      errorMsg.value = err.response?.data || t('adminSettings.view.saveFailed');
+      console.error("Failed to save company settings:", err);
+      const code = err.response?.data?.errorCode;
+      errorMsg.value = (code && te('errors.' + code)) ? t('errors.' + code) : t('adminSettings.view.saveFailed');
     } finally {
       isSaving.value = false;
     }
@@ -120,6 +120,7 @@
           <Tab value="4">{{ $t('adminSettings.view.tabs.translations') }}</Tab>
           <Tab value="5">{{ $t('adminSettings.view.tabs.customers') }}</Tab>
           <Tab value="6">{{ $t('adminSettings.view.tabs.inventory') }}</Tab>
+          <Tab value="7">{{ $t('adminSettings.view.tabs.booking') }}</Tab>
         </TabList>
 
         <TabPanels>
@@ -149,6 +150,10 @@
 
           <TabPanel value="6">
             <SettingsInventory :companyData="companyData" @save="saveSettings" />
+          </TabPanel>
+
+          <TabPanel value="7">
+            <SettingsBooking :companyData="companyData" @save="saveSettings" />
           </TabPanel>
         </TabPanels>
       </Tabs>

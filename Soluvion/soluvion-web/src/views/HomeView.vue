@@ -17,6 +17,7 @@
   const goToServices = () => { go('services'); }
   const goToContact = () => { go('contact'); }
   const goToGallery = () => { go('gallery'); }
+  const goToBooking = () => { go('booking'); }
 </script>
 
 <template>
@@ -29,7 +30,13 @@
           <Button :label="$t('nav.services')"
                   class="!bg-primary !border-primary hover:!bg-primary-emphasis font-bold !px-8 !py-3.5 !rounded-xl hover:!scale-105 transition-transform shadow-md w-full sm:w-auto !min-h-[50px]"
                   @click="goToServices" />
-          <Button :label="$t('nav.contact')"
+          <Button v-if="company?.isOnlineBookingEnabled"
+                  :label="$t('home.bookAppointment')"
+                  icon="pi pi-calendar-plus"
+                  class="!bg-white !text-gray-900 !border-none font-bold !px-8 !py-3.5 !rounded-xl hover:!scale-105 transition-transform shadow-md w-full sm:w-auto !min-h-[50px]"
+                  @click="goToBooking" />
+          <Button v-else
+                  :label="$t('nav.contact')"
                   icon="pi pi-calendar"
                   class="!bg-white !text-gray-900 !border-none font-bold !px-8 !py-3.5 !rounded-xl hover:!scale-105 transition-transform shadow-md w-full sm:w-auto !min-h-[50px]"
                   @click="goToContact" />
@@ -66,7 +73,13 @@
     </div>
 
     <div class="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-surface/95 backdrop-blur-md border-t border-primary/20 shadow-[0_-5px_15px_rgba(0,0,0,0.2)] z-50">
-      <Button :label="$t('home.contactOrAppointment')"
+      <Button v-if="company?.isOnlineBookingEnabled"
+              :label="$t('home.bookAppointment')"
+              icon="pi pi-calendar-plus"
+              class="w-full !bg-primary !border-none !text-white !font-bold !text-lg !rounded-xl !min-h-[56px] shadow-lg"
+              @click="goToBooking" />
+      <Button v-else
+              :label="$t('home.contactOrAppointment')"
               icon="pi pi-calendar"
               class="w-full !bg-primary !border-none !text-white !font-bold !text-lg !rounded-xl !min-h-[56px] shadow-lg"
               @click="goToContact" />

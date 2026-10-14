@@ -46,6 +46,9 @@
     "TEXT_REQUIRED": "Text to translate is required.",
     "INVALID_SESSION": "Invalid session.",
     "TRANSLATION_FAILED": "Translation failed.",
+    "ONLINE_BOOKING_DISABLED": "Online booking is currently disabled for this salon.",
+    "NO_ACTIVE_EMPLOYEE": "There are no active staff members available for booking in this salon.",
+    "BOOKING_SLOT_TAKEN": "Sorry, this time slot is already taken. Please choose another time!",
     "tenant_mismatch": "The previous session belonged to a different salon, so you have been logged out."
   },
   "nav": {

@@ -28,22 +28,36 @@ namespace Soluvion.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateGuestBooking([FromBody] GuestBookingDto dto)
         {
-            int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
+            var company = _tenantContext.CurrentCompany;
+            if (company == null)
+            {
+                return NotFound(new { errorCode = "COMPANY_NOT_FOUND" });
+            }
+
+            if (!company.IsOnlineBookingEnabled)
+            {
+                return StatusCode(403, new { errorCode = "ONLINE_BOOKING_DISABLED" });
+            }
+
+            int companyId = company.Id;
 
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // ÚJ LOGIKA 1: Biztonságos Dolgozó (Employee) keresés
-                var employeeExists = await _context.CompanyEmployees.AnyAsync(e => e.CompanyId == companyId && e.Id == dto.EmployeeId);
+                // 1. Biztonságos Dolgozó (Employee) keresés
+                var employeeExists = await _context.CompanyEmployees.AnyAsync(e => e.CompanyId == companyId && e.Id == dto.EmployeeId && e.IsActive);
                 if (!employeeExists)
                 {
                     var defaultEmployee = await _context.CompanyEmployees.FirstOrDefaultAsync(e => e.CompanyId == companyId && e.IsActive);
-                    if (defaultEmployee == null) throw new Exception("Nincs aktív dolgozó ebben a cégben, akihez foglalni lehetne!");
+                    if (defaultEmployee == null)
+                    {
+                        return BadRequest(new { errorCode = "NO_ACTIVE_EMPLOYEE" });
+                    }
 
                     dto.EmployeeId = defaultEmployee.Id;
                 }
 
-                // ÚJ LOGIKA 2: Biztonságos JSONB Customer keresés
+                // 2. Biztonságos JSONB Customer keresés
                 var allCustomers = await _context.CompanyCustomers.Where(c => c.CompanyId == companyId).ToListAsync();
                 var customer = allCustomers.FirstOrDefault(c => c.Attributes != null &&
                                                                 c.Attributes.ContainsKey("Email") &&
@@ -54,7 +68,7 @@ namespace Soluvion.API.Controllers
                     customer = new CompanyCustomer
                     {
                         CompanyId = companyId,
-                        Attributes = dto.Attributes
+                        Attributes = dto.Attributes ?? new Dictionary<string, string>()
                     };
                     customer.Attributes["Email"] = dto.Email;
                     customer.Attributes["Phone"] = dto.Phone;
@@ -65,24 +79,27 @@ namespace Soluvion.API.Controllers
                 }
                 else
                 {
-                    foreach (var attr in dto.Attributes)
+                    if (dto.Attributes != null)
                     {
-                        customer.Attributes[attr.Key] = attr.Value;
+                        foreach (var attr in dto.Attributes)
+                        {
+                            customer.Attributes[attr.Key] = attr.Value;
+                        }
                     }
                     _context.CompanyCustomers.Update(customer);
                 }
 
-                // 2. Smart Booking Engine hívása
+                // 3. Smart Booking Engine hívása
                 var (duration, price) = await _bookingEngine.CalculateAppointmentDetailsAsync(customer.Id, dto.ServiceVariantIds);
                 DateTime endDateTime = dto.StartDateTime.AddMinutes(duration);
 
                 bool isAvailable = await _bookingEngine.IsTimeSlotAvailableAsync(companyId, dto.EmployeeId, dto.StartDateTime, endDateTime, force: false);
                 if (!isAvailable)
                 {
-                    return BadRequest("Sajnos ez az időpont már foglalt. Kérlek, válassz másikat!");
+                    return Conflict(new { errorCode = "BOOKING_SLOT_TAKEN" });
                 }
 
-                // 3. Appointment létrehozása (Új modellekkel)
+                // 4. Appointment létrehozása
                 var appointment = new Appointment
                 {
                     CompanyId = companyId,
@@ -92,31 +109,34 @@ namespace Soluvion.API.Controllers
                     EndDateTime = endDateTime,
                     TotalPrice = price,
                     Status = AppointmentStatus.Pending,
-                    Source = BookingSource.Web, // ÚJ: Vendég a webről küldte
-                    CustomerNotes = dto.Notes // ÚJ: Vendég megjegyzése
+                    Source = BookingSource.Web,
+                    CustomerNotes = dto.Notes
                 };
 
                 foreach (var variantId in dto.ServiceVariantIds)
                 {
                     var variant = await _context.ServiceVariants.FindAsync(variantId);
-                    appointment.Items.Add(new AppointmentItem
+                    if (variant != null)
                     {
-                        ServiceVariantId = variantId,
-                        Price = variant!.Price,
-                        CalculatedDurationMinutes = variant.Duration
-                    });
+                        appointment.Items.Add(new AppointmentItem
+                        {
+                            ServiceVariantId = variantId,
+                            Price = variant.Price,
+                            CalculatedDurationMinutes = variant.Duration
+                        });
+                    }
                 }
 
                 _context.Appointments.Add(appointment);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                return Ok(new { Message = "Sikeres foglalás", AppointmentId = appointment.Id });
+                return Ok(new { success = true, appointmentId = appointment.Id });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 await transaction.RollbackAsync();
-                return StatusCode(500, $"Belső szerverhiba: {ex.Message} {(ex.InnerException != null ? " - Részletek: " + ex.InnerException.Message : "")}");
+                return StatusCode(500, new { errorCode = "SERVER_ERROR" });
             }
         }
     }

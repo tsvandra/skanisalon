@@ -11,7 +11,8 @@
         "appearance": "Appearance",
         "translations": "Translations",
         "customers": "Client Attributes",
-        "inventory": "Inventory Tracking"
+        "inventory": "Inventory Tracking",
+        "booking": "Online Booking"
       },
       "saving": "Saving changes...",
       "saveButton": "Save General Settings",
@@ -19,6 +20,15 @@
       "loadFailed": "Failed to load salon details.",
       "saveSuccess": "Changes saved successfully!",
       "saveFailed": "An error occurred while saving."
+    },
+    "booking": {
+      "title": "Online Appointment Booking",
+      "intro": "Enable or pause public online appointment booking for your salon's visitors here.",
+      "enabled": "Enabled — clients can book appointments online",
+      "disabled": "Disabled — online booking is hidden from visitors",
+      "toggleLabel": "Enable online booking",
+      "toggleDescription": "When disabled, the online booking button is hidden on the public homepage and navigation bar, and the public booking endpoint remains locked.",
+      "hint": "Tip: Toggling this switch saves your preference immediately."
     },
     "contact": {
       "companyName": "Salon Name (Display Name)",
