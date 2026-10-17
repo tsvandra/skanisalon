@@ -69,7 +69,7 @@
         <!-- 1. FÜL: ÉLŐ BESZÉLGETÉSEK (INBOX) + BUBORÉK-KIJELÖLŐ -->
         <template v-if="activeTab === 'inbox'">
 
-          <!-- Kompakt Beszélgetés-választó sáv + Frissítés és Törlés gombok -->
+          <!-- Kompakt Beszélgetés-választó sáv + Frissítés, Új üzenet indítása és Törlés gombok -->
           <div class="flex flex-col sm:flex-row sm:items-center gap-2 bg-background/70 p-2.5 rounded-xl border border-text/10">
             <div class="flex items-center gap-2 flex-1 min-w-0">
               <i v-if="selectedConversation"
@@ -88,7 +88,17 @@
               </span>
             </div>
 
-            <div class="flex items-center gap-1.5 shrink-0">
+            <div class="flex items-center gap-1.5 shrink-0 flex-wrap">
+              <button type="button"
+                      @click="showOutboundPanel = !showOutboundPanel"
+                      class="px-2.5 py-1.5 rounded-lg border text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      :class="showOutboundPanel
+                        ? 'bg-primary text-surface border-primary'
+                        : 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20'">
+                <i class="pi text-xs" :class="showOutboundPanel ? 'pi-chevron-up' : 'pi-plus-circle'"></i>
+                <span class="truncate max-w-[190px] sm:max-w-none">{{ $t('calendar.aiChat.outboundBtn') }}</span>
+              </button>
+
               <button type="button"
                       @click="fetchInbox"
                       class="px-2.5 py-1.5 rounded-lg bg-surface border border-text/15 text-text hover:border-primary/50 hover:text-primary text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
@@ -104,6 +114,76 @@
                 <i class="pi text-xs" :class="isDeletingConv ? 'pi-spin pi-spinner' : 'pi-trash'"></i>
                 <span>{{ $t('calendar.aiChat.clearChat') }}</span>
               </button>
+            </div>
+          </div>
+
+          <!-- Szalon által kezdeményezett üzenetküldő panel (WhatsApp / SMS / E-mail + automatikus Messenger link) -->
+          <div v-if="showOutboundPanel"
+               class="p-3 rounded-xl border border-primary/35 bg-primary/5 space-y-2.5">
+            <div class="flex items-start justify-between gap-2">
+              <p class="text-[11px] text-text-muted leading-snug m-0">
+                <i class="pi pi-info-circle text-primary mr-1"></i>{{ $t('calendar.aiChat.outboundDesc') }}
+              </p>
+              <button type="button" @click="showOutboundPanel = false" class="text-text-muted hover:text-text cursor-pointer shrink-0">
+                <i class="pi pi-times text-xs"></i>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <select v-if="customersList && customersList.length > 0"
+                      v-model="outboundCustomerId"
+                      @change="onPickOutboundCustomer"
+                      class="px-2.5 py-1.5 rounded-lg border border-text/15 bg-surface text-text text-xs font-bold focus:border-primary focus:outline-none cursor-pointer">
+                <option value="">{{ $t('calendar.aiChat.outboundPickCustomer') }}</option>
+                <option v-for="c in customersList" :key="c.id" :value="c.id">
+                  {{ getCustomerLabel(c) }}
+                </option>
+              </select>
+
+              <input v-model="outboundName"
+                     type="text"
+                     :placeholder="$t('calendar.aiChat.outboundNamePlaceholder')"
+                     class="px-2.5 py-1.5 rounded-lg border border-text/15 bg-surface text-text text-xs focus:border-primary focus:outline-none" />
+
+              <input v-model="outboundPhone"
+                     type="text"
+                     :placeholder="$t('calendar.aiChat.outboundPhonePlaceholder')"
+                     class="px-2.5 py-1.5 rounded-lg border border-text/15 bg-surface text-text text-xs focus:border-primary focus:outline-none" />
+
+              <input v-model="outboundEmail"
+                     type="email"
+                     :placeholder="$t('calendar.aiChat.outboundEmailPlaceholder')"
+                     class="px-2.5 py-1.5 rounded-lg border border-text/15 bg-surface text-text text-xs focus:border-primary focus:outline-none" />
+            </div>
+
+            <textarea v-model="outboundMessage"
+                      rows="2"
+                      :placeholder="$t('calendar.aiChat.outboundMsgPlaceholder')"
+                      class="w-full p-2.5 rounded-lg border border-text/15 bg-surface text-text text-xs focus:border-primary focus:outline-none resize-none"></textarea>
+
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <code class="text-[10px] text-primary truncate max-w-full">🔗 {{ computedCentralMessengerLink }}</code>
+
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <button type="button"
+                        @click="handleSendOutboundInvite('WhatsApp')"
+                        class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center gap-1.5 cursor-pointer">
+                  <i class="pi pi-whatsapp text-xs"></i>
+                  <span>WhatsApp</span>
+                </button>
+                <button type="button"
+                        @click="handleSendOutboundInvite('SMS')"
+                        class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-extrabold flex items-center gap-1.5 cursor-pointer">
+                  <i class="pi pi-mobile text-xs"></i>
+                  <span>SMS</span>
+                </button>
+                <button type="button"
+                        @click="handleSendOutboundInvite('Email')"
+                        class="px-3 py-1.5 rounded-lg bg-primary hover:brightness-110 text-surface text-xs font-extrabold flex items-center gap-1.5 cursor-pointer">
+                  <i class="pi pi-envelope text-xs"></i>
+                  <span>E-mail</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -130,25 +210,59 @@
                 </span>
               </div>
 
-              <div v-if="chatBubbles.length > 0" class="flex items-center gap-2 text-[11px]">
+              <div v-if="chatBubbles.length > 0" class="flex flex-wrap items-center gap-2.5 text-[11px]">
+                <button v-if="unprocessedClientBubblesCount > 0 && processedBubblesCount > 0"
+                        type="button"
+                        @click="selectNewBubblesOnly"
+                        class="font-extrabold text-emerald-500 hover:underline cursor-pointer">
+                  {{ $t('calendar.aiChat.selectNewOnly') }}
+                </button>
                 <button type="button"
                         @click="selectAllBubbles"
                         class="font-bold text-primary hover:underline cursor-pointer">
                   {{ $t('calendar.aiChat.selectAll') }}
                 </button>
+                <button v-if="selectedBubbleIds.length > 0"
+                        type="button"
+                        @click="deselectAllBubbles"
+                        class="font-bold text-text-muted hover:text-red-500 hover:underline cursor-pointer">
+                  {{ $t('calendar.aiChat.deselectAll') }}
+                </button>
+                <button v-if="selectedConversation && unprocessedClientBubblesCount > 0"
+                        type="button"
+                        @click="handleMarkProcessed"
+                        class="px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 hover:bg-emerald-500 hover:text-white font-extrabold transition-colors cursor-pointer flex items-center gap-1">
+                  <i class="pi pi-check text-[10px]"></i>
+                  <span>{{ $t('calendar.aiChat.markProcessedBtn') }}</span>
+                </button>
               </div>
             </div>
 
+            <!-- Korábbi, már feldolgozott üzenetek összecsukó / kinyitó sáv -->
+            <div v-if="processedBubblesCount > 0 && unprocessedClientBubblesCount > 0"
+                 class="px-3 py-1.5 bg-surface/50 border-b border-text/10 flex items-center justify-between text-[11px]">
+              <button type="button"
+                      @click="showProcessedMessages = !showProcessedMessages"
+                      class="text-text-muted hover:text-primary font-bold flex items-center gap-1.5 cursor-pointer">
+                <i class="pi text-[10px]" :class="showProcessedMessages ? 'pi-eye-slash' : 'pi-history'"></i>
+                <span>
+                  {{ showProcessedMessages
+                    ? $t('calendar.aiChat.hideOlderProcessed', { count: processedBubblesCount })
+                    : $t('calendar.aiChat.showOlderProcessed', { count: processedBubblesCount }) }}
+                </span>
+              </button>
+            </div>
+
             <!-- Kattintható üzenetbuborékok (tágas, jól olvasható lista) -->
-            <div v-if="chatBubbles.length > 0" class="p-3 space-y-2">
-              <div v-for="(msg, idx) in chatBubbles"
+            <div v-if="visibleChatBubbles.length > 0" class="p-3 space-y-2">
+              <div v-for="(msg, idx) in visibleChatBubbles"
                    :key="msg.id"
                    @click="toggleBubble(msg.id)"
                    class="p-2.5 md:p-3 rounded-xl border transition-all cursor-pointer select-none flex items-start gap-2.5"
                    :class="[
                      selectedBubbleIds.includes(msg.id)
                        ? 'bg-primary/12 border-primary shadow-2xs'
-                       : 'bg-surface border-text/10 hover:border-primary/40 opacity-85 hover:opacity-100',
+                       : (msg.isProcessed ? 'bg-surface/60 border-text/10 opacity-60 hover:opacity-95' : 'bg-surface border-text/10 hover:border-primary/40 opacity-90 hover:opacity-100'),
                      msg.sender === 'salon' ? 'ml-4 sm:ml-10' : 'mr-4 sm:mr-10'
                    ]">
                 <div class="w-5 h-5 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-colors"
@@ -160,10 +274,24 @@
                 </div>
 
                 <div class="flex-1 min-w-0">
-                  <div class="flex items-center justify-between gap-2 mb-0.5">
-                    <span class="text-[10px] font-extrabold uppercase tracking-wider"
-                          :class="msg.sender === 'salon' ? 'text-primary' : 'text-text-muted'">
-                      {{ msg.senderLabel || (msg.sender === 'salon' ? $t('calendar.aiChat.senderSalon') : $t('calendar.aiChat.senderClient')) }}
+                  <div class="flex flex-wrap items-center justify-between gap-2 mb-0.5">
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-[10px] font-extrabold uppercase tracking-wider"
+                            :class="msg.sender === 'salon' ? 'text-primary' : 'text-text-muted'">
+                        {{ msg.senderLabel || (msg.sender === 'salon' ? $t('calendar.aiChat.senderSalon') : $t('calendar.aiChat.senderClient')) }}
+                      </span>
+                      <span v-if="msg.isProcessed"
+                            class="px-1.5 py-0.2 rounded bg-text/10 text-text-muted text-[9px] font-bold">
+                        ✓ {{ $t('calendar.aiChat.processedBadge') }}
+                      </span>
+                      <span v-else-if="msg.sender === 'client'"
+                            class="px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-500 text-[9px] font-extrabold">
+                        {{ $t('calendar.aiChat.newBadge') }}
+                      </span>
+                    </div>
+
+                    <span v-if="msg.timestamp" class="text-[10px] text-text-muted font-medium">
+                      {{ formatBubbleTime(msg.timestamp) }}
                     </span>
                   </div>
                   <p class="text-xs md:text-sm text-text leading-relaxed whitespace-pre-wrap break-words m-0">
@@ -328,7 +456,7 @@
               </div>
             </div>
 
-            <!-- 2. Saját Facebook Oldal & Ügyfelek fokozatos átnevelése -->
+            <!-- 2. Saját Facebook Oldal 1-Kattintásos Összekötése (hogy a vendég a szalon saját nevét és logóját lássa Messengeren!) -->
             <div class="p-3.5 rounded-xl border border-text/15 bg-background/50 space-y-3">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
@@ -341,18 +469,75 @@
                   </p>
                 </div>
 
+                <div class="flex items-center gap-1.5 shrink-0 self-start sm:self-auto">
+                  <button type="button"
+                          @click="handleOneClickFacebookConnect"
+                          :disabled="isConnectingFb"
+                          class="px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm disabled:opacity-50"
+                          :class="channelConfig.customFacebookPageConnected
+                            ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                            : 'bg-blue-600 hover:bg-blue-500 text-white'">
+                    <i class="pi" :class="isConnectingFb ? 'pi-spin pi-spinner' : (channelConfig.customFacebookPageConnected ? 'pi-check-circle' : 'pi-facebook')"></i>
+                    <span>
+                      {{ isConnectingFb
+                        ? $t('calendar.aiChat.fbConnecting')
+                        : (channelConfig.customFacebookPageConnected
+                          ? (channelConfig.customFacebookPageName || $t('calendar.aiChat.fbConnectedBadge'))
+                          : $t('calendar.aiChat.connectFbBtn')) }}
+                    </span>
+                  </button>
+
+                  <button v-if="channelConfig.customFacebookPageConnected"
+                          type="button"
+                          @click="handleDisconnectFacebookPage"
+                          class="px-2.5 py-2 rounded-xl bg-red-500/10 border border-red-500/25 text-red-500 hover:bg-red-500 hover:text-white text-xs font-bold transition-colors cursor-pointer">
+                    {{ $t('calendar.aiChat.fbDisconnectBtn') }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Ha a Facebook bejelentkezés után több oldalt is kezel a felhasználó, itt 1 kattintással kiválaszthatja a szalon oldalát -->
+              <div v-if="fbAvailablePages.length > 0"
+                   class="p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 space-y-2">
+                <div class="text-xs font-extrabold text-text flex items-center justify-between">
+                  <span>{{ $t('calendar.aiChat.fbSelectPageTitle') }}</span>
+                  <button type="button" @click="fbAvailablePages = []" class="text-text-muted hover:text-text cursor-pointer">
+                    <i class="pi pi-times text-xs"></i>
+                  </button>
+                </div>
+                <div class="space-y-1.5">
+                  <div v-for="pg in fbAvailablePages"
+                       :key="pg.id"
+                       class="p-2 rounded-lg bg-surface border border-text/10 flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <img v-if="pg.pictureUrl" :src="pg.pictureUrl" class="w-7 h-7 rounded-full object-cover shrink-0" alt="" />
+                      <i v-else class="pi pi-facebook text-blue-500 text-base shrink-0"></i>
+                      <div class="min-w-0">
+                        <div class="text-xs font-extrabold text-text truncate">{{ pg.name }}</div>
+                        <div class="text-[10px] text-text-muted">ID: {{ pg.id }}</div>
+                      </div>
+                    </div>
+                    <button type="button"
+                            @click="handleSelectFacebookPage(pg)"
+                            :disabled="isConnectingFb"
+                            class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-extrabold cursor-pointer shrink-0">
+                      {{ $t('calendar.aiChat.fbSelectPageBtn') }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Kézi beállítás / Token beillesztése (nyitható opció) -->
+              <div class="pt-1">
                 <button type="button"
-                        @click="channelConfig.customFacebookPageConnected = !channelConfig.customFacebookPageConnected"
-                        class="px-3 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 self-start sm:self-auto"
-                        :class="channelConfig.customFacebookPageConnected
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-blue-600 text-white hover:bg-blue-500'">
-                  <i class="pi" :class="channelConfig.customFacebookPageConnected ? 'pi-check-circle' : 'pi-facebook'"></i>
-                  <span>{{ channelConfig.customFacebookPageConnected ? $t('calendar.aiChat.fbConnectedBadge') : $t('calendar.aiChat.connectFbBtn') }}</span>
+                        @click="showManualFbFields = !showManualFbFields"
+                        class="text-[11px] font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer">
+                  <i class="pi text-[10px]" :class="showManualFbFields ? 'pi-chevron-up' : 'pi-cog'"></i>
+                  <span>{{ $t('calendar.aiChat.fbManualToggle') }}</span>
                 </button>
               </div>
 
-              <div v-if="channelConfig.customFacebookPageConnected" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div v-if="showManualFbFields || channelConfig.customFacebookPageConnected" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                 <input v-model="channelConfig.customFacebookPageName"
                        type="text"
                        :placeholder="$t('calendar.aiChat.fbPageNamePlaceholder')"
@@ -361,6 +546,20 @@
                        type="text"
                        :placeholder="$t('calendar.aiChat.fbPageIdPlaceholder')"
                        class="px-3 py-2 rounded-xl border border-text/15 bg-surface text-text text-xs focus:border-primary focus:outline-none" />
+                <div class="sm:col-span-2 flex flex-col sm:flex-row gap-2">
+                  <input v-model="channelConfig.customFacebookPageToken"
+                         type="password"
+                         :placeholder="$t('calendar.aiChat.fbPageTokenPlaceholder')"
+                         class="flex-1 px-3 py-2 rounded-xl border border-text/15 bg-surface text-text text-xs focus:border-primary focus:outline-none" />
+                  <button v-if="channelConfig.customFacebookPageToken && channelConfig.customFacebookPageToken.trim()"
+                          type="button"
+                          @click="handleConnectByToken"
+                          :disabled="isConnectingFb"
+                          class="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-extrabold cursor-pointer shrink-0 flex items-center justify-center gap-1.5">
+                    <i class="pi text-xs" :class="isConnectingFb ? 'pi-spin pi-spinner' : 'pi-bolt'"></i>
+                    <span>{{ $t('calendar.aiChat.fbConnectByTokenBtn') }}</span>
+                  </button>
+                </div>
               </div>
 
               <div class="space-y-2 pt-2 border-t border-text/10">
@@ -433,7 +632,8 @@ import { ref, computed, watch, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import appointmentApi from '@/services/appointmentApi';
 import { compressImages } from '@/utils/imageCompressor';
-import { getChannelMeta } from '@/utils/bookingReplyHelper';
+import { getChannelMeta, buildOutboundInviteText, openChannelSmartReply } from '@/utils/bookingReplyHelper';
+import { useCompanyStore } from '@/stores/companyStore';
 
 const props = defineProps({
   isOpen: { type: Boolean, required: true },
@@ -445,6 +645,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'parsed', 'pending-updated']);
 const { t, locale } = useI18n();
+const companyStore = useCompanyStore();
 
 const activeTab = ref('inbox');
 const conversations = ref([]);
@@ -465,9 +666,18 @@ const channelConfig = ref({
 const selectedChannel = ref('Messenger');
 const chatBubbles = ref([]);
 const selectedBubbleIds = ref([]);
+const showProcessedMessages = ref(false);
 const rawPastedText = ref('');
 const replyText = ref('');
 const appendCentralLinkOnReply = ref(true);
+
+// Szalon által kezdeményezett üzenet (WhatsApp / SMS / E-mail + Messenger link)
+const showOutboundPanel = ref(false);
+const outboundCustomerId = ref('');
+const outboundName = ref('');
+const outboundPhone = ref('');
+const outboundEmail = ref('');
+const outboundMessage = ref('');
 
 const compressedScreenshots = ref([]);
 const screenshotPreviews = ref([]);
@@ -477,17 +687,29 @@ const isUpdatingPending = ref(false);
 const isDeletingConv = ref(false);
 const isSendingReply = ref(false);
 const isSavingConfig = ref(false);
+const isConnectingFb = ref(false);
+const fbAvailablePages = ref([]);
+const showManualFbFields = ref(false);
 const errorMessage = ref('');
 const successBannerText = ref('');
 const copiedKey = ref('');
 
+const normalizeSalonAlias = (raw) => {
+  const trimmed = (raw || 'skanisalon').trim();
+  if (trimmed.toLowerCase() === 'szkaniszalon') return 'skanisalon';
+  return trimmed;
+};
+
 const computedCentralMessengerLink = computed(() => {
-  const alias = (channelConfig.value.salonAlias || 'salon').trim();
-  return `https://m.me/1455828144269648?ref=${alias}`;
+  const alias = normalizeSalonAlias(channelConfig.value.salonAlias);
+  const pageId = (channelConfig.value.customFacebookPageConnected && channelConfig.value.customFacebookPageId?.trim())
+    ? channelConfig.value.customFacebookPageId.trim()
+    : '1455828144269648';
+  return `https://m.me/${pageId}?ref=${alias}`;
 });
 
 const computedCentralViberLink = computed(() => {
-  const alias = (channelConfig.value.salonAlias || 'salon').trim();
+  const alias = normalizeSalonAlias(channelConfig.value.salonAlias);
   return `viber://pa?chatURI=beemagicsalon&context=${alias}`;
 });
 
@@ -495,6 +717,21 @@ const activePendingBooking = computed(() => {
   const pendingId = selectedConversation.value?.pendingAppointmentId || props.initialPendingBooking?.id;
   if (!pendingId) return null;
   return props.pendingBookings.find(p => p.id === pendingId) || props.initialPendingBooking || null;
+});
+
+const processedBubblesCount = computed(() => {
+  return chatBubbles.value.filter(b => b.isProcessed).length;
+});
+
+const unprocessedClientBubblesCount = computed(() => {
+  return chatBubbles.value.filter(b => b.sender === 'client' && !b.isProcessed).length;
+});
+
+const visibleChatBubbles = computed(() => {
+  if (showProcessedMessages.value || unprocessedClientBubblesCount.value === 0) {
+    return chatBubbles.value;
+  }
+  return chatBubbles.value.filter(b => !b.isProcessed);
 });
 
 const canSubmit = computed(() => {
@@ -513,6 +750,56 @@ const formatPendingTime = (iso) => {
     hour: '2-digit',
     minute: '2-digit'
   });
+};
+
+const formatBubbleTime = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleString(locale.value || 'hu', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+const getCustomerLabel = (c) => {
+  if (!c) return '';
+  const name = c.name || c.fullName || c.attributes?.FullName || c.attributes?.fullName || ('#' + c.id);
+  const phone = c.phone || c.attributes?.Phone || c.attributes?.phone || '';
+  return phone ? `${name} (${phone})` : name;
+};
+
+const onPickOutboundCustomer = () => {
+  if (!outboundCustomerId.value) return;
+  const found = (props.customersList || []).find(c => String(c.id) === String(outboundCustomerId.value));
+  if (found) {
+    outboundName.value = found.name || found.fullName || found.attributes?.FullName || found.attributes?.fullName || '';
+    outboundPhone.value = found.phone || found.attributes?.Phone || found.attributes?.phone || '';
+    outboundEmail.value = found.email || found.attributes?.Email || found.attributes?.email || '';
+  }
+};
+
+const handleSendOutboundInvite = async (channel) => {
+  const companyName = companyStore.company?.name || 'Szkáni Szalon';
+  const msg = buildOutboundInviteText({
+    lang: locale.value || 'hu',
+    customerName: outboundName.value.trim(),
+    companyName,
+    customMessage: outboundMessage.value.trim(),
+    centralMessengerLink: computedCentralMessengerLink.value
+  });
+
+  await openChannelSmartReply({
+    channel,
+    phone: outboundPhone.value.trim(),
+    email: outboundEmail.value.trim(),
+    subject: `${companyName} – Időpont egyeztetés`,
+    message: msg
+  });
+
+  successBannerText.value = t('calendar.aiChat.outboundSentToast', { channel });
 };
 
 // Lokális beszélgetések összerakása a Jóváhagyásra váró foglalásokból (hogy backend újraindítás nélkül is azonnal működjön!)
@@ -537,7 +824,8 @@ const buildLocalConversationsFromPending = () => {
           id: `init-${app.id}`,
           sender: 'client',
           senderName: app.customerName || 'Vendég',
-          text: initialMsg
+          text: initialMsg,
+          timestamp: app.createdAt || app.startDateTime
         }
       ]
     });
@@ -555,6 +843,7 @@ const fetchInbox = async () => {
       channelConfig.value = {
         ...channelConfig.value,
         ...data.config,
+        salonAlias: normalizeSalonAlias(data.config.salonAlias),
         autoUpdatePendingToggle: data.config.autoUpdatePendingFromChat !== false
       };
       appendCentralLinkOnReply.value = data.config.includeCentralLinkInReplies !== false;
@@ -615,15 +904,28 @@ const selectConversation = (conv) => {
   selectedConversation.value = conv;
   selectedChannel.value = conv.channel || 'Messenger';
   const msgs = Array.isArray(conv.messages) ? conv.messages : [];
-  chatBubbles.value = msgs.map((m, idx) => ({
-    id: m.id || `msg-${idx}`,
-    sender: m.sender || 'client',
-    senderLabel: m.sender === 'salon' ? t('calendar.aiChat.senderSalon') : (conv.customerName || t('calendar.aiChat.senderClient')),
-    text: m.text
-  }));
-  selectedBubbleIds.value = chatBubbles.value
-    .filter(b => b.sender === 'client')
+  const lastProcTs = conv.lastProcessedAt ? new Date(conv.lastProcessedAt).getTime() + 2000 : 0;
+
+  chatBubbles.value = msgs.map((m, idx) => {
+    const msgTs = m.timestamp ? new Date(m.timestamp).getTime() : 0;
+    const isProc = Boolean(m.isProcessed) || m.sender === 'salon' || (lastProcTs > 0 && msgTs > 0 && msgTs <= lastProcTs);
+    return {
+      id: m.id || `msg-${idx}`,
+      sender: m.sender || 'client',
+      senderLabel: m.sender === 'salon' ? t('calendar.aiChat.senderSalon') : (conv.customerName || t('calendar.aiChat.senderClient')),
+      text: m.text,
+      timestamp: m.timestamp || null,
+      isProcessed: isProc
+    };
+  });
+
+  // Alapból CSAK a még fel nem dolgozott (új) vendég-üzeneteket jelöljük ki!
+  const freshClientIds = chatBubbles.value
+    .filter(b => b.sender === 'client' && !b.isProcessed)
     .map(b => b.id);
+
+  selectedBubbleIds.value = freshClientIds;
+  showProcessedMessages.value = freshClientIds.length === 0;
 
   if (conv.unreadCount > 0) {
     conv.unreadCount = 0;
@@ -641,7 +943,43 @@ const toggleBubble = (id) => {
 };
 
 const selectAllBubbles = () => {
+  showProcessedMessages.value = true;
   selectedBubbleIds.value = chatBubbles.value.map(b => b.id);
+};
+
+const deselectAllBubbles = () => {
+  selectedBubbleIds.value = [];
+};
+
+const selectNewBubblesOnly = () => {
+  selectedBubbleIds.value = chatBubbles.value
+    .filter(b => b.sender === 'client' && !b.isProcessed)
+    .map(b => b.id);
+};
+
+const markCurrentSelectionProcessedSilently = async () => {
+  if (!selectedConversation.value) return;
+  const convId = selectedConversation.value.id;
+  try {
+    const res = await appointmentApi.markChatConversationProcessed(convId, {});
+    if (res.data) {
+      const idx = conversations.value.findIndex(c => c.id === res.data.id);
+      if (idx >= 0) conversations.value[idx] = res.data;
+      selectedConversation.value = res.data;
+    }
+  } catch {
+    // Ha helyi elem, lokálisan jelöljük feldolgozottnak
+  }
+  chatBubbles.value.forEach(b => {
+    b.isProcessed = true;
+  });
+};
+
+const handleMarkProcessed = async () => {
+  await markCurrentSelectionProcessedSilently();
+  selectedBubbleIds.value = [];
+  showProcessedMessages.value = true;
+  successBannerText.value = t('calendar.aiChat.markedProcessedSuccess');
 };
 
 const handleSendReply = async () => {
@@ -671,7 +1009,9 @@ const handleSendReply = async () => {
       id: 'reply-' + Date.now(),
       sender: 'salon',
       senderName: t('calendar.aiChat.senderSalon'),
-      text: finalMsg
+      text: finalMsg,
+      timestamp: new Date().toISOString(),
+      isProcessed: true
     });
     selectConversation(selectedConversation.value);
   } finally {
@@ -770,6 +1110,159 @@ const handleSaveChannelConfig = async () => {
   }
 };
 
+const ensureFacebookSdkLoaded = () => {
+  return new Promise((resolve, reject) => {
+    if (typeof window !== 'undefined' && window.FB) {
+      resolve(window.FB);
+      return;
+    }
+    window.fbAsyncInit = function () {
+      window.FB.init({
+        appId: '1138443562352487',
+        cookie: true,
+        xfbml: false,
+        version: 'v21.0'
+      });
+      resolve(window.FB);
+    };
+    const existing = document.getElementById('facebook-jssdk');
+    if (existing) {
+      setTimeout(() => {
+        if (window.FB) resolve(window.FB);
+        else reject(new Error('FB SDK timeout'));
+      }, 1500);
+      return;
+    }
+    const js = document.createElement('script');
+    js.id = 'facebook-jssdk';
+    js.src = 'https://connect.facebook.net/en_US/sdk.js';
+    js.async = true;
+    js.defer = true;
+    js.onerror = () => reject(new Error('FB SDK blocked'));
+    document.head.appendChild(js);
+  });
+};
+
+const handleOneClickFacebookConnect = async () => {
+  isConnectingFb.value = true;
+  errorMessage.value = '';
+  fbAvailablePages.value = [];
+  try {
+    const FB = await ensureFacebookSdkLoaded();
+    FB.login((response) => {
+      if (response?.authResponse?.accessToken) {
+        const userAccessToken = response.authResponse.accessToken;
+        appointmentApi.getFacebookManagedPages({ userAccessToken })
+          .then(async (res) => {
+            const pages = Array.isArray(res.data) ? res.data : [];
+            if (pages.length === 0) {
+              showManualFbFields.value = true;
+              errorMessage.value = t('calendar.aiChat.fbNoPagesFound');
+            } else if (pages.length === 1) {
+              await handleSelectFacebookPage(pages[0]);
+            } else {
+              fbAvailablePages.value = pages;
+            }
+          })
+          .catch(() => {
+            showManualFbFields.value = true;
+            errorMessage.value = t('calendar.aiChat.fbPopupHint');
+          })
+          .finally(() => {
+            isConnectingFb.value = false;
+          });
+      } else {
+        showManualFbFields.value = true;
+        isConnectingFb.value = false;
+      }
+    }, {
+      scope: 'pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement'
+    });
+  } catch {
+    showManualFbFields.value = true;
+    isConnectingFb.value = false;
+  }
+};
+
+const handleSelectFacebookPage = async (page) => {
+  if (!page) return;
+  isConnectingFb.value = true;
+  errorMessage.value = '';
+  try {
+    const res = await appointmentApi.connectFacebookPage({
+      pageId: page.pageId,
+      pageName: page.pageName,
+      pageAccessToken: page.pageAccessToken
+    });
+    if (res.data) {
+      channelConfig.value = {
+        ...channelConfig.value,
+        ...res.data,
+        salonAlias: normalizeSalonAlias(res.data.salonAlias),
+        autoUpdatePendingToggle: res.data.autoUpdatePendingFromChat !== false
+      };
+    }
+    fbAvailablePages.value = [];
+    showManualFbFields.value = false;
+    successBannerText.value = t('calendar.aiChat.fbConnectedSuccess', { name: page.pageName });
+  } catch (err) {
+    errorMessage.value = err.response?.data?.message || t('calendar.aiChat.parseError');
+  } finally {
+    isConnectingFb.value = false;
+  }
+};
+
+const handleConnectByToken = async () => {
+  const token = (channelConfig.value.customFacebookPageAccessToken || '').trim();
+  if (!token) return;
+  isConnectingFb.value = true;
+  errorMessage.value = '';
+  try {
+    // Ha csak a tokent másolták be (Page ID nélkül), lekérjük a hozzá tartozó oldalakat!
+    if (!channelConfig.value.customFacebookPageId?.trim()) {
+      const pagesRes = await appointmentApi.getFacebookManagedPages({ userAccessToken: token });
+      const pages = Array.isArray(pagesRes.data) ? pagesRes.data : [];
+      if (pages.length === 1) {
+        await handleSelectFacebookPage(pages[0]);
+        return;
+      } else if (pages.length > 1) {
+        fbAvailablePages.value = pages;
+        return;
+      }
+    }
+    // Ha Page ID is meg van adva (vagy Page Token volt), közvetlenül bekötjük
+    const res = await appointmentApi.connectFacebookPage({
+      pageId: (channelConfig.value.customFacebookPageId || '').trim(),
+      pageName: (channelConfig.value.customFacebookPageName || '').trim(),
+      pageAccessToken: token
+    });
+    if (res.data) {
+      channelConfig.value = {
+        ...channelConfig.value,
+        ...res.data,
+        salonAlias: normalizeSalonAlias(res.data.salonAlias),
+        autoUpdatePendingToggle: res.data.autoUpdatePendingFromChat !== false
+      };
+    }
+    showManualFbFields.value = false;
+    successBannerText.value = t('calendar.aiChat.fbConnectedSuccess', {
+      name: channelConfig.value.customFacebookPageName || channelConfig.value.customFacebookPageId
+    });
+  } catch (err) {
+    errorMessage.value = err.response?.data?.message || t('calendar.aiChat.fbNoPagesFound');
+  } finally {
+    isConnectingFb.value = false;
+  }
+};
+
+const handleDisconnectFacebookPage = async () => {
+  channelConfig.value.customFacebookPageConnected = false;
+  channelConfig.value.customFacebookPageId = '';
+  channelConfig.value.customFacebookPageName = '';
+  channelConfig.value.customFacebookPageAccessToken = '';
+  await handleSaveChannelConfig();
+};
+
 const copyToClipboard = async (text, key) => {
   try {
     await navigator.clipboard.writeText(text);
@@ -796,39 +1289,13 @@ const convertTextToBubblesAndSwitch = () => {
     return {
       id: 'b-' + Date.now() + '-' + index,
       sender: isSalon ? 'salon' : 'client',
-      text: cleaned || line
+      text: cleaned || line,
+      isProcessed: false
     };
   });
 
   selectedBubbleIds.value = chatBubbles.value.map(b => b.id);
   activeTab.value = 'inbox';
-};
-
-const loadSampleConversation = () => {
-  const lang = locale.value || 'hu';
-  if (lang === 'sk') {
-    chatBubbles.value = [
-      { id: 'demo-1', sender: 'client', text: 'Dobrý deň! Mala by som záujem o balayage a dámsky strih.' },
-      { id: 'demo-2', sender: 'salon', text: 'Dobrý deň! Zajtra o 14:30 by Vám to vyhovovalo?' },
-      { id: 'demo-3', sender: 'client', text: 'Áno, zajtra o 14:30 je super! Volám sa Katarína Szabóová, +421 905 234 567.' },
-      { id: 'demo-4', sender: 'client', text: 'Mám dlhé vlasy, prosím prirodzený karamelový odtieň.' }
-    ];
-  } else if (lang === 'en') {
-    chatBubbles.value = [
-      { id: 'demo-1', sender: 'client', text: 'Hi! Do you have an opening for a haircut and balayage?' },
-      { id: 'demo-2', sender: 'salon', text: 'Hi! Would tomorrow at 14:30 work for you?' },
-      { id: 'demo-3', sender: 'client', text: 'Yes, tomorrow at 14:30 is perfect! My name is Kate Szabo, +421 905 234 567.' },
-      { id: 'demo-4', sender: 'client', text: 'I have long hair.' }
-    ];
-  } else {
-    chatBubbles.value = [
-      { id: 'demo-1', sender: 'client', text: 'Szia! Szeretnék bejelentkezni női hajvágásra és balayage festésre.' },
-      { id: 'demo-2', sender: 'salon', text: 'Szia! Holnap 14:30-kor jó lenne neked?' },
-      { id: 'demo-3', sender: 'client', text: 'Igen, a holnap 14:30 tökéletes! Szabó Katalin vagyok, +421 905 234 567.' },
-      { id: 'demo-4', sender: 'client', text: 'Hosszú hajam van, természetes karamell árnyalatot szeretnék.' }
-    ];
-  }
-  selectedBubbleIds.value = chatBubbles.value.map(b => b.id);
 };
 
 const addFiles = async (fileList) => {
@@ -910,12 +1377,14 @@ const handleUpdatePendingBooking = async () => {
     const formData = buildFormDataFromSelection();
     const res = await appointmentApi.updatePendingFromChat(activePendingBooking.value.id, formData);
     if (res.data?.updated) {
+      await markCurrentSelectionProcessedSilently();
       successBannerText.value = t('calendar.aiChat.pendingUpdatedSuccess', { summary: res.data.summary });
       emit('pending-updated', res.data);
     }
   } catch {
     try {
       const upd = await applyPendingUpdateViaStandardPut(activePendingBooking.value, getCombinedSelectedText());
+      await markCurrentSelectionProcessedSilently();
       successBannerText.value = t('calendar.aiChat.pendingUpdatedSuccess', { summary: upd.summary });
       emit('pending-updated', upd);
     } catch (fallbackErr) {
@@ -941,6 +1410,7 @@ const handleBuildBooking = async () => {
     if (!parsedData.customerPhone && selectedConversation.value?.customerPhone) {
       parsedData.customerPhone = selectedConversation.value.customerPhone;
     }
+    await markCurrentSelectionProcessedSilently();
     emit('parsed', parsedData);
   } catch {
     const text = getCombinedSelectedText();
@@ -954,6 +1424,7 @@ const handleBuildBooking = async () => {
       ? new Date(activePendingBooking.value.startDateTime).toISOString().slice(0, 10)
       : tomorrow.toISOString().slice(0, 10);
 
+    await markCurrentSelectionProcessedSilently();
     emit('parsed', {
       customerId: activePendingBooking.value?.customerId || null,
       customerName: activePendingBooking.value?.customerName || selectedConversation.value?.customerName || '',

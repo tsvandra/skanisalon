@@ -61,6 +61,18 @@ export default {
     return api.delete(`/api/ChatInbox/conversations/${conversationId}`);
   },
 
+  markChatConversationProcessed(conversationId, payload = {}) {
+    return api.post(`/api/ChatInbox/conversations/${conversationId}/mark-processed`, payload);
+  },
+
+  getFacebookManagedPages(userAccessToken) {
+    return api.post('/api/ChatInbox/facebook/pages', { userAccessToken });
+  },
+
+  connectFacebookPage(payload) {
+    return api.post('/api/ChatInbox/facebook/connect-page', payload);
+  },
+
   simulateIncomingChat(payload) {
     return api.post('/api/ChatInbox/simulate-incoming', payload);
   }

@@ -8,6 +8,7 @@ namespace Soluvion.API.DTOs.AppointmentDtos
         public string Text { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
         public string SourceRoute { get; set; } = "central_alias"; // "central_alias" | "custom_page" | "web" | "booking"
+        public bool IsProcessed { get; set; }
     }
 
     public class ChatConversationDto
@@ -23,6 +24,7 @@ namespace Soluvion.API.DTOs.AppointmentDtos
         public int? PendingAppointmentId { get; set; }
         public int UnreadCount { get; set; }
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? LastProcessedAt { get; set; }
         public List<ChatMessageItemDto> Messages { get; set; } = new();
     }
 
@@ -48,6 +50,10 @@ namespace Soluvion.API.DTOs.AppointmentDtos
 
         // Amíg nincs jóváhagyva a foglalás, automatikusan frissüljön-e az új üzenetek alapján
         public bool AutoUpdatePendingFromChat { get; set; } = true;
+
+        // Törölt és feldolgozott beszélgetések időbélyeg-határvonalai (hogy a régi FB üzenetek ne töltődjenek vissza újra!)
+        public Dictionary<string, DateTime> ClearedSenderTimestamps { get; set; } = new();
+        public Dictionary<string, DateTime> ProcessedSenderTimestamps { get; set; } = new();
     }
 
     public class ChatInboxResponseDto
@@ -60,6 +66,19 @@ namespace Soluvion.API.DTOs.AppointmentDtos
     {
         public string Text { get; set; } = string.Empty;
         public bool AppendCentralLink { get; set; }
+    }
+
+    public class MarkConversationProcessedRequestDto
+    {
+        public List<string>? MessageIds { get; set; }
+    }
+
+    public class OutboundInviteEmailDto
+    {
+        public string Email { get; set; } = string.Empty;
+        public string? CustomerName { get; set; }
+        public string? Subject { get; set; }
+        public string Message { get; set; } = string.Empty;
     }
 
     public class SimulateIncomingChatDto
@@ -79,5 +98,25 @@ namespace Soluvion.API.DTOs.AppointmentDtos
         public string Summary { get; set; } = string.Empty;
         public AppointmentResponseDto? Appointment { get; set; }
         public AiChatBookingParseResultDto? Parsed { get; set; }
+    }
+
+    public class FacebookUserTokenRequestDto
+    {
+        public string UserAccessToken { get; set; } = string.Empty;
+    }
+
+    public class FacebookPageItemDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string AccessToken { get; set; } = string.Empty;
+        public string? PictureUrl { get; set; }
+    }
+
+    public class FacebookConnectPageRequestDto
+    {
+        public string PageId { get; set; } = string.Empty;
+        public string PageName { get; set; } = string.Empty;
+        public string PageAccessToken { get; set; } = string.Empty;
     }
 }

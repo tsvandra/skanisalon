@@ -60,6 +60,8 @@ export function cleanPhoneForLink(rawPhone) {
   return digits;
 }
 
+export const DEFAULT_CENTRAL_MESSENGER_LINK = 'https://m.me/1455828144269648?ref=skanisalon';
+
 export function buildBookingReplyText({
   type = 'approve',
   lang = 'hu',
@@ -67,31 +69,69 @@ export function buildBookingReplyText({
   companyName = 'Salon',
   slotText = '',
   servicesText = '',
-  totalPrice = ''
+  totalPrice = '',
+  centralMessengerLink = DEFAULT_CENTRAL_MESSENGER_LINK,
+  includeMessengerLink = true
 }) {
   const l = (lang || 'hu').slice(0, 2).toLowerCase();
   const namePart = customerName ? ` ${customerName}` : '';
   const pricePart = totalPrice ? ` (${totalPrice} EUR)` : '';
+  const linkToUse = (centralMessengerLink || DEFAULT_CENTRAL_MESSENGER_LINK).trim();
 
   if (l === 'sk') {
+    const messengerFooterSk = includeMessengerLink && linkToUse
+      ? `\n\n💬 Ak nám chcete odpovedať alebo upraviť termín cez Messenger, kliknite sem: ${linkToUse}`
+      : '';
     if (type === 'reject') {
-      return `Dobrý deň${namePart}! Ďakujeme za Váš záujem o termín v salóne ${companyName} (${slotText} – ${servicesText}). Žiaľ, tento termín už nie je voľný. Prosím, napíšte nám a radi Vám navrhneme náhradný termín!`;
+      return `Dobrý deň${namePart}! Ďakujeme za Váš záujem o termín v salóne ${companyName} (${slotText} – ${servicesText}). Žiaľ, tento termín už nie je voľný. Prosím, napíšte nám a radi Vám navrhneme náhradný termín!${messengerFooterSk}`;
     }
-    return `Dobrý deň${namePart}! Potvrdzujeme Vašu rezerváciu v salóne ${companyName}:\n📅 Termín: ${slotText}\n✂️ Služby: ${servicesText}${pricePart}\nTešíme sa na Vašu návštevu!`;
+    return `Dobrý deň${namePart}! Potvrdzujeme Vašu rezerváciu v salóne ${companyName}:\n📅 Termín: ${slotText}\n✂️ Služby: ${servicesText}${pricePart}\nTešíme sa na Vašu návštevu!${messengerFooterSk}`;
   }
 
   if (l === 'en') {
+    const messengerFooterEn = includeMessengerLink && linkToUse
+      ? `\n\n💬 To reply or reschedule directly on Messenger, tap here: ${linkToUse}`
+      : '';
     if (type === 'reject') {
-      return `Hello${namePart}! Thank you for your booking request at ${companyName} (${slotText} – ${servicesText}). Unfortunately, this slot is no longer available. Please reply to this message and we will gladly find an alternative time for you!`;
+      return `Hello${namePart}! Thank you for your booking request at ${companyName} (${slotText} – ${servicesText}). Unfortunately, this slot is no longer available. Please reply to this message and we will gladly find an alternative time for you!${messengerFooterEn}`;
     }
-    return `Hello${namePart}! Your appointment at ${companyName} is confirmed:\n📅 Date & Time: ${slotText}\n✂️ Services: ${servicesText}${pricePart}\nWe look forward to seeing you!`;
+    return `Hello${namePart}! Your appointment at ${companyName} is confirmed:\n📅 Date & Time: ${slotText}\n✂️ Services: ${servicesText}${pricePart}\nWe look forward to seeing you!${messengerFooterEn}`;
   }
 
   // Default: HU
+  const messengerFooterHu = includeMessengerLink && linkToUse
+    ? `\n\n💬 Ha Messengeren szeretnél válaszolni vagy időpontot módosítani, kattints ide: ${linkToUse}`
+    : '';
   if (type === 'reject') {
-    return `Szia${namePart}! Köszönjük az időpontkérésedet a(z) ${companyName} szalonba (${slotText} – ${servicesText}). Sajnos ez az időpont közben betelt vagy nem elérhető. Kérlek, írj vissza nekünk, és egyeztetünk egy másik megfelelő időpontot!`;
+    return `Szia${namePart}! Köszönjük az időpontkérésedet a(z) ${companyName} szalonba (${slotText} – ${servicesText}). Sajnos ez az időpont közben betelt vagy nem elérhető. Kérlek, írj vissza nekünk, és egyeztetünk egy másik megfelelő időpontot!${messengerFooterHu}`;
   }
-  return `Szia${namePart}! Visszaigazoljuk a foglalásodat a(z) ${companyName} szalonban:\n📅 Időpont: ${slotText}\n✂️ Kezelés: ${servicesText}${pricePart}\nVárunk szeretettel!`;
+  return `Szia${namePart}! Visszaigazoljuk a foglalásodat a(z) ${companyName} szalonban:\n📅 Időpont: ${slotText}\n✂️ Kezelés: ${servicesText}${pricePart}\nVárunk szeretettel!${messengerFooterHu}`;
+}
+
+export function buildOutboundInviteText({
+  lang = 'hu',
+  customerName = '',
+  companyName = 'Szkáni Szalon',
+  customMessage = '',
+  centralMessengerLink = DEFAULT_CENTRAL_MESSENGER_LINK
+}) {
+  const l = (lang || 'hu').slice(0, 2).toLowerCase();
+  const namePart = customerName ? ` ${customerName}` : '';
+  const linkToUse = (centralMessengerLink || DEFAULT_CENTRAL_MESSENGER_LINK).trim();
+  const trimmedBody = (customMessage || '').trim();
+
+  if (l === 'sk') {
+    const body = trimmedBody || `Dobrý deň${namePart}! Kontaktujeme Vás zo salónu ${companyName} ohľadom Vášho termínu.`;
+    return `${body}\n\n💬 Pre rýchlu odpoveď cez Messenger kliknite na náš priamy odkaz: ${linkToUse}`;
+  }
+
+  if (l === 'en') {
+    const body = trimmedBody || `Hello${namePart}! We are reaching out from ${companyName} regarding your appointment.`;
+    return `${body}\n\n💬 To reply directly on Messenger, tap our salon link: ${linkToUse}`;
+  }
+
+  const body = trimmedBody || `Szia${namePart}! A(z) ${companyName} szalonból keresünk az időpontoddal kapcsolatban.`;
+  return `${body}\n\n💬 Ha Messengeren szeretnél válaszolni nekünk, kattints erre a közvetlen linkre: ${linkToUse}`;
 }
 
 export async function openChannelSmartReply({
@@ -116,18 +156,25 @@ export async function openChannelSmartReply({
     // Clipboard nem elérhető
   }
 
-  if (ch === 'whatsapp' && waPhone) {
-    window.open(`https://wa.me/${waPhone}?text=${encodedMsg}`, '_blank', 'noopener,noreferrer');
+  if (ch === 'whatsapp') {
+    const targetUrl = waPhone
+      ? `https://wa.me/${waPhone}?text=${encodedMsg}`
+      : `https://wa.me/?text=${encodedMsg}`;
+    window.open(targetUrl, '_blank', 'noopener,noreferrer');
     return 'whatsapp';
   }
 
-  if (ch === 'sms' && cleanPhone) {
-    window.location.href = `sms:${cleanPhone}?body=${encodedMsg}`;
+  if (ch === 'sms') {
+    window.location.href = `sms:${cleanPhone || ''}?body=${encodedMsg}`;
     return 'sms';
   }
 
-  if (ch === 'viber' && waPhone) {
-    window.location.href = `viber://chat?number=%2B${waPhone}`;
+  if (ch === 'viber') {
+    if (waPhone) {
+      window.location.href = `viber://chat?number=%2B${waPhone}`;
+    } else {
+      window.location.href = `viber://forward?text=${encodedMsg}`;
+    }
     return 'viber';
   }
 
@@ -141,21 +188,16 @@ export async function openChannelSmartReply({
     return 'messenger';
   }
 
-  if (ch === 'email' && email) {
+  if (ch === 'email') {
     const encodedSubj = encodeURIComponent(subject || 'Időpont visszaigazolás');
-    window.location.href = `mailto:${email}?subject=${encodedSubj}&body=${encodedMsg}`;
+    const mailtoUrl = `mailto:${email || ''}?subject=${encodedSubj}&body=${encodedMsg}`;
+    const a = document.createElement('a');
+    a.href = mailtoUrl;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     return 'email';
   }
 
-  // Fallback ha nincs telefonszám a választott csatornához, de van e-mail vagy telefon
-  if (waPhone) {
-    window.open(`https://wa.me/${waPhone}?text=${encodedMsg}`, '_blank', 'noopener,noreferrer');
-    return 'whatsapp';
-  }
-  if (email) {
-    const encodedSubj = encodeURIComponent(subject || 'Időpont visszaigazolás');
-    window.location.href = `mailto:${email}?subject=${encodedSubj}&body=${encodedMsg}`;
-    return 'email';
-  }
   return 'copied';
 }

@@ -68,10 +68,13 @@ namespace Soluvion.API.Controllers
                     {
                         conv.Id,
                         conv.Channel,
+                        conv.SourceRoute,
                         conv.CustomerName,
                         conv.ExternalSenderId,
+                        conv.UpdatedAt,
                         MessageCount = conv.Messages.Count,
-                        LastMessage = conv.Messages.LastOrDefault()?.Text
+                        LastMessage = conv.Messages.LastOrDefault()?.Text,
+                        Messages = conv.Messages
                     })
                 };
             });
@@ -173,6 +176,34 @@ namespace Soluvion.API.Controllers
             if (dbCompany == null) return NotFound(new { errorCode = "COMPANY_NOT_FOUND" });
 
             var inbox = LoadInboxFromSettings(dbCompany);
+            inbox.Config.ClearedSenderTimestamps ??= new Dictionary<string, DateTime>();
+
+            var toRemove = inbox.Conversations
+                .Where(c => string.Equals(c.Id, conversationId, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            foreach (var conv in toRemove)
+            {
+                var watermark = DateTime.UtcNow;
+                if (conv.Messages.Count > 0)
+                {
+                    var maxMsgTs = conv.Messages.Max(m => m.Timestamp);
+                    if (maxMsgTs > watermark) watermark = maxMsgTs;
+                }
+
+                if (!string.IsNullOrWhiteSpace(conv.ExternalSenderId))
+                {
+                    inbox.Config.ClearedSenderTimestamps[conv.ExternalSenderId.Trim()] = watermark;
+                }
+
+                if (!string.IsNullOrWhiteSpace(conv.CustomerName) &&
+                    !string.Equals(conv.CustomerName, "Messenger Vendég", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(conv.CustomerName, "Viber Vendég", StringComparison.OrdinalIgnoreCase))
+                {
+                    inbox.Config.ClearedSenderTimestamps[conv.CustomerName.Trim().ToLowerInvariant()] = watermark;
+                }
+            }
+
             inbox.Conversations.RemoveAll(c => string.Equals(c.Id, conversationId, StringComparison.OrdinalIgnoreCase));
 
             SaveInboxToSettings(dbCompany, inbox);
@@ -180,6 +211,65 @@ namespace Soluvion.API.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(inbox);
+        }
+
+        [HttpPost("conversations/{conversationId}/mark-processed")]
+        [Authorize]
+        public async Task<IActionResult> MarkConversationProcessed(string conversationId, [FromBody] MarkConversationProcessedRequestDto? dto)
+        {
+            var company = _tenantContext.CurrentCompany;
+            if (company == null) return NotFound(new { errorCode = "COMPANY_NOT_FOUND" });
+
+            var dbCompany = await _context.Companies.FindAsync(company.Id);
+            if (dbCompany == null) return NotFound(new { errorCode = "COMPANY_NOT_FOUND" });
+
+            var inbox = LoadInboxFromSettings(dbCompany);
+            var conv = inbox.Conversations.FirstOrDefault(c => string.Equals(c.Id, conversationId, StringComparison.OrdinalIgnoreCase));
+            if (conv == null) return NotFound(new { errorCode = "CONVERSATION_NOT_FOUND" });
+
+            var targetIds = dto?.MessageIds != null && dto.MessageIds.Count > 0
+                ? dto.MessageIds.ToHashSet(StringComparer.OrdinalIgnoreCase)
+                : null;
+
+            DateTime maxMarkedTimestamp = DateTime.UtcNow;
+            foreach (var msg in conv.Messages)
+            {
+                if (targetIds == null || targetIds.Contains(msg.Id))
+                {
+                    msg.IsProcessed = true;
+                    if (msg.Timestamp > maxMarkedTimestamp)
+                    {
+                        maxMarkedTimestamp = msg.Timestamp;
+                    }
+                }
+            }
+
+            // Ha minden üzenet fel lett dolgozva (vagy nem adtak meg részlistát), frissítjük a beszélgetés és a küldő vízjelét is
+            bool allClientMessagesProcessed = conv.Messages.Where(m => m.Sender == "client").All(m => m.IsProcessed);
+            if (targetIds == null || allClientMessagesProcessed)
+            {
+                conv.LastProcessedAt = maxMarkedTimestamp;
+                inbox.Config.ProcessedSenderTimestamps ??= new Dictionary<string, DateTime>();
+
+                if (!string.IsNullOrWhiteSpace(conv.ExternalSenderId))
+                {
+                    inbox.Config.ProcessedSenderTimestamps[conv.ExternalSenderId.Trim()] = maxMarkedTimestamp;
+                }
+                if (!string.IsNullOrWhiteSpace(conv.CustomerName) &&
+                    !string.Equals(conv.CustomerName, "Messenger Vendég", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(conv.CustomerName, "Viber Vendég", StringComparison.OrdinalIgnoreCase))
+                {
+                    inbox.Config.ProcessedSenderTimestamps[conv.CustomerName.Trim().ToLowerInvariant()] = maxMarkedTimestamp;
+                }
+            }
+
+            conv.UnreadCount = 0;
+
+            SaveInboxToSettings(dbCompany, inbox);
+            company.SettingsJson = dbCompany.SettingsJson;
+            await _context.SaveChangesAsync();
+
+            return Ok(conv);
         }
 
         [HttpPut("config")]
@@ -195,11 +285,13 @@ namespace Soluvion.API.Controllers
             var inbox = LoadInboxFromSettings(dbCompany);
 
             var cleanAlias = SanitizeAlias(string.IsNullOrWhiteSpace(dto.SalonAlias) ? BuildDefaultAlias(dbCompany) : dto.SalonAlias);
+            if (string.Equals(cleanAlias, "szkaniszalon", StringComparison.OrdinalIgnoreCase))
+            {
+                cleanAlias = "skanisalon";
+            }
+
             var centralPageId = _configuration["Messenger:CentralPageId"] ?? "1455828144269648";
             inbox.Config.SalonAlias = cleanAlias;
-            inbox.Config.CentralMessengerLink = $"https://m.me/{centralPageId}?ref={cleanAlias}";
-            inbox.Config.CentralViberLink = $"viber://pa?chatURI=beemagicsalon&context={cleanAlias}";
-            inbox.Config.CentralWhatsAppTag = $"#{cleanAlias}";
 
             inbox.Config.CustomFacebookPageConnected = dto.CustomFacebookPageConnected;
             inbox.Config.CustomFacebookPageName = dto.CustomFacebookPageName?.Trim();
@@ -208,6 +300,14 @@ namespace Soluvion.API.Controllers
             {
                 inbox.Config.CustomFacebookPageToken = dto.CustomFacebookPageToken.Trim();
             }
+
+            var activePageId = (inbox.Config.CustomFacebookPageConnected && !string.IsNullOrWhiteSpace(inbox.Config.CustomFacebookPageId))
+                ? inbox.Config.CustomFacebookPageId
+                : centralPageId;
+
+            inbox.Config.CentralMessengerLink = $"https://m.me/{activePageId}?ref={cleanAlias}";
+            inbox.Config.CentralViberLink = $"viber://pa?chatURI=beemagicsalon&context={cleanAlias}";
+            inbox.Config.CentralWhatsAppTag = $"#{cleanAlias}";
 
             inbox.Config.CustomViberBotConnected = dto.CustomViberBotConnected;
             inbox.Config.CustomViberBotName = dto.CustomViberBotName?.Trim();
@@ -219,11 +319,157 @@ namespace Soluvion.API.Controllers
             inbox.Config.IncludeCentralLinkInReplies = dto.IncludeCentralLinkInReplies;
             inbox.Config.AutoUpdatePendingFromChat = dto.AutoUpdatePendingFromChat;
 
+            if (inbox.Config.CustomFacebookPageConnected &&
+                !string.IsNullOrWhiteSpace(inbox.Config.CustomFacebookPageId) &&
+                !string.IsNullOrWhiteSpace(inbox.Config.CustomFacebookPageToken))
+            {
+                await TrySubscribePageWebhookAsync(inbox.Config.CustomFacebookPageId, inbox.Config.CustomFacebookPageToken);
+            }
+
             SaveInboxToSettings(dbCompany, inbox);
             company.SettingsJson = dbCompany.SettingsJson;
             await _context.SaveChangesAsync();
 
             return Ok(inbox.Config);
+        }
+
+        // --- 1-KATTINTÁSOS SAJÁT FACEBOOK OLDAL ÖSSZEKÖTŐ (OAuth Popup / Token alapján) ---
+        [HttpPost("facebook/pages")]
+        [Authorize]
+        public async Task<IActionResult> GetFacebookManagedPages([FromBody] FacebookUserTokenRequestDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.UserAccessToken))
+            {
+                return BadRequest(new { errorCode = "MISSING_FB_TOKEN" });
+            }
+
+            var token = dto.UserAccessToken.Trim();
+            var pages = new List<FacebookPageItemDto>();
+            var client = _httpClientFactory.CreateClient();
+
+            try
+            {
+                // 1. Lekérdezzük a felhasználó által kezelt összes Facebook Oldalt (User Access Token esetén)
+                var resp = await client.GetAsync($"https://graph.facebook.com/v20.0/me/accounts?fields=id,name,access_token,picture{{url}}&access_token={token}");
+                if (resp.IsSuccessStatusCode)
+                {
+                    using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+                    if (doc.RootElement.TryGetProperty("data", out var dataArr) && dataArr.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var item in dataArr.EnumerateArray())
+                        {
+                            var pid = item.TryGetProperty("id", out var idp) ? idp.GetString() ?? "" : "";
+                            var pname = item.TryGetProperty("name", out var np) ? np.GetString() ?? "" : "";
+                            var ptok = item.TryGetProperty("access_token", out var tp) ? tp.GetString() ?? "" : "";
+                            string? picUrl = null;
+                            if (item.TryGetProperty("picture", out var picObj) &&
+                                picObj.TryGetProperty("data", out var picData) &&
+                                picData.TryGetProperty("url", out var urlProp))
+                            {
+                                picUrl = urlProp.GetString();
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(pid) && !string.IsNullOrWhiteSpace(ptok))
+                            {
+                                pages.Add(new FacebookPageItemDto
+                                {
+                                    Id = pid,
+                                    Name = pname,
+                                    AccessToken = ptok,
+                                    PictureUrl = picUrl
+                                });
+                            }
+                        }
+                    }
+                }
+
+                // 2. Ha közvetlenül egy Page Access Tokent adtak meg, a /me végpont maga a Facebook Oldal!
+                if (pages.Count == 0)
+                {
+                    var meResp = await client.GetAsync($"https://graph.facebook.com/v20.0/me?fields=id,name,picture{{url}}&access_token={token}");
+                    if (meResp.IsSuccessStatusCode)
+                    {
+                        using var meDoc = JsonDocument.Parse(await meResp.Content.ReadAsStringAsync());
+                        var root = meDoc.RootElement;
+                        var pid = root.TryGetProperty("id", out var idp) ? idp.GetString() ?? "" : "";
+                        var pname = root.TryGetProperty("name", out var np) ? np.GetString() ?? "" : "";
+                        string? picUrl = null;
+                        if (root.TryGetProperty("picture", out var picObj) &&
+                            picObj.TryGetProperty("data", out var picData) &&
+                            picData.TryGetProperty("url", out var urlProp))
+                        {
+                            picUrl = urlProp.GetString();
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(pid))
+                        {
+                            pages.Add(new FacebookPageItemDto
+                            {
+                                Id = pid,
+                                Name = pname,
+                                AccessToken = token,
+                                PictureUrl = picUrl
+                            });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Facebook oldalak lekérdezése sikertelen.");
+            }
+
+            return Ok(new { pages });
+        }
+
+        [HttpPost("facebook/connect-page")]
+        [Authorize]
+        public async Task<IActionResult> ConnectFacebookPage([FromBody] FacebookConnectPageRequestDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.PageId) || string.IsNullOrWhiteSpace(dto.PageAccessToken))
+            {
+                return BadRequest(new { errorCode = "INVALID_PAGE_DATA" });
+            }
+
+            var company = _tenantContext.CurrentCompany;
+            if (company == null) return NotFound(new { errorCode = "COMPANY_NOT_FOUND" });
+
+            var dbCompany = await _context.Companies.FindAsync(company.Id);
+            if (dbCompany == null) return NotFound(new { errorCode = "COMPANY_NOT_FOUND" });
+
+            var inbox = LoadInboxFromSettings(dbCompany);
+            var cleanPageId = dto.PageId.Trim();
+            var cleanPageName = string.IsNullOrWhiteSpace(dto.PageName) ? dbCompany.Name : dto.PageName.Trim();
+            var cleanToken = dto.PageAccessToken.Trim();
+
+            inbox.Config.CustomFacebookPageConnected = true;
+            inbox.Config.CustomFacebookPageId = cleanPageId;
+            inbox.Config.CustomFacebookPageName = cleanPageName;
+            inbox.Config.CustomFacebookPageToken = cleanToken;
+            inbox.Config.CentralMessengerLink = $"https://m.me/{cleanPageId}?ref={inbox.Config.SalonAlias}";
+
+            await TrySubscribePageWebhookAsync(cleanPageId, cleanToken);
+            await SyncFacebookPageConversationsAsync(dbCompany, inbox);
+
+            SaveInboxToSettings(dbCompany, inbox);
+            company.SettingsJson = dbCompany.SettingsJson;
+            await _context.SaveChangesAsync();
+
+            return Ok(inbox);
+        }
+
+        private async Task TrySubscribePageWebhookAsync(string pageId, string pageAccessToken)
+        {
+            try
+            {
+                var client = _httpClientFactory.CreateClient();
+                var url = $"https://graph.facebook.com/v20.0/{pageId}/subscribed_apps?subscribed_fields=messages,messaging_postbacks,messaging_referrals&access_token={pageAccessToken}";
+                await client.PostAsync(url, new StringContent("", Encoding.UTF8, "application/json"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Facebook Page webhook feliratkozás sikertelen: {PageId}", pageId);
+            }
         }
 
         [HttpPost("conversations/{conversationId}/read")]
@@ -880,11 +1126,15 @@ namespace Soluvion.API.Controllers
                 }
             }
 
-            if (string.IsNullOrWhiteSpace(response.Config.SalonAlias))
+            if (string.IsNullOrWhiteSpace(response.Config.SalonAlias) ||
+                string.Equals(response.Config.SalonAlias, "szkaniszalon", StringComparison.OrdinalIgnoreCase))
             {
                 response.Config.SalonAlias = defaultAlias;
             }
-            response.Config.CentralMessengerLink = $"https://m.me/{centralPageId}?ref={response.Config.SalonAlias}";
+            var effectivePageId = (response.Config.CustomFacebookPageConnected && !string.IsNullOrWhiteSpace(response.Config.CustomFacebookPageId))
+                ? response.Config.CustomFacebookPageId.Trim()
+                : centralPageId;
+            response.Config.CentralMessengerLink = $"https://m.me/{effectivePageId}?ref={response.Config.SalonAlias}";
             response.Config.CentralViberLink = $"viber://pa?chatURI=beemagicsalon&context={response.Config.SalonAlias}";
             response.Config.CentralWhatsAppTag = $"#{response.Config.SalonAlias}";
 
@@ -1001,7 +1251,11 @@ namespace Soluvion.API.Controllers
                 tokensToPoll.Add((inbox.Config.CustomFacebookPageToken.Trim(), "custom_page"));
             }
 
-            if (tokensToPoll.Count == 0) return false;
+            // Ha localhoston futunk és nincs helyi FB token beállítva, lehúzzuk az éles BeeMagic szerverről a szinkronizált üzeneteket!
+            if (tokensToPoll.Count == 0)
+            {
+                return await TrySyncFromProductionBridgeAsync(dbCompany, inbox);
+            }
 
             bool anyModified = false;
             var client = _httpClientFactory.CreateClient();
@@ -1080,6 +1334,36 @@ namespace Soluvion.API.Controllers
                         // Időrendi sorrend (legrégebbi elöl)
                         rawMessages.Reverse();
 
+                        // Ellenőrizzük, hogy a szalon korábban törölte-e ezt a beszélgetést (ClearedSenderTimestamps vízjel):
+                        // ha igen, csak a törlés UTÁNI vadonatúj üzeneteket engedjük be!
+                        inbox.Config.ClearedSenderTimestamps ??= new Dictionary<string, DateTime>();
+                        inbox.Config.ProcessedSenderTimestamps ??= new Dictionary<string, DateTime>();
+
+                        DateTime? clearedUntil = null;
+                        if (!string.IsNullOrWhiteSpace(clientSenderId) &&
+                            inbox.Config.ClearedSenderTimestamps.TryGetValue(clientSenderId.Trim(), out var cById))
+                        {
+                            clearedUntil = cById;
+                        }
+                        if (!string.IsNullOrWhiteSpace(clientName) &&
+                            inbox.Config.ClearedSenderTimestamps.TryGetValue(clientName.Trim().ToLowerInvariant(), out var cByName))
+                        {
+                            if (!clearedUntil.HasValue || cByName > clearedUntil.Value)
+                                clearedUntil = cByName;
+                        }
+
+                        if (clearedUntil.HasValue)
+                        {
+                            rawMessages = rawMessages
+                                .Where(rm => rm.CreatedAt > clearedUntil.Value.AddSeconds(2))
+                                .ToList();
+
+                            if (rawMessages.Count == 0)
+                            {
+                                continue;
+                            }
+                        }
+
                         // Ellenőrizzük, hogy ehhez a szalonhoz tartozik-e a beszélgetés
                         if (route == "central_alias")
                         {
@@ -1105,6 +1389,20 @@ namespace Soluvion.API.Controllers
                             ((!string.IsNullOrWhiteSpace(clientSenderId) && c.ExternalSenderId == clientSenderId) ||
                              string.Equals(c.CustomerName, clientName, StringComparison.OrdinalIgnoreCase)));
 
+                        DateTime? processedUntil = conv?.LastProcessedAt;
+                        if (!string.IsNullOrWhiteSpace(clientSenderId) &&
+                            inbox.Config.ProcessedSenderTimestamps.TryGetValue(clientSenderId.Trim(), out var pById))
+                        {
+                            if (!processedUntil.HasValue || pById > processedUntil.Value)
+                                processedUntil = pById;
+                        }
+                        if (!string.IsNullOrWhiteSpace(clientName) &&
+                            inbox.Config.ProcessedSenderTimestamps.TryGetValue(clientName.Trim().ToLowerInvariant(), out var pByName))
+                        {
+                            if (!processedUntil.HasValue || pByName > processedUntil.Value)
+                                processedUntil = pByName;
+                        }
+
                         if (conv == null)
                         {
                             conv = new ChatConversationDto
@@ -1115,7 +1413,8 @@ namespace Soluvion.API.Controllers
                                 ExternalSenderId = clientSenderId,
                                 CustomerName = clientName,
                                 UnreadCount = 1,
-                                UpdatedAt = rawMessages.Last().CreatedAt
+                                UpdatedAt = rawMessages.Last().CreatedAt,
+                                LastProcessedAt = processedUntil
                             };
                             inbox.Conversations.Insert(0, conv);
                             anyModified = true;
@@ -1132,6 +1431,11 @@ namespace Soluvion.API.Controllers
                                 conv.CustomerName = clientName;
                                 anyModified = true;
                             }
+                            if (processedUntil.HasValue && (!conv.LastProcessedAt.HasValue || processedUntil.Value > conv.LastProcessedAt.Value))
+                            {
+                                conv.LastProcessedAt = processedUntil;
+                                anyModified = true;
+                            }
                         }
 
                         foreach (var rm in rawMessages)
@@ -1140,12 +1444,14 @@ namespace Soluvion.API.Controllers
                                            (!string.IsNullOrWhiteSpace(inbox.Config.CustomFacebookPageId) && rm.FromId == inbox.Config.CustomFacebookPageId) ||
                                            string.Equals(rm.FromName, "BeeMagic", StringComparison.OrdinalIgnoreCase);
 
-                            bool alreadyExists = conv.Messages.Any(em =>
+                            bool isMsgProcessed = isSalon || (processedUntil.HasValue && rm.CreatedAt <= processedUntil.Value.AddSeconds(2));
+
+                            var existingMsg = conv.Messages.FirstOrDefault(em =>
                                 (!string.IsNullOrWhiteSpace(rm.Id) && em.Id == rm.Id) ||
                                 (string.Equals(em.Text.Trim(), rm.Text.Trim(), StringComparison.OrdinalIgnoreCase) &&
                                  Math.Abs((em.Timestamp - rm.CreatedAt).TotalMinutes) < 10));
 
-                            if (!alreadyExists)
+                            if (existingMsg == null)
                             {
                                 conv.Messages.Add(new ChatMessageItemDto
                                 {
@@ -1154,9 +1460,15 @@ namespace Soluvion.API.Controllers
                                     SenderName = isSalon ? dbCompany.Name : clientName,
                                     Text = rm.Text,
                                     Timestamp = rm.CreatedAt,
-                                    SourceRoute = route
+                                    SourceRoute = route,
+                                    IsProcessed = isMsgProcessed
                                 });
                                 conv.UpdatedAt = rm.CreatedAt;
+                                anyModified = true;
+                            }
+                            else if (isMsgProcessed && !existingMsg.IsProcessed)
+                            {
+                                existingMsg.IsProcessed = true;
                                 anyModified = true;
                             }
                         }
@@ -1169,6 +1481,128 @@ namespace Soluvion.API.Controllers
             }
 
             return anyModified;
+        }
+
+        // Ha localhoston futunk (ahol nincs közvetlen FB webhook / token), lehúzzuk az éles BeeMagic szerverről a szalon üzeneteit
+        private async Task<bool> TrySyncFromProductionBridgeAsync(Company dbCompany, ChatInboxResponseDto inbox)
+        {
+            try
+            {
+                var host = HttpContext?.Request?.Host.Host ?? "";
+                if (host.Contains("railway.app", StringComparison.OrdinalIgnoreCase)) return false;
+
+                var client = _httpClientFactory.CreateClient();
+                client.Timeout = TimeSpan.FromSeconds(5);
+                var resp = await client.GetAsync("https://skanisalon-production.up.railway.app/api/ChatInbox/webhook-status");
+                if (!resp.IsSuccessStatusCode) return false;
+
+                using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+                if (!doc.RootElement.TryGetProperty("companies", out var compsArr) || compsArr.ValueKind != JsonValueKind.Array)
+                    return false;
+
+                inbox.Config.ClearedSenderTimestamps ??= new Dictionary<string, DateTime>();
+                inbox.Config.ProcessedSenderTimestamps ??= new Dictionary<string, DateTime>();
+                bool anyModified = false;
+
+                foreach (var compEl in compsArr.EnumerateArray())
+                {
+                    var remoteAlias = compEl.TryGetProperty("alias", out var alProp) ? alProp.GetString() ?? "" : "";
+                    var remoteId = compEl.TryGetProperty("id", out var idProp) && idProp.TryGetInt32(out var rid) ? rid : 0;
+
+                    if (remoteId != 7 && !IsAliasMatchForCompany(dbCompany, inbox, remoteAlias))
+                        continue;
+
+                    if (!compEl.TryGetProperty("conversations", out var convsArr) || convsArr.ValueKind != JsonValueKind.Array)
+                        continue;
+
+                    foreach (var rc in convsArr.EnumerateArray())
+                    {
+                        var extId = rc.TryGetProperty("externalSenderId", out var exProp) ? exProp.GetString() ?? "" : "";
+                        var cName = rc.TryGetProperty("customerName", out var cnProp) ? cnProp.GetString() ?? "Messenger Vendég" : "Messenger Vendég";
+                        var ch = rc.TryGetProperty("channel", out var chProp) ? chProp.GetString() ?? "Messenger" : "Messenger";
+                        if (string.IsNullOrWhiteSpace(extId) && !string.Equals(ch, "Messenger", StringComparison.OrdinalIgnoreCase))
+                            continue;
+
+                        if (!rc.TryGetProperty("messages", out var msgsArr) || msgsArr.ValueKind != JsonValueKind.Array)
+                            continue;
+
+                        DateTime? clearedUntil = null;
+                        if (!string.IsNullOrWhiteSpace(extId) && inbox.Config.ClearedSenderTimestamps.TryGetValue(extId.Trim(), out var cById))
+                            clearedUntil = cById;
+                        if (!string.IsNullOrWhiteSpace(cName) && inbox.Config.ClearedSenderTimestamps.TryGetValue(cName.Trim().ToLowerInvariant(), out var cByName))
+                        {
+                            if (!clearedUntil.HasValue || cByName > clearedUntil.Value) clearedUntil = cByName;
+                        }
+
+                        var remoteMsgs = msgsArr.Deserialize<List<ChatMessageItemDto>>(JsonOptions) ?? new List<ChatMessageItemDto>();
+                        if (clearedUntil.HasValue)
+                        {
+                            remoteMsgs = remoteMsgs.Where(m => m.Timestamp > clearedUntil.Value.AddSeconds(2)).ToList();
+                        }
+                        if (remoteMsgs.Count == 0) continue;
+
+                        var localConv = inbox.Conversations.FirstOrDefault(c =>
+                            c.Channel == ch &&
+                            ((!string.IsNullOrWhiteSpace(extId) && c.ExternalSenderId == extId) ||
+                             string.Equals(c.CustomerName, cName, StringComparison.OrdinalIgnoreCase)));
+
+                        DateTime? processedUntil = localConv?.LastProcessedAt;
+                        if (!string.IsNullOrWhiteSpace(extId) && inbox.Config.ProcessedSenderTimestamps.TryGetValue(extId.Trim(), out var pById))
+                        {
+                            if (!processedUntil.HasValue || pById > processedUntil.Value) processedUntil = pById;
+                        }
+                        if (!string.IsNullOrWhiteSpace(cName) && inbox.Config.ProcessedSenderTimestamps.TryGetValue(cName.Trim().ToLowerInvariant(), out var pByName))
+                        {
+                            if (!processedUntil.HasValue || pByName > processedUntil.Value) processedUntil = pByName;
+                        }
+
+                        if (localConv == null)
+                        {
+                            localConv = new ChatConversationDto
+                            {
+                                Id = Guid.NewGuid().ToString("N"),
+                                Channel = ch,
+                                SourceRoute = "central_alias",
+                                ExternalSenderId = extId,
+                                CustomerName = cName,
+                                UnreadCount = 1,
+                                UpdatedAt = remoteMsgs.Last().Timestamp,
+                                LastProcessedAt = processedUntil
+                            };
+                            inbox.Conversations.Insert(0, localConv);
+                            anyModified = true;
+                        }
+
+                        foreach (var rm in remoteMsgs)
+                        {
+                            bool isProc = rm.IsProcessed || rm.Sender == "salon" || (processedUntil.HasValue && rm.Timestamp <= processedUntil.Value.AddSeconds(2));
+                            var existingMsg = localConv.Messages.FirstOrDefault(em =>
+                                em.Id == rm.Id ||
+                                (string.Equals(em.Text.Trim(), rm.Text.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                                 Math.Abs((em.Timestamp - rm.Timestamp).TotalMinutes) < 10));
+
+                            if (existingMsg == null)
+                            {
+                                rm.IsProcessed = isProc;
+                                localConv.Messages.Add(rm);
+                                localConv.UpdatedAt = rm.Timestamp;
+                                anyModified = true;
+                            }
+                            else if (isProc && !existingMsg.IsProcessed)
+                            {
+                                existingMsg.IsProcessed = true;
+                                anyModified = true;
+                            }
+                        }
+                    }
+                }
+
+                return anyModified;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private async Task TryDispatchExternalReplyAsync(ChatChannelConfigDto config, ChatConversationDto conv, string text)
