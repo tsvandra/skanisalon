@@ -5,9 +5,11 @@
                      :pager-text="pagerText"
                      :user-role="store.userRole"
                      :is-today="isCurrentToday"
+                     :schedule-mode="scheduleConfig.mode"
                      @prev="goPrev"
                      @next="goNext"
-                     @today="goToday" />
+                     @today="goToday"
+                     @open-schedule="isScheduleModalOpen = true" />
 
     <div class="flex-1 overflow-y-auto p-2 md:p-6 w-full">
       <div class="max-w-7xl mx-auto w-full">
@@ -35,8 +37,11 @@
                          :current-day-appointments="currentDayAppointments"
                          :available-services="availableServices"
                          :customers-list="customersList"
+                         :day-schedule-info="currentDayScheduleInfo"
+                         :is-saving-schedule="isSavingDaySchedule"
                          @appointment-click="openAppointmentDetails"
-                         @new-appointment="openNewAppointment" />
+                         @new-appointment="openNewAppointment"
+                         @update-day-schedule="handleUpdateDaySchedule" />
 
       </div>
     </div>
@@ -47,6 +52,11 @@
                             @close="closeModal"
                             @saved="handleModalSaved"
                             @deleted="handleModalDeleted" />
+
+    <BookingScheduleModal :is-open="isScheduleModalOpen"
+                          :schedule-config="scheduleConfig"
+                          @close="isScheduleModalOpen = false"
+                          @saved="handleScheduleConfigSaved" />
 
   </div>
 </template>
@@ -59,6 +69,7 @@
 
   // Kiszervezett komponensek beimportálása
   import AppointmentEditorModal from './AppointmentEditorModal.vue';
+  import BookingScheduleModal from './BookingScheduleModal.vue';
   import CalendarToolbar from './CalendarToolbar.vue';
   import CalendarMonthView from './CalendarMonthView.vue';
   import CalendarWeekView from './CalendarWeekView.vue';
@@ -68,9 +79,89 @@
   const { locale } = useI18n();
   const currentLang = computed(() => locale.value || 'hu-HU');
 
+  // --- ONLINE FOGLALÁSI MUNKAREND KONFIGURÁCIÓ ---
+  const isScheduleModalOpen = ref(false);
+  const isSavingDaySchedule = ref(false);
+  const scheduleConfig = ref({
+    mode: 'weekly_template',
+    weeklyHours: {},
+    dateOverrides: {}
+  });
+
+  const toDateKey = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const resolveDaySchedule = (date) => {
+    const key = toDateKey(date);
+    const overrides = scheduleConfig.value?.dateOverrides || {};
+    if (overrides[key]) {
+      const ov = overrides[key];
+      const intervals = Array.isArray(ov.intervals) ? ov.intervals : [];
+      return {
+        isOpen: !!ov.isOpen && intervals.length > 0,
+        hasCustomOverride: true,
+        intervals
+      };
+    }
+
+    if (scheduleConfig.value?.mode === 'custom_days') {
+      return { isOpen: false, hasCustomOverride: false, intervals: [] };
+    }
+
+    const isoDow = ((date.getDay() + 6) % 7) + 1;
+    const wh = scheduleConfig.value?.weeklyHours?.[String(isoDow)];
+    if (wh && wh.isOpen && Array.isArray(wh.intervals) && wh.intervals.length > 0) {
+      return {
+        isOpen: true,
+        hasCustomOverride: false,
+        intervals: wh.intervals
+      };
+    }
+    return { isOpen: false, hasCustomOverride: false, intervals: [] };
+  };
+
+  const fetchScheduleConfig = async () => {
+    try {
+      const res = await bookingApi.getScheduleConfig();
+      if (res.data) {
+        scheduleConfig.value = res.data;
+      }
+    } catch (err) {
+      console.error('Hiba a munkarend betöltésekor:', err);
+    }
+  };
+
+  const handleScheduleConfigSaved = (updatedConfig) => {
+    if (updatedConfig) {
+      scheduleConfig.value = updatedConfig;
+    }
+  };
+
+  const handleUpdateDaySchedule = async (payload) => {
+    if (isSavingDaySchedule.value) return;
+    isSavingDaySchedule.value = true;
+    try {
+      const dateStr = toDateKey(currentDate.value);
+      const res = await bookingApi.updateDayOverride(dateStr, payload);
+      if (res.data) {
+        scheduleConfig.value = res.data;
+      }
+    } catch (err) {
+      console.error('Hiba a napi nyitvatartás mentésekor:', err);
+    } finally {
+      isSavingDaySchedule.value = false;
+    }
+  };
+
   // --- ALAP NÉZET ÉS NAPTÁR LOGIKA ---
   const route = useRoute(); const currentView = ref(route.query.view ? route.query.view : (route.query.date ? "day" : "month"));
   const currentDate = ref(route.query.date ? new Date(route.query.date) : new Date());
+
+  const currentDayScheduleInfo = computed(() => resolveDaySchedule(currentDate.value));
 
   const currentMonthName = computed(() => currentDate.value.toLocaleString(currentLang.value, { month: 'long' }).toUpperCase());
   const currentYear = computed(() => currentDate.value.getFullYear());
@@ -132,6 +223,11 @@
       .filter(a => new Date(a.startDateTime).toDateString() === targetStr)
       .sort((a, b) => new Date(a.startDateTime) - new Date(b.startDateTime));
 
+    const schedInfo = resolveDaySchedule(date);
+    const bookingHoursLabel = schedInfo.isOpen && schedInfo.intervals.length > 0
+      ? schedInfo.intervals.map(i => `${i.start}-${i.end}`).join(', ')
+      : '';
+
     // Tényleges terheltség számítása (összeolvasztott időszakokkal)
     let coveredMinutes = 0;
     if (dayApps.length > 0) {
@@ -163,7 +259,10 @@
       date, isCurrentMonth, isToday, appointments: dayApps,
       hasAppointments: dayApps.length > 0, appointmentCount: dayApps.length,
       hasPending: dayApps.some(a => isPending(a.status)),
-      loadPercentage: percentage
+      loadPercentage: percentage,
+      isOpenForBooking: schedInfo.isOpen,
+      hasCustomOverride: schedInfo.hasCustomOverride,
+      bookingHoursLabel
     };
   };
 
@@ -223,6 +322,13 @@
   const timelineData = computed(() => {
     const apps = currentDayAppointments.value;
     let minMinutes = 8 * 60; let maxMinutes = 15 * 60;
+    const sched = currentDayScheduleInfo.value;
+    if (sched?.isOpen && sched.intervals?.length > 0) {
+      const sMins = sched.intervals.map(i => { const [h, m] = i.start.split(':').map(Number); return h * 60 + m; });
+      const eMins = sched.intervals.map(i => { const [h, m] = i.end.split(':').map(Number); return h * 60 + m; });
+      minMinutes = Math.floor(Math.min(...sMins) / 60) * 60;
+      maxMinutes = Math.ceil(Math.max(...eMins) / 60) * 60;
+    }
     if (apps.length > 0) {
       const actualMin = Math.min(...apps.map(a => { const d = new Date(a.startDateTime); return isNaN(d) ? 8 * 60 : d.getHours() * 60 + d.getMinutes(); }));
       const actualMax = Math.max(...apps.map(a => { const d = new Date(a.endDateTime); return isNaN(d) ? 15 * 60 : d.getHours() * 60 + d.getMinutes(); }));
@@ -366,6 +472,7 @@
     fetchDataForCurrentView();
     fetchServicesForAdmin();
     fetchCustomers();
+    fetchScheduleConfig();
   });
   watch(currentDate, () => fetchDataForCurrentView());
 </script>

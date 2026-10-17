@@ -76,21 +76,58 @@
         </div>
 
         <div class="space-y-3 max-h-[460px] overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-primary/30 [&::-webkit-scrollbar-thumb]:rounded-full">
-          <div v-for="service in activeGroup.items"
-               :key="service.id"
-               class="p-4 rounded-2xl border transition-all duration-200"
-               :class="isServiceSelected(service)
-                 ? 'bg-primary/5 border-primary/40 shadow-sm'
-                 : 'bg-background/70 border-text/10 hover:border-text/20'">
+          <template v-for="service in activeGroup.items" :key="service.id">
+            <!-- EGYETLEN VARIÁNS ESETÉN: Összefűzött névvel (Szolgáltatás - Variáns), egyetlen kompakt kártyaként -->
+            <label v-if="service.variants.length === 1"
+                   class="group/var relative flex items-center justify-between gap-3 p-4 rounded-2xl border cursor-pointer transition-all duration-200"
+                   :class="selectedVariants.includes(service.variants[0].id)
+                     ? 'bg-primary/15 border-primary ring-1 ring-primary/40 shadow-sm'
+                     : 'bg-background/70 border-text/10 hover:border-primary/40'">
 
-            <div class="flex items-start gap-3 mb-3">
-              <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 transition-colors"
-                   :class="isServiceSelected(service) ? 'bg-primary text-surface' : 'bg-primary/10 text-primary'">
-                <ServicePictogram :svg="service.pictogramLink || activeGroup.categoryPictogram" sizeClass="w-5 h-5" />
+              <input type="checkbox"
+                     :value="service.variants[0].id"
+                     :checked="selectedVariants.includes(service.variants[0].id)"
+                     @change="toggleVariant(service.variants[0].id)"
+                     class="hidden" />
+
+              <div class="flex items-start gap-3 min-w-0 flex-1">
+                <div class="w-5 h-5 mt-0.5 rounded-md border flex items-center justify-center shrink-0 transition-colors"
+                     :class="selectedVariants.includes(service.variants[0].id)
+                       ? 'bg-primary border-primary text-surface'
+                       : 'border-text/25 bg-background group-hover/var:border-primary/60'">
+                  <i v-if="selectedVariants.includes(service.variants[0].id)" class="pi pi-check text-[10px] font-bold"></i>
+                </div>
+
+                <div class="flex flex-col min-w-0">
+                  <span class="font-bold text-base text-primary leading-snug">
+                    {{ getSingleVariantTitle(service, service.variants[0]) }}
+                  </span>
+                  <p v-if="getLocText(service.description, '')"
+                     class="text-xs text-text-muted italic mt-1 leading-relaxed m-0">
+                    {{ getLocText(service.description, '') }}
+                  </p>
+                  <span v-if="service.variants[0].duration" class="text-[11px] text-text-muted flex items-center gap-1 mt-1">
+                    <i class="pi pi-clock text-[10px]"></i>
+                    {{ $t('booking.durationMinutes', { min: service.variants[0].duration }) }}
+                  </span>
+                </div>
               </div>
 
-              <div class="flex-1 min-w-0">
-                <div class="font-bold text-base text-text leading-snug">
+              <span class="text-base font-extrabold shrink-0"
+                    :class="selectedVariants.includes(service.variants[0].id) ? 'text-primary' : 'text-text/90'">
+                {{ formatCurrency(service.variants[0].price) }}
+              </span>
+            </label>
+
+            <!-- TÖBB VARIÁNS ESETÉN: Szolgáltatás fejléc türkiz (primary) színnel + variáns kártyák -->
+            <div v-else
+                 class="p-4 rounded-2xl border transition-all duration-200"
+                 :class="isServiceSelected(service)
+                   ? 'bg-primary/5 border-primary/40 shadow-sm'
+                   : 'bg-background/70 border-text/10 hover:border-text/20'">
+
+              <div class="mb-3">
+                <div class="font-bold text-base text-primary leading-snug">
                   {{ getLocText(service.name) }}
                 </div>
                 <p v-if="getLocText(service.description, '')"
@@ -98,50 +135,50 @@
                   {{ getLocText(service.description, '') }}
                 </p>
               </div>
-            </div>
 
-            <!-- Variáns választó kártyák -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pl-0 sm:pl-12">
-              <label v-for="variant in service.variants"
-                     :key="variant.id"
-                     class="group/var relative flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border cursor-pointer transition-all duration-200 min-h-[48px]"
-                     :class="selectedVariants.includes(variant.id)
-                       ? 'bg-primary/15 border-primary ring-1 ring-primary/40 shadow-sm'
-                       : 'bg-surface border-text/10 hover:border-primary/40'">
-
-                <input type="checkbox"
-                       :value="variant.id"
-                       :checked="selectedVariants.includes(variant.id)"
-                       @change="toggleVariant(variant.id)"
-                       class="hidden" />
-
-                <div class="flex items-center gap-2.5 min-w-0">
-                  <div class="w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors"
+              <!-- Variáns választó kártyák -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                <label v-for="variant in service.variants"
+                       :key="variant.id"
+                       class="group/var relative flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border cursor-pointer transition-all duration-200 min-h-[48px]"
                        :class="selectedVariants.includes(variant.id)
-                         ? 'bg-primary border-primary text-surface'
-                         : 'border-text/25 bg-background group-hover/var:border-primary/60'">
-                    <i v-if="selectedVariants.includes(variant.id)" class="pi pi-check text-[10px] font-bold"></i>
+                         ? 'bg-primary/15 border-primary ring-1 ring-primary/40 shadow-sm'
+                         : 'bg-surface border-text/10 hover:border-primary/40'">
+
+                  <input type="checkbox"
+                         :value="variant.id"
+                         :checked="selectedVariants.includes(variant.id)"
+                         @change="toggleVariant(variant.id)"
+                         class="hidden" />
+
+                  <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors"
+                         :class="selectedVariants.includes(variant.id)
+                           ? 'bg-primary border-primary text-surface'
+                           : 'border-text/25 bg-background group-hover/var:border-primary/60'">
+                      <i v-if="selectedVariants.includes(variant.id)" class="pi pi-check text-[10px] font-bold"></i>
+                    </div>
+
+                    <div class="flex flex-col min-w-0">
+                      <span class="font-semibold text-sm truncate transition-colors"
+                            :class="selectedVariants.includes(variant.id) ? 'text-primary' : 'text-text'">
+                        {{ getLocText(variant.variantName) }}
+                      </span>
+                      <span v-if="variant.duration" class="text-[11px] text-text-muted flex items-center gap-1">
+                        <i class="pi pi-clock text-[10px]"></i>
+                        {{ $t('booking.durationMinutes', { min: variant.duration }) }}
+                      </span>
+                    </div>
                   </div>
 
-                  <div class="flex flex-col min-w-0">
-                    <span class="font-semibold text-sm truncate transition-colors"
-                          :class="selectedVariants.includes(variant.id) ? 'text-primary' : 'text-text'">
-                      {{ getLocText(variant.variantName) }}
-                    </span>
-                    <span v-if="variant.duration" class="text-[11px] text-text-muted flex items-center gap-1">
-                      <i class="pi pi-clock text-[10px]"></i>
-                      {{ $t('booking.durationMinutes', { min: variant.duration }) }}
-                    </span>
-                  </div>
-                </div>
-
-                <span class="text-sm font-extrabold shrink-0"
-                      :class="selectedVariants.includes(variant.id) ? 'text-primary' : 'text-text/80'">
-                  {{ formatCurrency(variant.price) }}
-                </span>
-              </label>
+                  <span class="text-sm font-extrabold shrink-0"
+                        :class="selectedVariants.includes(variant.id) ? 'text-primary' : 'text-text/80'">
+                    {{ formatCurrency(variant.price) }}
+                  </span>
+                </label>
+              </div>
             </div>
-          </div>
+          </template>
         </div>
       </div>
 
@@ -227,7 +264,8 @@
   const activeCategory = ref(null);
 
   const activeGroup = computed(() => {
-    return categories.value.find(g => g.id === activeCategory.value) || categories.value[0] || null;
+    if (!activeCategory.value) return null;
+    return categories.value.find(g => g.id === activeCategory.value) || null;
   });
 
   const formatCurrency = (val) => {
@@ -235,8 +273,15 @@
     return val.toLocaleString(locale.value, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
   };
 
+  const getSingleVariantTitle = (service, variant) => {
+    const srvName = (getLocText(service.name) || '').trim();
+    const varName = (getLocText(variant?.variantName) || '').trim();
+    if (!varName) return srvName;
+    return `${srvName} - ${varName}`;
+  };
+
   const selectCategory = (categoryId) => {
-    activeCategory.value = categoryId;
+    activeCategory.value = activeCategory.value === categoryId ? null : categoryId;
   };
 
   const isServiceSelected = (service) => {
@@ -265,7 +310,7 @@
               variantName: getLocText(variant.variantName),
               price: variant.price || 0,
               duration: variant.duration || 30,
-              pictogram: service.pictogramLink || group.categoryPictogram || null
+              pictogram: group.categoryPictogram || null
             });
           }
         });
@@ -301,6 +346,10 @@
       const groups = {};
 
       flatServices.forEach(s => {
+        // Azok a variánsok, amelyekhez nem tartozik ár (> 0), nem létező variánsnak minősülnek
+        const validVariants = (s.variants || []).filter(v => v.price != null && Number(v.price) > 0);
+        if (validVariants.length === 0) return;
+
         const catDict = s.category || {};
         const catName = getLocText(catDict, 'Egyéb');
         if (!groups[catName]) {
@@ -313,14 +362,13 @@
         } else if (!groups[catName].categoryPictogram && s.categoryPictogram) {
           groups[catName].categoryPictogram = s.categoryPictogram;
         }
-        groups[catName].items.push(s);
+        groups[catName].items.push({
+          ...s,
+          variants: validVariants
+        });
       });
 
-      categories.value = Object.values(groups);
-
-      if (categories.value.length > 0) {
-        activeCategory.value = categories.value[0].id;
-      }
+      categories.value = Object.values(groups).filter(g => g.items.length > 0);
     } catch (error) {
       console.error('Failed to load public booking services:', error);
     } finally {

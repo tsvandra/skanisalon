@@ -80,7 +80,13 @@
             <StepDetails v-model="bookingData" :onNext="() => activateCallback('3')" :onPrev="() => activateCallback('1')" />
           </StepPanel>
           <StepPanel value="3" v-slot="{ activateCallback }">
-            <StepDateTime v-model:employeeId="bookingData.employeeId" v-model:selectedDateTime="selectedDateTime" :isSubmitting="isSubmitting" :errorMessage="errorMessage" :onPrev="() => activateCallback('2')" @submit="submitBooking" />
+            <StepDateTime v-model:employeeId="bookingData.employeeId"
+                          v-model:selectedDateTime="selectedDateTime"
+                          :totalDuration="totalDuration"
+                          :isSubmitting="isSubmitting"
+                          :errorMessage="errorMessage"
+                          :onPrev="() => activateCallback('2')"
+                          @submit="submitBooking" />
           </StepPanel>
         </StepPanels>
       </Stepper>
@@ -165,7 +171,13 @@
       await bookingApi.createGuestBooking(payload);
       isSuccess.value = true;
     } catch (error) {
-      const code = error.response?.data?.errorCode;
+      let code = error.response?.data?.errorCode;
+      if (!code && error.response?.data?.errors) {
+        const firstFieldErrors = Object.values(error.response.data.errors)[0];
+        if (Array.isArray(firstFieldErrors) && firstFieldErrors.length > 0) {
+          code = firstFieldErrors[0];
+        }
+      }
       if (code && te('errors.' + code)) {
         errorMessage.value = t('errors.' + code);
       } else if (error.response && error.response.status === 400) {

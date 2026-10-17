@@ -4,9 +4,9 @@
       <div class="grid grid-cols-7 gap-1 md:gap-2">
         <div v-for="dayObj in currentWeekDays" :key="dayObj.date.toISOString()"
              @click="$emit('dayClick', dayObj)"
-             class="relative min-h-[70px] md:min-h-[100px] p-1.5 md:p-2 rounded-xl border border-gray-300 bg-white hover:border-primary/50 cursor-pointer flex flex-col items-center justify-center transition-all shadow-sm"
+             class="relative overflow-hidden min-h-[70px] md:min-h-[100px] p-1.5 md:p-2 rounded-xl border border-gray-300 bg-white hover:border-primary/50 cursor-pointer flex flex-col items-center justify-center transition-all shadow-sm"
              :class="{ 'ring-2 ring-primary ring-offset-1 md:ring-offset-2 ring-offset-surface': dayObj.isToday }">
-          <div class="absolute top-0 left-0 right-0 h-1 bg-gray-200 rounded-t-xl overflow-hidden">
+          <div class="absolute top-0 left-0 right-0 h-1 bg-gray-200 overflow-hidden">
             <div class="h-full bg-primary" :style="{ width: `${dayObj.loadPercentage}%` }"></div>
           </div>
           <span class="text-[10px] md:text-xs text-gray-500 font-bold mt-1 uppercase">{{ getDayNameShort(dayObj.date) }}</span>

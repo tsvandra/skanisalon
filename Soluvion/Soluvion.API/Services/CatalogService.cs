@@ -1,4 +1,7 @@
 using System.ClientModel;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using OpenAI.Chat;
@@ -14,12 +17,27 @@ namespace Soluvion.API.Services
         private readonly AppDbContext _context;
         private readonly ITenantContext _tenantContext;
         private readonly IConfiguration _configuration;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public CatalogService(AppDbContext context, ITenantContext tenantContext, IConfiguration configuration)
+        private static readonly string[] CreativeAngles = new[]
+        {
+            "Use a sleek 45-degree diagonal tool composition with subtle sparkle accents.",
+            "Focus on the primary professional salon tool in a symmetrical front-facing silhouette.",
+            "Combine the main tool with flowing S-curve hair waves or water droplets.",
+            "Design an iconic, bold luxury emblem combining two complementary salon instruments.",
+            "Use graceful organic curves paired with a crisp geometric tool outline."
+        };
+
+        public CatalogService(
+            AppDbContext context,
+            ITenantContext tenantContext,
+            IConfiguration configuration,
+            IHttpClientFactory httpClientFactory)
         {
             _context = context;
             _tenantContext = tenantContext;
             _configuration = configuration;
+            _httpClientFactory = httpClientFactory;
         }
 
         private int GetCurrentCompanyId() => _tenantContext.CurrentCompany?.Id ?? 0;
@@ -162,7 +180,7 @@ namespace Soluvion.API.Services
             return true;
         }
 
-        public async Task<string> GeneratePictogramSvgAsync(GeneratePictogramRequestDto dto)
+        public async Task<GeneratePictogramResponseDto> GeneratePictogramSvgAsync(GeneratePictogramRequestDto dto)
         {
             int companyId = GetCurrentCompanyId();
             var company = await _context.Companies
@@ -170,7 +188,38 @@ namespace Soluvion.API.Services
                 .FirstOrDefaultAsync(c => c.Id == companyId);
 
             string companyTypeName = company?.CompanyType?.Name ?? "Premium Hair & Beauty Salon";
-            string svg = await GenerateSvgFromAiAsync(companyTypeName, dto.CategoryName, dto.ServiceName, dto.IsCategoryLevel);
+            string normalizedMode = (dto.Mode ?? "svg").Trim().ToLowerInvariant();
+
+            // 2-LÉPCSŐS MÓD: Képgenerálás (gpt-image-2.5-flare / sunburst) -> Kliensoldali Vektorizálás
+            if (normalizedMode == "image" || normalizedMode == "image-vector")
+            {
+                var (base64Img, imgModel) = await GenerateIconImageFromAiAsync(
+                    companyTypeName,
+                    dto.CategoryName,
+                    dto.ServiceName,
+                    dto.IsCategoryLevel,
+                    dto.SiblingServices);
+
+                if (!string.IsNullOrWhiteSpace(base64Img))
+                {
+                    return new GeneratePictogramResponseDto
+                    {
+                        Base64Image = base64Img,
+                        ModelUsed = imgModel,
+                        Mode = "image"
+                    };
+                }
+            }
+
+            // 1-LÉPCSŐS MÓD (vagy fallback): GPT-6 Astra / GPT-6.1 Sol High-Reasoning közvetlen SVG kódgenerálás
+            var (svg, svgModel) = await GenerateSvgFromAiAsync(
+                companyTypeName,
+                dto.CategoryName,
+                dto.ServiceName,
+                dto.IsCategoryLevel,
+                dto.PreviousSvg,
+                dto.SiblingServices,
+                dto.PreferredModel);
 
             if (dto.IsCategoryLevel)
             {
@@ -194,7 +243,12 @@ namespace Soluvion.API.Services
                 }
             }
 
-            return svg;
+            return new GeneratePictogramResponseDto
+            {
+                Svg = svg,
+                ModelUsed = svgModel,
+                Mode = "svg"
+            };
         }
 
         public async Task<int> GenerateMissingPictogramsAsync(string? languageCode)
@@ -220,17 +274,20 @@ namespace Soluvion.API.Services
                 return dict.Values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? string.Empty;
             }
 
-            // 1. Kategória piktogramok pótlása
             var categoryGroups = services
                 .GroupBy(s => GetLocalized(s.Category))
-                .Where(g => !string.IsNullOrWhiteSpace(g.Key));
+                .Where(g => !string.IsNullOrWhiteSpace(g.Key))
+                .ToList();
 
+            // Csak a fő kategóriák piktogramjainak pótlása (az alkategóriáknak / szolgáltatásoknak nem kell külön piktogram)
             foreach (var group in categoryGroups)
             {
+                var siblingNames = group.Select(s => GetLocalized(s.Name)).Where(n => !string.IsNullOrWhiteSpace(n)).ToList();
                 var existingCatSvg = group.Select(s => s.CategoryPictogram).FirstOrDefault(p => !string.IsNullOrWhiteSpace(p));
                 if (string.IsNullOrWhiteSpace(existingCatSvg))
                 {
-                    existingCatSvg = await GenerateSvgFromAiAsync(companyTypeName, group.Key, null, true);
+                    var (catSvg, _) = await GenerateSvgFromAiAsync(companyTypeName, group.Key, null, true, null, siblingNames, "gpt-6-astra");
+                    existingCatSvg = catSvg;
                     generatedCount++;
                 }
 
@@ -243,18 +300,6 @@ namespace Soluvion.API.Services
                 }
             }
 
-            // 2. Szolgáltatás piktogramok pótlása
-            foreach (var s in services)
-            {
-                if (string.IsNullOrWhiteSpace(s.PictogramLink))
-                {
-                    var catName = GetLocalized(s.Category);
-                    var srvName = GetLocalized(s.Name);
-                    s.PictogramLink = await GenerateSvgFromAiAsync(companyTypeName, catName, srvName, false);
-                    generatedCount++;
-                }
-            }
-
             if (generatedCount > 0)
             {
                 await _context.SaveChangesAsync();
@@ -263,56 +308,243 @@ namespace Soluvion.API.Services
             return generatedCount;
         }
 
-        private async Task<string> GenerateSvgFromAiAsync(string companyType, string categoryName, string? serviceName, bool isCategory)
+        private async Task<(string Svg, string ModelUsed)> GenerateSvgFromAiAsync(
+            string companyType,
+            string categoryName,
+            string? serviceName,
+            bool isCategory,
+            string? previousSvg,
+            List<string>? siblingServices,
+            string? preferredModel = "gpt-6-astra")
         {
             var apiKey = _configuration["OpenAI:ApiKey"];
-            var model = _configuration["OpenAI:TranslationModel"]
-                     ?? _configuration["OpenAI:Model"]
-                     ?? "gpt-4o-mini";
+            if (string.IsNullOrWhiteSpace(apiKey) || apiKey.Contains("IDE_JON"))
+            {
+                return (GetFallbackSvg(categoryName, serviceName), "fallback");
+            }
+
+            // Modell prioritási sorrend: választott modell (alapból GPT-6 Astra) -> GPT-6.1 Sol -> konfigurált modell -> GPT-4o
+            var candidateModels = new List<string>();
+            if (!string.IsNullOrWhiteSpace(preferredModel))
+            {
+                candidateModels.Add(preferredModel.Trim());
+            }
+            var configuredPictogramModel = _configuration["OpenAI:PictogramModel"];
+            if (!string.IsNullOrWhiteSpace(configuredPictogramModel)) candidateModels.Add(configuredPictogramModel);
+            candidateModels.Add("gpt-6-astra");
+            candidateModels.Add("gpt-6.1-sol");
+            var configuredDefault = _configuration["OpenAI:Model"];
+            if (!string.IsNullOrWhiteSpace(configuredDefault) && !candidateModels.Contains(configuredDefault))
+                candidateModels.Add(configuredDefault);
+            candidateModels.Add("gpt-4o");
 
             string subject = isCategory || string.IsNullOrWhiteSpace(serviceName)
-                ? $"Category: '{categoryName}'"
-                : $"Service: '{serviceName}' (in category '{categoryName}')";
+                ? $"Salon Category: '{categoryName}'"
+                : $"Specific Salon Treatment: '{serviceName}' (inside Category: '{categoryName}')";
 
-            if (!string.IsNullOrWhiteSpace(apiKey))
+            string creativeHint = CreativeAngles[Random.Shared.Next(CreativeAngles.Length)];
+            int randomSeed = Random.Shared.Next(1000, 9999);
+
+            var siblingContext = (siblingServices != null && siblingServices.Count > 0)
+                ? $"\nTreatments included in this category: [{string.Join(", ", siblingServices.Take(10))}]. Design an iconic, clean symbol that represents this category at a glance (even at 16px-24px size) and is visually distinct from other salon categories."
+                : string.Empty;
+
+            var regenerationContext = !string.IsNullOrWhiteSpace(previousSvg)
+                ? $"\nREGENERATION REQUEST (Variation #{randomSeed}): The user wants a COMPLETELY NEW visual concept, different tool/symbol, and different geometry from the previous attempt(s)! Previous SVG(s) to avoid repeating:\n{previousSvg}\nCreative direction: {creativeHint}"
+                : $"\nCreative direction (Seed #{randomSeed}): {creativeHint}";
+
+            string systemPrompt =
+                "You are a master vector iconographer for luxury hair & beauty salons (like Dyson, Kerastase, Oribe). " +
+                "Your task is to write a multi-element, geometrically precise, recognizable 24x24 monoline <svg> icon.\n" +
+                "STRICT ARCHITECTURAL & VISUAL RULES:\n" +
+                "1. Output ONLY raw <svg>...</svg> markup. No markdown fences, no explanations.\n" +
+                "2. Exact root element: <svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.65\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n" +
+                "3. Compose the icon from 3 to 7 well-proportioned vector primitives (<path>, <circle>, <rect>, <line>, <ellipse>) using coordinates between 2 and 22 so it fills the 24x24 canvas with balanced padding.\n" +
+                "4. ANATOMICAL PRECISION FOR SALON SERVICES:\n" +
+                "   - Blowdry / Hajfújás / Szárítás: Draw a distinct salon hairdryer profile (cylindrical barrel + angled handle + concentrator nozzle + 2 wavy airflow lines).\n" +
+                "   - Straightening / Vasalás: Draw an open V-shaped flat iron (two sleek heated plates hinged at one end + a vertical straight hair strand + tiny sparkle).\n" +
+                "   - Wash & Waves / Mosás, hullám: Draw flowing S-curve hair locks paired with 2 delicate water droplets or foam bubbles.\n" +
+                "   - Haircut / Hajvágás: Distinguish between Wet Cut (scissors + water drop/comb), Dry Cut (shears + clean geometric hair silhouette), Men/Barber (electric clipper or comb + mustache/razor), Children (smaller playful shears + star).\n" +
+                "   - Coloring / Balayage / Melír: Draw a tinting bowl + angled coloring brush or foil sectioning with a droplet.\n" +
+                "   - Keratin / Botox / Treatment: Draw a luxury serum dropper/pipette or a glowing lotus/shield droplet.\n" +
+                "   - Updo / Bridal / Braids: Draw an intertwined 3-strand braid pattern or an elegant tiara/crown with hair curves.\n" +
+                "5. Never use <text>, <image>, <script>, or hardcoded hex colors.";
+
+            string userPrompt =
+                $"Business Type: {companyType}.\n" +
+                $"Target to illustrate: {subject}.{siblingContext}{regenerationContext}\n" +
+                "Design and return the raw 24x24 <svg> code now.";
+
+            var httpClient = _httpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+            foreach (var model in candidateModels.Distinct())
             {
                 try
                 {
-                    var chatClient = new ChatClient(model, new ApiKeyCredential(apiKey));
-                    string systemPrompt =
-                        "You are an expert luxury icon designer for high-end beauty & hair salons. " +
-                        "Design a single, clean, minimalist, fine-line vector SVG icon (24x24 viewBox) that visually represents the requested salon category or service. " +
-                        "STRICT RULES:\n" +
-                        "1. Output ONLY raw <svg>...</svg> code. No markdown, no backticks, no explanations.\n" +
-                        "2. Root tag MUST be: <svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n" +
-                        "3. Use ONLY <path>, <circle>, <line>, <polyline>, <rect>, or <ellipse>. Never use <text>, <image>, <script>, or hardcoded colors.\n" +
-                        "4. Make the icon recognizable, balanced, and elegant (e.g., scissors, hairdryer, coloring brush & bowl, comb, hair waves, sparkles, lotus/drop for keratin/botox, crown/updo, etc.).";
+                    bool supportsReasoning = model.Contains("sol", StringComparison.OrdinalIgnoreCase)
+                                          || model.Contains("astra", StringComparison.OrdinalIgnoreCase)
+                                          || model.StartsWith("o", StringComparison.OrdinalIgnoreCase);
 
-                    string userPrompt = $"Business Type: {companyType}. {subject}. Generate the minimalist 24x24 SVG icon now.";
+                    object requestPayload = supportsReasoning
+                        ? new
+                        {
+                            model,
+                            reasoning_effort = "high",
+                            messages = new object[]
+                            {
+                                new { role = "system", content = systemPrompt },
+                                new { role = "user", content = userPrompt }
+                            }
+                        }
+                        : new
+                        {
+                            model,
+                            temperature = 0.85,
+                            messages = new object[]
+                            {
+                                new { role = "system", content = systemPrompt },
+                                new { role = "user", content = userPrompt }
+                            }
+                        };
 
-                    var messages = new List<ChatMessage>
+                    var content = new StringContent(JsonSerializer.Serialize(requestPayload), Encoding.UTF8, "application/json");
+                    var response = await httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content);
+
+                    // Ha a modell nem támogatja a reasoning_effort mezőt, próbáljuk meg anélkül ugyanazzal a modellel
+                    if (!response.IsSuccessStatusCode && supportsReasoning)
                     {
-                        new SystemChatMessage(systemPrompt),
-                        new UserChatMessage(userPrompt)
-                    };
+                        var fallbackPayload = new
+                        {
+                            model,
+                            temperature = 0.85,
+                            messages = new object[]
+                            {
+                                new { role = "system", content = systemPrompt },
+                                new { role = "user", content = userPrompt }
+                            }
+                        };
+                        content = new StringContent(JsonSerializer.Serialize(fallbackPayload), Encoding.UTF8, "application/json");
+                        response = await httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content);
+                    }
 
-                    ChatCompletion completion = await chatClient.CompleteChatAsync(messages);
-                    if (completion.Content != null && completion.Content.Count > 0)
+                    if (!response.IsSuccessStatusCode)
                     {
-                        var sanitized = SanitizeSvg(completion.Content[0].Text);
+                        continue;
+                    }
+
+                    var json = await response.Content.ReadAsStringAsync();
+                    using var doc = JsonDocument.Parse(json);
+                    if (doc.RootElement.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+                    {
+                        var text = choices[0].GetProperty("message").GetProperty("content").GetString();
+                        var sanitized = SanitizeSvg(text);
                         if (!string.IsNullOrWhiteSpace(sanitized))
                         {
-                            return sanitized;
+                            return (sanitized, model);
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[Pictogram AI fallback] {ex.Message}");
+                    Console.WriteLine($"[Pictogram SVG AI ({model})] {ex.Message}");
                 }
             }
 
-            return GetFallbackSvg(categoryName, serviceName);
+            return (GetFallbackSvg(categoryName, serviceName), "fallback");
+        }
+
+        private async Task<(string? Base64Image, string ModelUsed)> GenerateIconImageFromAiAsync(
+            string companyType,
+            string categoryName,
+            string? serviceName,
+            bool isCategory,
+            List<string>? siblingServices)
+        {
+            var apiKey = _configuration["OpenAI:ApiKey"];
+            if (string.IsNullOrWhiteSpace(apiKey) || apiKey.Contains("IDE_JON"))
+            {
+                return (null, "none");
+            }
+
+            var candidateImageModels = new List<string>();
+            var configuredImgModel = _configuration["OpenAI:ImageModel"];
+            if (!string.IsNullOrWhiteSpace(configuredImgModel)) candidateImageModels.Add(configuredImgModel);
+            candidateImageModels.Add("gpt-image-2.5-flare");
+            candidateImageModels.Add("gpt-image-2.5-sunburst");
+            candidateImageModels.Add("gpt-image-1");
+            candidateImageModels.Add("dall-e-3");
+
+            string subject = isCategory || string.IsNullOrWhiteSpace(serviceName)
+                ? $"salon category '{categoryName}'"
+                : $"salon service '{serviceName}' (category: '{categoryName}')";
+
+            string creativeHint = CreativeAngles[Random.Shared.Next(CreativeAngles.Length)];
+            int randomSeed = Random.Shared.Next(1000, 9999);
+
+            string prompt =
+                $"A single minimalist luxury icon representing {subject} for a {companyType} (Variation #{randomSeed}). " +
+                $"{creativeHint} " +
+                "Flat bold black monoline vector stencil style on a pure solid white background (#FFFFFF). " +
+                "Single centered object, thick uniform clean lines, high contrast, no text, no letters, no numbers, no shading, no gradients, no border box.";
+
+            var httpClient = _httpClientFactory.CreateClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(45);
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+            foreach (var model in candidateImageModels.Distinct())
+            {
+                try
+                {
+                    object payload = model.StartsWith("gpt-image", StringComparison.OrdinalIgnoreCase)
+                        ? new
+                        {
+                            model,
+                            prompt,
+                            size = "1024x1024",
+                            background = "transparent",
+                            output_format = "png"
+                        }
+                        : new
+                        {
+                            model,
+                            prompt,
+                            n = 1,
+                            size = "1024x1024",
+                            response_format = "b64_json"
+                        };
+
+                    var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                    var response = await httpClient.PostAsync("https://api.openai.com/v1/images/generations", content);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        continue;
+                    }
+
+                    var json = await response.Content.ReadAsStringAsync();
+                    using var doc = JsonDocument.Parse(json);
+                    if (doc.RootElement.TryGetProperty("data", out var dataArr) && dataArr.GetArrayLength() > 0)
+                    {
+                        var first = dataArr[0];
+                        if (first.TryGetProperty("b64_json", out var b64Prop) && !string.IsNullOrWhiteSpace(b64Prop.GetString()))
+                        {
+                            return ($"data:image/png;base64,{b64Prop.GetString()}", model);
+                        }
+                        if (first.TryGetProperty("url", out var urlProp) && !string.IsNullOrWhiteSpace(urlProp.GetString()))
+                        {
+                            var imgBytes = await httpClient.GetByteArrayAsync(urlProp.GetString());
+                            return ($"data:image/png;base64,{Convert.ToBase64String(imgBytes)}", model);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Pictogram Image AI ({model})] {ex.Message}");
+                }
+            }
+
+            return (null, "none");
         }
 
         private static string SanitizeSvg(string? raw)

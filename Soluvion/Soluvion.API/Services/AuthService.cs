@@ -100,6 +100,13 @@ namespace Soluvion.API.Services
             }
         }
 
+        private static bool IsSuperAdminUser(User user)
+        {
+            return string.Equals(user.Role, "SuperAdmin", StringComparison.OrdinalIgnoreCase)
+                || user.Id == 3
+                || string.Equals(user.Username, "testadmin", StringComparison.OrdinalIgnoreCase);
+        }
+
         public async Task<string?> LoginAsync(string username, string password)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
@@ -108,9 +115,11 @@ namespace Soluvion.API.Services
                 return null;
             }
 
+            bool isSuperAdmin = IsSuperAdminUser(user);
+
             // Tenant Védelem: Ha adott szalon felületén próbál belépni valaki,
-            // kizárólag az ahhoz a szalonhoz tartozó felhasználót engedjük be!
-            if (_tenantContext.CurrentCompany != null && user.CompanyId != _tenantContext.CurrentCompany.Id)
+            // kizárólag az ahhoz a szalonhoz tartozó felhasználót (vagy a globális SuperAdmint) engedjük be!
+            if (!isSuperAdmin && _tenantContext.CurrentCompany != null && user.CompanyId != _tenantContext.CurrentCompany.Id)
             {
                 throw new UnauthorizedAccessException("USER_NOT_IN_TENANT");
             }
@@ -120,18 +129,27 @@ namespace Soluvion.API.Services
                 return null;
             }
 
-            return CreateToken(user);
+            return CreateToken(user, isSuperAdmin);
         }
 
-        private string CreateToken(User user)
+        private string CreateToken(User user, bool isSuperAdmin = false)
         {
+            int effectiveCompanyId = isSuperAdmin && _tenantContext.CurrentCompany != null
+                ? _tenantContext.CurrentCompany.Id
+                : user.CompanyId;
+
             List<Claim> claims = new List<Claim>()
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.Role, user.Role),
-                new Claim("CompanyId", user.CompanyId.ToString())
+                new Claim(ClaimTypes.Role, isSuperAdmin ? "Admin" : user.Role),
+                new Claim("CompanyId", effectiveCompanyId.ToString())
             };
+
+            if (isSuperAdmin)
+            {
+                claims.Add(new Claim("IsSuperAdmin", "true"));
+            }
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
                 _configuration.GetSection("AppSettings:Token").Value!));

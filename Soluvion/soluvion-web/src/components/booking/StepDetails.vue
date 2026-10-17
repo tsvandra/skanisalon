@@ -62,7 +62,7 @@
 </template>
 
 <script setup>
-import { computed, watch, ref } from 'vue';
+import { computed } from 'vue';
 
 const props = defineProps({
   modelValue: { type: Object, required: true },
@@ -71,15 +71,28 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:modelValue']);
-const localData = ref({ ...props.modelValue });
 
-watch(localData, (newValue) => {
-  emit('update:modelValue', newValue);
-}, { deep: true });
+const updateField = (field, value) => {
+  emit('update:modelValue', {
+    ...props.modelValue,
+    [field]: value
+  });
+};
+
+const localData = computed(() => ({
+  get fullName() { return props.modelValue.fullName || ''; },
+  set fullName(val) { updateField('fullName', val); },
+  get email() { return props.modelValue.email || ''; },
+  set email(val) { updateField('email', val); },
+  get phone() { return props.modelValue.phone || ''; },
+  set phone(val) { updateField('phone', val); },
+  get notes() { return props.modelValue.notes || ''; },
+  set notes(val) { updateField('notes', val); }
+}));
 
 const isFormValid = computed(() => {
-  return (localData.value.fullName?.length || 0) > 2 &&
-         (localData.value.email?.includes('@') || false) &&
-         (localData.value.phone?.length || 0) > 5;
+  return (props.modelValue.fullName?.trim().length || 0) >= 2 &&
+         (props.modelValue.email?.includes('@') || false) &&
+         (props.modelValue.phone?.trim().length || 0) >= 6;
 });
 </script>

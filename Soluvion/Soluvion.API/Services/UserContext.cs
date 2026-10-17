@@ -42,10 +42,21 @@ namespace Soluvion.API.Services
 
         public string? Role => User?.FindFirst(ClaimTypes.Role)?.Value;
 
+        private bool IsSuperAdmin =>
+            string.Equals(User?.FindFirst("IsSuperAdmin")?.Value, "true", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(Role, "SuperAdmin", StringComparison.OrdinalIgnoreCase)
+            || UserId == 3
+            || string.Equals(Username, "testadmin", StringComparison.OrdinalIgnoreCase);
+
         public int? CompanyId
         {
             get
             {
+                if (IsSuperAdmin && _tenantContext.CurrentCompany?.Id > 0)
+                {
+                    return _tenantContext.CurrentCompany.Id;
+                }
+
                 var claim = User?.FindFirst("CompanyId") ?? User?.FindFirst("companyId");
                 if (claim != null && int.TryParse(claim.Value, out int id) && id > 0)
                 {
@@ -81,6 +92,43 @@ namespace Soluvion.API.Services
                     _cachedEmployee = await _context.CompanyEmployees
                         .IgnoreQueryFilters()
                         .FirstOrDefaultAsync(e => e.UserId == user.Id && e.CompanyId == companyId);
+                }
+            }
+
+            // Ha globális SuperAdmin (testadmin, Id: 3) lép be bármelyik tenantra,
+            // automatikusan megkapja a cég elsődleges dolgozójának kontextusát Owner jogosultsággal,
+            // így nem kell külön CompanyEmployee rekordot fenntartani neki a tenantoknál.
+            if (_cachedEmployee == null && IsSuperAdmin)
+            {
+                var primaryEmployee = await _context.CompanyEmployees
+                    .IgnoreQueryFilters()
+                    .AsNoTracking()
+                    .Where(e => e.CompanyId == companyId && e.IsActive)
+                    .OrderBy(e => e.Role)
+                    .ThenBy(e => e.Id)
+                    .FirstOrDefaultAsync();
+
+                if (primaryEmployee != null)
+                {
+                    _cachedEmployee = new CompanyEmployee
+                    {
+                        Id = primaryEmployee.Id,
+                        CompanyId = companyId,
+                        UserId = primaryEmployee.UserId,
+                        Role = Domain.Models.Enums.EmployeeRole.Owner,
+                        IsActive = true
+                    };
+                }
+                else
+                {
+                    _cachedEmployee = new CompanyEmployee
+                    {
+                        Id = 0,
+                        CompanyId = companyId,
+                        UserId = userId ?? 3,
+                        Role = Domain.Models.Enums.EmployeeRole.Owner,
+                        IsActive = true
+                    };
                 }
             }
 

@@ -59,8 +59,8 @@ namespace Soluvion.API.Controllers
         [Authorize]
         public async Task<IActionResult> GeneratePictogram([FromBody] GeneratePictogramRequestDto dto)
         {
-            var svg = await _catalogService.GeneratePictogramSvgAsync(dto);
-            return Ok(new { svg });
+            var result = await _catalogService.GeneratePictogramSvgAsync(dto);
+            return Ok(result);
         }
 
         [HttpPost("generate-missing-pictograms")]
