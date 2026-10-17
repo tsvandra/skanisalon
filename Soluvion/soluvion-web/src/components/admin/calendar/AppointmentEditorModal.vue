@@ -408,8 +408,8 @@ const removeExtraProduct = (idx) => { form.value.extraMaterials.splice(idx, 1); 
     try {
       let finalCustId = form.value.customerId;
       if (form.value.customerId === 'new') {
-        const nameVal = form.value.customerFullName?.trim() || '';
-        const phoneVal = form.value.customerPhone?.trim() || '';
+        const nameVal = form.value.customerFullName?.trim() || null;
+        const phoneVal = form.value.customerPhone?.trim() || null;
         const newCustomerResponse = await bookingApi.createCustomer({ fullName: nameVal, phone: phoneVal });
         finalCustId = newCustomerResponse.data.id;
         customersList.value.push(newCustomerResponse.data);

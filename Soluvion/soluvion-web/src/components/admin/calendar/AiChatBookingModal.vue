@@ -934,9 +934,15 @@ const handleBuildBooking = async () => {
   try {
     const formData = buildFormDataFromSelection();
     const response = await appointmentApi.parseChatBooking(formData);
-    emit('parsed', response.data);
+    const parsedData = response.data || {};
+    if (!parsedData.customerName && selectedConversation.value?.customerName) {
+      parsedData.customerName = selectedConversation.value.customerName;
+    }
+    if (!parsedData.customerPhone && selectedConversation.value?.customerPhone) {
+      parsedData.customerPhone = selectedConversation.value.customerPhone;
+    }
+    emit('parsed', parsedData);
   } catch {
-    // Fallback ha a helyi backend nem lett újraindítva: összeállítjuk az előkitöltött foglalást a kijelölt szövegből
     const text = getCombinedSelectedText();
     const timeMatches = [...text.matchAll(/\b([01]?\d|2[0-3])[:\.]([0-5]\d)\b/g)];
     const timeStr = timeMatches.length > 0
@@ -950,8 +956,8 @@ const handleBuildBooking = async () => {
 
     emit('parsed', {
       customerId: activePendingBooking.value?.customerId || null,
-      customerName: activePendingBooking.value?.customerName || selectedConversation.value?.customerName || 'Szabó Katalin',
-      customerPhone: activePendingBooking.value?.customerPhone || selectedConversation.value?.customerPhone || '+421 905 234 567',
+      customerName: activePendingBooking.value?.customerName || selectedConversation.value?.customerName || '',
+      customerPhone: activePendingBooking.value?.customerPhone || selectedConversation.value?.customerPhone || null,
       date: dateStr,
       time: timeStr,
       serviceVariantIds: activePendingBooking.value?.items?.map(i => i.serviceVariantId) || [],
