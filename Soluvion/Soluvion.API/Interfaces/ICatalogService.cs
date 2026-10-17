@@ -9,7 +9,7 @@ namespace Soluvion.API.Interfaces
         Task<CatalogDto?> UpdateCatalogItemAsync(int id, CatalogDto dto);
         Task<bool> DeleteCatalogItemAsync(int id);
         Task<bool> UpdateVariantRecipeAsync(int variantId, List<ServiceVariantProductDto> products);
-        Task<string> GeneratePictogramSvgAsync(GeneratePictogramRequestDto dto);
+        Task<GeneratePictogramResponseDto> GeneratePictogramSvgAsync(GeneratePictogramRequestDto dto);
         Task<int> GenerateMissingPictogramsAsync(string? languageCode);
     }
 }

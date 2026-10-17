@@ -131,7 +131,7 @@ const getVariantFullName = (variantId) => {
 const getVariantPictogram = (variantId) => {
   for (const s of props.availableServices) {
     const v = s.variants?.find(vx => vx.id === variantId);
-    if (v) return s.pictogramLink || s.categoryPictogram || '';
+    if (v) return s.categoryPictogram || s.pictogramLink || '';
   }
   return '';
 };

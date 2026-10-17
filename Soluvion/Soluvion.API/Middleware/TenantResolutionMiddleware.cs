@@ -45,13 +45,31 @@ namespace Soluvion.API.Middleware
                 || domain.EndsWith(".up.railway.app", StringComparison.OrdinalIgnoreCase);
 
             // 2. Hitelesített felhasználó tokenjéből (ClaimTypes / "CompanyId")
-            // Ha a felhasználó be van jelentkezve, a JWT CompanyId a legbiztonságosabb forrás
+            // Ha a felhasználó be van jelentkezve, normál esetben a JWT CompanyId a legbiztonságosabb forrás.
+            // KIVÉTEL: Globális SuperAdmin (pl. testadmin, Id: 3), aki bármelyik tenant kontextusában dolgozhat.
+            bool isSuperAdmin = false;
+            int? claimCompanyId = null;
+
             if (context.User.Identity?.IsAuthenticated == true)
             {
+                var userIdClaim = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                var usernameClaim = context.User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+                var roleClaim = context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+                var superAdminClaim = context.User.FindFirst("IsSuperAdmin")?.Value;
+
+                isSuperAdmin = string.Equals(superAdminClaim, "true", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(roleClaim, "SuperAdmin", StringComparison.OrdinalIgnoreCase)
+                    || userIdClaim == "3"
+                    || string.Equals(usernameClaim, "testadmin", StringComparison.OrdinalIgnoreCase);
+
                 var companyClaim = context.User.FindFirst("CompanyId") ?? context.User.FindFirst("companyId");
-                if (companyClaim != null && int.TryParse(companyClaim.Value, out int claimCompanyId) && claimCompanyId > 0)
+                if (companyClaim != null && int.TryParse(companyClaim.Value, out int parsedClaimId) && parsedClaimId > 0)
                 {
-                    tenantId = claimCompanyId;
+                    claimCompanyId = parsedClaimId;
+                    if (!isSuperAdmin)
+                    {
+                        tenantId = claimCompanyId;
+                    }
                 }
             }
 
@@ -128,6 +146,20 @@ namespace Soluvion.API.Middleware
                 else
                 {
                     _logger.LogWarning("Nem található aktív cég a megadott domain alapján: {Domain}", domain);
+                }
+            }
+
+            // SuperAdmin fallback: ha sem forceTenant, sem domain nem oldott fel céget, használjuk a tokenben lévő CompanyId-t
+            if (tenantContext.CurrentCompany == null && claimCompanyId.HasValue)
+            {
+                var claimCompany = await db.Companies
+                    .IgnoreQueryFilters()
+                    .Include(c => c.Languages)
+                    .FirstOrDefaultAsync(c => c.Id == claimCompanyId.Value && !c.IsDeleted);
+
+                if (claimCompany != null)
+                {
+                    tenantContext.CurrentCompany = claimCompany;
                 }
             }
 

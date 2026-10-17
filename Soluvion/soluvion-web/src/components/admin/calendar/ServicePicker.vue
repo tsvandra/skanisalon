@@ -87,22 +87,30 @@ const missingVariantsMode = ref(false);
 
 const { getLocText } = useLocalizedText();
 
+const getValidVariants = (srv) => {
+  return (srv?.variants || []).filter(v => v.price != null && Number(v.price) > 0);
+};
+
 const getDropdownOptions = (srv) => {
-  return srv.variants.map(v => ({
+  return getValidVariants(srv).map(v => ({
     value: v.id,
     label: getLocText(v.variantName),
     hint: `+${v.price}€`
   }));
 };
 
+const bookableServicesWithPrice = computed(() => {
+  return (props.availableServices || []).filter(s => s.isBookable !== false && getValidVariants(s).length > 0);
+});
+
 const availableCategories = computed(() => {
   const cats = new Set();
-  props.availableServices.forEach(s => cats.add(getLocText(s.category) || t('orders.calendar.servicePicker.otherCategory')));
+  bookableServicesWithPrice.value.forEach(s => cats.add(getLocText(s.category) || t('orders.calendar.servicePicker.otherCategory')));
   return Array.from(cats).sort();
 });
 
 const availableServicesInCategory = computed(() => {
-  return props.availableServices.filter(s => (getLocText(s.category) || t('orders.calendar.servicePicker.otherCategory')) === activeCategory.value);
+  return bookableServicesWithPrice.value.filter(s => (getLocText(s.category) || t('orders.calendar.servicePicker.otherCategory')) === activeCategory.value);
 });
 
 // Init első kategória
@@ -111,7 +119,7 @@ onMounted(() => {
 });
 
 watch(() => props.availableServices, (newVal) => {
-  if (newVal.length > 0 && !activeCategory.value) {
+  if (newVal.length > 0 && !activeCategory.value && availableCategories.value.length > 0) {
     activeCategory.value = availableCategories.value[0];
   }
 }, { deep: true });
@@ -156,8 +164,9 @@ const toggleStagedService = (sId) => {
   } else {
     stagedServices.value.push(sId);
     const s = props.availableServices.find(x => x.id === sId);
-    if (s && s.variants.length === 1) {
-      stagedVariants.value[sId] = s.variants[0].id;
+    const validVars = getValidVariants(s);
+    if (validVars.length === 1) {
+      stagedVariants.value[sId] = validVars[0].id;
     }
   }
 };
@@ -168,7 +177,7 @@ const syncVariants = (sourceServiceId, selectedVariantId) => {
   }
 
   const sourceService = props.availableServices.find(x => x.id === sourceServiceId);
-  const sourceVariant = sourceService?.variants.find(v => v.id === selectedVariantId);
+  const sourceVariant = getValidVariants(sourceService).find(v => v.id === selectedVariantId);
   if (!sourceVariant) return;
 
   const variantName = getLocText(sourceVariant.variantName);
@@ -177,7 +186,7 @@ const syncVariants = (sourceServiceId, selectedVariantId) => {
     if (sId === sourceServiceId) return;
     const s = props.availableServices.find(x => x.id === sId);
     if (s) {
-      const match = s.variants.find(v => getLocText(v.variantName) === variantName);
+      const match = getValidVariants(s).find(v => getLocText(v.variantName) === variantName);
       if (match) {
         stagedVariants.value[sId] = match.id;
       }

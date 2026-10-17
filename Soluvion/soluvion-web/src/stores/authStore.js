@@ -42,8 +42,9 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     isAuthenticated: (state) => !!state.token,
     userRole: (state) => state.user?.role || null,
-    isEmployee: (state) => ['Admin', 'Owner', 'Employee'].includes(state.user?.role),
-    isAdmin: (state) => ['Admin', 'Owner'].includes(state.user?.role),
+    isSuperAdmin: (state) => state.user?.role === 'SuperAdmin' || state.user?.isSuperAdmin === true,
+    isEmployee: (state) => ['SuperAdmin', 'Admin', 'Owner', 'Employee'].includes(state.user?.role),
+    isAdmin: (state) => ['SuperAdmin', 'Admin', 'Owner'].includes(state.user?.role),
     companyId: (state) => state.user?.companyId || null,
     username: (state) => state.user?.username || null,
   },
@@ -77,12 +78,17 @@ export const useAuthStore = defineStore('auth', {
           decoded.Username ||
           decoded.username;
         const companyId = parseInt(decoded.CompanyId || decoded.companyId || 0);
+        const isSuperAdmin =
+          decoded.IsSuperAdmin === 'true' ||
+          decoded.IsSuperAdmin === true ||
+          roleClaim === 'SuperAdmin';
 
         this.token = token;
         this.user = {
           username: nameClaim || '',
           role: roleClaim || 'Customer',
           companyId: companyId || null,
+          isSuperAdmin,
         };
       } catch (err) {
         console.error('[AuthStore] Érvénytelen token dekódoláskor:', err);

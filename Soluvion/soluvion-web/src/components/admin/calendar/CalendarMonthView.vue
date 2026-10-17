@@ -9,18 +9,25 @@
 
         <div v-for="(dayObj, index) in calendarDays" :key="index"
              @click="$emit('dayClick', dayObj)"
-             class="relative min-h-[50px] md:min-h-[80px] p-1 md:p-2 rounded-lg transition-all cursor-pointer flex flex-col items-center justify-between border"
+             class="relative overflow-hidden min-h-[56px] md:min-h-[84px] p-1 md:p-2 rounded-lg transition-all cursor-pointer flex flex-col items-center justify-between border"
              :class="[
                dayObj.isCurrentMonth ? 'bg-white border-gray-300 shadow-sm hover:border-primary/60' : 'bg-gray-100 border-transparent opacity-50',
                dayObj.isToday ? 'ring-2 ring-primary ring-offset-1 md:ring-offset-2 ring-offset-surface' : ''
              ]">
 
-          <div v-if="dayObj.isCurrentMonth" class="absolute top-0 left-0 right-0 h-1 bg-gray-200 rounded-t-lg overflow-hidden">
+          <div v-if="dayObj.isCurrentMonth" class="absolute top-0 left-0 right-0 h-1 bg-gray-200 overflow-hidden">
             <div class="h-full bg-primary transition-all" :style="{ width: `${dayObj.loadPercentage}%` }"></div>
           </div>
 
           <span class="font-black text-xs md:text-base mt-1" :class="dayObj.isToday ? 'text-primary drop-shadow-sm' : 'text-gray-800'">
             {{ dayObj.date.getDate() }}
+          </span>
+
+          <!-- Online nyitott idősáv jelvény -->
+          <span v-if="dayObj.isCurrentMonth && dayObj.isOpenForBooking && dayObj.bookingHoursLabel"
+                class="text-[8px] md:text-[10px] font-bold px-1.5 py-0.2 rounded-full leading-tight truncate max-w-full"
+                :class="dayObj.hasCustomOverride ? 'bg-emerald-500/15 text-emerald-700 border border-emerald-500/30' : 'bg-gray-100 text-gray-600'">
+            {{ dayObj.bookingHoursLabel }}
           </span>
 
           <div class="flex gap-1 mt-auto pb-0.5 flex-wrap justify-center items-center">

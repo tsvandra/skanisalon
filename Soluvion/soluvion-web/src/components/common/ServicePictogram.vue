@@ -1,7 +1,7 @@
 <template>
   <span v-if="safeSvg"
-        class="inline-flex items-center justify-center leading-none select-none [&>svg]:w-full [&>svg]:h-full [&>svg]:stroke-current"
-        :class="sizeClass"
+        class="inline-flex items-center justify-center leading-none select-none [&>svg]:w-full [&>svg]:h-full"
+        :class="[sizeClass, isFilledSvg ? '[&>svg]:fill-current' : '[&>svg]:stroke-current']"
         v-html="safeSvg"></span>
   <span v-else-if="fallbackText" class="leading-none select-none">{{ fallbackText }}</span>
   <i v-else :class="[fallbackIcon, 'leading-none select-none']"></i>
@@ -27,4 +27,9 @@ const safeSvg = computed(() => {
   }
   return raw;
 });
+
+const isFilledSvg = computed(() => {
+  return safeSvg.value.includes('fill="currentColor"') && safeSvg.value.includes('stroke="none"');
+});
 </script>
+
