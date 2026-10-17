@@ -58,7 +58,15 @@ namespace Soluvion.API.Controllers
             if (dbCompany == null) return NotFound(new { errorCode = "COMPANY_NOT_FOUND" });
 
             var inbox = LoadInboxFromSettings(dbCompany);
-            bool modified = await SyncPendingAppointmentsToInboxAsync(dbCompany.Id, inbox);
+
+            // Korábbi teszt/szimulált minta beszélgetések automatikus kigyomlálása élesben
+            int removedDemoCount = inbox.Conversations.RemoveAll(c =>
+                !c.PendingAppointmentId.HasValue &&
+                string.IsNullOrWhiteSpace(c.ExternalSenderId) &&
+                (string.Equals(c.CustomerName, "Szabó Katalin", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(c.CustomerName, "Kovács Anna", StringComparison.OrdinalIgnoreCase)));
+
+            bool modified = await SyncPendingAppointmentsToInboxAsync(dbCompany.Id, inbox) || removedDemoCount > 0;
 
             if (modified)
             {
@@ -71,6 +79,26 @@ namespace Soluvion.API.Controllers
                 .OrderByDescending(c => c.PendingAppointmentId.HasValue)
                 .ThenByDescending(c => c.UpdatedAt)
                 .ToList();
+
+            return Ok(inbox);
+        }
+
+        [HttpDelete("conversations/{conversationId}")]
+        [Authorize]
+        public async Task<IActionResult> DeleteConversation(string conversationId)
+        {
+            var company = _tenantContext.CurrentCompany;
+            if (company == null) return NotFound(new { errorCode = "COMPANY_NOT_FOUND" });
+
+            var dbCompany = await _context.Companies.FindAsync(company.Id);
+            if (dbCompany == null) return NotFound(new { errorCode = "COMPANY_NOT_FOUND" });
+
+            var inbox = LoadInboxFromSettings(dbCompany);
+            inbox.Conversations.RemoveAll(c => string.Equals(c.Id, conversationId, StringComparison.OrdinalIgnoreCase));
+
+            SaveInboxToSettings(dbCompany, inbox);
+            company.SettingsJson = dbCompany.SettingsJson;
+            await _context.SaveChangesAsync();
 
             return Ok(inbox);
         }

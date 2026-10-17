@@ -69,7 +69,7 @@
         <!-- 1. FÜL: ÉLŐ BESZÉLGETÉSEK (INBOX) + BUBORÉK-KIJELÖLŐ -->
         <template v-if="activeTab === 'inbox'">
 
-          <!-- Kompakt Beszélgetés-választó sáv + Teszt üzenet gomb -->
+          <!-- Kompakt Beszélgetés-választó sáv + Frissítés és Törlés gombok -->
           <div class="flex flex-col sm:flex-row sm:items-center gap-2 bg-background/70 p-2.5 rounded-xl border border-text/10">
             <div class="flex items-center gap-2 flex-1 min-w-0">
               <i v-if="selectedConversation"
@@ -88,13 +88,23 @@
               </span>
             </div>
 
-            <button type="button"
-                    @click="handleSimulateIncoming"
-                    :disabled="isSimulating"
-                    class="px-3 py-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-400 text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-2xs disabled:opacity-50">
-              <i class="pi text-xs" :class="isSimulating ? 'pi-spin pi-spinner' : 'pi-bolt'"></i>
-              <span>{{ $t('calendar.aiChat.simulateBtn') }}</span>
-            </button>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button type="button"
+                      @click="fetchInbox"
+                      class="px-2.5 py-1.5 rounded-lg bg-surface border border-text/15 text-text hover:border-primary/50 hover:text-primary text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      :title="$t('common.refresh') || 'Frissítés'">
+                <i class="pi pi-refresh text-xs"></i>
+              </button>
+
+              <button v-if="selectedConversation"
+                      type="button"
+                      @click="handleDeleteConversation"
+                      :disabled="isDeletingConv"
+                      class="px-2.5 py-1.5 rounded-lg bg-red-500/10 border border-red-500/25 text-red-500 hover:bg-red-500 hover:text-white text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50">
+                <i class="pi text-xs" :class="isDeletingConv ? 'pi-spin pi-spinner' : 'pi-trash'"></i>
+                <span>{{ $t('calendar.aiChat.clearChat') }}</span>
+              </button>
+            </div>
           </div>
 
           <!-- Kompakt Jóváhagyásra váró foglalás jelző (ha van kapcsolódó függő foglalás) -->
@@ -120,20 +130,12 @@
                 </span>
               </div>
 
-              <div class="flex items-center gap-2 text-[11px]">
+              <div v-if="chatBubbles.length > 0" class="flex items-center gap-2 text-[11px]">
                 <button type="button"
-                        @click="loadSampleConversation"
+                        @click="selectAllBubbles"
                         class="font-bold text-primary hover:underline cursor-pointer">
-                  <i class="pi pi-bolt text-[10px] mr-0.5"></i>{{ $t('calendar.aiChat.loadDemoChat') }}
+                  {{ $t('calendar.aiChat.selectAll') }}
                 </button>
-                <template v-if="chatBubbles.length > 0">
-                  <span class="text-text/20">|</span>
-                  <button type="button"
-                          @click="selectAllBubbles"
-                          class="font-bold text-primary hover:underline cursor-pointer">
-                    {{ $t('calendar.aiChat.selectAll') }}
-                  </button>
-                </template>
               </div>
             </div>
 
@@ -472,7 +474,7 @@ const screenshotPreviews = ref([]);
 const isCompressing = ref(false);
 const isAnalyzing = ref(false);
 const isUpdatingPending = ref(false);
-const isSimulating = ref(false);
+const isDeletingConv = ref(false);
 const isSendingReply = ref(false);
 const isSavingConfig = ref(false);
 const errorMessage = ref('');
@@ -557,7 +559,9 @@ const fetchInbox = async () => {
       };
       appendCentralLinkOnReply.value = data.config.includeCentralLinkInReplies !== false;
     }
-    const serverConvs = Array.isArray(data?.conversations) ? data.conversations : [];
+    const serverConvs = (Array.isArray(data?.conversations) ? data.conversations : []).filter(
+      c => !(!c.pendingAppointmentId && !c.externalSenderId && (c.customerName === 'Szabó Katalin' || c.customerName === 'Kovács Anna'))
+    );
     conversations.value = serverConvs.length > 0 ? serverConvs : fallbackList;
   } catch {
     conversations.value = fallbackList;
@@ -576,6 +580,10 @@ const fetchInbox = async () => {
       ? conversations.value.find(c => c.id === selectedConversation.value.id)
       : null;
     selectConversation(existing || conversations.value[0]);
+  } else {
+    selectedConversation.value = null;
+    chatBubbles.value = [];
+    selectedBubbleIds.value = [];
   }
 };
 
@@ -719,75 +727,24 @@ const applyPendingUpdateViaStandardPut = async (pendingApp, messagesText) => {
   };
 };
 
-const handleSimulateIncoming = async () => {
-  if (isSimulating.value) return;
-  isSimulating.value = true;
-  errorMessage.value = '';
-
-  const targetPending = activePendingBooking.value;
-  const sampleMsg = targetPending
-    ? (locale.value === 'sk'
-        ? 'Ahoj! Namiesto pôvodného času by som radšej prišiel o 15:30, je to voľné?'
-        : locale.value === 'en'
-          ? 'Hi! Instead of the original time, could we move my appointment to 15:30?'
-          : 'Szia! A korábban kért időpont helyett inkább 15:30-ra tudnék menni, jó lenne úgy?')
-    : (locale.value === 'sk'
-        ? 'Dobrý deň! Zajtra o 14:30 by som chcela prísť na dámsky strih a balayage. Katarína Szabóová (+421 905 234 567)'
-        : 'Szia! Holnap 14:30-kor szeretnék jönni női hajvágásra és balayage festésre. Szabó Katalin (+421 905 234 567)');
-
+const handleDeleteConversation = async () => {
+  if (!selectedConversation.value || isDeletingConv.value) return;
+  const targetId = selectedConversation.value.id;
+  isDeletingConv.value = true;
   try {
-    const res = await appointmentApi.simulateIncomingChat({
-      channel: selectedConversation.value?.channel || targetPending?.preferredChannel || 'Messenger',
-      sourceRoute: 'central_alias',
-      pendingAppointmentId: targetPending?.id || null,
-      customerName: targetPending?.customerName || selectedConversation.value?.customerName || 'Szabó Katalin',
-      messageText: sampleMsg
-    });
-
-    await fetchInbox();
-    if (res.data?.conversation) {
-      const found = conversations.value.find(c => c.id === res.data.conversation.id) || res.data.conversation;
-      selectConversation(found);
-    }
-    if (res.data?.pendingUpdate?.updated) {
-      successBannerText.value = t('calendar.aiChat.pendingUpdatedSuccess', { summary: res.data.pendingUpdate.summary });
-      emit('pending-updated', res.data.pendingUpdate);
-    }
+    await appointmentApi.deleteChatConversation(targetId);
   } catch {
-    // Ha a helyi backend még nem lett újraindítva az új ChatInboxControllerrel, helyben szimuláljuk ÉS frissítjük a függő foglalást!
-    let conv = selectedConversation.value;
-    if (!conv) {
-      conv = {
-        id: 'sim-' + Date.now(),
-        channel: targetPending?.preferredChannel || 'Messenger',
-        sourceRoute: 'central_alias',
-        customerName: targetPending?.customerName || 'Szabó Katalin',
-        pendingAppointmentId: targetPending?.id || null,
-        unreadCount: 0,
-        messages: []
-      };
-      conversations.value.unshift(conv);
-    }
-    conv.messages = conv.messages || [];
-    conv.messages.push({
-      id: 'sim-msg-' + Date.now(),
-      sender: 'client',
-      senderName: conv.customerName,
-      text: sampleMsg
-    });
-    selectConversation(conv);
-
-    if (targetPending && channelConfig.value.autoUpdatePendingToggle) {
-      try {
-        const upd = await applyPendingUpdateViaStandardPut(targetPending, sampleMsg);
-        successBannerText.value = t('calendar.aiChat.pendingUpdatedSuccess', { summary: upd.summary });
-        emit('pending-updated', upd);
-      } catch (e) {
-        console.warn('Fallback pending update warning:', e);
-      }
-    }
+    // Ha helyi elem volt, lokálisan is töröljük
   } finally {
-    isSimulating.value = false;
+    conversations.value = conversations.value.filter(c => c.id !== targetId);
+    if (conversations.value.length > 0) {
+      selectConversation(conversations.value[0]);
+    } else {
+      selectedConversation.value = null;
+      chatBubbles.value = [];
+      selectedBubbleIds.value = [];
+    }
+    isDeletingConv.value = false;
   }
 };
 

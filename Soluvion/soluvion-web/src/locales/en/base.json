@@ -269,7 +269,7 @@
       "clearChat": "Clear",
       "senderSalon": "Salon",
       "senderClient": "Client",
-      "emptyBubblesHint": "No message bubbles loaded yet. Select a conversation on the left, simulate an incoming message, or upload a screenshot!",
+      "emptyBubblesHint": "No incoming messages yet. As soon as a client writes on Messenger/Viber or submits an online booking, it will appear here (or use the Text / Screenshot tab)!",
       "pasteTitle": "Paste conversation text",
       "splitToBubbles": "Split into bubbles",
       "pastePlaceholder": "Paste WhatsApp / Messenger / Viber / SMS messages here...",

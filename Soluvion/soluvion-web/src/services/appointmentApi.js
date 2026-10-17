@@ -57,6 +57,10 @@ export default {
     return api.post(`/api/ChatInbox/conversations/${conversationId}/reply`, replyData);
   },
 
+  deleteChatConversation(conversationId) {
+    return api.delete(`/api/ChatInbox/conversations/${conversationId}`);
+  },
+
   simulateIncomingChat(payload) {
     return api.post('/api/ChatInbox/simulate-incoming', payload);
   }

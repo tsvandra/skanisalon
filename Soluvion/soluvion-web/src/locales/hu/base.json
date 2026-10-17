@@ -269,7 +269,7 @@
       "clearChat": "Törlés",
       "senderSalon": "Szalon",
       "senderClient": "Vendég",
-      "emptyBubblesHint": "Még nincs betöltött üzenetbuborék. Válassz egy beszélgetést bal oldalon, szimulálj bejövő üzenetet, vagy tölts fel képernyőfotót!",
+      "emptyBubblesHint": "Még nincs beérkezett üzenet. Amint egy vendég ír Messengeren/Viberen vagy online időpontot kér, itt fog megjelenni (vagy használhatod a Szöveg / Képernyőfotó fület)!",
       "pasteTitle": "Beszélgetés szövegének beillesztése",
       "splitToBubbles": "Buborékokká alakítás",
       "pastePlaceholder": "Másold be ide a WhatsApp / Messenger / Viber / SMS üzeneteket...",

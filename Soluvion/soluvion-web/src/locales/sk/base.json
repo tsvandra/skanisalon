@@ -269,7 +269,7 @@
       "clearChat": "Vymazať",
       "senderSalon": "Salón",
       "senderClient": "Zákazník",
-      "emptyBubblesHint": "Zatiaľ nie sú načítané žiadne správy. Vyberte konverzáciu vľavo, simulujte prichádzajúcu správu alebo nahrajte snímku obrazovky!",
+      "emptyBubblesHint": "Zatiaľ neprišli žiadne správy. Hneď ako zákazník napíše cez Messenger/Viber alebo odošle online rezerváciu, zobrazí sa tu (prípadne použite kartu Text / Screenshot)!",
       "pasteTitle": "Vloženie textu konverzácie",
       "splitToBubbles": "Rozdeliť na bubliny",
       "pastePlaceholder": "Skopírujte sem správy z WhatsApp / Messenger / Viber / SMS...",
