@@ -47,6 +47,42 @@ namespace Soluvion.API.Controllers
             _logger = logger;
         }
 
+        private static readonly List<object> RecentWebhookEvents = new();
+
+        [HttpGet("webhook-status")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetWebhookStatus()
+        {
+            var companies = await _context.Companies.IgnoreQueryFilters().Where(c => !c.IsDeleted).ToListAsync();
+            var summary = companies.Select(c =>
+            {
+                var ib = LoadInboxFromSettings(c);
+                return new
+                {
+                    c.Id,
+                    c.Name,
+                    c.Domain,
+                    Alias = ib.Config.SalonAlias,
+                    ConversationCount = ib.Conversations.Count,
+                    Conversations = ib.Conversations.Select(conv => new
+                    {
+                        conv.Id,
+                        conv.Channel,
+                        conv.CustomerName,
+                        conv.ExternalSenderId,
+                        MessageCount = conv.Messages.Count,
+                        LastMessage = conv.Messages.LastOrDefault()?.Text
+                    })
+                };
+            });
+
+            return Ok(new
+            {
+                recentWebhooks = RecentWebhookEvents.TakeLast(15),
+                companies = summary
+            });
+        }
+
         [HttpGet]
         [Authorize]
         public async Task<IActionResult> GetInbox()
@@ -66,7 +102,50 @@ namespace Soluvion.API.Controllers
                 (string.Equals(c.CustomerName, "Szabó Katalin", StringComparison.OrdinalIgnoreCase) ||
                  string.Equals(c.CustomerName, "Kovács Anna", StringComparison.OrdinalIgnoreCase)));
 
-            bool modified = await SyncPendingAppointmentsToInboxAsync(dbCompany.Id, inbox) || removedDemoCount > 0;
+            // Ha egy valódi webhook üzenet korábban az 1-es (teszt) cégre futott be alias eltérés miatt, átmentjük az aktuális szalonra
+            bool rescuedFromOtherCompany = false;
+            var otherCompanies = await _context.Companies
+                .IgnoreQueryFilters()
+                .Where(c => !c.IsDeleted && c.Id != dbCompany.Id)
+                .ToListAsync();
+
+            foreach (var otherComp in otherCompanies)
+            {
+                var otherInbox = LoadInboxFromSettings(otherComp);
+                var webhookConvs = otherInbox.Conversations
+                    .Where(c => !string.IsNullOrWhiteSpace(c.ExternalSenderId))
+                    .ToList();
+
+                if (webhookConvs.Count > 0 && (dbCompany.Id == 7 || otherComp.Id == 1))
+                {
+                    foreach (var wc in webhookConvs)
+                    {
+                        var existing = inbox.Conversations.FirstOrDefault(c =>
+                            c.Channel == wc.Channel &&
+                            string.Equals(c.ExternalSenderId, wc.ExternalSenderId, StringComparison.Ordinal));
+                        if (existing == null)
+                        {
+                            inbox.Conversations.Insert(0, wc);
+                        }
+                        else
+                        {
+                            foreach (var m in wc.Messages)
+                            {
+                                if (!existing.Messages.Any(em => em.Id == m.Id || (em.Text == m.Text && Math.Abs((em.Timestamp - m.Timestamp).TotalSeconds) < 5)))
+                                {
+                                    existing.Messages.Add(m);
+                                }
+                            }
+                        }
+                        otherInbox.Conversations.Remove(wc);
+                    }
+                    SaveInboxToSettings(otherComp, otherInbox);
+                    rescuedFromOtherCompany = true;
+                }
+            }
+
+            bool fbSynced = await SyncFacebookPageConversationsAsync(dbCompany, inbox);
+            bool modified = await SyncPendingAppointmentsToInboxAsync(dbCompany.Id, inbox) || removedDemoCount > 0 || rescuedFromOtherCompany || fbSynced;
 
             if (modified)
             {
@@ -412,8 +491,7 @@ namespace Soluvion.API.Controllers
                         foreach (var comp in allCompanies)
                         {
                             var inbox = LoadInboxFromSettings(comp);
-                            if (!string.IsNullOrWhiteSpace(refAlias) &&
-                                string.Equals(inbox.Config.SalonAlias, refAlias, StringComparison.OrdinalIgnoreCase))
+                            if (!string.IsNullOrWhiteSpace(refAlias) && IsAliasMatchForCompany(comp, inbox, refAlias))
                             {
                                 matchedCompany = comp;
                                 sourceRoute = "central_alias";
@@ -447,7 +525,12 @@ namespace Soluvion.API.Controllers
                             }
                         }
 
-                        matchedCompany ??= allCompanies.FirstOrDefault();
+                        // Fallback: DefaultTenantId vagy Szkáni Szalon (Id == 7), végül az első aktív cég
+                        var defaultTenantId = _configuration.GetValue<int?>("AppSettings:DefaultTenantId") ?? 7;
+                        matchedCompany ??= allCompanies.FirstOrDefault(c => c.Id == defaultTenantId)
+                            ?? allCompanies.FirstOrDefault(c => c.Id == 7 || (c.Name != null && c.Name.Contains("Szkáni", StringComparison.OrdinalIgnoreCase)))
+                            ?? allCompanies.FirstOrDefault();
+
                         if (matchedCompany == null) continue;
 
                         if (string.IsNullOrWhiteSpace(text) && !string.IsNullOrWhiteSpace(refAlias))
@@ -456,6 +539,18 @@ namespace Soluvion.API.Controllers
                         }
 
                         if (string.IsNullOrWhiteSpace(text)) continue;
+
+                        RecentWebhookEvents.Add(new
+                        {
+                            Timestamp = DateTime.UtcNow,
+                            PageId = pageId,
+                            SenderId = senderId,
+                            RefAlias = refAlias,
+                            Text = text,
+                            MatchedCompanyId = matchedCompany.Id,
+                            MatchedCompanyName = matchedCompany.Name
+                        });
+                        if (RecentWebhookEvents.Count > 30) RecentWebhookEvents.RemoveAt(0);
 
                         string senderName = await TryResolveMessengerSenderNameAsync(matchedCompany, sourceRoute, senderId);
                         await AppendWebhookMessageAsync(matchedCompany, "Messenger", sourceRoute, senderId, senderName, text);
@@ -829,12 +924,48 @@ namespace Soluvion.API.Controllers
             company.SettingsJson = root.ToJsonString();
         }
 
+        private static bool IsAliasMatchForCompany(Company company, ChatInboxResponseDto inbox, string refAlias)
+        {
+            var cleanRef = SanitizeAlias(refAlias);
+            if (string.IsNullOrWhiteSpace(cleanRef)) return false;
+
+            if (string.Equals(SanitizeAlias(inbox.Config.SalonAlias), cleanRef, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (string.Equals(BuildDefaultAlias(company), cleanRef, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (string.Equals(SanitizeAlias(company.Name), cleanRef, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if ((company.Id == 7 || (company.Name != null && company.Name.Contains("Szkáni", StringComparison.OrdinalIgnoreCase))) &&
+                (cleanRef == "skanisalon" || cleanRef == "szkaniszalon" || cleanRef == "skani" || cleanRef == "szkani"))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         private static string BuildDefaultAlias(Company company)
         {
-            var raw = !string.IsNullOrWhiteSpace(company.Domain)
-                ? company.Domain.Split('.')[0]
-                : company.Name;
-            return SanitizeAlias(raw);
+            if (company.Id == 7 || (company.Name != null && company.Name.Contains("Szkáni", StringComparison.OrdinalIgnoreCase)))
+            {
+                return "skanisalon";
+            }
+
+            if (!string.IsNullOrWhiteSpace(company.Domain))
+            {
+                var d = company.Domain.Trim().ToLowerInvariant();
+                if (d.StartsWith("www.")) d = d.Substring(4);
+                var firstPart = d.Split('.')[0];
+                if (!string.IsNullOrWhiteSpace(firstPart) && firstPart != "localhost")
+                {
+                    return SanitizeAlias(firstPart);
+                }
+            }
+
+            return SanitizeAlias(company.Name);
         }
 
         private static string SanitizeAlias(string? input)
@@ -852,6 +983,192 @@ namespace Soluvion.API.Controllers
                 }
             }
             return sb.Length > 0 ? sb.ToString() : "salon";
+        }
+
+        // Közvetlen szinkronizálás a Facebook Page Conversations Graph API-ból (hogy a webhook előtti vagy késleltetett üzenetek is azonnal megjelenjenek!)
+        private async Task<bool> SyncFacebookPageConversationsAsync(Company dbCompany, ChatInboxResponseDto inbox)
+        {
+            var tokensToPoll = new List<(string Token, string Route)>();
+
+            var centralToken = _configuration["Messenger:CentralPageAccessToken"];
+            if (!string.IsNullOrWhiteSpace(centralToken))
+            {
+                tokensToPoll.Add((centralToken.Trim(), "central_alias"));
+            }
+
+            if (inbox.Config.CustomFacebookPageConnected && !string.IsNullOrWhiteSpace(inbox.Config.CustomFacebookPageToken))
+            {
+                tokensToPoll.Add((inbox.Config.CustomFacebookPageToken.Trim(), "custom_page"));
+            }
+
+            if (tokensToPoll.Count == 0) return false;
+
+            bool anyModified = false;
+            var client = _httpClientFactory.CreateClient();
+            var centralPageId = _configuration["Messenger:CentralPageId"] ?? "1455828144269648";
+
+            foreach (var (token, route) in tokensToPoll)
+            {
+                try
+                {
+                    var url = $"https://graph.facebook.com/v20.0/me/conversations?fields=participants,updated_time,messages.limit(15){{id,message,from,created_time}}&access_token={token}";
+                    var resp = await client.GetAsync(url);
+                    if (!resp.IsSuccessStatusCode) continue;
+
+                    using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+                    if (!doc.RootElement.TryGetProperty("data", out var threads) || threads.ValueKind != JsonValueKind.Array)
+                        continue;
+
+                    foreach (var thread in threads.EnumerateArray())
+                    {
+                        string clientSenderId = "";
+                        string clientName = "Messenger Vendég";
+
+                        if (thread.TryGetProperty("participants", out var partObj) &&
+                            partObj.TryGetProperty("data", out var partArr) &&
+                            partArr.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var p in partArr.EnumerateArray())
+                            {
+                                var pid = p.TryGetProperty("id", out var pidProp) ? pidProp.GetString() ?? "" : "";
+                                var pname = p.TryGetProperty("name", out var pnameProp) ? pnameProp.GetString() ?? "" : "";
+                                if (!string.IsNullOrWhiteSpace(pid) &&
+                                    pid != centralPageId &&
+                                    pid != inbox.Config.CustomFacebookPageId &&
+                                    !string.Equals(pname, "BeeMagic", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    clientSenderId = pid;
+                                    if (!string.IsNullOrWhiteSpace(pname)) clientName = pname;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!thread.TryGetProperty("messages", out var msgsWrapper) ||
+                            !msgsWrapper.TryGetProperty("data", out var msgsArr) ||
+                            msgsArr.ValueKind != JsonValueKind.Array)
+                        {
+                            continue;
+                        }
+
+                        var rawMessages = new List<(string Id, string Text, string FromId, string FromName, DateTime CreatedAt)>();
+                        foreach (var m in msgsArr.EnumerateArray())
+                        {
+                            var mid = m.TryGetProperty("id", out var midProp) ? midProp.GetString() ?? "" : "";
+                            var mtext = m.TryGetProperty("message", out var mtProp) ? mtProp.GetString() ?? "" : "";
+                            if (string.IsNullOrWhiteSpace(mtext)) continue;
+
+                            string fromId = "";
+                            string fromName = "";
+                            if (m.TryGetProperty("from", out var fromObj))
+                            {
+                                if (fromObj.TryGetProperty("id", out var fidProp)) fromId = fidProp.GetString() ?? "";
+                                if (fromObj.TryGetProperty("name", out var fnProp)) fromName = fnProp.GetString() ?? "";
+                            }
+
+                            DateTime created = DateTime.UtcNow;
+                            if (m.TryGetProperty("created_time", out var ctProp) && DateTime.TryParse(ctProp.GetString(), out var parsedDt))
+                            {
+                                created = parsedDt.ToUniversalTime();
+                            }
+
+                            rawMessages.Add((mid, mtext, fromId, fromName, created));
+                        }
+
+                        if (rawMessages.Count == 0) continue;
+
+                        // Időrendi sorrend (legrégebbi elöl)
+                        rawMessages.Reverse();
+
+                        // Ellenőrizzük, hogy ehhez a szalonhoz tartozik-e a beszélgetés
+                        if (route == "central_alias")
+                        {
+                            string? detectedTag = null;
+                            foreach (var rm in rawMessages)
+                            {
+                                var match = Regex.Match(rm.Text, @"#([a-zA-Z0-9_\-]+)");
+                                if (match.Success)
+                                {
+                                    detectedTag = match.Groups[1].Value;
+                                    break;
+                                }
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(detectedTag) && !IsAliasMatchForCompany(dbCompany, inbox, detectedTag))
+                            {
+                                continue;
+                            }
+                        }
+
+                        var conv = inbox.Conversations.FirstOrDefault(c =>
+                            c.Channel == "Messenger" &&
+                            ((!string.IsNullOrWhiteSpace(clientSenderId) && c.ExternalSenderId == clientSenderId) ||
+                             string.Equals(c.CustomerName, clientName, StringComparison.OrdinalIgnoreCase)));
+
+                        if (conv == null)
+                        {
+                            conv = new ChatConversationDto
+                            {
+                                Id = Guid.NewGuid().ToString("N"),
+                                Channel = "Messenger",
+                                SourceRoute = route,
+                                ExternalSenderId = clientSenderId,
+                                CustomerName = clientName,
+                                UnreadCount = 1,
+                                UpdatedAt = rawMessages.Last().CreatedAt
+                            };
+                            inbox.Conversations.Insert(0, conv);
+                            anyModified = true;
+                        }
+                        else
+                        {
+                            if (!string.IsNullOrWhiteSpace(clientSenderId) && conv.ExternalSenderId != clientSenderId)
+                            {
+                                conv.ExternalSenderId = clientSenderId;
+                                anyModified = true;
+                            }
+                            if (!string.IsNullOrWhiteSpace(clientName) && clientName != "Messenger Vendég" && conv.CustomerName != clientName)
+                            {
+                                conv.CustomerName = clientName;
+                                anyModified = true;
+                            }
+                        }
+
+                        foreach (var rm in rawMessages)
+                        {
+                            bool isSalon = rm.FromId == centralPageId ||
+                                           (!string.IsNullOrWhiteSpace(inbox.Config.CustomFacebookPageId) && rm.FromId == inbox.Config.CustomFacebookPageId) ||
+                                           string.Equals(rm.FromName, "BeeMagic", StringComparison.OrdinalIgnoreCase);
+
+                            bool alreadyExists = conv.Messages.Any(em =>
+                                (!string.IsNullOrWhiteSpace(rm.Id) && em.Id == rm.Id) ||
+                                (string.Equals(em.Text.Trim(), rm.Text.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                                 Math.Abs((em.Timestamp - rm.CreatedAt).TotalMinutes) < 10));
+
+                            if (!alreadyExists)
+                            {
+                                conv.Messages.Add(new ChatMessageItemDto
+                                {
+                                    Id = !string.IsNullOrWhiteSpace(rm.Id) ? rm.Id : Guid.NewGuid().ToString("N"),
+                                    Sender = isSalon ? "salon" : "client",
+                                    SenderName = isSalon ? dbCompany.Name : clientName,
+                                    Text = rm.Text,
+                                    Timestamp = rm.CreatedAt,
+                                    SourceRoute = route
+                                });
+                                conv.UpdatedAt = rm.CreatedAt;
+                                anyModified = true;
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Facebook Page Conversations Graph API szinkronizáció sikertelen.");
+                }
+            }
+
+            return anyModified;
         }
 
         private async Task TryDispatchExternalReplyAsync(ChatChannelConfigDto config, ChatConversationDto conv, string text)
