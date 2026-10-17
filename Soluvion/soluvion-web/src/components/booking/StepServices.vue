@@ -182,6 +182,11 @@
         </div>
       </div>
 
+      <!-- Megjegyzés a szolgáltatónak (lépések között megőrzött, dinamikus méretű mező) -->
+      <div class="pt-2">
+        <BookingNotesField :modelValue="notes" @update:modelValue="$emit('update:notes', $event)" />
+      </div>
+
       <!-- 3. ÉLŐ FOGLALÁSI ÖSSZEGZŐ SÁV (BOUTIQUE CONCIERGE) -->
       <div class="pt-4 mt-2 border-t border-text/10 sticky bottom-0 bg-surface/95 backdrop-blur-md z-20">
         <!-- Kiválasztott szolgáltatás chipek -->
@@ -248,14 +253,16 @@
   import { useI18n } from 'vue-i18n';
   import { useLocalizedText } from '@/composables/useLocalizedText';
   import ServicePictogram from '@/components/common/ServicePictogram.vue';
+  import BookingNotesField from '@/components/booking/BookingNotesField.vue';
   import bookingApi from '@/services/bookingApi';
 
   const props = defineProps({
     selectedVariants: { type: Array, required: true },
+    notes: { type: String, default: '' },
     onNext: { type: Function, required: true }
   });
 
-  const emit = defineEmits(['update:selectedVariants', 'update:selectedItems']);
+  const emit = defineEmits(['update:selectedVariants', 'update:selectedItems', 'update:notes']);
   const { locale } = useI18n();
   const { getLocText } = useLocalizedText();
 

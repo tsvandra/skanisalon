@@ -29,7 +29,11 @@ namespace Soluvion.Domain.Models
         public string? AdminNotes { get; set; }    // Ezt csak a dolgoz�k l�tj�k (belso info)
         public string? StatusReason { get; set; }  // Indokl�s elutas�t�shoz vagy �tszervez�shez
 
-        public ICollection<AppointmentItem> Items { get; set; } = new List<AppointmentItem>();        public bool MaterialUsageRecorded { get; set; } = false;
+        public ICollection<AppointmentItem> Items { get; set; } = new List<AppointmentItem>();
+        public bool MaterialUsageRecorded { get; set; } = false;
         public string? ExtraMaterials { get; set; } // JSON array of extra materials
+
+        // Foglalási kérés pontos beérkezési ideje (UTC)
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

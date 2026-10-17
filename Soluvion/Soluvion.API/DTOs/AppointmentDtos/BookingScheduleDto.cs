@@ -30,6 +30,11 @@ namespace Soluvion.API.DTOs.AppointmentDtos
         public string Mode { get; set; } = "weekly_template";
 
         /// <summary>
+        /// Minimum előfoglalási idő (percekben) az online foglalásokhoz (alapértelmezett: 120 perc = 2 óra)
+        /// </summary>
+        public int MinLeadTimeMinutes { get; set; } = 120;
+
+        /// <summary>
         /// Kulcs: "1" (Hétfő) .. "7" (Vasárnap)
         /// </summary>
         public Dictionary<string, BookingDayScheduleDto> WeeklyHours { get; set; } = new();
@@ -77,6 +82,7 @@ namespace Soluvion.API.DTOs.AppointmentDtos
     public class PublicAvailabilityResponseDto
     {
         public string Mode { get; set; } = "weekly_template";
+        public int MinLeadTimeMinutes { get; set; } = 120;
         public List<PublicEmployeeDto> Employees { get; set; } = new();
         public List<DayAvailabilityDto> Days { get; set; } = new();
     }

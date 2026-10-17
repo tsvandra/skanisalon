@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authentication;
 using CloudinaryDotNet;
 using Npgsql;
 using Soluvion.API.Interfaces;
+using System.Threading.RateLimiting;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -45,6 +46,38 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<IDocumentTextExtractorService, DocumentTextExtractorService>();
 builder.Services.AddScoped<IProductAiScannerService, ProductAiScannerService>();
 builder.Services.AddHostedService<AppointmentAutoCompleteService>();
+
+// Publikus foglalási végpont védelem (Rate Limiting spam és DoS ellen)
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        context.HttpContext.Response.ContentType = "application/json";
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new { errorCode = "TOO_MANY_BOOKING_REQUESTS" },
+            cancellationToken);
+    };
+
+    options.AddPolicy("PublicBooking", httpContext =>
+    {
+        var forwardedFor = httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        var clientIp = !string.IsNullOrWhiteSpace(forwardedFor)
+            ? forwardedFor.Split(',')[0].Trim()
+            : (httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: clientIp,
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(10),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            });
+    });
+});
 
 builder.Services.AddCors(options =>
 {
@@ -127,6 +160,8 @@ using (var scope = app.Services.CreateScope())
 app.UseExceptionHandler();
 
 app.UseCors("AllowAll");
+
+app.UseRateLimiter();
 
 AppContext.SetSwitch("Npqsql.EnableLegacyTimestampBehavior", true);
 

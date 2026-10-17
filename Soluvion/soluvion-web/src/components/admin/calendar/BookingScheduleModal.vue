@@ -73,6 +73,33 @@
           </div>
         </div>
 
+        <!-- 1.5. Minimum előfoglalási idő (alapértelmezetten 2 óra = 120 perc) -->
+        <div class="border-t border-text/10 pt-5">
+          <div class="p-4 rounded-2xl border border-text/10 bg-background/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs md:text-sm font-bold text-text flex items-center gap-2">
+                <i class="pi pi-stopwatch text-primary"></i>
+                <span>{{ $t('calendar.schedule.minLeadTimeLabel') }}</span>
+              </label>
+              <p class="text-xs text-text-muted leading-relaxed">
+                {{ $t('calendar.schedule.minLeadTimeDesc') }}
+              </p>
+            </div>
+            <select v-model.number="localConfig.minLeadTimeMinutes"
+                    class="h-10 px-3 rounded-xl border border-text/20 bg-surface text-xs md:text-sm font-bold text-text focus:border-primary focus:outline-none cursor-pointer shrink-0">
+              <option :value="0">{{ $t('calendar.schedule.leadTime0') }}</option>
+              <option :value="30">{{ $t('calendar.schedule.leadTime30') }}</option>
+              <option :value="60">{{ $t('calendar.schedule.leadTime60') }}</option>
+              <option :value="120">{{ $t('calendar.schedule.leadTime120') }}</option>
+              <option :value="180">{{ $t('calendar.schedule.leadTime180') }}</option>
+              <option :value="240">{{ $t('calendar.schedule.leadTime240') }}</option>
+              <option :value="360">{{ $t('calendar.schedule.leadTime360') }}</option>
+              <option :value="720">{{ $t('calendar.schedule.leadTime720') }}</option>
+              <option :value="1440">{{ $t('calendar.schedule.leadTime1440') }}</option>
+            </select>
+          </div>
+        </div>
+
         <!-- 2. Fix heti nyitvatartás szerkesztő (csak ha weekly_template mód aktív) -->
         <div v-if="localConfig.mode === 'weekly_template'" class="border-t border-text/10 pt-5">
           <h3 class="text-xs font-bold uppercase tracking-wider text-text-muted mb-3 flex items-center gap-2">
@@ -204,6 +231,7 @@ const isSaving = ref(false);
 const buildDefaultLocalConfig = (src) => {
   const clone = JSON.parse(JSON.stringify(src || {}));
   if (!clone.mode) clone.mode = 'weekly_template';
+  if (typeof clone.minLeadTimeMinutes !== 'number') clone.minLeadTimeMinutes = 120;
   if (!clone.weeklyHours) clone.weeklyHours = {};
   for (let d = 1; d <= 7; d++) {
     const k = String(d);

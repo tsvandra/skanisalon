@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Soluvion.API.Data;
 using Soluvion.API.DTOs.AppointmentDtos;
@@ -192,8 +193,10 @@ namespace Soluvion.API.Controllers
 
             var tz = GetSalonTimeZone();
             var localNow = ToSalonLocal(DateTime.UtcNow, tz);
-            var todayDateOnly = DateOnly.FromDateTime(localNow);
-            int nowMinutesToday = localNow.Hour * 60 + localNow.Minute;
+            int leadMinutes = Math.Clamp(config.MinLeadTimeMinutes, 0, 10080);
+            var earliestBookableLocal = localNow.AddMinutes(leadMinutes);
+            var earliestDateOnly = DateOnly.FromDateTime(earliestBookableLocal);
+            int earliestMinutesOnEarliestDay = earliestBookableLocal.Hour * 60 + earliestBookableLocal.Minute;
 
             var localAppointments = rawAppointments
                 .Select(a => new
@@ -235,18 +238,18 @@ namespace Soluvion.API.Controllers
 
                 var mergedBusy = MergeRanges(rawBusyRanges);
 
-                // Szabad idősávok = Nyitott sávok mínusz Foglalt sávok (és múltbeli idő, ha ma vagy múlt)
+                // Szabad idősávok = Nyitott sávok mínusz Foglalt sávok (és a minimum előfoglalási időn belüli / múltbeli idő)
                 List<(int Start, int End)> freeRanges;
-                if (!isOpen || openRanges.Count == 0 || d < todayDateOnly)
+                if (!isOpen || openRanges.Count == 0 || d < earliestDateOnly)
                 {
                     freeRanges = new List<(int Start, int End)>();
                 }
                 else
                 {
                     var obstacles = new List<(int Start, int End)>(mergedBusy);
-                    if (d == todayDateOnly && nowMinutesToday > 0)
+                    if (d == earliestDateOnly && earliestMinutesOnEarliestDay > 0)
                     {
-                        obstacles.Add((0, Math.Min(1440, nowMinutesToday)));
+                        obstacles.Add((0, Math.Min(1440, earliestMinutesOnEarliestDay)));
                     }
                     obstacles = MergeRanges(obstacles);
                     freeRanges = SubtractRanges(openRanges, obstacles);
@@ -293,6 +296,7 @@ namespace Soluvion.API.Controllers
             return Ok(new PublicAvailabilityResponseDto
             {
                 Mode = config.Mode,
+                MinLeadTimeMinutes = config.MinLeadTimeMinutes,
                 Employees = bookableEmployees,
                 Days = resultDays
             });
@@ -320,8 +324,15 @@ namespace Soluvion.API.Controllers
 
         [HttpPost]
         [AllowAnonymous]
+        [EnableRateLimiting("PublicBooking")]
         public async Task<IActionResult> CreateGuestBooking([FromBody] GuestBookingDto dto)
         {
+            // Honeypot spam-védelem: ha a rejtett mező ki van töltve, elutasítjuk
+            if (!string.IsNullOrWhiteSpace(dto.Website))
+            {
+                return BadRequest(new { errorCode = "SPAM_DETECTED" });
+            }
+
             var company = _tenantContext.CurrentCompany;
             if (company == null)
             {
@@ -411,8 +422,9 @@ namespace Soluvion.API.Controllers
                     return Conflict(new { errorCode = "BOOKING_SLOT_TAKEN" });
                 }
 
-                // Nyitvatartási idősáv ellenőrzése
+                // Nyitvatartási idősáv és minimum előfoglalási idő (MinLeadTimeMinutes, alapért. 2 óra) ellenőrzése
                 var tz = GetSalonTimeZone();
+                var localNow = ToSalonLocal(DateTime.UtcNow, tz);
                 var localStart = ToSalonLocal(dto.StartDateTime, tz);
                 var localEnd = localStart.AddMinutes(effectiveDuration);
                 var bookingDate = DateOnly.FromDateTime(localStart);
@@ -420,6 +432,15 @@ namespace Soluvion.API.Controllers
 
                 var dbCompany = await _context.Companies.AsNoTracking().FirstOrDefaultAsync(c => c.Id == companyId);
                 var config = ParseScheduleConfig(dbCompany?.SettingsJson ?? company.SettingsJson);
+
+                int leadMinutes = Math.Clamp(config.MinLeadTimeMinutes, 0, 10080);
+                // 5 perces türelmi idő az űrlap kitöltése közbeni peremhelyzetekre
+                int effectiveLeadMinutes = Math.Max(0, leadMinutes - 5);
+                if (localStart < localNow.AddMinutes(effectiveLeadMinutes))
+                {
+                    return BadRequest(new { errorCode = leadMinutes > 0 ? "BOOKING_TOO_SOON" : "BOOKING_IN_PAST" });
+                }
+
                 var (isOpen, _, openRanges) = ResolveDayOpenRanges(bookingDate, dateKey, config);
 
                 int reqStartMin = localStart.Hour * 60 + localStart.Minute;
@@ -430,7 +451,7 @@ namespace Soluvion.API.Controllers
                     return Conflict(new { errorCode = "BOOKING_SLOT_TAKEN" });
                 }
 
-                // 4. Appointment létrehozása
+                // 4. Appointment létrehozása a pontos beérkezési időbélyeggel (CreatedAt)
                 var appointment = new Appointment
                 {
                     CompanyId = companyId,
@@ -441,6 +462,7 @@ namespace Soluvion.API.Controllers
                     TotalPrice = price,
                     Status = AppointmentStatus.Pending,
                     Source = BookingSource.Web,
+                    CreatedAt = DateTime.UtcNow,
                     CustomerNotes = dto.Notes
                 };
 
@@ -462,7 +484,7 @@ namespace Soluvion.API.Controllers
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                return Ok(new { success = true, appointmentId = appointment.Id });
+                return Ok(new { success = true, appointmentId = appointment.Id, createdAt = appointment.CreatedAt });
             }
             catch (Exception)
             {
@@ -480,6 +502,7 @@ namespace Soluvion.API.Controllers
             var config = new BookingScheduleConfigDto
             {
                 Mode = "weekly_template",
+                MinLeadTimeMinutes = 120,
                 WeeklyHours = new Dictionary<string, BookingDayScheduleDto>(),
                 DateOverrides = new Dictionary<string, BookingDayScheduleDto>()
             };
@@ -535,6 +558,7 @@ namespace Soluvion.API.Controllers
         {
             var result = CreateDefaultScheduleConfig();
             result.Mode = input.Mode == "custom_days" ? "custom_days" : "weekly_template";
+            result.MinLeadTimeMinutes = Math.Clamp(input.MinLeadTimeMinutes, 0, 10080);
 
             if (input.WeeklyHours != null)
             {

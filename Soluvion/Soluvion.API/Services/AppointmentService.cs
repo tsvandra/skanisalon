@@ -36,7 +36,10 @@ namespace Soluvion.API.Services
             var query = _context.Appointments
                 .Include(a => a.Items)
                 .Include(a => a.Customer)
-                .Where(a => a.CompanyId == companyId && a.StartDateTime >= start && a.StartDateTime <= end);
+                .Where(a => a.CompanyId == companyId
+                         && a.Status != AppointmentStatus.Cancelled
+                         && a.StartDateTime >= start
+                         && a.StartDateTime <= end);
 
             if (currentEmployee.Role == EmployeeRole.Worker)
             {
@@ -49,7 +52,36 @@ namespace Soluvion.API.Services
 
             var rawAppointments = await query.ToListAsync();
 
-            var appointments = rawAppointments.Select(a => new AppointmentResponseDto
+            return rawAppointments.Select(MapToResponseDto).ToList();
+        }
+
+        public async Task<List<AppointmentResponseDto>> GetPendingAppointmentsAsync()
+        {
+            int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
+
+            var currentEmployee = await _userContext.GetCurrentEmployeeAsync();
+            if (currentEmployee == null) throw new UnauthorizedAccessException("Nem vagy hozzárendelve ehhez a céghez.");
+
+            var query = _context.Appointments
+                .Include(a => a.Items)
+                .Include(a => a.Customer)
+                .Where(a => a.CompanyId == companyId && a.Status == AppointmentStatus.Pending);
+
+            if (currentEmployee.Role == EmployeeRole.Worker)
+            {
+                query = query.Where(a => a.EmployeeId == currentEmployee.Id);
+            }
+
+            var rawPending = await query
+                .OrderBy(a => a.StartDateTime)
+                .ToListAsync();
+
+            return rawPending.Select(MapToResponseDto).ToList();
+        }
+
+        private static AppointmentResponseDto MapToResponseDto(Appointment a)
+        {
+            return new AppointmentResponseDto
             {
                 Id = a.Id,
                 CustomerId = a.CustomerId,
@@ -57,9 +89,23 @@ namespace Soluvion.API.Services
                 StartDateTime = a.StartDateTime,
                 EndDateTime = a.EndDateTime,
                 TotalPrice = a.TotalPrice,
-                Status = a.Status.ToString(), MaterialUsageRecorded = a.MaterialUsageRecorded, ExtraMaterials = a.ExtraMaterials, CustomerName = a.Customer != null && a.Customer.Attributes != null && a.Customer.Attributes.ContainsKey("FullName") ? a.Customer.Attributes["FullName"] : "Ismeretlen",
-                Notes = (a.CustomerNotes != null && a.CustomerNotes != "") ? a.CustomerNotes : a.AdminNotes,
-
+                Status = a.Status.ToString(),
+                MaterialUsageRecorded = a.MaterialUsageRecorded,
+                ExtraMaterials = a.ExtraMaterials,
+                CustomerName = a.Customer != null && a.Customer.Attributes != null && a.Customer.Attributes.ContainsKey("FullName")
+                    ? a.Customer.Attributes["FullName"]
+                    : "Ismeretlen",
+                CustomerPhone = a.Customer != null && a.Customer.Attributes != null && a.Customer.Attributes.TryGetValue("Phone", out var phone)
+                    ? phone
+                    : null,
+                CustomerEmail = a.Customer != null && a.Customer.Attributes != null && a.Customer.Attributes.TryGetValue("Email", out var email)
+                    ? email
+                    : null,
+                CustomerNotes = a.CustomerNotes,
+                StatusReason = a.StatusReason,
+                CreatedAt = a.CreatedAt,
+                Source = a.Source.ToString(),
+                Notes = !string.IsNullOrEmpty(a.CustomerNotes) ? a.CustomerNotes : a.AdminNotes,
                 Items = a.Items.Select(i => new AppointmentItemResponseDto
                 {
                     Id = i.Id,
@@ -67,9 +113,7 @@ namespace Soluvion.API.Services
                     CalculatedDurationMinutes = i.CalculatedDurationMinutes,
                     Price = i.Price
                 }).ToList()
-            }).ToList();
-
-            return appointments;
+            };
         }
 
         public async Task<Appointment> CreateAppointmentAsync(CreateAppointmentDto dto)
@@ -116,6 +160,7 @@ namespace Soluvion.API.Services
                 TotalPrice = totalPrice,
                 Status = dto.Status,
                 Source = BookingSource.System,
+                CreatedAt = DateTime.UtcNow,
                 AdminNotes = dto.Notes,
                 ExtraMaterials = NormalizeExtraMaterials(dto.ExtraMaterials),
                 Items = new List<AppointmentItem>()
@@ -204,6 +249,32 @@ namespace Soluvion.API.Services
             // === A VARÁZSLAT ===
             await SyncCustomerAttributesFromVariantsAsync(dto.CustomerId, variantIds);
 
+            return appointment;
+        }
+
+        public async Task<Appointment> UpdateAppointmentStatusAsync(int appointmentId, UpdateAppointmentStatusDto dto)
+        {
+            int companyId = _tenantContext.CurrentCompany?.Id ?? throw new Exception("Nincs kiválasztva cég.");
+
+            var appointment = await _context.Appointments
+                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.CompanyId == companyId);
+
+            if (appointment == null) throw new KeyNotFoundException("Idopont nem található vagy nincs jogosultságod.");
+
+            var currentEmployee = await _userContext.GetCurrentEmployeeAsync();
+            if (currentEmployee == null)
+                throw new UnauthorizedAccessException("Nincs jogosultságod.");
+
+            if (currentEmployee.Role == EmployeeRole.Worker && appointment.EmployeeId != currentEmployee.Id)
+                throw new UnauthorizedAccessException("Csak a saját idopontjaidat módosíthatod.");
+
+            appointment.Status = dto.Status;
+            if (dto.StatusReason != null)
+            {
+                appointment.StatusReason = dto.StatusReason;
+            }
+
+            await _context.SaveChangesAsync();
             return appointment;
         }
 

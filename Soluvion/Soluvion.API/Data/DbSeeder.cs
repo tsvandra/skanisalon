@@ -7,6 +7,10 @@ namespace Soluvion.API.Data
     {
         public static async Task SeedAsync(AppDbContext context)
         {
+            // 0. Idempotens séma-biztosítás az Appointments.CreatedAt oszlophoz
+            await context.Database.ExecuteSqlRawAsync(
+                @"ALTER TABLE ""Appointments"" ADD COLUMN IF NOT EXISTS ""CreatedAt"" timestamp with time zone NOT NULL DEFAULT NOW();");
+
             // 1. Alap Iparágak (CompanyTypes) létrehozása, ha még nincs
             if (!await context.CompanyTypes.AnyAsync())
             {

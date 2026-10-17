@@ -14,10 +14,14 @@
 
         <router-link
           :to="localized('orders')"
-          class="px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all border border-text/10 bg-background text-text hover:border-primary/50 hover:text-primary [&.router-link-active]:bg-primary [&.router-link-active]:text-white [&.router-link-active]:border-primary [&.router-link-active]:shadow-sm"
+          class="px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all border border-text/10 bg-background text-text hover:border-primary/50 hover:text-primary [&.router-link-active]:bg-primary [&.router-link-active]:text-white [&.router-link-active]:border-primary [&.router-link-active]:shadow-sm relative"
         >
           <i class="pi pi-calendar text-sm"></i>
           <span>{{ $t('nav.orders') }}</span>
+          <span v-if="pendingCount > 0"
+                class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-white text-[11px] font-extrabold shadow-xs animate-pulse">
+            {{ pendingCount }}
+          </span>
         </router-link>
 
         <router-link
@@ -54,10 +58,17 @@
 </template>
 
 <script setup>
-  import { inject, computed } from 'vue';
+  import { inject, computed, onMounted } from 'vue';
   import { useLocalizedRoute } from '@/composables/useLocalizedRoute';
+  import { useAppointmentStore } from '@/stores/appointmentStore';
 
   const userRole = inject('userRole');
   const isAdmin = computed(() => ['Admin', 'Owner'].includes(userRole?.value));
   const { to: localized } = useLocalizedRoute();
+  const appointmentStore = useAppointmentStore();
+  const pendingCount = computed(() => appointmentStore.pendingCount);
+
+  onMounted(() => {
+    appointmentStore.fetchPendingAppointments();
+  });
 </script>

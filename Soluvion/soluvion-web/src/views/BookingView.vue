@@ -26,7 +26,7 @@
       </button>
     </div>
 
-    <div v-else class="bg-surface rounded-2xl shadow-lg p-4 sm:p-6 md:p-8 border border-text/10 animate-fade-in">
+    <div v-else class="bg-surface rounded-2xl shadow-lg p-6 sm:p-8 md:p-10 border border-text/10 animate-fade-in">
 
       <div v-if="isDevLockActive && !isLoggedIn" class="bg-red-500/10 border border-red-500/30 text-red-600 rounded-lg p-3 mb-6 text-sm font-bold flex items-center gap-2">
         <i class="pi pi-exclamation-triangle"></i> {{ $t('booking.devOverrideWarning') }}
@@ -70,18 +70,20 @@
           <Step value="2">{{ $t('booking.stepDetails') }}</Step>
           <Step value="3">{{ $t('booking.stepSummary') }}</Step>
         </StepList>
-        <StepPanels>
-          <StepPanel value="1" v-slot="{ activateCallback }">
+        <StepPanels class="!px-2 sm:!px-4 !pt-4 !pb-2">
+          <StepPanel value="1" v-slot="{ activateCallback }" class="!bg-transparent !p-2 sm:!p-4 rounded-xl">
             <StepServices v-model:selectedVariants="bookingData.serviceVariantIds"
                           v-model:selectedItems="selectedItems"
+                          v-model:notes="bookingData.notes"
                           :onNext="() => activateCallback('2')" />
           </StepPanel>
-          <StepPanel value="2" v-slot="{ activateCallback }">
+          <StepPanel value="2" v-slot="{ activateCallback }" class="!bg-transparent !p-2 sm:!p-4 rounded-xl">
             <StepDetails v-model="bookingData" :onNext="() => activateCallback('3')" :onPrev="() => activateCallback('1')" />
           </StepPanel>
-          <StepPanel value="3" v-slot="{ activateCallback }">
+          <StepPanel value="3" v-slot="{ activateCallback }" class="!bg-transparent !p-2 sm:!p-4 rounded-xl">
             <StepDateTime v-model:employeeId="bookingData.employeeId"
                           v-model:selectedDateTime="selectedDateTime"
+                          v-model:notes="bookingData.notes"
                           :totalDuration="totalDuration"
                           :isSubmitting="isSubmitting"
                           :errorMessage="errorMessage"
@@ -154,7 +156,7 @@
   // ---------------------------------------------
 
   const getInitialBookingData = () => ({
-    fullName: '', email: '', phone: '', attributes: {}, notes: '', serviceVariantIds: [], employeeId: 0
+    fullName: '', email: '', phone: '', attributes: {}, notes: '', website: '', serviceVariantIds: [], employeeId: 0
   });
 
   const bookingData = ref(getInitialBookingData());
@@ -180,6 +182,8 @@
       }
       if (code && te('errors.' + code)) {
         errorMessage.value = t('errors.' + code);
+      } else if (error.response && error.response.status === 429) {
+        errorMessage.value = t('errors.TOO_MANY_BOOKING_REQUESTS');
       } else if (error.response && error.response.status === 400) {
         errorMessage.value = t('errors.BAD_REQUEST');
       } else if (error.response && error.response.status === 500) {

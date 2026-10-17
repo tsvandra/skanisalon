@@ -65,7 +65,7 @@
 
       <div class="flex flex-col gap-6">
 
-        <Card class="shadow-md !bg-surface !border !border-text/10 !rounded-2xl">
+        <Card class="shadow-md !bg-surface !border !border-text/10 !rounded-2xl !p-2 sm:!p-3">
           <template #title>
             <span class="text-primary font-bold text-xl">{{ $t('contact.myContacts') }}</span>
           </template>
@@ -108,7 +108,7 @@
           </template>
         </Card>
 
-        <Card class="shadow-md !bg-surface !border !border-text/10 !rounded-2xl">
+        <Card class="shadow-md !bg-surface !border !border-text/10 !rounded-2xl !p-2 sm:!p-3">
           <template #title>
             <span class="text-primary font-bold text-xl">{{ $t('contact.openingHours') }}</span>
           </template>
@@ -154,7 +154,7 @@
 
       <div class="flex flex-col gap-6">
 
-        <Card class="shadow-md !bg-surface !border !border-text/10 !rounded-2xl">
+        <Card class="shadow-md !bg-surface !border !border-text/10 !rounded-2xl !p-2 sm:!p-3">
           <template #title>
             <span class="text-primary font-bold text-xl">{{ $t('contact.writeUs') }}</span>
           </template>
@@ -165,17 +165,17 @@
 
             <div class="mb-5">
               <label class="block mb-2 font-bold text-text text-sm">{{ $t('contact.form.name') }}</label>
-              <InputText v-model="name" :placeholder="$t('contact.form.namePlaceholder')" class="w-full !min-h-[44px] !rounded-xl !bg-background !border-text/20 !text-text focus:!border-primary focus:!ring-1 focus:!ring-primary transition-colors" />
+              <InputText v-model="name" :placeholder="$t('contact.form.namePlaceholder')" class="w-full !min-h-[44px] !px-3.5 !py-2.5 !rounded-xl !bg-background !border-text/20 !text-text focus:!border-primary focus:!ring-1 focus:!ring-primary transition-colors" />
             </div>
 
             <div class="mb-5">
               <label class="block mb-2 font-bold text-text text-sm">{{ $t('contact.form.email') }}</label>
-              <InputText v-model="email" type="email" :placeholder="$t('contact.form.emailPlaceholder')" class="w-full !min-h-[44px] !rounded-xl !bg-background !border-text/20 !text-text focus:!border-primary focus:!ring-1 focus:!ring-primary transition-colors" />
+              <InputText v-model="email" type="email" :placeholder="$t('contact.form.emailPlaceholder')" class="w-full !min-h-[44px] !px-3.5 !py-2.5 !rounded-xl !bg-background !border-text/20 !text-text focus:!border-primary focus:!ring-1 focus:!ring-primary transition-colors" />
             </div>
 
             <div class="mb-6">
               <label class="block mb-2 font-bold text-text text-sm">{{ $t('contact.form.message') }}</label>
-              <Textarea v-model="messageText" rows="5" :placeholder="$t('contact.form.messagePlaceholder')" class="w-full !rounded-xl !bg-background !border-text/20 !text-text focus:!border-primary focus:!ring-1 focus:!ring-primary transition-colors p-3" />
+              <Textarea v-model="messageText" rows="5" :placeholder="$t('contact.form.messagePlaceholder')" class="w-full !px-3.5 !py-3 !rounded-xl !bg-background !border-text/20 !text-text focus:!border-primary focus:!ring-1 focus:!ring-primary transition-colors" />
             </div>
 
             <Button :label="isLoading ? $t('contact.form.sending') : $t('contact.form.send')"

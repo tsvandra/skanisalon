@@ -5,6 +5,7 @@ import { jwtDecode } from 'jwt-decode';
 export const useAppointmentStore = defineStore('appointment', {
   state: () => ({
     appointments: [],
+    pendingAppointments: [],
     isLoading: false,
     error: null,
     userRole: 'Worker', // Alapértelmezett biztonsági okokból
@@ -13,6 +14,7 @@ export const useAppointmentStore = defineStore('appointment', {
 
   getters: {
     canForceOverlap: (state) => ['Owner', 'Manager'].includes(state.userRole),
+    pendingCount: (state) => state.pendingAppointments.length,
   },
 
   actions: {
@@ -35,10 +37,32 @@ export const useAppointmentStore = defineStore('appointment', {
       try {
         const response = await appointmentApi.getAppointments(start, end);
         this.appointments = response.data;
+        // Frissítjük a függőben lévő online foglalások listáját is
+        this.fetchPendingAppointments();
       } catch (err) {
         this.error = err.response?.data || 'Hiba a betöltéskor';
       } finally {
         this.isLoading = false;
+      }
+    },
+
+    async fetchPendingAppointments() {
+      try {
+        const response = await appointmentApi.getPendingAppointments();
+        this.pendingAppointments = response.data || [];
+      } catch (err) {
+        console.error('Hiba a függőben lévő foglalások betöltésekor:', err);
+      }
+    },
+
+    async updateAppointmentStatus(id, status, statusReason = null) {
+      try {
+        await appointmentApi.updateAppointmentStatus(id, { status, statusReason });
+        await this.fetchPendingAppointments();
+        return true;
+      } catch (err) {
+        this.error = err.response?.data || 'Hiba a státusz módosításakor';
+        throw err;
       }
     },
 
@@ -51,6 +75,7 @@ export const useAppointmentStore = defineStore('appointment', {
         } else {
           await appointmentApi.createAppointment(data);
         }
+        await this.fetchPendingAppointments();
         return true; // Sikeres mentés
       } catch (err) {
         this.error = err.response?.data || 'Hiba mentéskor';
@@ -70,6 +95,7 @@ export const useAppointmentStore = defineStore('appointment', {
         // Opcionálisan kivehetjük a lokális state-ből is, bár a CalendarGrid 
         // úgyis újrahívja a fetchAppointments()-t a törlés után.
         this.appointments = this.appointments.filter(app => app.id !== id);
+        this.pendingAppointments = this.pendingAppointments.filter(app => app.id !== id);
 
         return true;
       } catch (err) {

@@ -58,6 +58,20 @@ namespace Soluvion.API.Controllers
             }
         }
 
+        [HttpGet("pending")]
+        public async Task<IActionResult> GetPendingAppointments()
+        {
+            try
+            {
+                var pending = await _appointmentService.GetPendingAppointmentsAsync();
+                return Ok(pending);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { errorCode = "SERVER_ERROR", message = ex.Message });
+            }
+        }
+
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateAppointment(int id, [FromBody] UpdateAppointmentDto dto)
         {
@@ -81,6 +95,28 @@ namespace Soluvion.API.Controllers
             catch (ArgumentException ex)
             {
                 return BadRequest(new { errorCode = "BAD_REQUEST", message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { errorCode = "SERVER_ERROR", message = ex.Message });
+            }
+        }
+
+        [HttpPatch("{id}/status")]
+        public async Task<IActionResult> UpdateAppointmentStatus(int id, [FromBody] UpdateAppointmentStatusDto dto)
+        {
+            try
+            {
+                var result = await _appointmentService.UpdateAppointmentStatusAsync(id, dto);
+                return Ok(new { success = true, appointmentId = result.Id, status = result.Status.ToString() });
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { errorCode = "NOT_FOUND" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { errorCode = "FORBIDDEN", message = ex.Message });
             }
             catch (Exception ex)
             {

@@ -249,10 +249,15 @@
         <i class="pi pi-exclamation-triangle shrink-0"></i>
         <span>{{ errorMessage }}</span>
       </div>
+
+      <!-- Megjegyzés a szolgáltatónak (lépések között megőrzött, dinamikus méretű mező) -->
+      <div class="pt-2">
+        <BookingNotesField :modelValue="notes" @update:modelValue="$emit('update:notes', $event)" />
+      </div>
     </div>
 
     <!-- Navigációs gombok -->
-    <div class="mt-8 pt-4 border-t border-text/10 flex justify-between items-center">
+    <div class="mt-6 pt-4 border-t border-text/10 flex justify-between items-center">
       <button type="button"
               @click="onPrev"
               class="min-h-[48px] px-6 py-2.5 border border-text/20 text-text font-semibold rounded-xl transition-colors hover:bg-text/5 cursor-pointer flex items-center gap-2">
@@ -274,17 +279,19 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
 import bookingApi from '@/services/bookingApi';
+import BookingNotesField from '@/components/booking/BookingNotesField.vue';
 
 const props = defineProps({
   employeeId: { type: Number, required: true },
   selectedDateTime: { type: String, required: true },
+  notes: { type: String, default: '' },
   totalDuration: { type: Number, default: 30 },
   isSubmitting: { type: Boolean, default: false },
   errorMessage: { type: String, default: '' },
   onPrev: { type: Function, required: true }
 });
 
-const emit = defineEmits(['update:employeeId', 'update:selectedDateTime', 'submit']);
+const emit = defineEmits(['update:employeeId', 'update:selectedDateTime', 'update:notes', 'submit']);
 const { locale, t } = useI18n();
 
 const localEmployeeId = ref(props.employeeId);

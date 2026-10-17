@@ -12,13 +12,21 @@
           {{ getCustomerInitials(app.customerId) }}
         </div>
         <div class="flex flex-col">
-          <div class="flex items-center gap-1.5 md:gap-2">
+          <div class="flex items-center flex-wrap gap-1.5 md:gap-2">
             <h4 class="font-bold text-text" :class="mode === 'day' ? 'text-base md:text-xl' : 'text-sm md:text-md'">
               {{ getCustomerName(app.customerId) }}
             </h4>
             <div class="rounded-full shadow-sm"
-                 :class="[app.status === 'Completed' || app.status === 2 || app.status === '2' ? 'bg-primary' : (isNoShow(app.status) ? 'bg-gray-400' : (isPending(app.status) ? 'bg-red-500' : 'bg-green-500')), mode === 'day' ? 'w-2.5 h-2.5 md:w-3 md:h-3' : 'w-2 h-2']"
+                 :class="[app.status === 'Completed' || app.status === 2 || app.status === '2' ? 'bg-primary' : (isNoShow(app.status) ? 'bg-gray-400' : (isPending(app.status) ? 'bg-amber-500 animate-pulse' : 'bg-green-500')), mode === 'day' ? 'w-2.5 h-2.5 md:w-3 md:h-3' : 'w-2 h-2']"
                  :title="app.status === 'Completed' || app.status === 2 || app.status === '2' ? $t('orders.calendar.card.statusCompleted') : (isNoShow(app.status) ? $t('calendar.editor.statusNoShow') : (isPending(app.status) ? $t('calendar.editor.statusPending') : $t('calendar.editor.statusApproved')))"></div>
+            <span v-if="isPending(app.status)"
+                  class="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 border border-amber-500/30 text-[10px] font-extrabold uppercase tracking-wider">
+              {{ $t('calendar.pendingInbox.pendingBadge') }}
+            </span>
+          </div>
+          <div v-if="app.createdAt" class="text-[10px] md:text-xs text-text-muted flex items-center gap-1 mt-0.5">
+            <i class="pi pi-history text-[10px] text-primary/70"></i>
+            <span>{{ $t('calendar.pendingInbox.submittedAt', { time: formatSubmittedTime(app.createdAt) }) }}</span>
           </div>
         </div>
       </div>
@@ -98,6 +106,12 @@ const isNoShow = (status) => status === 4 || status === '4' || (typeof status ==
 const getDayNameShort = (date) => new Date(date).toLocaleString(currentLang.value, { weekday: 'short' });
 const formatDateShort = (iso) => iso ? new Date(iso).toLocaleDateString(currentLang.value, { month: 'short', day: 'numeric' }) : '';
 const formatTime = (iso) => iso ? new Date(iso).toLocaleTimeString(currentLang.value, { hour: '2-digit', minute: '2-digit' }) : '';
+const formatSubmittedTime = (iso) => {
+  if (!iso) return '';
+  const dt = new Date(iso);
+  if (isNaN(dt.getTime())) return '';
+  return dt.toLocaleString(currentLang.value, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
 const getDurationMinutes = (app) => Math.round((new Date(app.endDateTime) - new Date(app.startDateTime)) / 60000);
 const { getLocText } = useLocalizedText();
 const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?';
@@ -111,7 +125,9 @@ const formatPrice = (app) => {
 const guestPrefix = () => `${t('calendar.guest')} #`;
 const getCustomerName = (id) => {
   const c = props.customersList.find(x => x.id === id);
-  return c && c.name && c.name !== 'Ismeretlen Vendég' ? c.name : `${guestPrefix()}${id}`;
+  if (c && c.name && c.name !== 'Ismeretlen Vendég') return c.name;
+  if (props.app?.customerName && props.app.customerName !== 'Ismeretlen') return props.app.customerName;
+  return `${guestPrefix()}${id}`;
 };
 
 const getCustomerInitials = (id) => {

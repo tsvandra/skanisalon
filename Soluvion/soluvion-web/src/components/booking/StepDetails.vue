@@ -31,20 +31,37 @@
           <i class="pi pi-phone absolute left-3.5 text-text-muted text-sm pointer-events-none"></i>
           <input v-model="localData.phone"
                  type="tel"
+                 name="phone"
                  autocomplete="tel"
                  class="w-full pl-10 pr-4 py-3 rounded-xl border border-text/15 bg-background text-text focus:border-primary focus:ring-1 focus:ring-primary/40 focus:outline-none transition-all" />
         </div>
       </div>
 
-      <div class="flex flex-col gap-1.5 md:col-span-2">
-        <label class="text-xs font-bold uppercase tracking-wider text-text-muted">{{ $t('booking.notes') }}</label>
-        <textarea v-model="localData.notes"
-                  rows="3"
-                  class="w-full p-3.5 rounded-xl border border-text/15 bg-background text-text focus:border-primary focus:ring-1 focus:ring-primary/40 focus:outline-none transition-all resize-none"></textarea>
+      <!-- Böngésző autofill csapda lakcímhez: megakadályozza, hogy a Chrome/Safari a név+telefon automatikus kitöltésekor a megjegyzés mezőbe írja a lakcímet -->
+      <div class="sr-only" aria-hidden="true">
+        <input type="text" name="street-address" autocomplete="street-address" tabindex="-1" />
+        <input type="text" name="address-level2" autocomplete="address-level2" tabindex="-1" />
+        <input type="text" name="postal-code" autocomplete="postal-code" tabindex="-1" />
+      </div>
+
+      <!-- Honeypot mező spam robotok ellen (valódi felhasználóknak láthatatlan) -->
+      <div class="sr-only" aria-hidden="true">
+        <label for="booking_website_hp">Website</label>
+        <input id="booking_website_hp"
+               v-model="localData.website"
+               type="text"
+               name="website"
+               tabindex="-1"
+               autocomplete="off" />
       </div>
     </div>
 
-    <div class="mt-8 pt-4 border-t border-text/10 flex justify-between items-center">
+    <!-- Megjegyzés a szolgáltatónak (külön szekcióban a kontakt mezőktől, lépések között megőrizve) -->
+    <div class="mt-5 pt-4 border-t border-text/10">
+      <BookingNotesField v-model="localData.notes" />
+    </div>
+
+    <div class="mt-6 pt-4 border-t border-text/10 flex justify-between items-center">
       <button type="button"
               @click="onPrev"
               class="min-h-[48px] px-6 py-2.5 border border-text/20 text-text font-semibold rounded-xl transition-colors hover:bg-text/5 cursor-pointer flex items-center gap-2">
@@ -63,6 +80,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import BookingNotesField from '@/components/booking/BookingNotesField.vue';
 
 const props = defineProps({
   modelValue: { type: Object, required: true },
@@ -87,7 +105,9 @@ const localData = computed(() => ({
   get phone() { return props.modelValue.phone || ''; },
   set phone(val) { updateField('phone', val); },
   get notes() { return props.modelValue.notes || ''; },
-  set notes(val) { updateField('notes', val); }
+  set notes(val) { updateField('notes', val); },
+  get website() { return props.modelValue.website || ''; },
+  set website(val) { updateField('website', val); }
 }));
 
 const isFormValid = computed(() => {

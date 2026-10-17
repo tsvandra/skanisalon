@@ -23,5 +23,13 @@ namespace Soluvion.API.DTOs.AppointmentDtos
         public bool Force { get; set; } = false;
         public string? ExtraMaterials { get; set; }
     }
+
+    public class UpdateAppointmentStatusDto
+    {
+        public AppointmentStatus Status { get; set; }
+
+        [MaxLength(500, ErrorMessage = "VALIDATION_MAX_LENGTH")]
+        public string? StatusReason { get; set; }
+    }
 }
 

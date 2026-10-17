@@ -14,6 +14,47 @@
 
       <div class="p-4 md:p-6 overflow-y-auto space-y-6">
 
+        <!-- Foglalás leadási ideje és gyors jóváhagyás / elutasítás sáv (szerkesztéskor) -->
+        <div v-if="isEditing && editData"
+             class="p-3 md:p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+             :class="form.status === 0 ? 'bg-amber-500/10 border-amber-500/30' : 'bg-background/70 border-text/10'">
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center flex-wrap gap-2">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider"
+                    :class="editData.source === 'Web' ? 'bg-primary/15 text-primary border border-primary/30' : 'bg-text/10 text-text-muted'">
+                <i class="pi text-[10px]" :class="editData.source === 'Web' ? 'pi-globe' : 'pi-desktop'"></i>
+                <span>{{ editData.source === 'Web' ? $t('calendar.pendingInbox.sourceOnline') : $t('calendar.pendingInbox.sourceSystem') }}</span>
+              </span>
+              <span v-if="form.status === 0"
+                    class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500 text-white text-[11px] font-extrabold uppercase tracking-wider">
+                <i class="pi pi-clock text-[10px]"></i>
+                <span>{{ $t('calendar.pendingInbox.pendingBadge') }}</span>
+              </span>
+            </div>
+            <div v-if="editData.createdAt" class="text-xs md:text-sm font-bold text-text flex items-center gap-1.5 mt-0.5">
+              <i class="pi pi-history text-primary"></i>
+              <span>{{ $t('calendar.pendingInbox.submittedAt', { time: formatSubmittedDateTime(editData.createdAt) }) }}</span>
+            </div>
+          </div>
+
+          <div v-if="form.status === 0" class="flex items-center gap-2 shrink-0">
+            <button type="button"
+                    @click="handleQuickApprove"
+                    :disabled="isSaving"
+                    class="px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-extrabold hover:bg-emerald-500 transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+              <i class="pi pi-check"></i>
+              <span>{{ $t('calendar.pendingInbox.approve') }}</span>
+            </button>
+            <button type="button"
+                    @click="handleQuickReject"
+                    :disabled="isSaving"
+                    class="px-3.5 py-2 rounded-xl bg-red-500/15 text-red-500 border border-red-500/30 text-xs font-extrabold hover:bg-red-500 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+              <i class="pi pi-times"></i>
+              <span>{{ $t('calendar.pendingInbox.reject') }}</span>
+            </button>
+          </div>
+        </div>
+
         <CustomerPicker v-model="form.customerId"
                         v-model:customerFullName="form.customerFullName"
                         v-model:customerPhone="form.customerPhone"
@@ -369,6 +410,46 @@ const removeExtraProduct = (idx) => { form.value.extraMaterials.splice(idx, 1); 
         await store.deleteAppointment(form.value.id);
         emit('deleted');
       } catch (error) { alert(t('calendar.editor.deleteError')); }
+    }
+  };
+
+  const formatSubmittedDateTime = (iso) => {
+    if (!iso) return '';
+    const dt = new Date(iso);
+    if (isNaN(dt.getTime())) return '';
+    return dt.toLocaleString(currentLang.value, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const handleQuickApprove = async () => {
+    if (!form.value.id || isSaving.value) return;
+    isSaving.value = true;
+    try {
+      await store.updateAppointmentStatus(form.value.id, 1);
+      emit('saved');
+    } catch (error) {
+      alert(t('calendar.editor.saveError') + '\n' + (error.response?.data?.message || error.message));
+    } finally {
+      isSaving.value = false;
+    }
+  };
+
+  const handleQuickReject = async () => {
+    if (!form.value.id || isSaving.value) return;
+    if (!confirm(t('calendar.pendingInbox.confirmReject'))) return;
+    isSaving.value = true;
+    try {
+      await store.updateAppointmentStatus(form.value.id, 3);
+      emit('saved');
+    } catch (error) {
+      alert(t('calendar.editor.saveError') + '\n' + (error.response?.data?.message || error.message));
+    } finally {
+      isSaving.value = false;
     }
   };
 

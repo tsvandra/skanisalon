@@ -17,6 +17,14 @@ export default {
     return api.put(`/api/Appointment/${id}`, appointmentData);
   },
 
+  getPendingAppointments() {
+    return api.get('/api/Appointment/pending');
+  },
+
+  updateAppointmentStatus(id, statusData) {
+    return api.patch(`/api/Appointment/${id}/status`, statusData);
+  },
+
   deleteAppointment(id) {
     return api.delete(`/api/Appointment/${id}`);
   }

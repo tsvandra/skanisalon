@@ -4,11 +4,13 @@
   import LanguageSwitcher from './LanguageSwitcher.vue';
   import { useLocalizedRoute } from '@/composables/useLocalizedRoute';
   import { useAuthStore } from '@/stores/authStore';
+  import { useAppointmentStore } from '@/stores/appointmentStore';
 
   const company = inject('company');
   const isLoggedIn = inject('isLoggedIn');
   const userRole = inject('userRole'); // <--- JWT-ből dekódolt szerepkör
   const authStore = useAuthStore();
+  const appointmentStore = useAppointmentStore();
   const router = useRouter();
   const { to: localized } = useLocalizedRoute();
   const isMenuOpen = ref(false);
@@ -128,9 +130,13 @@
         </router-link>
         <div class="grid grid-cols-3 gap-2 mb-2">
           <router-link :to="localized('orders')" @click="isMenuOpen = false"
-                       class="bg-surface border border-text/15 text-text hover:border-primary text-center font-semibold text-xs p-2 rounded-lg flex flex-col items-center justify-center gap-1 min-h-[44px]">
+                       class="bg-surface border border-text/15 text-text hover:border-primary text-center font-semibold text-xs p-2 rounded-lg flex flex-col items-center justify-center gap-1 min-h-[44px] relative">
             <i class="pi pi-calendar text-primary text-sm"></i>
             <span>{{ $t('nav.orders') }}</span>
+            <span v-if="appointmentStore.pendingCount > 0"
+                  class="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-white text-[10px] font-extrabold flex items-center justify-center shadow-xs">
+              {{ appointmentStore.pendingCount }}
+            </span>
           </router-link>
           <router-link v-if="isAdmin" :to="localized('inventory')" @click="isMenuOpen = false"
                        class="bg-surface border border-text/15 text-text hover:border-primary text-center font-semibold text-xs p-2 rounded-lg flex flex-col items-center justify-center gap-1 min-h-[44px]">

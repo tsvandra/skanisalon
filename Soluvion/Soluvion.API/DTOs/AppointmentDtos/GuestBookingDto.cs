@@ -34,5 +34,9 @@ namespace Soluvion.API.DTOs.AppointmentDtos
 
         // A frontend küldi, hogy melyik dolgozóhoz foglalunk
         public int EmployeeId { get; set; }
+
+        // Honeypot mező spam robotok ellen (valódi felhasználóknál mindig üres)
+        [MaxLength(200, ErrorMessage = "VALIDATION_MAX_LENGTH")]
+        public string? Website { get; set; }
     }
 }

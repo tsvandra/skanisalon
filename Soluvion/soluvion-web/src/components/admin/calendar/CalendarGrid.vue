@@ -12,7 +12,106 @@
                      @open-schedule="isScheduleModalOpen = true" />
 
     <div class="flex-1 overflow-y-auto p-2 md:p-6 w-full">
-      <div class="max-w-7xl mx-auto w-full">
+      <div class="max-w-7xl mx-auto w-full space-y-4">
+
+        <!-- JÓVÁHAGYÁSRA VÁRÓ ONLINE FOGLALÁSOK SÁV / PANEL -->
+        <div v-if="pendingBookings.length > 0"
+             class="rounded-2xl border-2 border-amber-500/40 bg-amber-500/5 shadow-sm overflow-hidden transition-all">
+          <div class="p-3 md:p-4 bg-amber-500/10 flex items-center justify-between gap-3 cursor-pointer select-none"
+               @click="isPendingInboxOpen = !isPendingInboxOpen">
+            <div class="flex items-center gap-2.5 md:gap-3">
+              <div class="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-extrabold shadow-xs shrink-0">
+                <i class="pi pi-bell text-base md:text-lg"></i>
+              </div>
+              <div>
+                <div class="flex items-center flex-wrap gap-2">
+                  <h3 class="text-sm md:text-base font-extrabold text-text">
+                    {{ $t('calendar.pendingInbox.title') }}
+                  </h3>
+                  <span class="px-2 py-0.5 rounded-full bg-amber-500 text-white text-xs font-extrabold shadow-2xs">
+                    {{ pendingBookings.length }}
+                  </span>
+                </div>
+                <p class="text-[11px] md:text-xs text-text-muted hidden sm:block">
+                  {{ $t('calendar.pendingInbox.subtitle') }}
+                </p>
+              </div>
+            </div>
+
+            <button type="button"
+                    class="px-3 py-1.5 rounded-xl bg-surface/80 border border-amber-500/30 text-xs font-bold text-text flex items-center gap-1.5 hover:bg-surface transition-colors cursor-pointer shrink-0">
+              <span class="hidden sm:inline">{{ isPendingInboxOpen ? $t('calendar.pendingInbox.hideList') : $t('calendar.pendingInbox.showList') }}</span>
+              <i class="pi text-xs" :class="isPendingInboxOpen ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
+            </button>
+          </div>
+
+          <div v-if="isPendingInboxOpen" class="p-3 md:p-4 space-y-2.5 border-t border-amber-500/20">
+            <div v-for="app in pendingBookings"
+                 :key="'pending-' + app.id"
+                 class="p-3 md:p-4 rounded-xl bg-surface border border-text/10 hover:border-amber-500/40 shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-3 transition-all">
+              <div class="flex flex-col gap-1.5 min-w-0">
+                <div class="flex items-center flex-wrap gap-2">
+                  <span class="font-extrabold text-sm md:text-base text-text">
+                    {{ getPendingCustomerName(app) }}
+                  </span>
+                  <a v-if="getPendingCustomerPhone(app)"
+                     :href="'tel:' + getPendingCustomerPhone(app)"
+                     @click.stop
+                     class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-colors">
+                    <i class="pi pi-phone text-[10px]"></i>
+                    <span>{{ getPendingCustomerPhone(app) }}</span>
+                  </a>
+                  <span v-if="app.createdAt"
+                        class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-500/15 text-amber-600 border border-amber-500/30 text-[11px] font-bold">
+                    <i class="pi pi-history text-[10px]"></i>
+                    <span>{{ $t('calendar.pendingInbox.submittedAt', { time: formatPendingDateTime(app.createdAt) }) }}</span>
+                  </span>
+                </div>
+
+                <div class="flex items-center flex-wrap gap-x-3 gap-y-1 text-xs md:text-sm font-bold text-text">
+                  <span class="text-text-muted font-semibold">{{ $t('calendar.pendingInbox.requestedSlot') }}</span>
+                  <span class="inline-flex items-center gap-1 text-primary cursor-pointer hover:underline"
+                        @click="jumpToPendingDay(app)">
+                    <i class="pi pi-calendar"></i>
+                    <span>{{ formatPendingSlot(app.startDateTime, app.endDateTime) }}</span>
+                  </span>
+                  <span class="text-text/20">|</span>
+                  <span class="text-text-muted">{{ getPendingServicesLabel(app) }}</span>
+                  <span class="text-text/20">|</span>
+                  <span class="font-extrabold text-primary">{{ app.totalPrice }} EUR</span>
+                </div>
+
+                <div v-if="app.notes" class="text-xs text-text-muted italic bg-background/70 px-2.5 py-1.5 rounded-lg border border-text/5">
+                  <i class="pi pi-comment text-primary/70 mr-1 text-[10px]"></i>
+                  <span>{{ app.notes }}</span>
+                </div>
+              </div>
+
+              <div class="flex items-center flex-wrap gap-2 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-text/10">
+                <button type="button"
+                        @click="approvePendingBooking(app)"
+                        :disabled="processingPendingId === app.id"
+                        class="px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-extrabold hover:bg-emerald-500 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+                  <i class="pi" :class="processingPendingId === app.id ? 'pi-spin pi-spinner' : 'pi-check'"></i>
+                  <span>{{ $t('calendar.pendingInbox.approve') }}</span>
+                </button>
+                <button type="button"
+                        @click="openAppointmentDetails(app)"
+                        class="px-3 py-2 rounded-xl bg-background border border-text/15 text-text text-xs font-bold hover:border-primary/50 hover:text-primary transition-all flex items-center gap-1.5 cursor-pointer">
+                  <i class="pi pi-pencil text-xs"></i>
+                  <span>{{ $t('calendar.pendingInbox.openAndEdit') }}</span>
+                </button>
+                <button type="button"
+                        @click="rejectPendingBooking(app)"
+                        :disabled="processingPendingId === app.id"
+                        class="px-3 py-2 rounded-xl bg-red-500/10 text-red-500 border border-red-500/30 text-xs font-bold hover:bg-red-500 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+                  <i class="pi pi-times text-xs"></i>
+                  <span>{{ $t('calendar.pendingInbox.reject') }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <CalendarMonthView v-if="currentView === 'month'"
                            :dynamic-week-days="dynamicWeekDays"
@@ -64,6 +163,7 @@
 <script setup>
   import { ref, computed, onMounted, watch } from "vue"; import { useRoute } from "vue-router";
   import { useI18n } from 'vue-i18n';
+  import { useLocalizedText } from '@/composables/useLocalizedText';
   import { useAppointmentStore } from '@/stores/appointmentStore';
   import bookingApi from '@/services/bookingApi';
 
@@ -76,8 +176,14 @@
   import CalendarDayView from './CalendarDayView.vue';
 
   const store = useAppointmentStore();
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
+  const { getLocText } = useLocalizedText();
   const currentLang = computed(() => locale.value || 'hu-HU');
+
+  // --- FÜGGŐBEN LÉVŐ (JÓVÁHAGYÁSRA VÁRÓ) FOGLALÁSOK KEZELÉSE ---
+  const isPendingInboxOpen = ref(true);
+  const processingPendingId = ref(null);
+  const pendingBookings = computed(() => store.pendingAppointments || []);
 
   // --- ONLINE FOGLALÁSI MUNKAREND KONFIGURÁCIÓ ---
   const isScheduleModalOpen = ref(false);
@@ -465,6 +571,94 @@
   const handleModalDeleted = () => {
     closeModal();
     fetchDataForCurrentView();
+  };
+
+  // --- FÜGGŐBEN LÉVŐ FOGLALÁSOK SEGÉDFÜGGVÉNYEI ---
+  const getPendingCustomerName = (app) => {
+    const c = customersList.value.find(x => x.id === app.customerId);
+    if (c && c.name && c.name !== 'Ismeretlen Vendég') return c.name;
+    if (app.customerName && app.customerName !== 'Ismeretlen') return app.customerName;
+    return `${t('calendar.guest')} #${app.customerId}`;
+  };
+
+  const getPendingCustomerPhone = (app) => {
+    if (app.customerPhone) return app.customerPhone;
+    const c = customersList.value.find(x => x.id === app.customerId);
+    return c?.phone || '';
+  };
+
+  const formatPendingDateTime = (iso) => {
+    if (!iso) return '';
+    const dt = new Date(iso);
+    if (isNaN(dt.getTime())) return '';
+    return dt.toLocaleString(currentLang.value, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatPendingSlot = (startIso, endIso) => {
+    if (!startIso) return '';
+    const s = new Date(startIso);
+    const e = endIso ? new Date(endIso) : null;
+    if (isNaN(s.getTime())) return '';
+    const datePart = s.toLocaleDateString(currentLang.value, {
+      month: 'short',
+      day: 'numeric',
+      weekday: 'short'
+    });
+    const startPart = s.toLocaleTimeString(currentLang.value, { hour: '2-digit', minute: '2-digit' });
+    const endPart = e && !isNaN(e.getTime())
+      ? e.toLocaleTimeString(currentLang.value, { hour: '2-digit', minute: '2-digit' })
+      : '';
+    return endPart ? `${datePart}, ${startPart}–${endPart}` : `${datePart}, ${startPart}`;
+  };
+
+  const getPendingServicesLabel = (app) => {
+    if (!Array.isArray(app.items) || app.items.length === 0) return '';
+    return app.items.map(item => {
+      for (const s of availableServices.value) {
+        const v = s.variants?.find(vx => vx.id === item.serviceVariantId);
+        if (v) return `${getLocText(s.name)} (${getLocText(v.variantName)})`;
+      }
+      return t('calendar.unknown');
+    }).join(', ');
+  };
+
+  const jumpToPendingDay = (app) => {
+    if (!app?.startDateTime) return;
+    currentDate.value = new Date(app.startDateTime);
+    currentView.value = 'day';
+  };
+
+  const approvePendingBooking = async (app) => {
+    if (!app?.id || processingPendingId.value) return;
+    processingPendingId.value = app.id;
+    try {
+      await store.updateAppointmentStatus(app.id, 1);
+      fetchDataForCurrentView();
+    } catch (err) {
+      alert(t('calendar.editor.saveError') + '\n' + (err.response?.data?.message || err.message));
+    } finally {
+      processingPendingId.value = null;
+    }
+  };
+
+  const rejectPendingBooking = async (app) => {
+    if (!app?.id || processingPendingId.value) return;
+    if (!confirm(t('calendar.pendingInbox.confirmReject'))) return;
+    processingPendingId.value = app.id;
+    try {
+      await store.updateAppointmentStatus(app.id, 3);
+      fetchDataForCurrentView();
+    } catch (err) {
+      alert(t('calendar.editor.saveError') + '\n' + (err.response?.data?.message || err.message));
+    } finally {
+      processingPendingId.value = null;
+    }
   };
 
   onMounted(() => {
