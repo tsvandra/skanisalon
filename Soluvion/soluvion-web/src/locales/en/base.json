@@ -249,7 +249,7 @@
       "appendCentralLinkLabel": "Append central BeeMagic link to reply (educate/migrate clients)",
       "centralSectionTitle": "1. Zero-Setup Central BeeMagic Links (Always Active!)",
       "centralSectionDesc": "These links require 0 technical setup. They remain active even if you also connect your own Facebook Page — allowing you to gradually migrate clients to the central link!",
-      "salonAliasLabel": "Unique Salon Code (@alias)",
+      "salonAliasLabel": "Unique Salon Code (#alias)",
       "copyLink": "Copy",
       "copied": "Copied!",
       "customSectionTitle": "2. Custom Facebook Page & Viber Channel (Parallel Mode)",

@@ -450,7 +450,7 @@ const selectedConversation = ref(null);
 
 const channelConfig = ref({
   salonAlias: 'skanisalon',
-  centralMessengerLink: 'https://m.me/BeeMagicSalon?ref=skanisalon',
+  centralMessengerLink: 'https://m.me/1455828144269648?ref=skanisalon',
   centralViberLink: 'viber://pa?chatURI=beemagicsalon&context=skanisalon',
   centralWhatsAppTag: '#skanisalon',
   customFacebookPageConnected: false,
@@ -481,7 +481,7 @@ const copiedKey = ref('');
 
 const computedCentralMessengerLink = computed(() => {
   const alias = (channelConfig.value.salonAlias || 'salon').trim();
-  return `https://m.me/BeeMagicSalon?ref=${alias}`;
+  return `https://m.me/1455828144269648?ref=${alias}`;
 });
 
 const computedCentralViberLink = computed(() => {

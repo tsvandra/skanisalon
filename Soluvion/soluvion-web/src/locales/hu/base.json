@@ -249,7 +249,7 @@
       "appendCentralLinkLabel": "Központi BeeMagic link hozzáfűzése a válaszhoz (ügyfelek átirányítása)",
       "centralSectionTitle": "1. Zero-Setup Központi BeeMagic Linkek (Mindig aktív!)",
       "centralSectionDesc": "Ezekhez a linkekhez 0 technikai beállítás kell. Akkor is aktívak maradnak, ha közben a saját Facebook oldaladat is bekötöd – így fokozatosan átnevelheted rájuk a vendégeket!",
-      "salonAliasLabel": "Szalon egyedi kódja (@alias)",
+      "salonAliasLabel": "Szalon egyedi kódja (#alias)",
       "copyLink": "Másolás",
       "copied": "Másolva!",
       "customSectionTitle": "2. Saját Facebook Oldal & Viber Csatorna (Párhuzamos működés)",
