@@ -388,12 +388,19 @@ namespace Soluvion.API.Controllers
                     customer.Attributes["Email"] = dto.Email;
                     customer.Attributes["Phone"] = dto.Phone;
                     customer.Attributes["FullName"] = dto.FullName;
+                    if (!string.IsNullOrWhiteSpace(dto.PreferredChannel))
+                        customer.Attributes["PreferredChannel"] = dto.PreferredChannel.Trim();
+                    if (!string.IsNullOrWhiteSpace(dto.MessengerHandle))
+                        customer.Attributes["MessengerHandle"] = dto.MessengerHandle.Trim();
+                    if (!string.IsNullOrWhiteSpace(dto.ClientLanguage))
+                        customer.Attributes["PreferredLanguage"] = dto.ClientLanguage.Trim();
 
                     _context.CompanyCustomers.Add(customer);
                     await _context.SaveChangesAsync();
                 }
                 else
                 {
+                    customer.Attributes ??= new Dictionary<string, string>();
                     if (dto.Attributes != null)
                     {
                         foreach (var attr in dto.Attributes)
@@ -401,7 +408,19 @@ namespace Soluvion.API.Controllers
                             customer.Attributes[attr.Key] = attr.Value;
                         }
                     }
+                    if (!string.IsNullOrWhiteSpace(dto.Phone))
+                        customer.Attributes["Phone"] = dto.Phone.Trim();
+                    if (!string.IsNullOrWhiteSpace(dto.FullName))
+                        customer.Attributes["FullName"] = dto.FullName.Trim();
+                    if (!string.IsNullOrWhiteSpace(dto.PreferredChannel))
+                        customer.Attributes["PreferredChannel"] = dto.PreferredChannel.Trim();
+                    if (!string.IsNullOrWhiteSpace(dto.MessengerHandle))
+                        customer.Attributes["MessengerHandle"] = dto.MessengerHandle.Trim();
+                    if (!string.IsNullOrWhiteSpace(dto.ClientLanguage))
+                        customer.Attributes["PreferredLanguage"] = dto.ClientLanguage.Trim();
+
                     _context.CompanyCustomers.Update(customer);
+                    await _context.SaveChangesAsync();
                 }
 
                 // 3. Smart Booking Engine hívása + szigorú vendég-ütközésvizsgálat

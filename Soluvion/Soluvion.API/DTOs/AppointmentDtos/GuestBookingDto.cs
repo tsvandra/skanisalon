@@ -38,5 +38,17 @@ namespace Soluvion.API.DTOs.AppointmentDtos
         // Honeypot mező spam robotok ellen (valódi felhasználóknál mindig üres)
         [MaxLength(200, ErrorMessage = "VALIDATION_MAX_LENGTH")]
         public string? Website { get; set; }
+
+        // Vendég által választott preferált kommunikációs csatorna (WhatsApp, SMS, Email, Viber, Messenger)
+        [MaxLength(40, ErrorMessage = "VALIDATION_MAX_LENGTH")]
+        public string? PreferredChannel { get; set; }
+
+        // Opcionális Messenger név / azonosító, ha a Messenger csatornát választotta
+        [MaxLength(120, ErrorMessage = "VALIDATION_MAX_LENGTH")]
+        public string? MessengerHandle { get; set; }
+
+        // A vendég aktuális felületi nyelve (hu, sk, en) a többnyelvű visszaigazolásokhoz
+        [MaxLength(10, ErrorMessage = "VALIDATION_MAX_LENGTH")]
+        public string? ClientLanguage { get; set; }
     }
 }

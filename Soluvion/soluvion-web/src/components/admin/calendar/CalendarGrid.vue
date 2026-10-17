@@ -9,7 +9,8 @@
                      @prev="goPrev"
                      @next="goNext"
                      @today="goToday"
-                     @open-schedule="isScheduleModalOpen = true" />
+                     @open-schedule="isScheduleModalOpen = true"
+                     @open-ai-chat="openAiChatForPending(null)" />
 
     <div class="flex-1 overflow-y-auto p-2 md:p-6 w-full">
       <div class="max-w-7xl mx-auto w-full space-y-4">
@@ -61,10 +62,24 @@
                     <i class="pi pi-phone text-[10px]"></i>
                     <span>{{ getPendingCustomerPhone(app) }}</span>
                   </a>
+                  <!-- Preferált elérhetőségi csatorna jelvény -->
+                  <span v-if="app.preferredChannel"
+                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[11px] font-bold"
+                        :class="getChannelMeta(app.preferredChannel).badgeClass">
+                    <i :class="getChannelMeta(app.preferredChannel).icon" class="text-[11px]"></i>
+                    <span>{{ getChannelMeta(app.preferredChannel).label }}</span>
+                    <span v-if="app.messengerHandle" class="opacity-80">({{ app.messengerHandle }})</span>
+                  </span>
                   <span v-if="app.createdAt"
                         class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-500/15 text-amber-600 border border-amber-500/30 text-[11px] font-bold">
                     <i class="pi pi-history text-[10px]"></i>
                     <span>{{ $t('calendar.pendingInbox.submittedAt', { time: formatPendingDateTime(app.createdAt) }) }}</span>
+                  </span>
+                  <!-- Chatből frissítve jelvény, ha amíg függőben volt, üzenet alapján frissült -->
+                  <span v-if="app.notes && app.notes.includes('[💬 Chat:')"
+                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-primary/15 text-primary border border-primary/30 text-[11px] font-extrabold">
+                    <i class="pi pi-sparkles text-[10px]"></i>
+                    <span>{{ $t('calendar.pendingInbox.updatedFromChatBadge') }}</span>
                   </span>
                 </div>
 
@@ -94,6 +109,20 @@
                         class="px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-extrabold hover:bg-emerald-500 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
                   <i class="pi" :class="processingPendingId === app.id ? 'pi-spin pi-spinner' : 'pi-check'"></i>
                   <span>{{ $t('calendar.pendingInbox.approve') }}</span>
+                </button>
+                <button type="button"
+                        @click="sendSmartReplyForApp(app, 'approve')"
+                        :title="$t('calendar.pendingInbox.sendReplyVia', { channel: getChannelMeta(app.preferredChannel).label })"
+                        class="px-3 py-2 rounded-xl text-xs font-extrabold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                        :class="getChannelMeta(app.preferredChannel).buttonClass">
+                  <i :class="getChannelMeta(app.preferredChannel).icon" class="text-xs"></i>
+                  <span>{{ getChannelMeta(app.preferredChannel).label }}</span>
+                </button>
+                <button type="button"
+                        @click="openAiChatForPending(app)"
+                        class="px-3 py-2 rounded-xl bg-primary/15 text-primary border border-primary/30 text-xs font-extrabold hover:bg-primary hover:text-surface transition-all flex items-center gap-1.5 cursor-pointer">
+                  <i class="pi pi-sparkles text-xs"></i>
+                  <span>{{ $t('calendar.pendingInbox.updateFromChat') }}</span>
                 </button>
                 <button type="button"
                         @click="openAppointmentDetails(app)"
@@ -147,6 +176,7 @@
 
     <AppointmentEditorModal :is-open="isModalOpen"
                             :edit-data="selectedAppointment"
+                            :prefill-data="aiPrefillData"
                             :default-date="currentDate"
                             @close="closeModal"
                             @saved="handleModalSaved"
@@ -157,6 +187,15 @@
                           @close="isScheduleModalOpen = false"
                           @saved="handleScheduleConfigSaved" />
 
+    <AiChatBookingModal :is-open="isAiChatModalOpen"
+                        :pending-bookings="pendingBookings"
+                        :initial-pending-booking="targetPendingForChat"
+                        :available-services="availableServices"
+                        :customers-list="customersList"
+                        @close="closeAiChatModal"
+                        @parsed="handleAiParsedBooking"
+                        @pending-updated="handlePendingUpdatedFromChat" />
+
   </div>
 </template>
 
@@ -165,17 +204,21 @@
   import { useI18n } from 'vue-i18n';
   import { useLocalizedText } from '@/composables/useLocalizedText';
   import { useAppointmentStore } from '@/stores/appointmentStore';
+  import { useCompanyStore } from '@/stores/companyStore';
   import bookingApi from '@/services/bookingApi';
+  import { getChannelMeta, buildBookingReplyText, openChannelSmartReply } from '@/utils/bookingReplyHelper';
 
   // Kiszervezett komponensek beimportálása
   import AppointmentEditorModal from './AppointmentEditorModal.vue';
   import BookingScheduleModal from './BookingScheduleModal.vue';
+  import AiChatBookingModal from './AiChatBookingModal.vue';
   import CalendarToolbar from './CalendarToolbar.vue';
   import CalendarMonthView from './CalendarMonthView.vue';
   import CalendarWeekView from './CalendarWeekView.vue';
   import CalendarDayView from './CalendarDayView.vue';
 
   const store = useAppointmentStore();
+  const companyStore = useCompanyStore();
   const { locale, t } = useI18n();
   const { getLocText } = useLocalizedText();
   const currentLang = computed(() => locale.value || 'hu-HU');
@@ -184,6 +227,9 @@
   const isPendingInboxOpen = ref(true);
   const processingPendingId = ref(null);
   const pendingBookings = computed(() => store.pendingAppointments || []);
+  const isAiChatModalOpen = ref(false);
+  const targetPendingForChat = ref(null);
+  const aiPrefillData = ref(null);
 
   // --- ONLINE FOGLALÁSI MUNKAREND KONFIGURÁCIÓ ---
   const isScheduleModalOpen = ref(false);
@@ -549,17 +595,43 @@
 
   const openNewAppointment = () => {
     selectedAppointment.value = null;
+    aiPrefillData.value = null;
     isModalOpen.value = true;
   };
 
   const openAppointmentDetails = (app) => {
     selectedAppointment.value = app;
+    aiPrefillData.value = null;
+    isModalOpen.value = true;
+  };
+
+  const openAiChatForPending = (pendingApp = null) => {
+    targetPendingForChat.value = pendingApp;
+    isAiChatModalOpen.value = true;
+  };
+
+  const closeAiChatModal = () => {
+    isAiChatModalOpen.value = false;
+    targetPendingForChat.value = null;
+  };
+
+  const handlePendingUpdatedFromChat = () => {
+    fetchDataForCurrentView();
+    fetchCustomers();
+  };
+
+  const handleAiParsedBooking = (parsedData) => {
+    isAiChatModalOpen.value = false;
+    targetPendingForChat.value = null;
+    selectedAppointment.value = null;
+    aiPrefillData.value = parsedData;
     isModalOpen.value = true;
   };
 
   const closeModal = () => {
     isModalOpen.value = false;
     selectedAppointment.value = null;
+    aiPrefillData.value = null;
   };
 
   const handleModalSaved = () => {
@@ -571,6 +643,36 @@
   const handleModalDeleted = () => {
     closeModal();
     fetchDataForCurrentView();
+  };
+
+  const sendSmartReplyForApp = async (app, type = 'approve') => {
+    if (!app) return;
+    const customerName = getPendingCustomerName(app);
+    const phone = getPendingCustomerPhone(app);
+    const email = app.customerEmail || '';
+    const slotText = formatPendingSlot(app.startDateTime, app.endDateTime);
+    const servicesText = getPendingServicesLabel(app);
+    const companyName = companyStore.company?.name || 'Salon';
+    const lang = app.preferredLanguage || locale.value || 'hu';
+
+    const message = buildBookingReplyText({
+      type,
+      lang,
+      customerName,
+      companyName,
+      slotText,
+      servicesText,
+      totalPrice: app.totalPrice
+    });
+
+    await openChannelSmartReply({
+      channel: app.preferredChannel || 'WhatsApp',
+      phone,
+      email,
+      messengerHandle: app.messengerHandle || '',
+      subject: `${companyName} - ${slotText}`,
+      message
+    });
   };
 
   // --- FÜGGŐBEN LÉVŐ FOGLALÁSOK SEGÉDFÜGGVÉNYEI ---

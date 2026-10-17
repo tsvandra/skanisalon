@@ -14,6 +14,28 @@
 
       <div class="p-4 md:p-6 overflow-y-auto space-y-6">
 
+        <!-- AI Chat előtöltés visszajelző sáv (ha üzenetekből vagy képernyőfotóból állította össze az AI) -->
+        <div v-if="!isEditing && prefillData"
+             class="p-3.5 rounded-xl bg-primary/10 border border-primary/35 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div class="flex items-start gap-2.5">
+            <i class="pi pi-sparkles text-primary text-lg mt-0.5"></i>
+            <div>
+              <div class="text-xs md:text-sm font-extrabold text-text flex items-center gap-2">
+                <span>{{ $t('calendar.aiChat.prefillBannerTitle', { pct: prefillData.confidencePercent || 90 }) }}</span>
+              </div>
+              <p class="text-[11px] md:text-xs text-text-muted m-0">
+                {{ $t('calendar.aiChat.prefillBannerSub') }}
+              </p>
+            </div>
+          </div>
+          <span v-if="prefillData.channel"
+                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-bold shrink-0"
+                :class="getChannelMeta(prefillData.channel).badgeClass">
+            <i :class="getChannelMeta(prefillData.channel).icon"></i>
+            <span>{{ getChannelMeta(prefillData.channel).label }}</span>
+          </span>
+        </div>
+
         <!-- Foglalás leadási ideje és gyors jóváhagyás / elutasítás sáv (szerkesztéskor) -->
         <div v-if="isEditing && editData"
              class="p-3 md:p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3"
@@ -24,6 +46,12 @@
                     :class="editData.source === 'Web' ? 'bg-primary/15 text-primary border border-primary/30' : 'bg-text/10 text-text-muted'">
                 <i class="pi text-[10px]" :class="editData.source === 'Web' ? 'pi-globe' : 'pi-desktop'"></i>
                 <span>{{ editData.source === 'Web' ? $t('calendar.pendingInbox.sourceOnline') : $t('calendar.pendingInbox.sourceSystem') }}</span>
+              </span>
+              <span v-if="editData.preferredChannel"
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-bold"
+                    :class="getChannelMeta(editData.preferredChannel).badgeClass">
+                <i :class="getChannelMeta(editData.preferredChannel).icon" class="text-[10px]"></i>
+                <span>{{ getChannelMeta(editData.preferredChannel).label }}</span>
               </span>
               <span v-if="form.status === 0"
                     class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500 text-white text-[11px] font-extrabold uppercase tracking-wider">
@@ -37,8 +65,9 @@
             </div>
           </div>
 
-          <div v-if="form.status === 0" class="flex items-center gap-2 shrink-0">
-            <button type="button"
+          <div class="flex items-center flex-wrap gap-2 shrink-0">
+            <button v-if="form.status === 0"
+                    type="button"
                     @click="handleQuickApprove"
                     :disabled="isSaving"
                     class="px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-extrabold hover:bg-emerald-500 transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
@@ -46,6 +75,14 @@
               <span>{{ $t('calendar.pendingInbox.approve') }}</span>
             </button>
             <button type="button"
+                    @click="handleSmartReplyFromModal('approve')"
+                    class="px-3 py-2 rounded-xl text-xs font-extrabold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                    :class="getChannelMeta(editData.preferredChannel).buttonClass">
+              <i :class="getChannelMeta(editData.preferredChannel).icon"></i>
+              <span>{{ getChannelMeta(editData.preferredChannel).label }}</span>
+            </button>
+            <button v-if="form.status === 0"
+                    type="button"
                     @click="handleQuickReject"
                     :disabled="isSaving"
                     class="px-3.5 py-2 rounded-xl bg-red-500/15 text-red-500 border border-red-500/30 text-xs font-extrabold hover:bg-red-500 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
@@ -173,10 +210,12 @@
   import { useI18n } from 'vue-i18n';
   import { useLocalizedText } from '@/composables/useLocalizedText';
   import bookingApi from '@/services/bookingApi';
-import productApi from '@/services/productApi';
-import apiClient from '@/services/api';
-import inventoryApi from '@/services/inventoryApi';
+  import productApi from '@/services/productApi';
+  import apiClient from '@/services/api';
+  import inventoryApi from '@/services/inventoryApi';
   import { useAppointmentStore } from '@/stores/appointmentStore';
+  import { useCompanyStore } from '@/stores/companyStore';
+  import { getChannelMeta, buildBookingReplyText, openChannelSmartReply } from '@/utils/bookingReplyHelper';
 
   // KISZERVEZETT KOMPONENSEK BEHÚZÁSA
   import CustomerPicker from './CustomerPicker.vue';
@@ -186,6 +225,7 @@ import inventoryApi from '@/services/inventoryApi';
   const props = defineProps({
     isOpen: { type: Boolean, required: true },
     editData: { type: Object, default: null },
+    prefillData: { type: Object, default: null },
     defaultDate: { type: Date, default: () => new Date() }
   });
 
@@ -194,6 +234,7 @@ import inventoryApi from '@/services/inventoryApi';
   const { t, locale } = useI18n();
   const currentLang = computed(() => locale.value || 'hu-HU');
   const store = useAppointmentStore();
+  const companyStore = useCompanyStore();
 
   const availableServices = ref([]);
   const customersList = ref([]);
@@ -261,11 +302,56 @@ const removeExtraProduct = (idx) => { form.value.extraMaterials.splice(idx, 1); 
     } return t('calendar.unknown');
   };
 
+  const findVariantDetails = (variantId) => {
+    for (const s of availableServices.value) {
+      const v = s.variants?.find(vx => vx.id === variantId);
+      if (v) {
+        return {
+          variantId: v.id,
+          name: `${getLocText(s.name)} - ${getLocText(v.variantName)}`,
+          duration: v.duration || 30,
+          price: v.price || 0
+        };
+      }
+    }
+    return null;
+  };
+
   const initForm = () => {
     if (!props.editData) {
       isEditing.value = false;
       const d = new Date(props.defaultDate.getTime() - (props.defaultDate.getTimezoneOffset() * 60000));
-      form.value = { id: null, customerId: '', customerFullName: '', customerPhone: '', employeeId: 0, date: d.toISOString().split('T')[0], time: '08:00', status: 1, notes: '', extraMaterials: [], items: [] };
+      const defaultDateStr = d.toISOString().split('T')[0];
+
+      if (props.prefillData) {
+        const pf = props.prefillData;
+        const prefilledItems = (pf.serviceVariantIds || [])
+          .map(id => findVariantDetails(id))
+          .filter(Boolean);
+
+        let custId = '';
+        if (pf.customerId) {
+          custId = pf.customerId;
+        } else if (pf.customerName || pf.customerPhone) {
+          custId = 'new';
+        }
+
+        form.value = {
+          id: null,
+          customerId: custId,
+          customerFullName: pf.customerName || '',
+          customerPhone: pf.customerPhone || '',
+          employeeId: 0,
+          date: pf.date || defaultDateStr,
+          time: pf.time || '09:00',
+          status: 1,
+          notes: pf.notes || '',
+          extraMaterials: [],
+          items: prefilledItems
+        };
+      } else {
+        form.value = { id: null, customerId: '', customerFullName: '', customerPhone: '', employeeId: 0, date: defaultDateStr, time: '08:00', status: 1, notes: '', extraMaterials: [], items: [] };
+      }
     } else {
       isEditing.value = true;
       const app = props.editData;
@@ -462,6 +548,39 @@ const removeExtraProduct = (idx) => { form.value.extraMaterials.splice(idx, 1); 
       const data = error.response?.data;
       alert(t('calendar.editor.reverseClosingError') + '\n' + (data?.Error || data?.error || error.message));
     }
+  };
+
+  const handleSmartReplyFromModal = async (type = 'approve') => {
+    const app = props.editData;
+    if (!app) return;
+    const c = customersList.value.find(x => x.id === app.customerId);
+    const customerName = c?.name || app.customerName || '';
+    const phone = app.customerPhone || c?.phone || '';
+    const email = app.customerEmail || '';
+    const slotText = `${form.value.date} ${form.value.time}`;
+    const servicesText = form.value.items.map(i => i.name).join(', ');
+    const totalPrice = form.value.items.reduce((sum, i) => sum + (Number(i.price) || 0), 0);
+    const companyName = companyStore.company?.name || 'Salon';
+    const lang = app.preferredLanguage || locale.value || 'hu';
+
+    const message = buildBookingReplyText({
+      type,
+      lang,
+      customerName,
+      companyName,
+      slotText,
+      servicesText,
+      totalPrice
+    });
+
+    await openChannelSmartReply({
+      channel: app.preferredChannel || 'WhatsApp',
+      phone,
+      email,
+      messengerHandle: app.messengerHandle || '',
+      subject: `${companyName} - ${slotText}`,
+      message
+    });
   };
 
   const close = () => { emit('close'); };

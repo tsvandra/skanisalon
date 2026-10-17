@@ -37,6 +37,38 @@
         </div>
       </div>
 
+      <!-- Preferált visszaigazolási / kommunikációs csatorna kiválasztása -->
+      <div class="flex flex-col gap-2 md:col-span-2 pt-1">
+        <label class="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+          <i class="pi pi-send text-primary text-xs"></i>
+          <span>{{ $t('booking.preferredChannelLabel') }}</span>
+        </label>
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          <button v-for="ch in channels"
+                  :key="ch.id"
+                  type="button"
+                  @click="localData.preferredChannel = ch.id"
+                  class="min-h-[44px] px-3 py-2 rounded-xl border text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer select-none"
+                  :class="localData.preferredChannel === ch.id
+                    ? 'bg-primary/15 border-primary text-primary shadow-xs ring-1 ring-primary/30'
+                    : 'bg-background border-text/15 text-text-muted hover:border-primary/40 hover:text-text'">
+            <i :class="ch.icon" class="text-base"></i>
+            <span>{{ ch.label }}</span>
+          </button>
+        </div>
+
+        <div v-if="localData.preferredChannel === 'Messenger'" class="mt-1">
+          <div class="relative flex items-center">
+            <i class="pi pi-facebook absolute left-3.5 text-blue-500 text-sm pointer-events-none"></i>
+            <input v-model="localData.messengerHandle"
+                   type="text"
+                   autocomplete="off"
+                   :placeholder="$t('booking.messengerHandlePlaceholder')"
+                   class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-text/15 bg-background text-text text-sm focus:border-primary focus:ring-1 focus:ring-primary/40 focus:outline-none transition-all" />
+          </div>
+        </div>
+      </div>
+
       <!-- Böngésző autofill csapda lakcímhez: megakadályozza, hogy a Chrome/Safari a név+telefon automatikus kitöltésekor a megjegyzés mezőbe írja a lakcímet -->
       <div class="sr-only" aria-hidden="true">
         <input type="text" name="street-address" autocomplete="street-address" tabindex="-1" />
@@ -81,6 +113,9 @@
 <script setup>
 import { computed } from 'vue';
 import BookingNotesField from '@/components/booking/BookingNotesField.vue';
+import { COMMUNICATION_CHANNELS } from '@/utils/bookingReplyHelper';
+
+const channels = COMMUNICATION_CHANNELS;
 
 const props = defineProps({
   modelValue: { type: Object, required: true },
@@ -104,6 +139,10 @@ const localData = computed(() => ({
   set email(val) { updateField('email', val); },
   get phone() { return props.modelValue.phone || ''; },
   set phone(val) { updateField('phone', val); },
+  get preferredChannel() { return props.modelValue.preferredChannel || 'WhatsApp'; },
+  set preferredChannel(val) { updateField('preferredChannel', val); },
+  get messengerHandle() { return props.modelValue.messengerHandle || ''; },
+  set messengerHandle(val) { updateField('messengerHandle', val); },
   get notes() { return props.modelValue.notes || ''; },
   set notes(val) { updateField('notes', val); },
   get website() { return props.modelValue.website || ''; },

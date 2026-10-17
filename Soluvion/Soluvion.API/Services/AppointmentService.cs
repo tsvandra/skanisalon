@@ -101,6 +101,15 @@ namespace Soluvion.API.Services
                 CustomerEmail = a.Customer != null && a.Customer.Attributes != null && a.Customer.Attributes.TryGetValue("Email", out var email)
                     ? email
                     : null,
+                PreferredChannel = a.Customer != null && a.Customer.Attributes != null && a.Customer.Attributes.TryGetValue("PreferredChannel", out var prefChannel)
+                    ? prefChannel
+                    : null,
+                MessengerHandle = a.Customer != null && a.Customer.Attributes != null && a.Customer.Attributes.TryGetValue("MessengerHandle", out var messengerHandle)
+                    ? messengerHandle
+                    : null,
+                PreferredLanguage = a.Customer != null && a.Customer.Attributes != null && a.Customer.Attributes.TryGetValue("PreferredLanguage", out var prefLang)
+                    ? prefLang
+                    : null,
                 CustomerNotes = a.CustomerNotes,
                 StatusReason = a.StatusReason,
                 CreatedAt = a.CreatedAt,
@@ -224,6 +233,10 @@ namespace Soluvion.API.Services
             appointment.TotalPrice = totalPrice;
             appointment.Status = dto.Status;
             appointment.AdminNotes = dto.Notes;
+            if (!string.IsNullOrEmpty(appointment.CustomerNotes) || appointment.Source == BookingSource.Web)
+            {
+                appointment.CustomerNotes = dto.Notes;
+            }
             appointment.ExtraMaterials = NormalizeExtraMaterials(dto.ExtraMaterials);
 
             var oldItems = await _context.AppointmentItems.Where(i => i.AppointmentId == appointment.Id).ToListAsync();

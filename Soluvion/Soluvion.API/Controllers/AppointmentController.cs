@@ -12,10 +12,67 @@ namespace Soluvion.API.Controllers
     public class AppointmentController : ControllerBase
     {
         private readonly IAppointmentService _appointmentService;
+        private readonly IAiChatBookingService _aiChatBookingService;
 
-        public AppointmentController(IAppointmentService appointmentService)
+        public AppointmentController(
+            IAppointmentService appointmentService,
+            IAiChatBookingService aiChatBookingService)
         {
             _appointmentService = appointmentService;
+            _aiChatBookingService = aiChatBookingService;
+        }
+
+        [HttpPost("parse-chat-booking")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> ParseChatBooking(
+            [FromForm] string? messagesText,
+            [FromForm] List<IFormFile>? images,
+            [FromForm] string? channelHint)
+        {
+            try
+            {
+                var result = await _aiChatBookingService.ParseChatBookingAsync(messagesText, images, channelHint);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { errorCode = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { errorCode = "AI_PARSE_ERROR", message = ex.Message });
+            }
+        }
+
+        [HttpPost("{id}/update-from-chat")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UpdatePendingFromChat(
+            int id,
+            [FromForm] string? messagesText,
+            [FromForm] List<IFormFile>? images,
+            [FromForm] string? channelHint)
+        {
+            try
+            {
+                var result = await _aiChatBookingService.UpdatePendingAppointmentFromChatAsync(id, messagesText, images, channelHint);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { errorCode = "NOT_FOUND" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { errorCode = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { errorCode = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { errorCode = "AI_PARSE_ERROR", message = ex.Message });
+            }
         }
 
         [HttpPost]

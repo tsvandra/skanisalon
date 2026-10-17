@@ -2,21 +2,30 @@
   <div class="sticky top-0 z-20 bg-surface border-b border-text/10 p-3 md:p-4 shadow-sm">
     <div class="max-w-7xl mx-auto w-full flex flex-col xl:flex-row justify-between items-start xl:items-center gap-2 md:gap-4">
 
-      <div class="flex items-center justify-between gap-2 md:gap-3 w-full xl:w-auto">
+      <div class="flex items-center justify-between gap-2 md:gap-3 w-full xl:w-auto flex-wrap">
         <h2 class="text-xl md:text-2xl font-bold text-text drop-shadow-sm flex items-center gap-2">
           <i class="pi pi-calendar text-primary"></i>
           <span>{{ $t('calendar.title') }}</span>
         </h2>
 
-        <button type="button"
-                @click="$emit('openSchedule')"
-                class="px-3 py-2 min-h-[40px] rounded-xl border border-primary/35 bg-primary/10 text-primary hover:bg-primary/20 transition-all text-xs md:text-sm font-bold flex items-center gap-1.5 cursor-pointer shadow-sm">
-          <i class="pi pi-calendar-clock"></i>
-          <span>{{ $t('calendar.schedule.buttonTitle') }}</span>
-          <span class="hidden sm:inline-block px-1.5 py-0.5 rounded-md bg-surface text-[10px] text-text-muted border border-text/10">
-            {{ scheduleMode === 'custom_days' ? $t('calendar.schedule.modeCustomDays') : $t('calendar.schedule.open') }}
-          </span>
-        </button>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button type="button"
+                  @click="$emit('openAiChat')"
+                  class="px-3 py-2 min-h-[40px] rounded-xl bg-primary text-surface hover:brightness-110 transition-all text-xs md:text-sm font-extrabold flex items-center gap-1.5 cursor-pointer shadow-sm">
+            <i class="pi pi-sparkles"></i>
+            <span>{{ $t('calendar.aiChat.toolbarButton') }}</span>
+          </button>
+
+          <button type="button"
+                  @click="$emit('openSchedule')"
+                  class="px-3 py-2 min-h-[40px] rounded-xl border border-primary/35 bg-primary/10 text-primary hover:bg-primary/20 transition-all text-xs md:text-sm font-bold flex items-center gap-1.5 cursor-pointer shadow-sm">
+            <i class="pi pi-calendar-clock"></i>
+            <span>{{ $t('calendar.schedule.buttonTitle') }}</span>
+            <span class="hidden sm:inline-block px-1.5 py-0.5 rounded-md bg-surface text-[10px] text-text-muted border border-text/10">
+              {{ scheduleMode === 'custom_days' ? $t('calendar.schedule.modeCustomDays') : $t('calendar.schedule.open') }}
+            </span>
+          </button>
+        </div>
       </div>
 
       <div class="flex flex-col md:flex-row items-center gap-2 w-full xl:w-auto mt-1 md:mt-0">
@@ -86,7 +95,7 @@
     }
   });
 
-  defineEmits(['update:currentView', 'prev', 'next', 'today', 'openSchedule']);
+  defineEmits(['update:currentView', 'prev', 'next', 'today', 'openSchedule', 'openAiChat']);
 
   const views = [
     { id: 'day', icon: 'pi pi-clock' },

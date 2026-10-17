@@ -156,7 +156,16 @@
   // ---------------------------------------------
 
   const getInitialBookingData = () => ({
-    fullName: '', email: '', phone: '', attributes: {}, notes: '', website: '', serviceVariantIds: [], employeeId: 0
+    fullName: '',
+    email: '',
+    phone: '',
+    preferredChannel: 'WhatsApp',
+    messengerHandle: '',
+    attributes: {},
+    notes: '',
+    website: '',
+    serviceVariantIds: [],
+    employeeId: 0
   });
 
   const bookingData = ref(getInitialBookingData());
@@ -169,7 +178,11 @@
     errorMessage.value = '';
 
     try {
-      const payload = { ...bookingData.value, startDateTime: new Date(selectedDateTime.value).toISOString() };
+      const payload = {
+        ...bookingData.value,
+        clientLanguage: locale.value || 'hu',
+        startDateTime: new Date(selectedDateTime.value).toISOString()
+      };
       await bookingApi.createGuestBooking(payload);
       isSuccess.value = true;
     } catch (error) {

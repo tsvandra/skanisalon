@@ -45,6 +45,8 @@ builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IDocumentTextExtractorService, DocumentTextExtractorService>();
 builder.Services.AddScoped<IProductAiScannerService, ProductAiScannerService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IAiChatBookingService, AiChatBookingService>();
 builder.Services.AddHostedService<AppointmentAutoCompleteService>();
 
 // Publikus foglalási végpont védelem (Rate Limiting spam és DoS ellen)
